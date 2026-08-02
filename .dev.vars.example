@@ -8,7 +8,12 @@
 # NOTE: Do not put VITE_* vars here — Wrangler secrets are for Functions only.
 # Client env (e.g. VITE_GTM_ID) belongs in .env / Cloudflare Pages *build* env.
 
+# Gemini = most reliable free API (leave this on)
 GEMINI_API_KEY=
+# Optional free-ish keys — only uncomment if that console actually has free quota:
+#   OpenAI: data-sharing opt-in required or you get upstream_quota
+#   Anthropic: trial credits only (no ongoing free tier)
+#   xAI: needs trial/credits (no unlimited free)
 # OPENAI_API_KEY=
 # XAI_API_KEY=
 # ANTHROPIC_API_KEY=

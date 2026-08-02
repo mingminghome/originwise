@@ -100,11 +100,34 @@ If you deploy without setting `VITE_GTM_ID` in `.env`, production has no GTM unt
 | `CHECK_RATE_LONG_LIMIT` | Default `10` (checks per long window) |
 | `CHECK_RATE_LONG_WINDOW_SEC` | Default `21600` (6 hours) |
 | `CHECK_CACHE_TTL_SEC` | Default `86400` |
-| `POOL_DISABLE_PROVIDERS` | Optional, e.g. `openai,grok` |
+| `POOL_DISABLE_PROVIDERS` | Optional, e.g. `openai,grok,claude` to force Gemini-only |
 | `LOG_IP_SALT` | Optional log hashing salt |
 | `*_MODEL` | `auto` (default free-tier chain + fallback) or pin an id e.g. `gpt-4.1-mini`, `grok-4.5`, `claude-haiku-4-5` |
 
 At least **one** AI provider secret is required for live checks.
+
+### Free-tier reality (why “3 failed · Gemini OK” happens)
+
+Having an API **key** is not the same as free **quota**. OriginWise will try free-oriented models (`auto` chains), then **retry the same agent on the next provider** (usually Gemini) if a key returns quota/error.
+
+| Provider | Ongoing free API? | What you must do |
+|----------|-------------------|------------------|
+| **Gemini** | Yes (Flash / Flash-Lite rate limits) | Key in AI Studio — most reliable free path |
+| **OpenAI** | Only with **data-sharing opt-in** (mini/nano ~10M tok/day) | Console → enable data sharing; unpaid accounts without opt-in get `upstream_quota` |
+| **Anthropic** | No ongoing free tier (one-time trial credits) | Trial spent → `upstream_quota`; add credits or remove secret |
+| **xAI Grok** | Trial / credit program, not unlimited free | Console credits required; empty balance → `upstream_error` |
+
+**Local `.dev.vars` does not update Cloudflare.** Production secrets live in Pages → Settings. If you comment out keys locally, production still uses old secrets until you change them.
+
+To run **Gemini-only** in production (recommended when free OpenAI/Claude/Grok are empty):
+
+```bash
+# Option A — env var (dashboard or wrangler pages secret / project setting)
+POOL_DISABLE_PROVIDERS=openai,grok,claude
+
+# Option B — delete unused secrets from Pages so they are not assigned
+# Option C — CHECK_MODE=monolith  (single Gemini full check)
+```
 
 ---
 

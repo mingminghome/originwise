@@ -3,7 +3,13 @@
  * Emits progress events for SSE; pure-TS synthesize owns relationTier.
  */
 
-import { assignProvider, resolveCheckMode, type CheckMode } from './aiPool';
+import {
+  assignProvider,
+  isProviderDeadError,
+  resolveCheckMode,
+  type AgentRole,
+  type CheckMode,
+} from './aiPool';
 import { extractJsonObject } from './jsonExtract';
 import {
   callProvider,
@@ -80,14 +86,19 @@ export type OrchestratorErr = {
 
 export type ProgressEmit = (ev: ProgressEvent) => void;
 
-const MAX_CALLS = 5;
+/** Includes one free-tier retry budget when preferred providers are dead. */
+const MAX_CALLS = 7;
+
+type JsonCallResult =
+  | { ok: true; obj: Record<string, unknown>; ms: number }
+  | { ok: false; code: string; ms: number };
 
 async function callJson(
   provider: AskProviderId,
   prompt: string,
   env: OrchestratorEnv,
   image?: LlmImage
-): Promise<{ ok: true; obj: Record<string, unknown>; ms: number } | { ok: false; code: string; ms: number }> {
+): Promise<JsonCallResult> {
   const t0 = Date.now();
   try {
     const text = await callProvider(provider, prompt, env, image);
@@ -102,6 +113,81 @@ async function callJson(
       ms: Date.now() - t0,
     };
   }
+}
+
+type PoolCallOpts = {
+  role: AgentRole;
+  agentId: string;
+  prompt: string;
+  env: OrchestratorEnv;
+  image?: LlmImage;
+  agents: AgentMeta[];
+  /** Providers already used this wave (load spread) */
+  usedInWave: Set<AskProviderId>;
+  /** Providers that failed earlier this request (hard skip) */
+  deadProviders: Set<AskProviderId>;
+  /** Mutable call counter */
+  getCalls: () => number;
+  addCall: () => void;
+  maxCalls: number;
+};
+
+/**
+ * Call preferred free-tier provider; on quota/error mark dead and retry
+ * once with the next healthy provider (usually Gemini).
+ */
+async function callJsonWithPool(
+  opts: PoolCallOpts
+): Promise<JsonCallResult> {
+  const {
+    role,
+    agentId,
+    prompt,
+    env,
+    image,
+    agents,
+    usedInWave,
+    deadProviders,
+    getCalls,
+    addCall,
+    maxCalls,
+  } = opts;
+
+  let last: JsonCallResult = {
+    ok: false,
+    code: 'provider_not_configured',
+    ms: 0,
+  };
+
+  // Up to 2 attempts: preferred free tier, then fallback
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (getCalls() >= maxCalls) break;
+    const asg = assignProvider(role, env, usedInWave, deadProviders);
+    if (!asg) break;
+
+    usedInWave.add(asg.provider);
+    addCall();
+    const out = await callJson(asg.provider, prompt, env, image);
+    agents.push({
+      id: agentId,
+      provider: asg.provider,
+      ok: out.ok,
+      error: out.ok ? undefined : out.code,
+      ms: out.ms,
+    });
+    last = out;
+    if (out.ok) return out;
+
+    if (isProviderDeadError(out.code)) {
+      deadProviders.add(asg.provider);
+    }
+    // parse_error: same provider unlikely to help; try another once
+    if (out.code === 'parse_error') {
+      deadProviders.add(asg.provider);
+    }
+  }
+
+  return last;
 }
 
 function shouldRunProduct(dims: CheckDimension[]): boolean {
@@ -133,13 +219,17 @@ async function runMulti(
   const { jobId, locale, text, image, geoScope, dimensions, env } = input;
   const agents: AgentMeta[] = [];
   let calls = 0;
+  const deadProviders = new Set<AskProviderId>();
+  const getCalls = () => calls;
+  const addCall = () => {
+    calls += 1;
+  };
   let identify: IdentifyPartial | null = null;
 
   // Identify when image present
   if (image) {
     emit({ type: 'progress', jobId, step: 'identify', status: 'running' });
-    const asg = assignProvider('identify', env);
-    if (!asg) {
+    if (!assignProvider('identify', env, new Set(), deadProviders)) {
       return {
         ok: false,
         code: 'provider_not_configured',
@@ -147,19 +237,18 @@ async function runMulti(
         httpStatus: 503,
       };
     }
-    calls++;
-    const out = await callJson(
-      asg.provider,
-      buildIdentifyPrompt({ locale, text }),
+    const out = await callJsonWithPool({
+      role: 'identify',
+      agentId: 'identify',
+      prompt: buildIdentifyPrompt({ locale, text }),
       env,
-      image
-    );
-    agents.push({
-      id: 'identify',
-      provider: asg.provider,
-      ok: out.ok,
-      error: out.ok ? undefined : out.code,
-      ms: out.ms,
+      image,
+      agents,
+      usedInWave: new Set(),
+      deadProviders,
+      getCalls,
+      addCall,
+      maxCalls: MAX_CALLS,
     });
     if (out.ok) {
       identify = out.obj as IdentifyPartial;
@@ -194,7 +283,8 @@ async function runMulti(
 
   const entity = entitySeed(text, identify);
   const sequential =
-    (assignProvider('product', env)?.sequential ?? true) === true;
+    (assignProvider('product', env, new Set(), deadProviders)?.sequential ??
+      true) === true;
 
   let product: ProductPartial | null = null;
   let company: CompanyPartial | null = null;
@@ -207,28 +297,21 @@ async function runMulti(
       return;
     }
     emit({ type: 'progress', jobId, step: 'product', status: 'running' });
-    const asg = assignProvider('product', env, used);
-    if (!asg) {
-      productFailed = true;
-      return;
-    }
-    used.add(asg.provider);
-    calls++;
-    const out = await callJson(
-      asg.provider,
-      buildProductPrompt({
+    const out = await callJsonWithPool({
+      role: 'product',
+      agentId: 'product',
+      prompt: buildProductPrompt({
         locale,
         entity,
         ocrText: identify?.ocrText,
       }),
-      env
-    );
-    agents.push({
-      id: 'product',
-      provider: asg.provider,
-      ok: out.ok,
-      error: out.ok ? undefined : out.code,
-      ms: out.ms,
+      env,
+      agents,
+      usedInWave: used,
+      deadProviders,
+      getCalls,
+      addCall,
+      maxCalls: MAX_CALLS,
     });
     if (out.ok) {
       product = out.obj as ProductPartial;
@@ -251,28 +334,21 @@ async function runMulti(
       return;
     }
     emit({ type: 'progress', jobId, step: 'company', status: 'running' });
-    const asg = assignProvider('company', env, used);
-    if (!asg) {
-      companyFailed = true;
-      return;
-    }
-    used.add(asg.provider);
-    calls++;
-    const out = await callJson(
-      asg.provider,
-      buildCompanyPrompt({
+    const out = await callJsonWithPool({
+      role: 'company',
+      agentId: 'company',
+      prompt: buildCompanyPrompt({
         locale,
         entity,
         productHint: product ? JSON.stringify(product).slice(0, 400) : '',
       }),
-      env
-    );
-    agents.push({
-      id: 'company',
-      provider: asg.provider,
-      ok: out.ok,
-      error: out.ok ? undefined : out.code,
-      ms: out.ms,
+      env,
+      agents,
+      usedInWave: used,
+      deadProviders,
+      getCalls,
+      addCall,
+      maxCalls: MAX_CALLS,
     });
     if (out.ok) {
       company = out.obj as CompanyPartial;
@@ -303,37 +379,33 @@ async function runMulti(
   let verify: VerifyPartial | null = null;
   if (product && company && calls < MAX_CALLS) {
     emit({ type: 'progress', jobId, step: 'verify', status: 'running' });
-    const asg = assignProvider('verify', env);
-    if (asg) {
-      calls++;
-      const out = await callJson(
-        asg.provider,
-        buildVerifyPrompt({
-          locale,
-          productJson: JSON.stringify(product).slice(0, 1200),
-          companyJson: JSON.stringify(company).slice(0, 1200),
-        }),
-        env
-      );
-      agents.push({
-        id: 'verify',
-        provider: asg.provider,
-        ok: out.ok,
-        error: out.ok ? undefined : out.code,
-        ms: out.ms,
+    const out = await callJsonWithPool({
+      role: 'verify',
+      agentId: 'verify',
+      prompt: buildVerifyPrompt({
+        locale,
+        productJson: JSON.stringify(product).slice(0, 1200),
+        companyJson: JSON.stringify(company).slice(0, 1200),
+      }),
+      env,
+      agents,
+      usedInWave: new Set(),
+      deadProviders,
+      getCalls,
+      addCall,
+      maxCalls: MAX_CALLS,
+    });
+    if (out.ok) {
+      verify = out.obj as VerifyPartial;
+      emit({ type: 'progress', jobId, step: 'verify', status: 'done' });
+    } else {
+      emit({
+        type: 'progress',
+        jobId,
+        step: 'verify',
+        status: 'error',
+        detail: out.code,
       });
-      if (out.ok) {
-        verify = out.obj as VerifyPartial;
-        emit({ type: 'progress', jobId, step: 'verify', status: 'done' });
-      } else {
-        emit({
-          type: 'progress',
-          jobId,
-          step: 'verify',
-          status: 'error',
-          detail: out.code,
-        });
-      }
     }
   } else {
     emit({ type: 'progress', jobId, step: 'verify', status: 'skipped' });
@@ -343,44 +415,40 @@ async function runMulti(
   let alternatives: AlternativesPartial | null = null;
   if (shouldRunAlts(dimensions) && calls < MAX_CALLS) {
     emit({ type: 'progress', jobId, step: 'alternatives', status: 'running' });
-    const asg = assignProvider('alternatives', env);
-    if (asg) {
-      calls++;
-      const out = await callJson(
-        asg.provider,
-        buildAlternativesPrompt({
-          locale,
-          entity,
-          wantBrands: dimensions.includes('alt_brands'),
-          wantProducts: dimensions.includes('alt_products'),
-          contextJson: JSON.stringify({ product, company }).slice(0, 1000),
-        }),
-        env
-      );
-      agents.push({
-        id: 'alternatives',
-        provider: asg.provider,
-        ok: out.ok,
-        error: out.ok ? undefined : out.code,
-        ms: out.ms,
+    const out = await callJsonWithPool({
+      role: 'alternatives',
+      agentId: 'alternatives',
+      prompt: buildAlternativesPrompt({
+        locale,
+        entity,
+        wantBrands: dimensions.includes('alt_brands'),
+        wantProducts: dimensions.includes('alt_products'),
+        contextJson: JSON.stringify({ product, company }).slice(0, 1000),
+      }),
+      env,
+      agents,
+      usedInWave: new Set(),
+      deadProviders,
+      getCalls,
+      addCall,
+      maxCalls: MAX_CALLS,
+    });
+    if (out.ok) {
+      alternatives = out.obj as AlternativesPartial;
+      emit({
+        type: 'progress',
+        jobId,
+        step: 'alternatives',
+        status: 'done',
       });
-      if (out.ok) {
-        alternatives = out.obj as AlternativesPartial;
-        emit({
-          type: 'progress',
-          jobId,
-          step: 'alternatives',
-          status: 'done',
-        });
-      } else {
-        emit({
-          type: 'progress',
-          jobId,
-          step: 'alternatives',
-          status: 'error',
-          detail: out.code,
-        });
-      }
+    } else {
+      emit({
+        type: 'progress',
+        jobId,
+        step: 'alternatives',
+        status: 'error',
+        detail: out.code,
+      });
     }
   } else {
     emit({ type: 'progress', jobId, step: 'alternatives', status: 'skipped' });

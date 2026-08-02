@@ -1,6 +1,15 @@
 /**
  * Free-tier AI pool: assign providers per agent role, with sequential
  * single-key mode and multi-provider parallel when ≥2 keys exist.
+ *
+ * Free-tier reality (2026):
+ * - Gemini: real free Flash-Lite RPD (most reliable free API)
+ * - OpenAI: free tokens only with data-sharing opt-in (else quota)
+ * - Anthropic: one-time trial credits, not ongoing free
+ * - xAI: trial/credits required; no unlimited free model
+ *
+ * Prefer spreading roles, but skip providers that already failed this request
+ * (quota/auth) so Gemini can finish the job.
  */
 
 import {
@@ -20,16 +29,21 @@ export type AgentRole =
   | 'dual_core'
   | 'dual_alts';
 
-/** Preferred providers per role (first available wins within a wave). */
+/**
+ * Preferred providers per role.
+ * Gemini is early in every list as free-tier safety net; other free keys
+ * still get first shot when healthy so load spreads.
+ */
 const ROLE_PREF: Record<AgentRole, AskProviderId[]> = {
   identify: ['gemini', 'openai', 'claude', 'grok'],
+  // product/company/alts still try other free tiers first when available
   product: ['openai', 'gemini', 'grok', 'claude'],
-  company: ['grok', 'openai', 'gemini', 'claude'],
+  company: ['grok', 'gemini', 'openai', 'claude'],
   verify: ['gemini', 'claude', 'openai', 'grok'],
-  alternatives: ['claude', 'openai', 'gemini', 'grok'],
+  alternatives: ['claude', 'gemini', 'openai', 'grok'],
   monolith: ['gemini', 'openai', 'grok', 'claude'],
   dual_core: ['gemini', 'openai', 'grok', 'claude'],
-  dual_alts: ['claude', 'openai', 'gemini', 'grok'],
+  dual_alts: ['claude', 'gemini', 'openai', 'grok'],
 };
 
 export type CheckMode = 'multi' | 'dual' | 'monolith';
@@ -76,23 +90,27 @@ export type PoolAssignment = {
 };
 
 /**
- * Pick a provider for a role, avoiding providers already used in this wave
- * when multiple keys exist (spread load). Falls back to any configured key.
+ * Pick a provider for a role.
+ * - `usedInWave`: soft avoid (load spread)
+ * - `skipProviders`: hard skip (already failed this request with quota/auth/error)
  */
 export function assignProvider(
   role: AgentRole,
   env: LlmEnv & { POOL_DISABLE_PROVIDERS?: string },
-  usedInWave: Set<AskProviderId> = new Set()
+  usedInWave: Set<AskProviderId> = new Set(),
+  skipProviders: Set<AskProviderId> = new Set()
 ): PoolAssignment | null {
   const configured = listConfiguredProviders(env).filter(
-    (p) => !disabledSet(env).has(p)
+    (p) => !disabledSet(env).has(p) && !skipProviders.has(p)
   );
   if (!configured.length) return null;
 
-  const sequential = configured.length < 2;
+  const sequential = listConfiguredProviders(env).filter(
+    (p) => !disabledSet(env).has(p)
+  ).length < 2;
   const prefs = ROLE_PREF[role] ?? configured;
 
-  // Prefer unused providers when multi-key
+  // Prefer unused healthy providers when multi-key
   if (!sequential) {
     for (const p of prefs) {
       if (configured.includes(p) && !usedInWave.has(p)) {
@@ -112,4 +130,16 @@ export function assignProvider(
     sequential,
     configured,
   };
+}
+
+/** Errors that mean "don't use this provider again this request". */
+export function isProviderDeadError(code: string | undefined): boolean {
+  return (
+    code === 'upstream_quota' ||
+    code === 'upstream_error' ||
+    code === 'upstream_unavailable' ||
+    code === 'provider_not_configured' ||
+    code === 'gemini_not_configured' ||
+    code === 'empty_response'
+  );
 }
