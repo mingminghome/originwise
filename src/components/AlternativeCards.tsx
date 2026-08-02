@@ -2,6 +2,32 @@ import type { CheckResult, RelationTier } from '../core/types';
 import type { TFunction } from '../core/i18n';
 import { TierBadge } from './TierBadge';
 
+type AltItem = {
+  name: string;
+  relationTier?: RelationTier;
+  note?: string;
+  madeIn?: string;
+  originCountry?: string;
+  hqCountry?: string;
+};
+
+const CN_HINT =
+  /\b(china|prc|mainland\s*china|people'?s\s*republic|made\s*in\s*cn|manufactured\s*in\s*china|中國|中国|中國大陸|中国大陆)\b/i;
+
+/**
+ * Client-side safety net: never show Direct / made-in-China items under
+ * "lower China-involvement" (covers old cached history entries too).
+ */
+export function isLowerChinaCandidate(b: AltItem): boolean {
+  if (b.relationTier === 'direct') return false;
+  if (b.madeIn && CN_HINT.test(b.madeIn)) return false;
+  if (b.originCountry && CN_HINT.test(b.originCountry) && !b.madeIn) return false;
+  if (b.note && CN_HINT.test(b.note) && (!b.madeIn || CN_HINT.test(b.madeIn))) {
+    return false;
+  }
+  return true;
+}
+
 export function AlternativeCards({
   alternatives,
   t,
@@ -9,21 +35,11 @@ export function AlternativeCards({
   alternatives?: CheckResult['alternatives'];
   t: TFunction;
 }) {
-  const brands = alternatives?.brands ?? [];
-  const products = alternatives?.products ?? [];
+  const brands = (alternatives?.brands ?? []).filter(isLowerChinaCandidate);
+  const products = (alternatives?.products ?? []).filter(isLowerChinaCandidate);
   if (!brands.length && !products.length) return null;
 
-  const renderItem = (
-    b: {
-      name: string;
-      relationTier?: RelationTier;
-      note?: string;
-      madeIn?: string;
-      originCountry?: string;
-      hqCountry?: string;
-    },
-    key: string
-  ) => (
+  const renderItem = (b: AltItem, key: string) => (
     <li key={key} className="alt-card">
       <div className="alt-card-top">
         <strong>{b.name}</strong>

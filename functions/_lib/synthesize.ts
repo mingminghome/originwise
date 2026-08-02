@@ -255,18 +255,44 @@ function buildGraph(
   const productId = 'product';
   const companyId = 'company';
 
+  const madeRegion = normalizeRegion(p?.madeIn ?? p?.manufacturedIn);
+  const originRegion = normalizeRegion(p?.originCountry);
+
   addNode({
     id: productId,
     label: p?.name || p?.brand || title || 'Product',
     kind: 'product',
-    region: normalizeRegion(p?.madeIn ?? p?.originCountry),
+    region: madeRegion !== 'UNKNOWN' ? madeRegion : originRegion,
     chinaRelated: inScope(
-      normalizeRegion(p?.madeIn ?? p?.originCountry),
+      madeRegion !== 'UNKNOWN' ? madeRegion : originRegion,
       geoScope
     ),
   });
 
+  // Explicit place node so "made in X" is a visible relationship
+  const madeLabel = (p?.madeIn || p?.manufacturedIn || '').trim();
+  if (madeLabel && madeRegion !== 'UNKNOWN') {
+    const placeId = `place:made:${madeRegion}`;
+    addNode({
+      id: placeId,
+      label: madeLabel.slice(0, 40),
+      kind: 'place',
+      region: madeRegion,
+      chinaRelated: inScope(madeRegion, geoScope),
+    });
+    addEdge({
+      from: productId,
+      to: placeId,
+      label: 'made in',
+      type: 'manufacturing',
+      strength: 'strong',
+      chinaRelated: inScope(madeRegion, geoScope),
+    });
+  }
+
+  let hasCompany = false;
   if (c?.name || c?.hqCountry) {
+    hasCompany = true;
     const hq = normalizeRegion(c.hqCountry);
     addNode({
       id: companyId,
@@ -278,13 +304,31 @@ function buildGraph(
     addEdge({
       from: productId,
       to: companyId,
-      label: 'brand/company',
+      label: 'brand',
       type: 'affiliation',
-      chinaRelated: inScope(hq, geoScope),
+      chinaRelated: false,
     });
+    if (c.hqCountry && hq !== 'UNKNOWN') {
+      const hqId = `place:hq:${hq}`;
+      addNode({
+        id: hqId,
+        label: String(c.hqCountry).trim().slice(0, 40),
+        kind: 'place',
+        region: hq,
+        chinaRelated: inScope(hq, geoScope),
+      });
+      addEdge({
+        from: companyId,
+        to: hqId,
+        label: 'HQ',
+        type: 'hq',
+        chinaRelated: inScope(hq, geoScope),
+      });
+    }
   }
 
   for (const parent of c?.parents ?? []) {
+    if (!parent?.name) continue;
     const id = `parent:${parent.name}`.slice(0, 64);
     const pr = normalizeRegion(parent.country);
     addNode({
@@ -294,20 +338,26 @@ function buildGraph(
       region: pr,
       chinaRelated: inScope(pr, geoScope),
     });
+    const control = String(parent.control || 'parent').toLowerCase();
     addEdge({
-      from: companyId,
+      from: hasCompany ? companyId : productId,
       to: id,
-      label: parent.control || 'parent',
+      label: control === 'unknown' ? 'parent' : control,
       type: 'ownership',
       strength:
-        parent.control === 'majority' || parent.control === 'wholly'
-          ? 'strong'
-          : 'weak',
+        control === 'majority' || control === 'wholly' ? 'strong' : 'weak',
       chinaRelated: inScope(pr, geoScope),
     });
   }
 
-  return { nodes: nodes.slice(0, GRAPH_NODE_CAP), edges: edges.slice(0, GRAPH_EDGE_CAP) };
+  // Drop edges whose endpoints were never added (cap / missing company)
+  const ids = new Set(nodes.map((n) => n.id));
+  const validEdges = edges.filter((e) => ids.has(e.from) && ids.has(e.to));
+
+  return {
+    nodes: nodes.slice(0, GRAPH_NODE_CAP),
+    edges: validEdges.slice(0, GRAPH_EDGE_CAP),
+  };
 }
 
 function clampAltTier(raw: unknown): RelationTier | undefined {
@@ -426,11 +476,28 @@ function sanitizeAlternative(
 
 /**
  * Keep alternatives that help the user avoid China-heavy options:
- * drop pure "direct" fillers; rank lower China involvement first.
+ * drop direct / made-in-China fillers; rank lower China involvement first.
  */
-function finalizeAlternativesList(items: SanitizedAlt[]): SanitizedAlt[] {
-  const nonDirect = items.filter((x) => x.relationTier !== 'direct');
-  const ranked = (nonDirect.length ? nonDirect : []).sort(
+function isHighChinaAlt(x: SanitizedAlt, geoScope: GeoScope): boolean {
+  if (x.relationTier === 'direct') return true;
+  const made = normalizeRegion(x.madeIn);
+  const origin = normalizeRegion(x.originCountry);
+  if (inScope(made, geoScope) || made === 'CN') return true;
+  if (inScope(origin, geoScope) && made === 'UNKNOWN') {
+    // Origin-only CN without clear non-CN made-in — not a lower-CN pick
+    return true;
+  }
+  const blob = [x.madeIn, x.note, x.originCountry].filter(Boolean).join(' ');
+  if (CN_TEXT.test(blob) && (made === 'CN' || made === 'UNKNOWN')) return true;
+  return false;
+}
+
+function finalizeAlternativesList(
+  items: SanitizedAlt[],
+  geoScope: GeoScope
+): SanitizedAlt[] {
+  const lower = items.filter((x) => !isHighChinaAlt(x, geoScope));
+  const ranked = lower.sort(
     (a, b) => ALT_TIER_RANK[a.relationTier] - ALT_TIER_RANK[b.relationTier]
   );
   return ranked.slice(0, ALT_CAP);
@@ -528,7 +595,8 @@ export function synthesize(input: SynthesizeInput): CheckResult {
           geoScope
         )
       )
-      .filter((x): x is SanitizedAlt => Boolean(x))
+      .filter((x): x is SanitizedAlt => Boolean(x)),
+    geoScope
   );
   const productsSan = finalizeAlternativesList(
     (alts?.products ?? [])
@@ -538,7 +606,8 @@ export function synthesize(input: SynthesizeInput): CheckResult {
           geoScope
         )
       )
-      .filter((x): x is SanitizedAlt => Boolean(x))
+      .filter((x): x is SanitizedAlt => Boolean(x)),
+    geoScope
   );
   const alternatives =
     brandsSan.length || productsSan.length
