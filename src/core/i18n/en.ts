@@ -154,6 +154,8 @@ export const en: MessageTree = {
     emptyResponse: 'No answer was returned. Please try again.',
     serverError: 'Something went wrong. Please try again.',
     forceRefresh: 'Re-check (skip cache)',
+    forceRefreshHint:
+      'This answer was cached. Re-check runs a fresh AI pass (still counts toward free-server limits).',
     cached: 'cached',
     degraded: 'partial result',
     relationLabel: 'China-relation',

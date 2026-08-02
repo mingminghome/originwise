@@ -48,12 +48,20 @@ export function CheckScreen({ state }: { state: AppState }) {
   const [progress, setProgress] = useState<ProgressStep[]>([]);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
-  const runCheckRef = useRef<() => Promise<void>>(async () => undefined);
+  const runCheckRef = useRef<(opts?: { forceRefresh?: boolean }) => Promise<void>>(
+    async () => undefined
+  );
+  /** Keep last successful/attempted inputs for re-check after composer is cleared */
+  const lastInputRef = useRef<{ question: string; photo: PreparedImage | null }>({
+    question: '',
+    photo: null,
+  });
 
   const canSubmit = Boolean(text.trim() || photo);
   const display = result ?? activeResult?.result ?? null;
   const autoRetrying = autoRetryLeft != null;
   const showLanding = !display && !loading;
+  const canRecheck = Boolean(display);
 
   const cancelAutoRetry = useCallback(
     (opts?: { quiet?: boolean }) => {
@@ -117,114 +125,129 @@ export function CheckScreen({ state }: { state: AppState }) {
     });
   };
 
-  const runCheck = useCallback(async () => {
-    setError(null);
-    setRateHit(null);
-    setAutoRetryLeft(null);
-    setResult(null);
-    setActiveResult(null);
-    setLastProvider(null);
-    setCached(false);
-    setProgress([]);
-    if (!text.trim() && !photo) {
-      setError(t('check.needInput'));
-      return;
-    }
-    const question = text.trim();
-    const attached = photo;
-    setLoading(true);
-    try {
-      const out = await engineRunCheck({
-        question,
-        locale: settings.locale,
-        geoScope: settings.geoScope,
-        dimensions: settings.defaultDimensions,
-        forceRefresh: false,
-        image: attached
-          ? { mimeType: attached.mimeType, data: attached.data }
-          : undefined,
-        onProgress: (step) => {
-          setProgress((prev) => {
-            const next = prev.filter((p) => p.step !== step.step);
-            return [...next, step];
-          });
-        },
-      });
-      if (!out.ok) {
-        if (
-          out.code === 'rate_limited' ||
-          out.code === 'rate_limited_day'
-        ) {
-          const hit: RateHit = {
-            code: out.code,
-            meta: out.rateLimit,
-          };
-          setRateHit(hit);
-          setError(rateLimitMessage(hit));
-          const wait = autoRetrySeconds(hit);
-          if (wait != null) setAutoRetryLeft(wait);
-          return;
-        }
-        const byCode: Record<string, string> = {
-          provider_not_configured: t('check.providerNotConfigured'),
-          gemini_not_configured: t('check.providerNotConfigured'),
-          forbidden_origin: t('check.forbiddenOrigin'),
-          bad_request: t('check.badRequest'),
-          parse_error: t('check.parseError'),
-          upstream_error: t('check.upstreamError'),
-          upstream_quota: t('check.upstreamQuota'),
-          upstream_unavailable: t('check.upstreamUnavailable'),
-          empty_response: t('check.emptyResponse'),
-          server_error: t('check.serverError'),
-          empty: t('check.needInput'),
-        };
-        const mapped = out.code ? byCode[out.code] : undefined;
-        const serverMsg = out.error?.trim();
-        if (
-          serverMsg &&
-          (out.code === 'provider_not_configured' ||
-            out.code === 'server_error' ||
-            !mapped)
-        ) {
-          setError(serverMsg);
-        } else {
-          setError(mapped || serverMsg || t('check.serverError'));
-        }
+  const runCheck = useCallback(
+    async (opts?: { forceRefresh?: boolean }) => {
+      const forceRefresh = Boolean(opts?.forceRefresh);
+      setError(null);
+      setRateHit(null);
+      setAutoRetryLeft(null);
+      setResult(null);
+      setActiveResult(null);
+      setLastProvider(null);
+      setCached(false);
+      setProgress([]);
+
+      let question = text.trim();
+      let attached = photo;
+      // Re-check after composer cleared: reuse last attempt (or result title)
+      if (!question && !attached) {
+        question = lastInputRef.current.question;
+        attached = lastInputRef.current.photo;
+      }
+      if (!question && !attached) {
+        const fallbackTitle = (result ?? activeResult?.result)?.title?.trim();
+        if (fallbackTitle) question = fallbackTitle;
+      }
+      if (!question && !attached) {
+        setError(t('check.needInput'));
         return;
       }
-      setLastProvider(out.provider ?? null);
-      setCached(Boolean(out.cached));
-      setResult(out.result);
-      clearComposer();
-      const queryLabel =
-        question ||
-        out.result.title ||
-        (settings.locale === 'zh-Hant' ? '（照片）' : '(photo)');
-      pushCheckHistory({
-        id: crypto.randomUUID(),
-        query: queryLabel.slice(0, 120),
-        hadImage: Boolean(attached),
-        result: out.result,
-        at: new Date().toISOString(),
-        geoScope: settings.geoScope,
-      });
-    } finally {
-      setLoading(false);
-    }
-    // rateLimitMessage uses t; intentional deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable enough for submit flow
-  }, [
-    text,
-    photo,
-    settings.locale,
-    settings.geoScope,
-    settings.defaultDimensions,
-    t,
-    setActiveResult,
-    pushCheckHistory,
-  ]);
+      lastInputRef.current = { question, photo: attached };
+      setLoading(true);
+      try {
+        const out = await engineRunCheck({
+          question,
+          locale: settings.locale,
+          geoScope: settings.geoScope,
+          dimensions: settings.defaultDimensions,
+          forceRefresh,
+          image: attached
+            ? { mimeType: attached.mimeType, data: attached.data }
+            : undefined,
+          onProgress: (step) => {
+            setProgress((prev) => {
+              const next = prev.filter((p) => p.step !== step.step);
+              return [...next, step];
+            });
+          },
+        });
+        if (!out.ok) {
+          if (
+            out.code === 'rate_limited' ||
+            out.code === 'rate_limited_day'
+          ) {
+            const hit: RateHit = {
+              code: out.code,
+              meta: out.rateLimit,
+            };
+            setRateHit(hit);
+            setError(rateLimitMessage(hit));
+            const wait = autoRetrySeconds(hit);
+            if (wait != null) setAutoRetryLeft(wait);
+            return;
+          }
+          const byCode: Record<string, string> = {
+            provider_not_configured: t('check.providerNotConfigured'),
+            gemini_not_configured: t('check.providerNotConfigured'),
+            forbidden_origin: t('check.forbiddenOrigin'),
+            bad_request: t('check.badRequest'),
+            parse_error: t('check.parseError'),
+            upstream_error: t('check.upstreamError'),
+            upstream_quota: t('check.upstreamQuota'),
+            upstream_unavailable: t('check.upstreamUnavailable'),
+            empty_response: t('check.emptyResponse'),
+            server_error: t('check.serverError'),
+            empty: t('check.needInput'),
+          };
+          const mapped = out.code ? byCode[out.code] : undefined;
+          const serverMsg = out.error?.trim();
+          if (
+            serverMsg &&
+            (out.code === 'provider_not_configured' ||
+              out.code === 'server_error' ||
+              !mapped)
+          ) {
+            setError(serverMsg);
+          } else {
+            setError(mapped || serverMsg || t('check.serverError'));
+          }
+          return;
+        }
+        setLastProvider(out.provider ?? null);
+        setCached(Boolean(out.cached));
+        setResult(out.result);
+        clearComposer();
+        const queryLabel =
+          question ||
+          out.result.title ||
+          (settings.locale === 'zh-Hant' ? '（照片）' : '(photo)');
+        pushCheckHistory({
+          id: crypto.randomUUID(),
+          query: queryLabel.slice(0, 120),
+          hadImage: Boolean(attached),
+          result: out.result,
+          at: new Date().toISOString(),
+          geoScope: settings.geoScope,
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      text,
+      photo,
+      result,
+      activeResult?.result,
+      settings.locale,
+      settings.geoScope,
+      settings.defaultDimensions,
+      t,
+      setActiveResult,
+      pushCheckHistory,
+    ]
+  );
 
-  runCheckRef.current = () => runCheck();
+  runCheckRef.current = (opts) => runCheck(opts);
 
   // Countdown → auto-submit when free-server short/inflight limit clears
   useEffect(() => {
@@ -447,6 +470,21 @@ export function CheckScreen({ state }: { state: AppState }) {
             cached={cached}
             t={t}
           />
+          {canRecheck ? (
+            <div className="check-recheck-row">
+              <button
+                type="button"
+                className="btn btn-ghost check-recheck-btn"
+                disabled={loading || autoRetrying}
+                onClick={() => void runCheck({ forceRefresh: true })}
+              >
+                {t('check.forceRefresh')}
+              </button>
+              {cached ? (
+                <p className="muted check-recheck-hint">{t('check.forceRefreshHint')}</p>
+              ) : null}
+            </div>
+          ) : null}
         </section>
       ) : null}
     </div>

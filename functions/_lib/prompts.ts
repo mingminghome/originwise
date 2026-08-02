@@ -22,6 +22,26 @@ GEO / TIER POLICY (for facts only — final tier is computed server-side):
 - Respond with ONE JSON object only (no markdown fences).
 `.trim();
 
+/** Shared product geo accuracy rules (monolith / product / dual). */
+const PRODUCT_FACT_RULES = `
+PRODUCT GEO FIELDS (critical accuracy — users act on madeIn):
+- madeIn / manufacturedIn = country where THIS specific unit/SKU is assembled or officially labeled "Made in …" / country of origin for that model. Prefer label, packaging COO, retailer COO for the exact model string.
+- originCountry = brand design / commercial brand home market (e.g. Sharp → Japan). Do NOT copy originCountry into madeIn.
+- manufacturerCountry = legal manufacturer domicile (often brand HQ country).
+- NEVER set madeIn=China only because "many appliances are made in China" or because the brand is Japanese/Korean/EU but often produced in Asia.
+- When a full model/SKU is present (e.g. UA-PE30U-WB), use model-specific knowledge. Regional suffixes (E/U/B, market codes) can mean DIFFERENT factories — EU-market units may be Poland or elsewhere while other SKUs are China. Do not collapse all SKUs to one country.
+- If made-in for that exact SKU is not known with reasonable confidence, set madeIn to "unknown" (and lower confidence) — never invent China.
+- On packaging photos, prefer printed "Made in" / "Country of origin" over brand stereotypes.
+- Put uncertainty in notes[] (e.g. "SKU-specific COO may be Poland for EU market; other variants may differ").
+`.trim();
+
+const COMPANY_FACT_RULES = `
+COMPANY / OWNERSHIP (critical):
+- Taiwan parents (e.g. Hon Hai / Foxconn / 鴻海) are Taiwan — never list parent.country as China/PRC.
+- Manufacturing or supply in mainland China is a chinaRelations entry (type manufacturing/supply), not ownership HQ.
+- Prefer "unknown" over inventing parent control percentages.
+`.trim();
+
 export function buildMonolithPrompt(opts: {
   locale: string;
   text: string;
@@ -43,6 +63,8 @@ CRITICAL
 - Not legal, trade, or sanctions advice. Never invent corporate registries.
 - Respond entirely in ${lang}.
 ${GEO_POLICY}
+${PRODUCT_FACT_RULES}
+${COMPANY_FACT_RULES}
 ${imageRule}
 
 geoScope setting (for context labels only): ${opts.geoScope}
@@ -123,6 +145,7 @@ export function buildProductPrompt(opts: {
   const lang = langLabel(opts.locale);
   return `Extract product origin / manufacturing facts. Respond in ${lang}.
 ${GEO_POLICY}
+${PRODUCT_FACT_RULES}
 Return ONLY JSON:
 {"name":"string","brand":"string","originCountry":"string","madeIn":"string","manufacturedIn":"string","manufacturer":"string","manufacturerCountry":"string","category":"string","componentsOrigin":"string","confidence":0.0,"notes":["string"]}
 
@@ -138,6 +161,7 @@ export function buildCompanyPrompt(opts: {
   const lang = langLabel(opts.locale);
   return `Extract company HQ / ownership facts for China-relation analysis. Respond in ${lang}.
 ${GEO_POLICY}
+${COMPANY_FACT_RULES}
 If unsure of legal parents, omit or set unknown — do not invent.
 Return ONLY JSON:
 {"name":"string","legalName":"string","hqCountry":"string","parents":[{"name":"string","country":"string","control":"majority|wholly|minority|unknown"}],"chinaRelations":[{"type":"string","country":"string","strength":"strong|moderate|weak","note":"string"}],"confidence":0.0,"notes":["string"]}
@@ -154,6 +178,7 @@ export function buildVerifyPrompt(opts: {
   const lang = langLabel(opts.locale);
   return `Cross-check product vs company partials for contradictions. Respond in ${lang}.
 ${GEO_POLICY}
+Flag conflicts such as: brand HQ Japan but madeIn China (not necessarily a conflict — note both); or parent listed as China when it is Taiwan (Foxconn/Hon Hai is TW).
 Return ONLY JSON:
 {"consistent":true,"conflicts":["string"],"confidence":0.0,"caveats":["string"]}
 
@@ -170,10 +195,12 @@ export function buildDualCorePrompt(opts: {
 }): string {
   const lang = langLabel(opts.locale);
   const imageRule = opts.hasImage
-    ? '- A packaging photo is attached; read brand and made-in text.'
-    : '- No photo; use user text only.';
+    ? '- A packaging photo is attached; read brand and made-in / country-of-origin text carefully (prefer label over stereotypes).'
+    : '- No photo; use user text only. Honor exact model/SKU for made-in.';
   return `You are OriginWise. Extract product origin and company facts related to China (PRC). Respond in ${lang}.
 ${GEO_POLICY}
+${PRODUCT_FACT_RULES}
+${COMPANY_FACT_RULES}
 ${imageRule}
 geoScope=${opts.geoScope} (TW is never China for tiers; greater_china may include HK/MO only).
 

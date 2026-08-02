@@ -143,6 +143,8 @@ export const zhHant = {
     emptyResponse: '未取得回覆，請再試一次。',
     serverError: '發生錯誤，請再試一次。',
     forceRefresh: '重新查詢（略過快取）',
+    forceRefreshHint:
+      '此結果來自快取。重新查詢會再跑一次 AI（仍計入免費伺服器限制）。',
     cached: '快取',
     degraded: '部分結果',
     relationLabel: '中國相關',

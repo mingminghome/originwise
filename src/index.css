@@ -4355,6 +4355,37 @@ p {
 .check-submit-row .check-search-submit {
   flex: 1 1 auto;
 }
+.check-recheck-row {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+.check-recheck-btn {
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.check-recheck-btn:hover:not(:disabled) {
+  border-color: var(--text-muted, var(--muted));
+}
+.check-recheck-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.check-recheck-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
 
 /* AI pool list on result */
 .agents-pool-card {

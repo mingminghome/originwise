@@ -23,6 +23,9 @@ const KNOWN = new Set([
   'ownership_not_assessed',
 ]);
 
+const CN_PLACE =
+  /\b(china|prc|mainland\s*china|people'?s\s*republic|中國|中国|中國大陸|中国大陆)\b/i;
+
 function uniquePlaces(result: CheckResult): string[] {
   const raw = [
     result.product?.madeIn,
@@ -34,6 +37,11 @@ function uniquePlaces(result: CheckResult): string[] {
     .map((s) => (s ? String(s).trim() : ''))
     .filter(Boolean);
   return [...new Set(raw)];
+}
+
+/** Places outside mainland China wording (for "non-CN geo" reason bullets). */
+function uniqueNonCnPlaces(result: CheckResult): string[] {
+  return uniquePlaces(result).filter((p) => !CN_PLACE.test(p));
 }
 
 function humanizeCode(code: string): string {
@@ -53,10 +61,14 @@ export function formatTierReason(
 ): string {
   const places = uniquePlaces(result);
   const placeStr = places.join(', ');
+  const nonCnStr = uniqueNonCnPlaces(result).join(', ');
 
   // Prefer detail variants when we have concrete place names
-  if (code === 'explicit_non_cn_geo' && placeStr) {
-    return t('check.reason.explicit_non_cn_geo_detail', { places: placeStr });
+  if (code === 'explicit_non_cn_geo' && nonCnStr) {
+    return t('check.reason.explicit_non_cn_geo_detail', { places: nonCnStr });
+  }
+  if (code === 'explicit_non_cn_geo') {
+    return t('check.reason.explicit_non_cn_geo');
   }
   if (code === 'made_in_cn') {
     const p = result.product?.madeIn || result.product?.manufacturedIn;
