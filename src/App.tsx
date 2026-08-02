@@ -4,6 +4,7 @@ import { BottomNav } from './components/BottomNav';
 import { CheckScreen } from './components/CheckScreen';
 import { HistoryScreen } from './components/HistoryScreen';
 import { HowItWorksScreen } from './components/HowItWorksScreen';
+import { InstallAppBanner } from './components/InstallAppBanner';
 import { SettingsScreen } from './components/SettingsScreen';
 import { WelcomeDisclaimer } from './components/WelcomeDisclaimer';
 import {
@@ -30,6 +31,7 @@ export default function App() {
     <div className="app-page">
       <div className="app-shell">
         <main className="app-main">
+          <InstallAppBanner t={t} />
           {tab === 'check' && <CheckScreen state={state} />}
           {tab === 'history' && <HistoryScreen state={state} />}
           {tab === 'settings' && <SettingsScreen state={state} />}

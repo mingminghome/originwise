@@ -16,6 +16,16 @@ export const zhHant = {
     loading: '載入中…',
     optional: '選填',
   },
+  install: {
+    aria: '安裝 OriginWise',
+    title: '安裝 OriginWise',
+    body: '加到主畫面，之後像 App 一樣快速查。',
+    bodyIos: '加到主畫面可全螢幕使用。',
+    iosStep1: '點',
+    iosStep2: '分享，再選「加入主畫面」。',
+    action: '安裝',
+    dismiss: '關閉安裝提示',
+  },
   welcome: {
     title: '歡迎使用 OriginWise',
     body: '快速查：這項產品／品牌是否與中國相關？輸入名稱或拍包裝即可。AI 可能出錯——非法律建議。',
@@ -139,6 +149,9 @@ export const zhHant = {
   settings: {
     title: '設定',
     subtitle: '偏好與本機資料',
+    panelDisplay: '語言與主題',
+    panelCheck: '查詢項目',
+    panelData: '刪除資料',
     language: '語言',
     theme: '主題',
     themeSystem: '跟隨系統',

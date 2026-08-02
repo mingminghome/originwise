@@ -19,6 +19,16 @@ export const en: MessageTree = {
     loading: 'Loading…',
     optional: 'Optional',
   },
+  install: {
+    aria: 'Install OriginWise',
+    title: 'Install OriginWise',
+    body: 'Add to your home screen for a quick app-like check.',
+    bodyIos: 'Add to Home Screen for full-screen use.',
+    iosStep1: 'Tap',
+    iosStep2: 'Share, then Add to Home Screen.',
+    action: 'Install',
+    dismiss: 'Dismiss install prompt',
+  },
   welcome: {
     title: 'Welcome to OriginWise',
     body: 'Quick check: is this product or brand China-related? Type a name or snap a package. AI can be wrong — not legal advice.',
@@ -148,6 +158,9 @@ export const en: MessageTree = {
   settings: {
     title: 'Settings',
     subtitle: 'Preferences & data on this device',
+    panelDisplay: 'Language & theme',
+    panelCheck: 'What to check',
+    panelData: 'Delete data',
     language: 'Language',
     theme: 'Theme',
     themeSystem: 'System',
