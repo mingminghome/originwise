@@ -1928,16 +1928,92 @@ p {
 .relation-graph {
   margin-top: 0.5rem;
 }
+.relation-graph--expanded {
+  margin-left: -0.25rem;
+  margin-right: -0.25rem;
+}
+.relation-graph-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.45rem;
+}
+.relation-graph-head .result-section-title {
+  margin-bottom: 0.15rem;
+}
 .relation-graph-hint {
-  margin: 0 0 0.45rem;
+  margin: 0;
   font-size: 0.8rem;
   line-height: 1.4;
+  max-width: 28rem;
 }
-.relation-graph-svg {
-  display: block;
+.relation-graph-toolbar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+.graph-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface, var(--bg-card));
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.graph-tool-btn:hover:not(:disabled) {
+  border-color: var(--text-muted, var(--muted));
+}
+.graph-tool-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.graph-tool-btn--expand {
+  padding-inline: 0.55rem;
+}
+.graph-tool-btn-text {
+  display: none;
+}
+@media (min-width: 420px) {
+  .graph-tool-btn-text {
+    display: inline;
+  }
+}
+.graph-zoom-label {
+  min-width: 2.4rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.relation-graph-viewport {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--bg-subtle, var(--surface));
+  max-width: 100%;
+}
+.relation-graph--expanded .relation-graph-viewport {
+  max-height: min(70vh, 560px);
+}
+.relation-graph-svg {
+  display: block;
+  min-width: 100%;
+  vertical-align: top;
+}
+.relation-graph--expanded .relation-graph-svg {
+  min-height: 280px;
 }
 .graph-node {
   fill: var(--bg-card, #fff);

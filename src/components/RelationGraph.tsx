@@ -1,3 +1,5 @@
+import { useId, useMemo, useState } from 'react';
+import { Maximize2, Minimize2, ZoomIn, ZoomOut } from 'lucide-react';
 import type { CheckResult } from '../core/types';
 import type { TFunction } from '../core/i18n';
 
@@ -5,9 +7,13 @@ type Graph = NonNullable<CheckResult['graph']>;
 type GNode = Graph['nodes'][number];
 type GEdge = Graph['edges'][number];
 
+const ZOOM_MIN = 0.75;
+const ZOOM_MAX = 1.75;
+const ZOOM_STEP = 0.25;
+
 /**
  * Hierarchical SVG relation graph: product → company → parents / places.
- * Edges are labeled so relationships are readable (not only circles).
+ * Expand + zoom so labels/edges stay readable on small screens.
  */
 export function RelationGraph({
   graph,
@@ -16,145 +22,235 @@ export function RelationGraph({
   graph: Graph;
   t: TFunction;
 }) {
-  const nodes = graph.nodes.slice(0, 12);
-  const edges = graph.edges.slice(0, 20);
+  const uid = useId().replace(/:/g, '');
+  const [expanded, setExpanded] = useState(false);
+  const [zoom, setZoom] = useState(1);
+
+  const nodes = useMemo(() => graph.nodes.slice(0, 12), [graph.nodes]);
+  const edges = useMemo(() => graph.edges.slice(0, 20), [graph.edges]);
+
+  const { w, h } = useMemo(
+    () => graphCanvasSize(nodes.length, expanded),
+    [nodes.length, expanded]
+  );
+  const pos = useMemo(
+    () => (nodes.length ? layoutNodes(nodes, w, h) : new Map()),
+    [nodes, w, h]
+  );
+
+  const edgeRows = useMemo(() => {
+    const nodeById = new Map(nodes.map((n) => [n.id, n]));
+    return edges
+      .map((e) => {
+        const from = nodeById.get(e.from);
+        const to = nodeById.get(e.to);
+        if (!from || !to) return null;
+        return { e, from, to };
+      })
+      .filter((x): x is { e: GEdge; from: GNode; to: GNode } => Boolean(x));
+  }, [nodes, edges]);
+
+  const displayH = Math.round(h * zoom);
+  const markerNormal = `graph-arrow-${uid}`;
+  const markerCn = `graph-arrow-cn-${uid}`;
+
+  const zoomIn = () =>
+    setZoom((z) => Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 100) / 100));
+  const zoomOut = () =>
+    setZoom((z) => Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 100) / 100));
+  const toggleExpand = () => {
+    setExpanded((e) => {
+      const next = !e;
+      // Expanding often needs a bit more zoom; collapsing resets
+      if (next) setZoom((z) => Math.max(z, 1.1));
+      else setZoom(1);
+      return next;
+    });
+  };
+
   if (!nodes.length) return null;
 
-  const w = 360;
-  const h = Math.max(220, 88 + nodes.length * 36);
-  const pos = layoutNodes(nodes, w, h);
-
-  const nodeById = new Map(nodes.map((n) => [n.id, n]));
-  const edgeRows = edges
-    .map((e) => {
-      const from = nodeById.get(e.from);
-      const to = nodeById.get(e.to);
-      if (!from || !to) return null;
-      return { e, from, to };
-    })
-    .filter((x): x is { e: GEdge; from: GNode; to: GNode } => Boolean(x));
-
   return (
-    <div className="relation-graph">
-      <h3 className="result-section-title">{t('check.graphTitle')}</h3>
-      <p className="muted relation-graph-hint">{t('check.graphHint')}</p>
-      <svg
-        viewBox={`0 0 ${w} ${h}`}
-        width="100%"
-        height={h}
-        role="img"
-        aria-label={t('check.graphTitle')}
-        className="relation-graph-svg"
-      >
-        <defs>
-          <marker
-            id="graph-arrow"
-            markerWidth="8"
-            markerHeight="8"
-            refX="7"
-            refY="3"
-            orient="auto"
-            markerUnits="strokeWidth"
+    <div
+      className={
+        expanded
+          ? 'relation-graph relation-graph--expanded'
+          : 'relation-graph'
+      }
+    >
+      <div className="relation-graph-head">
+        <div>
+          <h3 className="result-section-title">{t('check.graphTitle')}</h3>
+          <p className="muted relation-graph-hint">{t('check.graphHint')}</p>
+        </div>
+        <div className="relation-graph-toolbar" role="toolbar" aria-label={t('check.graphControls')}>
+          <button
+            type="button"
+            className="graph-tool-btn"
+            onClick={zoomOut}
+            disabled={zoom <= ZOOM_MIN}
+            aria-label={t('check.graphZoomOut')}
+            title={t('check.graphZoomOut')}
           >
-            <path d="M0,0 L6,3 L0,6 Z" className="graph-arrow-head" />
-          </marker>
-          <marker
-            id="graph-arrow-cn"
-            markerWidth="8"
-            markerHeight="8"
-            refX="7"
-            refY="3"
-            orient="auto"
-            markerUnits="strokeWidth"
+            <ZoomOut size={16} />
+          </button>
+          <span className="graph-zoom-label muted" aria-live="polite">
+            {Math.round(zoom * 100)}%
+          </span>
+          <button
+            type="button"
+            className="graph-tool-btn"
+            onClick={zoomIn}
+            disabled={zoom >= ZOOM_MAX}
+            aria-label={t('check.graphZoomIn')}
+            title={t('check.graphZoomIn')}
           >
-            <path d="M0,0 L6,3 L0,6 Z" className="graph-arrow-head graph-arrow-head--cn" />
-          </marker>
-        </defs>
+            <ZoomIn size={16} />
+          </button>
+          <button
+            type="button"
+            className="graph-tool-btn graph-tool-btn--expand"
+            onClick={toggleExpand}
+            aria-pressed={expanded}
+            aria-label={
+              expanded ? t('check.graphCollapse') : t('check.graphExpand')
+            }
+            title={
+              expanded ? t('check.graphCollapse') : t('check.graphExpand')
+            }
+          >
+            {expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            <span className="graph-tool-btn-text">
+              {expanded ? t('check.graphCollapse') : t('check.graphExpand')}
+            </span>
+          </button>
+        </div>
+      </div>
 
-        {edgeRows.map(({ e, from, to }, i) => {
-          const a = pos.get(from.id)!;
-          const b = pos.get(to.id)!;
-          // Shorten line so arrow tip sits on node rim
-          const { x1, y1, x2, y2 } = shortenLine(a.x, a.y, b.x, b.y, 22, 22);
-          const mx = (x1 + x2) / 2;
-          const my = (y1 + y2) / 2;
-          const label = edgeLabel(e, t);
-          const cn = Boolean(e.chinaRelated);
-          return (
-            <g key={`${e.from}-${e.to}-${i}`} className="graph-edge-group">
-              <line
-                x1={x1}
-                y1={y1}
-                x2={x2}
-                y2={y2}
-                className={cn ? 'graph-edge graph-edge--cn' : 'graph-edge'}
-                markerEnd={cn ? 'url(#graph-arrow-cn)' : 'url(#graph-arrow)'}
+      <div className="relation-graph-viewport">
+        <svg
+          viewBox={`0 0 ${w} ${h}`}
+          width="100%"
+          height={displayH}
+          role="img"
+          aria-label={t('check.graphTitle')}
+          className="relation-graph-svg"
+        >
+          <defs>
+            <marker
+              id={markerNormal}
+              markerWidth="8"
+              markerHeight="8"
+              refX="7"
+              refY="3"
+              orient="auto"
+              markerUnits="strokeWidth"
+            >
+              <path d="M0,0 L6,3 L0,6 Z" className="graph-arrow-head" />
+            </marker>
+            <marker
+              id={markerCn}
+              markerWidth="8"
+              markerHeight="8"
+              refX="7"
+              refY="3"
+              orient="auto"
+              markerUnits="strokeWidth"
+            >
+              <path
+                d="M0,0 L6,3 L0,6 Z"
+                className="graph-arrow-head graph-arrow-head--cn"
               />
-              {label ? (
-                <g transform={`translate(${mx}, ${my})`}>
-                  <rect
-                    x={-Math.min(56, label.length * 3.2) - 4}
-                    y={-9}
-                    width={Math.min(112, label.length * 6.4) + 8}
-                    height={16}
-                    rx={4}
-                    className={
-                      cn
-                        ? 'graph-edge-label-bg graph-edge-label-bg--cn'
-                        : 'graph-edge-label-bg'
-                    }
-                  />
-                  <text
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    y={0}
-                    className={
-                      cn
-                        ? 'graph-edge-label graph-edge-label--cn'
-                        : 'graph-edge-label'
-                    }
-                  >
-                    {label.slice(0, 22)}
-                  </text>
-                </g>
-              ) : null}
-            </g>
-          );
-        })}
+            </marker>
+          </defs>
 
-        {nodes.map((n) => {
-          const p = pos.get(n.id)!;
-          const label = (n.label || n.id).slice(0, 18);
-          const cn = Boolean(n.chinaRelated);
-          return (
-            <g key={n.id} className="graph-node-group">
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={20}
-                className={cn ? 'graph-node graph-node--cn' : 'graph-node'}
-              />
-              <text
-                x={p.x}
-                y={p.y + 1}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="graph-node-kind"
-              >
-                {kindGlyph(n.kind)}
-              </text>
-              <text
-                x={p.x}
-                y={p.y + 34}
-                textAnchor="middle"
-                className="graph-label"
-              >
-                {label}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+          {edgeRows.map(({ e, from, to }, i) => {
+            const a = pos.get(from.id)!;
+            const b = pos.get(to.id)!;
+            const { x1, y1, x2, y2 } = shortenLine(a.x, a.y, b.x, b.y, 24, 24);
+            const mx = (x1 + x2) / 2;
+            const my = (y1 + y2) / 2;
+            const label = edgeLabel(e, t);
+            const cn = Boolean(e.chinaRelated);
+            const labelW = Math.min(120, Math.max(36, label.length * 6.2));
+            return (
+              <g key={`${e.from}-${e.to}-${i}`} className="graph-edge-group">
+                <line
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  className={cn ? 'graph-edge graph-edge--cn' : 'graph-edge'}
+                  markerEnd={
+                    cn ? `url(#${markerCn})` : `url(#${markerNormal})`
+                  }
+                />
+                {label ? (
+                  <g transform={`translate(${mx}, ${my})`}>
+                    <rect
+                      x={-labelW / 2 - 4}
+                      y={-10}
+                      width={labelW + 8}
+                      height={18}
+                      rx={4}
+                      className={
+                        cn
+                          ? 'graph-edge-label-bg graph-edge-label-bg--cn'
+                          : 'graph-edge-label-bg'
+                      }
+                    />
+                    <text
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      y={0}
+                      className={
+                        cn
+                          ? 'graph-edge-label graph-edge-label--cn'
+                          : 'graph-edge-label'
+                      }
+                    >
+                      {label.slice(0, 24)}
+                    </text>
+                  </g>
+                ) : null}
+              </g>
+            );
+          })}
+
+          {nodes.map((n) => {
+            const p = pos.get(n.id)!;
+            const label = (n.label || n.id).slice(0, expanded ? 28 : 20);
+            const cn = Boolean(n.chinaRelated);
+            return (
+              <g key={n.id} className="graph-node-group">
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={expanded ? 22 : 20}
+                  className={cn ? 'graph-node graph-node--cn' : 'graph-node'}
+                />
+                <text
+                  x={p.x}
+                  y={p.y + 1}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  className="graph-node-kind"
+                >
+                  {kindGlyph(n.kind)}
+                </text>
+                <text
+                  x={p.x}
+                  y={p.y + (expanded ? 38 : 36)}
+                  textAnchor="middle"
+                  className="graph-label"
+                >
+                  {label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
 
       {edgeRows.length ? (
         <ul className="graph-rel-list" aria-label={t('check.graphRelations')}>
@@ -184,6 +280,23 @@ export function RelationGraph({
       </p>
     </div>
   );
+}
+
+function graphCanvasSize(
+  nodeCount: number,
+  expanded: boolean
+): { w: number; h: number } {
+  const n = Math.max(1, nodeCount);
+  if (expanded) {
+    return {
+      w: Math.max(420, 360 + n * 18),
+      h: Math.max(320, 120 + n * 52),
+    };
+  }
+  return {
+    w: Math.max(380, 320 + n * 12),
+    h: Math.max(260, 100 + n * 44),
+  };
 }
 
 function kindGlyph(kind?: string): string {
@@ -230,29 +343,33 @@ function layoutNodes(
   const layers: GNode[][] = [];
   if (products.length) layers.push(products);
   if (companies.length) layers.push(companies);
-  const bottom = [...parents, ...places];
-  if (bottom.length) layers.push(bottom);
-  // Fallback: single row if kinds missing
+  // Keep parents and places on separate rows when both exist (less crowding)
+  if (parents.length) layers.push(parents);
+  if (places.length) layers.push(places);
   if (!layers.length) layers.push(nodes);
 
+  const padX = 56;
+  const padY = 52;
   const used = new Set<string>();
   layers.forEach((layer, li) => {
-    const y = layers.length === 1 ? h / 2 : 48 + (li * (h - 80)) / Math.max(layers.length - 1, 1);
+    const y =
+      layers.length === 1
+        ? h / 2
+        : padY + (li * (h - padY * 2)) / Math.max(layers.length - 1, 1);
     layer.forEach((n, i) => {
       const x =
         layer.length === 1
           ? w / 2
-          : 48 + (i * (w - 96)) / Math.max(layer.length - 1, 1);
+          : padX + (i * (w - padX * 2)) / Math.max(layer.length - 1, 1);
       pos.set(n.id, { x, y });
       used.add(n.id);
     });
   });
-  // Any leftover nodes
   nodes.forEach((n, i) => {
     if (used.has(n.id)) return;
     pos.set(n.id, {
-      x: 48 + ((i % 3) * (w - 96)) / 2,
-      y: h - 40,
+      x: padX + ((i % 3) * (w - padX * 2)) / 2,
+      y: h - padY,
     });
   });
   return pos;
