@@ -30,12 +30,26 @@ export default function App() {
 
   const hideBottomNav =
     tab === 'check' || tab === 'how' || tab === 'about';
+  const isCheckHome = tab === 'check';
 
   return (
     <div className="app-page">
-      <div className={`app-shell${hideBottomNav ? ' app-shell--no-bottom' : ''}`}>
-        <main className="app-main">
-          <InstallAppBanner t={t} />
+      <div
+        className={[
+          'app-shell',
+          hideBottomNav ? 'app-shell--no-bottom' : '',
+          isCheckHome ? 'app-shell--check' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        <main
+          className={
+            isCheckHome ? 'app-main app-main--check' : 'app-main'
+          }
+        >
+          {/* Banner only on non-check screens so the home search stays centered */}
+          {!isCheckHome ? <InstallAppBanner t={t} /> : null}
           {tab === 'check' && <CheckScreen state={state} />}
           {tab === 'history' && <HistoryScreen state={state} />}
           {tab === 'info' && <InfoScreen state={state} />}
