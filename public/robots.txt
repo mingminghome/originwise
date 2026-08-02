@@ -1,0 +1,8 @@
+# https://originwise.pages.dev
+User-agent: *
+Allow: /
+
+# API endpoints — no need for crawlers
+Disallow: /api/
+
+Sitemap: https://originwise.pages.dev/sitemap.xml
