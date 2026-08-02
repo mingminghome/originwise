@@ -640,6 +640,60 @@ export async function runCheckOrchestrator(
   });
 
   if (mode === 'monolith') return runMonolith(input, emit);
-  if (mode === 'dual') return runDual(input, emit);
-  return runMulti(input, emit);
+  if (mode === 'dual') {
+    const dual = await runDual(input, emit);
+    if (dual.ok) return dual;
+    // Fall back to monolith if dual failed hard
+    emit({
+      type: 'progress',
+      jobId: input.jobId,
+      step: 'monolith',
+      status: 'running',
+      detail: 'fallback_after_dual',
+    });
+    const mono = await runMonolith(input, emit);
+    if (mono.ok) {
+      mono.result.meta.degraded = true;
+      mono.result.meta.agents = [
+        ...(dual.agents ?? []),
+        ...(mono.result.meta.agents ?? []),
+      ];
+      return { ...mono, mode: 'monolith' };
+    }
+    return dual;
+  }
+
+  // multi
+  const multi = await runMulti(input, emit);
+  if (multi.ok) return multi;
+
+  // Free-tier quotas often fail one agent; retry once as monolith
+  if (
+    multi.code === 'empty_response' ||
+    multi.code === 'upstream_quota' ||
+    multi.code === 'upstream_error' ||
+    multi.code === 'parse_error'
+  ) {
+    emit({
+      type: 'progress',
+      jobId: input.jobId,
+      step: 'monolith',
+      status: 'running',
+      detail: 'fallback_after_multi',
+    });
+    const mono = await runMonolith(input, emit);
+    if (mono.ok) {
+      mono.result.meta.degraded = true;
+      mono.result.meta.agents = [
+        ...(multi.agents ?? []),
+        ...(mono.result.meta.agents ?? []),
+      ];
+      mono.result.caveats = [
+        ...(mono.result.caveats ?? []),
+        'Used single-call fallback after multi-agent pool errors',
+      ].slice(0, 8);
+      return { ...mono, mode: 'monolith' };
+    }
+  }
+  return multi;
 }
