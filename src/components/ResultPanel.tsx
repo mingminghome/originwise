@@ -6,6 +6,88 @@ import { OriginMap } from './OriginMap';
 import { RelationGraph } from './RelationGraph';
 import { TierBadge } from './TierBadge';
 
+function agentLabel(id: string, t: TFunction): string {
+  const key = `check.agent.${id}`;
+  const label = t(key);
+  return label === key ? id : label;
+}
+
+function providerLabel(p: string | undefined, t: TFunction): string {
+  if (!p) return t('check.agent.unknownProvider');
+  const key = `check.provider.${p}`;
+  const label = t(key);
+  return label === key ? p : label;
+}
+
+function AgentsPoolCard({
+  agents,
+  provider,
+  cached,
+  degraded,
+  t,
+}: {
+  agents: NonNullable<NonNullable<CheckResult['meta']>['agents']>;
+  provider?: string | null;
+  cached?: boolean;
+  degraded?: boolean;
+  t: TFunction;
+}) {
+  const okCount = agents.filter((a) => a.ok !== false).length;
+  const failCount = agents.length - okCount;
+
+  return (
+    <div className="agents-pool-card card-soft">
+      <div className="agents-pool-head">
+        <h3 className="result-section-title">{t('check.agentsTitle')}</h3>
+        <p className="muted agents-pool-summary">
+          {t('check.agentsSummary', {
+            total: agents.length,
+            ok: okCount,
+            fail: failCount,
+          })}
+          {provider
+            ? ` · ${t('check.answeredBy', { name: providerLabel(provider, t) })}`
+            : null}
+          {cached ? ` · ${t('check.cached')}` : null}
+          {degraded ? ` · ${t('check.degraded')}` : null}
+        </p>
+      </div>
+      <ul className="agents-pool-list">
+        {agents.map((a, i) => {
+          const ok = a.ok !== false;
+          return (
+            <li
+              key={`${a.id}-${a.provider ?? i}`}
+              className={ok ? 'agent-row agent-row--ok' : 'agent-row agent-row--fail'}
+            >
+              <span className="agent-row-status" aria-hidden>
+                {ok ? '✓' : '×'}
+              </span>
+              <div className="agent-row-body">
+                <div className="agent-row-title">
+                  <strong>{agentLabel(a.id, t)}</strong>
+                  <span className="agent-row-provider">
+                    {providerLabel(a.provider, t)}
+                  </span>
+                </div>
+                <p className="muted agent-row-meta">
+                  {ok
+                    ? t('check.agentOk')
+                    : t('check.agentFail', {
+                        err: a.error || t('check.agentFailUnknown'),
+                      })}
+                  {typeof a.ms === 'number' ? ` · ${a.ms}ms` : null}
+                </p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="muted agents-pool-hint">{t('check.agentsHint')}</p>
+    </div>
+  );
+}
+
 export function ResultPanel({
   result,
   provider,
@@ -17,23 +99,18 @@ export function ResultPanel({
   cached?: boolean;
   t: TFunction;
 }) {
+  const agents = result.meta?.agents ?? [];
+
   return (
     <div className="ask-result" role="status">
       <div className="ask-result-head">
         <h2 className="ask-result-title">{result.title}</h2>
         <div className="ask-result-meta muted">
-          {provider ? t('check.answeredBy', { name: provider }) : null}
-          {result.meta?.agents && result.meta.agents.length > 1 ? (
-            <>
-              {' · '}
-              {t('check.agentsUsed', { n: result.meta.agents.length })}
-              {': '}
-              {result.meta.agents
-                .filter((a) => a.ok !== false)
-                .map((a) => `${a.id}${a.provider ? `@${a.provider}` : ''}`)
-                .join(', ')}
-            </>
-          ) : null}
+          {provider
+            ? t('check.answeredBy', {
+                name: providerLabel(provider, t),
+              })
+            : null}
           {cached ? ` · ${t('check.cached')}` : null}
           {result.meta?.degraded ? ` · ${t('check.degraded')}` : null}
         </div>
@@ -57,6 +134,18 @@ export function ResultPanel({
       </div>
 
       <p className="ask-result-summary">{result.summary}</p>
+
+      {agents.length > 0 ? (
+        <div style={{ marginTop: '0.85rem' }}>
+          <AgentsPoolCard
+            agents={agents}
+            provider={provider}
+            cached={cached}
+            degraded={result.meta?.degraded}
+            t={t}
+          />
+        </div>
+      ) : null}
 
       <OriginMap regions={result.regions} t={t} />
 

@@ -4310,3 +4310,85 @@ p {
   margin: 0;
   font-size: 0.78rem;
 }
+
+/* AI pool list on result */
+.agents-pool-card {
+  margin: 0;
+}
+.agents-pool-head {
+  margin-bottom: 0.5rem;
+}
+.agents-pool-summary {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+}
+.agents-pool-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.agent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+}
+.agent-row-status {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+.agent-row--ok .agent-row-status {
+  color: #1b7a4a;
+  background: rgba(34, 160, 90, 0.14);
+}
+.agent-row--fail .agent-row-status {
+  color: #b42318;
+  background: rgba(220, 60, 50, 0.12);
+}
+[data-theme='dark'] .agent-row--ok .agent-row-status {
+  color: #6ee7a8;
+  background: rgba(34, 197, 120, 0.16);
+}
+[data-theme='dark'] .agent-row--fail .agent-row-status {
+  color: #fca5a5;
+  background: rgba(248, 113, 113, 0.14);
+}
+.agent-row-body {
+  flex: 1;
+  min-width: 0;
+}
+.agent-row-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.55rem;
+  font-size: 0.9rem;
+}
+.agent-row-provider {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.agent-row-meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+}
+.agents-pool-hint {
+  margin: 0.55rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
