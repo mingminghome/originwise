@@ -84,13 +84,18 @@ Return ONLY JSON:
     "products": [{"name":"string","madeIn":"string","originCountry":"string","relationTier":"none|indirect|direct|unknown","note":"string"}]
   }
 }
-ALTERNATIVES RULES (critical — do not mislead users):
-- Many appliances (steam cleaners, vacuums, small appliances) are MADE IN CHINA even if the brand HQ is US/EU.
-- relationTier "none" ONLY if you are confident made-in AND ownership are outside mainland China.
-- If made-in is China / PRC → relationTier "direct" (or "indirect" only if assembly is mixed and HQ is clearly non-CN).
-- If you do not know made-in for a product, use relationTier "unknown" — NEVER invent "none" / "Unrelated".
-- Prefer alternatives that are more clearly non-CN when possible; if none are reliable, still list options but mark "unknown" or "direct" honestly.
-- Max 6 each; short notes that mention made-in country when known.
+ALTERNATIVES PURPOSE (critical — this is the whole point of the list):
+- Suggest substitute brands/products the user could choose INSTEAD — ones with NO mainland China manufacture when possible, or CLEARLY LOWER China involvement than the checked item (e.g. made in JP/EU/US/TW/KR/VN with non-PRC HQ).
+- Do NOT list peers that are also typically made in China / PRC-owned just because they are "similar". Those are not useful alternatives here.
+- Prefer: non-CN made-in + non-PRC HQ/ownership. Next: mixed supply but lower CN share than the query item. Never pad with high-CN options.
+- If you cannot name credible lower-CN options, return empty arrays rather than China-heavy fillers.
+
+ALTERNATIVES ACCURACY:
+- Many appliances are MADE IN CHINA even if brand HQ is US/EU — do not treat HQ alone as non-China.
+- relationTier "none" ONLY if made-in AND ownership are clearly outside mainland China.
+- made-in China/PRC → "direct" (do not include such items as alternatives unless nothing else exists and you must mark them honestly — prefer empty).
+- Unclear made-in → "unknown", never fake "none".
+- Max 6 each; short notes must state made-in / why lower China involvement.
 Omit alternatives if not requested in dimensions.
 
 ${fence('user_context', opts.ocrHint ? `OCR/entity hint: ${opts.ocrHint}` : '')}
@@ -190,23 +195,34 @@ export function buildAlternativesPrompt(opts: {
   contextJson: string;
 }): string {
   const lang = langLabel(opts.locale);
-  return `Suggest similar product/brand alternatives for a quick China-relation compare. Respond in ${lang}.
+  return `You suggest LOWER China-involvement alternatives for the user's item. Respond in ${lang}.
 ${GEO_POLICY}
 
-CRITICAL ACCURACY (users get misled by false "unrelated"):
-- Do NOT assume a US/EU brand means products are not made in China. Many cleaning appliances (Bissell, Shark, etc.) have major manufacturing in China.
-- For each item set madeIn / originCountry / hqCountry when you know them (country name strings).
-- relationTier rules:
-  - "direct" = typically made in mainland China, or clear PRC HQ/ownership for that product line
-  - "indirect" = mixed supply chain / assembly / weaker PRC links
-  - "none" = ONLY if made-in is clearly outside mainland China AND company is not PRC-controlled (rare for small appliances — be careful)
-  - "unknown" = default when made-in is unclear — PREFER unknown over none
-- Notes should mention made-in when known (e.g. "Often made in China" / "HQ Germany, units vary").
-- Prefer alternatives that may be less China-linked when you can, but never fake "none".
+GOAL (exact user intent):
+- Brands and products the user can buy INSTEAD of the checked item, chosen because they are NOT made in mainland China, or have a CLEARLY LOWER share of China involvement (manufacture, supply, ownership) than the checked item.
+- Same category / comparable use — not random unrelated goods.
+- This is NOT "similar products regardless of origin". Do not list China-made peers, PRC brands, or typical Made-in-China clones as alternatives.
+
+SELECTION PRIORITY (best → acceptable → never):
+1. Best: made outside mainland China (e.g. JP, KR, TW, EU, US, VN, TH, MX, etc.) AND non-PRC HQ/ownership → relationTier "none" when confident.
+2. Acceptable: mixed assembly/components but still materially less PRC-linked than the query item → "indirect", explain why lower involvement in note.
+3. Unclear made-in/ownership → "unknown" only if still a plausible lower-CN candidate; say what is unknown.
+4. Never: items typically made in mainland China, or PRC HQ/controlled lines, just to fill the list. Prefer empty arrays over high-CN fillers.
+
+ACCURACY (do not mislead):
+- US/EU brand HQ alone does NOT mean non-China manufacture (e.g. many small appliances are still made in CN).
+- Always set madeIn / originCountry / hqCountry when known (country name strings).
+- relationTier:
+  - "none" = made-in clearly outside mainland China AND company not PRC-controlled
+  - "indirect" = weaker/mixed PRC links, still lower than a typical CN-made product
+  - "direct" = made in CN / strong PRC control — do not include these as alternatives
+  - "unknown" when made-in is unclear — never invent "none"
+- Notes must state made-in country and why China involvement is lower (e.g. "Made in Japan; HQ JP" / "EU assembly, non-PRC parent").
 
 Return ONLY JSON:
 {"brands":[{"name":"string","madeIn":"string","hqCountry":"string","relationTier":"none|indirect|direct|unknown","note":"string"}],"products":[{"name":"string","madeIn":"string","originCountry":"string","relationTier":"none|indirect|direct|unknown","note":"string"}]}
-Include brands: ${opts.wantBrands}. Include products: ${opts.wantProducts}. Max 4 each (quality over quantity).
+Include brands: ${opts.wantBrands}. Include products: ${opts.wantProducts}.
+Max 4 each. Quality over quantity — empty list is better than China-heavy "similar" items.
 
 ${fence('entity', opts.entity)}
 ${fence('context', opts.contextJson)}`;

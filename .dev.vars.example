@@ -13,11 +13,27 @@ GEMINI_API_KEY=
 # XAI_API_KEY=
 # ANTHROPIC_API_KEY=
 
-# Optional model overrides
-# GEMINI_MODEL=gemini-flash-lite-latest
-# OPENAI_MODEL=gpt-4o-mini
-# XAI_MODEL=grok-3-mini
-# ANTHROPIC_MODEL=claude-3-5-haiku-latest
+# ---------------------------------------------------------------------------
+# Model selection (optional)
+#   auto | free | default | (empty)  → free-tier chain with auto fallback
+#   <model-id>                       → try this first, then free-tier chain
+#
+# Free-tier-biased chains (see functions/_lib/llm.ts FREE_TIER_MODEL_CHAINS):
+#   Gemini  : flash-lite → 3.5/3.1/2.5 flash-lite → flash fallbacks
+#   OpenAI  : gpt-4.1-mini → gpt-5-mini → nano → gpt-4o-mini
+#             (data-sharing: mini/nano ~10M tok/day; large ~1M/day — opt in)
+#   Grok    : grok-4.5 → grok-4.3 → grok-4.20 non-reasoning → grok-4
+#   Claude  : claude-haiku-4-5 → dated haiku snapshot
+# ---------------------------------------------------------------------------
+# GEMINI_MODEL=auto
+# OPENAI_MODEL=auto
+# XAI_MODEL=auto
+# ANTHROPIC_MODEL=auto
+#
+# Pin examples (still falls back if that model fails):
+# OPENAI_MODEL=gpt-4.1-mini
+# XAI_MODEL=grok-4.5
+# ANTHROPIC_MODEL=claude-haiku-4-5
 
 # CHECK_MODE=multi|dual|monolith
 #   multi   = sub-agents (identify/product/company/verify/alts) + AI pool (default when keys exist)

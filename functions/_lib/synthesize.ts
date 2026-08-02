@@ -318,6 +318,23 @@ function clampAltTier(raw: unknown): RelationTier | undefined {
 const CN_TEXT =
   /\b(china|prc|mainland\s*china|people'?s\s*republic|made\s*in\s*cn|manufactured\s*in\s*china|中國|中国|中國大陸|中国大陆)\b/i;
 
+/** Lower = better as a "lower China involvement" alternative. */
+const ALT_TIER_RANK: Record<RelationTier, number> = {
+  none: 0,
+  indirect: 1,
+  unknown: 2,
+  direct: 3,
+};
+
+type SanitizedAlt = {
+  name: string;
+  relationTier: RelationTier;
+  note?: string;
+  madeIn?: string;
+  originCountry?: string;
+  hqCountry?: string;
+};
+
 /**
  * Sanitize LLM alternative tiers so we don't claim "Unrelated" for items
  * commonly made in China (or with unknown manufacture).
@@ -333,14 +350,7 @@ function sanitizeAlternative(
     manufacturedIn?: string;
   },
   geoScope: GeoScope
-): {
-  name: string;
-  relationTier: RelationTier;
-  note?: string;
-  madeIn?: string;
-  originCountry?: string;
-  hqCountry?: string;
-} | null {
+): SanitizedAlt | null {
   const name = String(raw.name ?? '').trim().slice(0, 80);
   if (!name) return null;
 
@@ -412,6 +422,18 @@ function sanitizeAlternative(
     originCountry,
     hqCountry,
   };
+}
+
+/**
+ * Keep alternatives that help the user avoid China-heavy options:
+ * drop pure "direct" fillers; rank lower China involvement first.
+ */
+function finalizeAlternativesList(items: SanitizedAlt[]): SanitizedAlt[] {
+  const nonDirect = items.filter((x) => x.relationTier !== 'direct');
+  const ranked = (nonDirect.length ? nonDirect : []).sort(
+    (a, b) => ALT_TIER_RANK[a.relationTier] - ALT_TIER_RANK[b.relationTier]
+  );
+  return ranked.slice(0, ALT_CAP);
 }
 
 /**
@@ -498,21 +520,38 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   }
 
   const alts = partials.alternatives;
-  const brandsSan = (alts?.brands ?? [])
-    .map((b) => sanitizeAlternative(b as Parameters<typeof sanitizeAlternative>[0], geoScope))
-    .filter((x): x is NonNullable<typeof x> => Boolean(x))
-    .slice(0, ALT_CAP);
-  const productsSan = (alts?.products ?? [])
-    .map((b) => sanitizeAlternative(b as Parameters<typeof sanitizeAlternative>[0], geoScope))
-    .filter((x): x is NonNullable<typeof x> => Boolean(x))
-    .slice(0, ALT_CAP);
+  const brandsSan = finalizeAlternativesList(
+    (alts?.brands ?? [])
+      .map((b) =>
+        sanitizeAlternative(
+          b as Parameters<typeof sanitizeAlternative>[0],
+          geoScope
+        )
+      )
+      .filter((x): x is SanitizedAlt => Boolean(x))
+  );
+  const productsSan = finalizeAlternativesList(
+    (alts?.products ?? [])
+      .map((b) =>
+        sanitizeAlternative(
+          b as Parameters<typeof sanitizeAlternative>[0],
+          geoScope
+        )
+      )
+      .filter((x): x is SanitizedAlt => Boolean(x))
+  );
   const alternatives =
     brandsSan.length || productsSan.length
       ? { brands: brandsSan, products: productsSan }
       : undefined;
   if (alternatives) {
     caveats.push(
-      'Similar brands/products tiers are estimates; many appliances are made in China even if HQ is elsewhere.'
+      'Alternative brands/products aim for lower China involvement (not merely similar). Tiers are estimates; HQ alone does not prove non-China manufacture.'
+    );
+  } else if (alts && ((alts.brands?.length ?? 0) > 0 || (alts.products?.length ?? 0) > 0)) {
+    // Model returned only high-CN peers — nothing useful after filter
+    caveats.push(
+      'No lower China-involvement brand/product alternatives found with enough confidence.'
     );
   }
 

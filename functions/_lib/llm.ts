@@ -1,6 +1,10 @@
 /**
  * Multi-provider LLM calls for Ask (Gemini, OpenAI, Grok/xAI, Claude).
  * Secrets stay on the server — never accept client API keys.
+ *
+ * Auto model selection: when *_MODEL is unset / "auto" / "free", each provider
+ * walks a free-tier-biased chain and falls back on model/quota/upstream errors.
+ * Pin a model id to try it first (still falls back to the rest of the chain).
  */
 
 export type AskProviderId = 'gemini' | 'openai' | 'grok' | 'claude';
@@ -34,18 +38,49 @@ export const ASK_PROVIDERS: AskProviderId[] = [
   'claude',
 ];
 
-const DEFAULT_GEMINI_CHAIN = [
-  'gemini-flash-lite-latest',
-  'gemini-3.1-flash-lite',
-  'gemini-flash-latest',
-  'gemini-2.0-flash-lite',
-  'gemini-2.0-flash',
-] as const;
+/**
+ * Free-tier / cost-biased model chains (tried in order until one succeeds).
+ * Order: higher free caps / cheaper first, then quality fallbacks, then legacy ids.
+ *
+ * OpenAI data-sharing (when opted in): mini/nano ~10M tok/day; flagship ~1M/day.
+ * Gemini: Flash-Lite free RPD is typically higher than Flash.
+ * Claude: Haiku is the low-cost tier (trial credits go furthest).
+ * Grok: credits apply to any model; start with current flagship, then cheaper ids.
+ */
+export const FREE_TIER_MODEL_CHAINS: Record<AskProviderId, readonly string[]> = {
+  gemini: [
+    'gemini-flash-lite-latest',
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-2.5-flash-lite',
+    'gemini-flash-latest',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+  ],
+  openai: [
+    'gpt-4.1-mini',
+    'gpt-5-mini',
+    'gpt-4.1-nano',
+    'gpt-5-nano',
+    'gpt-4o-mini',
+  ],
+  grok: [
+    'grok-4.5',
+    'grok-4.3',
+    'grok-4.20-0309-non-reasoning',
+    'grok-4',
+  ],
+  claude: [
+    'claude-haiku-4-5',
+    'claude-haiku-4-5-20251001',
+  ],
+};
 
-const DEFAULT_MODELS: Record<Exclude<AskProviderId, 'gemini'>, string> = {
-  openai: 'gpt-4o-mini',
-  grok: 'grok-3-mini',
-  claude: 'claude-3-5-haiku-latest',
+/** @deprecated use FREE_TIER_MODEL_CHAINS — kept for older imports */
+export const DEFAULT_MODELS: Record<Exclude<AskProviderId, 'gemini'>, string> = {
+  openai: FREE_TIER_MODEL_CHAINS.openai[0]!,
+  grok: FREE_TIER_MODEL_CHAINS.grok[0]!,
+  claude: FREE_TIER_MODEL_CHAINS.claude[0]!,
 };
 
 /** Higher when multi-item label breakdown is needed. */
@@ -76,26 +111,41 @@ function apiKeyFor(provider: AskProviderId, env: LlmEnv): string {
   return env.ANTHROPIC_API_KEY?.trim() || '';
 }
 
-function modelFor(provider: AskProviderId, env: LlmEnv): string {
-  if (provider === 'gemini') {
-    return (
-      env.GEMINI_MODEL?.trim().replace(/^models\//, '') ||
-      DEFAULT_GEMINI_CHAIN[0]
-    );
+function envModelOverride(
+  provider: AskProviderId,
+  env: LlmEnv
+): string | undefined {
+  let raw: string | undefined;
+  if (provider === 'gemini') raw = env.GEMINI_MODEL;
+  else if (provider === 'openai') raw = env.OPENAI_MODEL;
+  else if (provider === 'grok') raw = env.XAI_MODEL;
+  else raw = env.ANTHROPIC_MODEL;
+
+  const s = raw?.trim().replace(/^models\//, '') || '';
+  if (!s) return undefined;
+  const lower = s.toLowerCase();
+  // auto / free → walk free-tier chain only
+  if (lower === 'auto' || lower === 'free' || lower === 'default') {
+    return undefined;
   }
-  if (provider === 'openai')
-    return env.OPENAI_MODEL?.trim() || DEFAULT_MODELS.openai;
-  if (provider === 'grok') return env.XAI_MODEL?.trim() || DEFAULT_MODELS.grok;
-  return env.ANTHROPIC_MODEL?.trim() || DEFAULT_MODELS.claude;
+  return s;
 }
 
-function geminiChain(env: LlmEnv): string[] {
-  const preferred = env.GEMINI_MODEL?.trim().replace(/^models\//, '');
-  if (!preferred) return [...DEFAULT_GEMINI_CHAIN];
-  return [
-    preferred,
-    ...DEFAULT_GEMINI_CHAIN.filter((m) => m !== preferred),
-  ];
+/**
+ * Resolve model try-order for a provider.
+ * - unset / auto / free → free-tier chain
+ * - explicit id → that id first, then remaining free-tier models as fallback
+ */
+export function modelChain(provider: AskProviderId, env: LlmEnv): string[] {
+  const chain = [...FREE_TIER_MODEL_CHAINS[provider]];
+  const preferred = envModelOverride(provider, env);
+  if (!preferred) return chain;
+  return [preferred, ...chain.filter((m) => m !== preferred)];
+}
+
+/** First model that would be attempted (for diagnostics / docs). */
+export function modelFor(provider: AskProviderId, env: LlmEnv): string {
+  return modelChain(provider, env)[0]!;
 }
 
 export type LlmCallError = Error & {
@@ -113,11 +163,21 @@ type CallOnce =
 
 function mapHttpError(status: number, bodyText: string): AskErrorCode {
   const msg = bodyText.toLowerCase();
-  if (status === 429 || /quota|rate limit|resource exhausted/.test(msg)) {
+  if (status === 429 || /quota|rate limit|resource exhausted|insufficient_quota|billing/.test(msg)) {
     return 'upstream_quota';
   }
   if (status === 503 || status === 504) return 'upstream_unavailable';
   return 'upstream_error';
+}
+
+/** True when the failure is worth trying the next model in the free-tier chain. */
+function shouldTryNextModel(kind: AskErrorCode): boolean {
+  return (
+    kind === 'upstream_error' ||
+    kind === 'upstream_quota' ||
+    kind === 'upstream_unavailable' ||
+    kind === 'empty_response'
+  );
 }
 
 /** Optional vision attachment (base64, no data: prefix). */
@@ -338,8 +398,24 @@ async function callClaude(
   return { ok: true, text };
 }
 
+/** OpenAI / xAI: try json_object, then plain chat if the model rejects it. */
+async function callOpenAiCompatibleWithJsonFallback(opts: {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  prompt: string;
+  image?: LlmImage;
+}): Promise<CallOnce> {
+  let out = await callOpenAiCompatible({ ...opts, jsonMode: true });
+  if (!out.ok && out.kind === 'upstream_error') {
+    out = await callOpenAiCompatible({ ...opts, jsonMode: false });
+  }
+  return out;
+}
+
 /**
  * Call the selected provider. Throws LlmCallError on hard failure.
+ * Walks the free-tier model chain automatically until one model succeeds.
  * Optional image enables multimodal (vision) on supporting models.
  */
 export async function callProvider(
@@ -356,75 +432,39 @@ export async function callProvider(
     throw llmFail(code, 503);
   }
 
-  if (provider === 'gemini') {
-    let last: AskErrorCode = 'upstream_error';
-    for (const model of geminiChain(env)) {
-      const out = await callGeminiOnce(key, model, prompt, image);
-      if (out.ok) return out.text;
-      last = out.kind;
-      if (
-        out.kind === 'upstream_quota' ||
-        out.kind === 'upstream_error' ||
-        out.kind === 'empty_response' ||
-        out.kind === 'upstream_unavailable'
-      ) {
-        continue;
-      }
-    }
-    throw llmFail(last, last === 'upstream_quota' ? 429 : 502);
-  }
+  const models = modelChain(provider, env);
+  let last: AskErrorCode = 'upstream_error';
 
-  if (provider === 'openai') {
-    const model = modelFor('openai', env);
-    let out = await callOpenAiCompatible({
-      baseUrl: 'https://api.openai.com/v1',
-      apiKey: key,
-      model,
-      prompt,
-      image,
-      jsonMode: true,
-    });
-    if (!out.ok && out.kind === 'upstream_error') {
-      out = await callOpenAiCompatible({
+  for (const model of models) {
+    let out: CallOnce;
+
+    if (provider === 'gemini') {
+      out = await callGeminiOnce(key, model, prompt, image);
+    } else if (provider === 'openai') {
+      out = await callOpenAiCompatibleWithJsonFallback({
         baseUrl: 'https://api.openai.com/v1',
         apiKey: key,
         model,
         prompt,
         image,
-        jsonMode: false,
       });
-    }
-    if (out.ok) return out.text;
-    throw llmFail(out.kind, out.kind === 'upstream_quota' ? 429 : 502);
-  }
-
-  if (provider === 'grok') {
-    const model = modelFor('grok', env);
-    let out = await callOpenAiCompatible({
-      baseUrl: 'https://api.x.ai/v1',
-      apiKey: key,
-      model,
-      prompt,
-      image,
-      jsonMode: true,
-    });
-    if (!out.ok && out.kind === 'upstream_error') {
-      out = await callOpenAiCompatible({
+    } else if (provider === 'grok') {
+      out = await callOpenAiCompatibleWithJsonFallback({
         baseUrl: 'https://api.x.ai/v1',
         apiKey: key,
         model,
         prompt,
         image,
-        jsonMode: false,
       });
+    } else {
+      out = await callClaude(key, model, prompt, image);
     }
+
     if (out.ok) return out.text;
-    throw llmFail(out.kind, out.kind === 'upstream_quota' ? 429 : 502);
+    last = out.kind;
+    if (shouldTryNextModel(out.kind)) continue;
+    break;
   }
 
-  // claude
-  const model = modelFor('claude', env);
-  const out = await callClaude(key, model, prompt, image);
-  if (out.ok) return out.text;
-  throw llmFail(out.kind, out.kind === 'upstream_quota' ? 429 : 502);
+  throw llmFail(last, last === 'upstream_quota' ? 429 : 502);
 }

@@ -535,7 +535,7 @@ Max: conflicts ≤ 5, caveats ≤ 3.
 ```
 
 Max: brands ≤ **6**, products ≤ **6**.  
-When overall query is PRC-related, prefer alternatives with weaker/no PRC link **if** dimension enabled — still mark uncertain tiers honestly.
+When alternatives dims are enabled, suggest substitutes with **no / lower mainland-China involvement** (not merely similar peers). Prefer non-CN made-in + non-PRC ownership; drop high-CN fillers; still mark uncertain tiers honestly.
 
 **Alternative `relationTier` is advisory (v1):** overall query tier is decision-table certified; each alternative’s `relationTier` is **LLM-emitted and not re-run through the factor table**. Synthesize must:
 
@@ -613,10 +613,10 @@ const ROLE_PREF: Record<AgentId, ProviderId[]> = {
 
 | Provider | Default model | Env override |
 |----------|---------------|--------------|
-| gemini | `gemini-flash-lite-latest` (+ chain) | `GEMINI_MODEL` |
-| openai | `gpt-4o-mini` | `OPENAI_MODEL` |
-| grok | `grok-3-mini` | `XAI_MODEL` |
-| claude | `claude-3-5-haiku-latest` | `ANTHROPIC_MODEL` |
+| gemini | free-tier chain: flash-lite → 3.5/3.1/2.5 lite → flash | `GEMINI_MODEL=auto` or pin |
+| openai | free-tier chain: `gpt-4.1-mini` → `gpt-5-mini` → nano → `gpt-4o-mini` | `OPENAI_MODEL=auto` or pin |
+| grok | free-tier chain: `grok-4.5` → `grok-4.3` → 4.20 non-reasoning → `grok-4` | `XAI_MODEL=auto` or pin |
+| claude | free-tier chain: `claude-haiku-4-5` → dated haiku | `ANTHROPIC_MODEL=auto` or pin |
 
 Extend BabyWise callers with:
 

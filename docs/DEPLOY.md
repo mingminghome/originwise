@@ -102,7 +102,7 @@ If you deploy without setting `VITE_GTM_ID` in `.env`, production has no GTM unt
 | `CHECK_CACHE_TTL_SEC` | Default `86400` |
 | `POOL_DISABLE_PROVIDERS` | Optional, e.g. `openai,grok` |
 | `LOG_IP_SALT` | Optional log hashing salt |
-| `*_MODEL` | Optional model overrides |
+| `*_MODEL` | `auto` (default free-tier chain + fallback) or pin an id e.g. `gpt-4.1-mini`, `grok-4.5`, `claude-haiku-4-5` |
 
 At least **one** AI provider secret is required for live checks.
 
