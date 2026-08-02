@@ -295,7 +295,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         return json(
           {
             ok: false,
-            error: `Too many requests. Limit: ${rateMin} checks per minute. Please wait about ${minute.retryAfterSec}s.`,
+            error: `Free server RPM limit: ${rateMin} checks per minute. Wait about ${minute.retryAfterSec}s.`,
             code: 'rate_limited',
             jobId,
             limit: rateMin,
@@ -316,7 +316,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         return json(
           {
             ok: false,
-            error: `Daily limit reached (${rateDay} checks per day). Please try again tomorrow.`,
+            error: `Free server daily limit: ${rateDay} checks per day. Please try again tomorrow.`,
             code: 'rate_limited_day',
             jobId,
             limit: rateDay,

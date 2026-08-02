@@ -26,6 +26,12 @@ export type ProgressStep = {
   detail?: string;
 };
 
+export type RateLimitMeta = {
+  limit?: number;
+  window?: 'minute' | 'day' | 'inflight' | string;
+  retryAfterSec?: number;
+};
+
 export type CheckResponse =
   | {
       ok: true;
@@ -40,6 +46,7 @@ export type CheckResponse =
       error: string;
       code?: string;
       jobId?: string;
+      rateLimit?: RateLimitMeta;
     };
 
 function parseJsonPayload(data: Record<string, unknown>): CheckResponse {
@@ -53,11 +60,25 @@ function parseJsonPayload(data: Record<string, unknown>): CheckResponse {
       cached: Boolean(data.cached),
     };
   }
+  const rateLimit: RateLimitMeta | undefined =
+    data.limit != null || data.window != null || data.retryAfterSec != null
+      ? {
+          limit:
+            typeof data.limit === 'number' ? data.limit : undefined,
+          window:
+            typeof data.window === 'string' ? data.window : undefined,
+          retryAfterSec:
+            typeof data.retryAfterSec === 'number'
+              ? data.retryAfterSec
+              : undefined,
+        }
+      : undefined;
   return {
     ok: false,
     error: typeof data.error === 'string' ? data.error : 'Request failed',
     code: typeof data.code === 'string' ? data.code : 'server_error',
     jobId: typeof data.jobId === 'string' ? data.jobId : undefined,
+    rateLimit,
   };
 }
 

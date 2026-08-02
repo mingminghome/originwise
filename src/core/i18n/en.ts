@@ -99,8 +99,18 @@ export const en: MessageTree = {
     providerNotConfigured:
       'AI check is not configured. Add a key in .dev.vars and run `npm run pages:dev` (see README).',
     rateLimited:
-      'Too many requests. Limit: 5 checks per minute (and 1 at a time). Please wait a bit.',
-    rateLimitedDay: 'Daily limit reached (30 checks per day). Try again tomorrow.',
+      'Free server RPM limit reached. Max 5 checks per minute (1 at a time). Please wait.',
+    rateLimitedDay:
+      'Free server daily limit reached (30 checks per day). Please try again tomorrow.',
+    rateLimitBadge: 'Free server limit',
+    rateLimitFreeNote: 'Free server · max 5/min · 30/day · 1 at a time',
+    rateLimitRpmTitle: 'Free server RPM limit',
+    rateLimitMinuteDetail:
+      'You hit the free server rate limit: {n} checks per minute. Wait about {s}s, then try again.',
+    rateLimitDayDetail:
+      'You hit the free server daily limit: {n} checks per day. Try again tomorrow.',
+    rateLimitInflightDetail:
+      'Free server allows only 1 check at a time. Wait for the current check to finish.',
     forbiddenOrigin: 'Request not allowed from this origin.',
     badRequest: 'Invalid request.',
     parseError: 'Could not understand the answer. Please try again.',

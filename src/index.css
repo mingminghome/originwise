@@ -4155,3 +4155,60 @@ p {
     font-size: 2.5rem;
   }
 }
+
+/* Free server rate limit label */
+.check-free-note {
+  margin: 0;
+  font-size: 0.75rem;
+  text-align: center;
+  line-height: 1.4;
+}
+.rate-limit-banner {
+  margin-top: 0.35rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(180, 120, 20, 0.4);
+  background: rgba(217, 160, 32, 0.12);
+  text-align: left;
+}
+[data-theme='dark'] .rate-limit-banner {
+  border-color: rgba(251, 191, 36, 0.35);
+  background: rgba(251, 191, 36, 0.1);
+}
+.rate-limit-banner-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  margin-bottom: 0.4rem;
+}
+.rate-limit-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+[data-theme='dark'] .rate-limit-badge {
+  background: rgba(255, 255, 255, 0.1);
+}
+.rate-limit-title {
+  font-size: 0.92rem;
+  color: var(--text);
+}
+.rate-limit-detail {
+  margin: 0 0 0.35rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+.rate-limit-policy {
+  margin: 0;
+  font-size: 0.78rem;
+}

@@ -8,6 +8,7 @@ import {
   runCheckApiStream,
   type CheckImagePayload,
   type ProgressStep,
+  type RateLimitMeta,
 } from './client';
 
 export type EngineInput = {
@@ -29,7 +30,13 @@ export type EngineResult =
       mode?: string;
       cached?: boolean;
     }
-  | { ok: false; error: string; code?: string; jobId?: string };
+  | {
+      ok: false;
+      error: string;
+      code?: string;
+      jobId?: string;
+      rateLimit?: RateLimitMeta;
+    };
 
 export async function engineRunCheck(
   input: EngineInput
@@ -59,6 +66,7 @@ export async function engineRunCheck(
       error: res.error,
       code: res.code,
       jobId: res.jobId,
+      rateLimit: res.rateLimit,
     };
   }
   return {

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { Camera, ImagePlus, Sparkles, X } from 'lucide-react';
-import type { ProgressStep } from '../core/ai/client';
+import { Camera, Gauge, ImagePlus, Sparkles, X } from 'lucide-react';
+import type { ProgressStep, RateLimitMeta } from '../core/ai/client';
 import { engineRunCheck } from '../core/ai/engine';
 import { prepareCheckImage, type PreparedImage } from '../core/util/image';
 import type { AppState } from '../hooks/useAppState';
@@ -8,6 +8,11 @@ import type { CheckResult } from '../core/types';
 import { ProgressSteps } from './ProgressSteps';
 import { ResultPanel } from './ResultPanel';
 import { TopNavIcons } from './TopNavIcons';
+
+type RateHit = {
+  code: 'rate_limited' | 'rate_limited_day';
+  meta?: RateLimitMeta;
+};
 
 export function CheckScreen({ state }: { state: AppState }) {
   const {
@@ -22,6 +27,7 @@ export function CheckScreen({ state }: { state: AppState }) {
   const [text, setText] = useState('');
   const [photo, setPhoto] = useState<PreparedImage | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [rateHit, setRateHit] = useState<RateHit | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CheckResult | null>(null);
   const [lastProvider, setLastProvider] = useState<string | null>(null);
@@ -56,8 +62,22 @@ export function CheckScreen({ state }: { state: AppState }) {
     setPhoto(null);
   };
 
+  const rateLimitMessage = (hit: RateHit): string => {
+    const w = hit.meta?.window;
+    const n = hit.meta?.limit;
+    const s = hit.meta?.retryAfterSec ?? 60;
+    if (hit.code === 'rate_limited_day' || w === 'day') {
+      return t('check.rateLimitDayDetail', { n: n ?? 30 });
+    }
+    if (w === 'inflight') {
+      return t('check.rateLimitInflightDetail');
+    }
+    return t('check.rateLimitMinuteDetail', { n: n ?? 5, s });
+  };
+
   const runCheck = async () => {
     setError(null);
+    setRateHit(null);
     setResult(null);
     setActiveResult(null);
     setLastProvider(null);
@@ -88,11 +108,21 @@ export function CheckScreen({ state }: { state: AppState }) {
         },
       });
       if (!out.ok) {
+        if (
+          out.code === 'rate_limited' ||
+          out.code === 'rate_limited_day'
+        ) {
+          const hit: RateHit = {
+            code: out.code,
+            meta: out.rateLimit,
+          };
+          setRateHit(hit);
+          setError(rateLimitMessage(hit));
+          return;
+        }
         const byCode: Record<string, string> = {
           provider_not_configured: t('check.providerNotConfigured'),
           gemini_not_configured: t('check.providerNotConfigured'),
-          rate_limited: t('check.rateLimited'),
-          rate_limited_day: t('check.rateLimitedDay'),
           forbidden_origin: t('check.forbiddenOrigin'),
           bad_request: t('check.badRequest'),
           parse_error: t('check.parseError'),
@@ -251,16 +281,41 @@ export function CheckScreen({ state }: { state: AppState }) {
           <button
             type="button"
             className="btn btn-primary check-search-submit"
-            disabled={loading || !canSubmit}
+            disabled={loading || !canSubmit || Boolean(rateHit)}
             onClick={() => void runCheck()}
           >
             <Sparkles size={16} />
             {loading ? t('check.submitting') : t('check.submit')}
           </button>
 
+          <p className="check-free-note muted">
+            <Gauge size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
+            {t('check.rateLimitFreeNote')}
+          </p>
+
           {loading ? <ProgressSteps steps={progress} t={t} /> : null}
 
-          {error ? (
+          {rateHit ? (
+            <div className="rate-limit-banner" role="alert">
+              <div className="rate-limit-banner-top">
+                <span className="rate-limit-badge">
+                  {t('check.rateLimitBadge')}
+                </span>
+                <strong className="rate-limit-title">
+                  {rateHit.code === 'rate_limited_day' ||
+                  rateHit.meta?.window === 'day'
+                    ? t('check.rateLimitedDay')
+                    : t('check.rateLimitRpmTitle')}
+                </strong>
+              </div>
+              <p className="rate-limit-detail">{rateLimitMessage(rateHit)}</p>
+              <p className="rate-limit-policy muted">
+                {t('check.rateLimitFreeNote')}
+              </p>
+            </div>
+          ) : null}
+
+          {error && !rateHit ? (
             <p className="ask-error" role="alert">
               {error}
             </p>
