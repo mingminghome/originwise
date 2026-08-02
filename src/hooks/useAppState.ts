@@ -14,7 +14,7 @@ import type {
   DataCategory,
 } from '../core/types';
 
-export type TabId = 'check' | 'history' | 'settings' | 'about';
+export type TabId = 'check' | 'history' | 'settings' | 'about' | 'how';
 
 export function useAppState() {
   const [tab, setTab] = useState<TabId>('check');

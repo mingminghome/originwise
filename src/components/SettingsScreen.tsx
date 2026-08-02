@@ -1,4 +1,4 @@
-import { ChevronRight, Info } from 'lucide-react';
+import { ChevronRight, HelpCircle, Info } from 'lucide-react';
 import {
   ALL_DIMENSIONS,
   type CheckDimension,
@@ -110,7 +110,18 @@ export function SettingsScreen({ state }: { state: AppState }) {
         </div>
       </section>
 
-      <section className="card">
+      <section className="card stack" style={{ gap: 0 }}>
+        <button
+          type="button"
+          className="settings-row"
+          onClick={() => setTab('how')}
+        >
+          <span>
+            <HelpCircle size={16} style={{ verticalAlign: -2, marginRight: 6 }} />
+            {t('settings.howItWorks')}
+          </span>
+          <ChevronRight size={18} />
+        </button>
         <button
           type="button"
           className="settings-row"

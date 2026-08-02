@@ -20,7 +20,9 @@ export function BottomNav({
   return (
     <nav className="bottom-nav" aria-label="Main">
       {items.map(({ id, icon: Icon, labelKey }) => {
-        const active = tab === id || (id === 'settings' && tab === 'about');
+        const active =
+          tab === id ||
+          (id === 'settings' && (tab === 'about' || tab === 'how'));
         return (
           <button
             key={id}

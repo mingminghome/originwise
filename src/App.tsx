@@ -3,6 +3,7 @@ import { AboutScreen } from './components/AboutScreen';
 import { BottomNav } from './components/BottomNav';
 import { CheckScreen } from './components/CheckScreen';
 import { HistoryScreen } from './components/HistoryScreen';
+import { HowItWorksScreen } from './components/HowItWorksScreen';
 import { SettingsScreen } from './components/SettingsScreen';
 import { WelcomeDisclaimer } from './components/WelcomeDisclaimer';
 import {
@@ -33,6 +34,7 @@ export default function App() {
           {tab === 'history' && <HistoryScreen state={state} />}
           {tab === 'settings' && <SettingsScreen state={state} />}
           {tab === 'about' && <AboutScreen state={state} />}
+          {tab === 'how' && <HowItWorksScreen state={state} />}
         </main>
         <BottomNav tab={tab} onChange={setTab} t={t} />
       </div>

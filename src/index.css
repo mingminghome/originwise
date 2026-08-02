@@ -1691,6 +1691,95 @@ p {
 .tier-reasons-list li::marker {
   color: var(--text-muted);
 }
+
+/* How it works */
+.how-flow-svg {
+  display: block;
+  margin: 0.25rem auto;
+  max-width: 100%;
+}
+.how-flow-box {
+  fill: var(--bg-subtle);
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+.how-flow-box--accent {
+  fill: var(--bg-card);
+  stroke: var(--text);
+  stroke-width: 2;
+}
+.how-flow-arrow {
+  stroke: var(--text-muted);
+  stroke-width: 2;
+  fill: none;
+}
+.how-flow-arrow-head {
+  fill: var(--text-muted);
+}
+.how-flow-emoji {
+  font-size: 14px;
+  font-weight: 800;
+  fill: var(--text);
+}
+.how-flow-caption {
+  font-size: 9px;
+  font-weight: 600;
+  fill: var(--text-muted);
+}
+.how-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.how-steps li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+.how-steps p {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+}
+.how-step-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  color: var(--text);
+}
+.how-badge-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.how-badge-list li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.check-how-link {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 0.25rem 0;
+  align-self: flex-start;
+}
 /*
  * Relation tier badges — the only chromatic accents (mono app otherwise).
  * none=green · indirect=amber · direct=red · unknown=gray

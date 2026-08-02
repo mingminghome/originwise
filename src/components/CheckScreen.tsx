@@ -15,6 +15,7 @@ export function CheckScreen({ state }: { state: AppState }) {
     activeResult,
     setActiveResult,
     pushCheckHistory,
+    setTab,
   } = state;
   const [text, setText] = useState('');
   const [photo, setPhoto] = useState<PreparedImage | null>(null);
@@ -141,6 +142,13 @@ export function CheckScreen({ state }: { state: AppState }) {
         <div>
           <h1>{t('check.title')}</h1>
           <p className="subtitle">{t('check.subtitle')}</p>
+          <button
+            type="button"
+            className="check-how-link"
+            onClick={() => setTab('how')}
+          >
+            {t('check.howLink')}
+          </button>
         </div>
       </header>
 
