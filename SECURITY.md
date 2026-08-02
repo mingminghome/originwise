@@ -8,7 +8,7 @@ OriginWise is a local-first SPA on Cloudflare Pages with a stateless Pages Funct
 |------|----------|
 | API keys | Server secrets only (`.dev.vars` / Pages secrets). Never accept client keys. |
 | Cross-site | Origin allow-list (`functions/_lib/security.ts`) |
-| Abuse | Job rate limits: **2/min · 10/day · 1 in-flight/IP** (Cache API, best-effort per colo) |
+| Abuse | Job rate limits: **5/min · 30/day · 1 in-flight/IP** (Cache API, best-effort per colo) |
 | Photos | Client compress; server size caps; not stored as server records |
 | History | `localStorage` only (`originwise_v1_*`) |
 | Prompts | Built on the server; user text fenced as untrusted data |

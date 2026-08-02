@@ -95,8 +95,8 @@ If you deploy without setting `VITE_GTM_ID` in `.env`, production has no GTM unt
 |----------|--------|
 | `CHECK_MODE` | `multi` (default when keys exist) \| `dual` \| `monolith` |
 | `CHECK_ALLOWED_ORIGINS` | Comma-separated extra origins for custom domains |
-| `CHECK_RATE_PER_MINUTE` | Default `2` |
-| `CHECK_RATE_PER_DAY` | Default `10` |
+| `CHECK_RATE_PER_MINUTE` | Default `5` |
+| `CHECK_RATE_PER_DAY` | Default `30` |
 | `CHECK_CACHE_TTL_SEC` | Default `86400` |
 | `POOL_DISABLE_PROVIDERS` | Optional, e.g. `openai,grok` |
 | `LOG_IP_SALT` | Optional log hashing salt |

@@ -6,6 +6,7 @@ export const zhHant = {
     history: '紀錄',
     info: '說明',
     settings: '設定',
+    navMore: '選單',
   },
   common: {
     present: '有',
@@ -88,8 +89,8 @@ export const zhHant = {
       '僅供參考——依模型既有知識，非法律或制裁建議。AI 可能錯誤。',
     providerNotConfigured:
       '尚未設定 AI。請在 .dev.vars 加入金鑰，並執行 `npm run pages:dev`（見 README）。',
-    rateLimited: '請求過於頻繁，請稍後再試。',
-    rateLimitedDay: '已達每日上限，請明天再試。',
+    rateLimited: '請求過多。限制：每分鐘 5 次（同時只能 1 次）。請稍候再試。',
+    rateLimitedDay: '已達每日上限（每天 30 次）。請明天再試。',
     forbiddenOrigin: '此來源不允許請求。',
     badRequest: '請求無效。',
     parseError: '無法解析回覆，請再試一次。',

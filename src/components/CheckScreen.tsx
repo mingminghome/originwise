@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Camera, ImagePlus, RefreshCw, Sparkles, X } from 'lucide-react';
+import { Camera, ImagePlus, Sparkles, X } from 'lucide-react';
 import type { ProgressStep } from '../core/ai/client';
 import { engineRunCheck } from '../core/ai/engine';
 import { prepareCheckImage, type PreparedImage } from '../core/util/image';
@@ -7,6 +7,7 @@ import type { AppState } from '../hooks/useAppState';
 import type { CheckResult } from '../core/types';
 import { ProgressSteps } from './ProgressSteps';
 import { ResultPanel } from './ResultPanel';
+import { TopNavIcons } from './TopNavIcons';
 
 export function CheckScreen({ state }: { state: AppState }) {
   const {
@@ -16,6 +17,7 @@ export function CheckScreen({ state }: { state: AppState }) {
     setActiveResult,
     pushCheckHistory,
     setTab,
+    tab,
   } = state;
   const [text, setText] = useState('');
   const [photo, setPhoto] = useState<PreparedImage | null>(null);
@@ -30,6 +32,7 @@ export function CheckScreen({ state }: { state: AppState }) {
 
   const canSubmit = Boolean(text.trim() || photo);
   const display = result ?? activeResult?.result ?? null;
+  const showLanding = !display && !loading;
 
   const onPickPhoto = async (file: File | null | undefined) => {
     if (!file) return;
@@ -53,7 +56,7 @@ export function CheckScreen({ state }: { state: AppState }) {
     setPhoto(null);
   };
 
-  const runCheck = async (forceRefresh = false) => {
+  const runCheck = async () => {
     setError(null);
     setResult(null);
     setActiveResult(null);
@@ -73,7 +76,7 @@ export function CheckScreen({ state }: { state: AppState }) {
         locale: settings.locale,
         geoScope: settings.geoScope,
         dimensions: settings.defaultDimensions,
-        forceRefresh,
+        forceRefresh: false,
         image: attached
           ? { mimeType: attached.mimeType, data: attached.data }
           : undefined,
@@ -100,7 +103,6 @@ export function CheckScreen({ state }: { state: AppState }) {
           server_error: t('check.serverError'),
           empty: t('check.needInput'),
         };
-        // Prefer server message when it is more specific than the generic map
         const mapped = out.code ? byCode[out.code] : undefined;
         const serverMsg = out.error?.trim();
         if (
@@ -136,139 +138,138 @@ export function CheckScreen({ state }: { state: AppState }) {
     }
   };
 
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (canSubmit && !loading) void runCheck();
+    }
+  };
+
   return (
-    <>
-      <header className="app-header">
-        <div>
-          <h1>{t('check.title')}</h1>
-          <p className="subtitle">{t('check.subtitle')}</p>
-          <button
-            type="button"
-            className="check-how-link"
-            onClick={() => setTab('info')}
-          >
-            {t('check.howLink')}
-          </button>
-        </div>
-      </header>
-
-      <section className="card stack ask-composer">
-        <input
-          ref={cameraRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="sr-only"
-          aria-hidden
-          tabIndex={-1}
-          onChange={(e) => void onPickPhoto(e.target.files?.[0])}
-        />
-        <input
-          ref={galleryRef}
-          type="file"
-          accept="image/*"
-          className="sr-only"
-          aria-hidden
-          tabIndex={-1}
-          onChange={(e) => void onPickPhoto(e.target.files?.[0])}
-        />
-
-        {photo ? (
-          <div className="ask-photo-wrap">
-            <div className="ask-photo-frame">
-              <img src={photo.dataUrl} alt="" className="photo-preview" />
-              <button
-                type="button"
-                className="ask-photo-x"
-                aria-label={t('check.removePhoto')}
-                onClick={() => setPhoto(null)}
-              >
-                <X size={16} strokeWidth={2.5} />
-              </button>
-            </div>
-            <p className="ask-photo-caption muted">{t('check.photoLabelHint')}</p>
-          </div>
-        ) : null}
-
-        <div className="field" style={{ marginBottom: 0 }}>
-          <label htmlFor="check-input">
-            {photo ? t('check.noteOptional') : t('check.placeholder')}
-          </label>
-          <textarea
-            id="check-input"
-            value={text}
-            placeholder={
-              photo
-                ? t('check.placeholderWithPhoto')
-                : t('check.placeholder')
-            }
-            onChange={(e) => setText(e.target.value)}
-            rows={photo ? 2 : 3}
-            disabled={loading}
-          />
-        </div>
-
-        {!photo ? (
-          <div className="ask-photo-actions">
-            <button
-              type="button"
-              className="btn btn-ghost ask-photo-action"
-              disabled={loading}
-              onClick={() => cameraRef.current?.click()}
-            >
-              <Camera size={16} />
-              {t('check.photo')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost ask-photo-action"
-              disabled={loading}
-              onClick={() => galleryRef.current?.click()}
-            >
-              <ImagePlus size={16} />
-              {t('check.gallery')}
-            </button>
-          </div>
-        ) : null}
-
+    <div className={showLanding ? 'check-google' : 'check-with-result'}>
+      {/* Top bar: brand + icons (Google-style chrome) */}
+      <div className="check-topbar">
         <button
           type="button"
-          className="btn btn-primary btn-block"
-          disabled={loading || !canSubmit}
-          onClick={() => void runCheck(false)}
+          className="check-brand"
+          onClick={() => {
+            setResult(null);
+            setActiveResult(null);
+            setError(null);
+          }}
         >
-          <Sparkles size={16} />
-          {loading ? t('check.submitting') : t('check.submit')}
+          OriginWise
         </button>
+        <TopNavIcons tab={tab} onChange={setTab} t={t} />
+      </div>
 
-        {display && !loading ? (
+      <div className={showLanding ? 'check-hero' : 'check-hero check-hero--compact'}>
+        {showLanding ? (
+          <>
+            <h1 className="check-hero-title">{t('check.title')}</h1>
+            <p className="check-hero-sub muted">{t('check.subtitle')}</p>
+          </>
+        ) : null}
+
+        <section className="check-search-card">
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="sr-only"
+            aria-hidden
+            tabIndex={-1}
+            onChange={(e) => void onPickPhoto(e.target.files?.[0])}
+          />
+          <input
+            ref={galleryRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            aria-hidden
+            tabIndex={-1}
+            onChange={(e) => void onPickPhoto(e.target.files?.[0])}
+          />
+
+          {photo ? (
+            <div className="ask-photo-wrap check-photo">
+              <div className="ask-photo-frame">
+                <img src={photo.dataUrl} alt="" className="photo-preview" />
+                <button
+                  type="button"
+                  className="ask-photo-x"
+                  aria-label={t('check.removePhoto')}
+                  onClick={() => setPhoto(null)}
+                >
+                  <X size={16} strokeWidth={2.5} />
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="check-search-row">
+            <input
+              id="check-input"
+              className="check-search-input"
+              value={text}
+              placeholder={
+                photo
+                  ? t('check.placeholderWithPhoto')
+                  : t('check.placeholder')
+              }
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={onKeyDown}
+              disabled={loading}
+              autoComplete="off"
+              enterKeyHint="search"
+            />
+            <div className="check-search-tools">
+              <button
+                type="button"
+                className="check-icon-btn"
+                disabled={loading}
+                aria-label={t('check.photo')}
+                title={t('check.photo')}
+                onClick={() => cameraRef.current?.click()}
+              >
+                <Camera size={18} />
+              </button>
+              <button
+                type="button"
+                className="check-icon-btn"
+                disabled={loading}
+                aria-label={t('check.gallery')}
+                title={t('check.gallery')}
+                onClick={() => galleryRef.current?.click()}
+              >
+                <ImagePlus size={18} />
+              </button>
+            </div>
+          </div>
+
           <button
             type="button"
-            className="btn btn-ghost btn-block"
-            onClick={() => void runCheck(true)}
+            className="btn btn-primary check-search-submit"
+            disabled={loading || !canSubmit}
+            onClick={() => void runCheck()}
           >
-            <RefreshCw size={16} />
-            {t('check.forceRefresh')}
+            <Sparkles size={16} />
+            {loading ? t('check.submitting') : t('check.submit')}
           </button>
-        ) : null}
 
-        {loading ? <ProgressSteps steps={progress} t={t} /> : null}
+          {loading ? <ProgressSteps steps={progress} t={t} /> : null}
 
-        <p className="muted" style={{ fontSize: '0.8rem' }}>
-          {settings.geoScope === 'greater_china'
-            ? t('settings.geoScopeGreater')
-            : t('settings.geoScopePrc')}
-        </p>
-
-        {error ? (
-          <p className="ask-error" role="alert">
-            {error}
-          </p>
-        ) : null}
-      </section>
+          {error ? (
+            <p className="ask-error" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </section>
+      </div>
 
       {display && !loading ? (
-        <section className="card">
+        <section className="card check-result-card">
           <ResultPanel
             result={display}
             provider={lastProvider}
@@ -277,6 +278,6 @@ export function CheckScreen({ state }: { state: AppState }) {
           />
         </section>
       ) : null}
-    </>
+    </div>
   );
 }

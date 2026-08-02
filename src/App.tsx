@@ -28,9 +28,12 @@ export default function App() {
     setShowWelcome(false);
   };
 
+  const hideBottomNav =
+    tab === 'check' || tab === 'how' || tab === 'about';
+
   return (
     <div className="app-page">
-      <div className="app-shell">
+      <div className={`app-shell${hideBottomNav ? ' app-shell--no-bottom' : ''}`}>
         <main className="app-main">
           <InstallAppBanner t={t} />
           {tab === 'check' && <CheckScreen state={state} />}
@@ -40,7 +43,9 @@ export default function App() {
           {tab === 'about' && <AboutScreen state={state} />}
           {tab === 'how' && <HowItWorksScreen state={state} />}
         </main>
-        <BottomNav tab={tab} onChange={setTab} t={t} />
+        {!hideBottomNav ? (
+          <BottomNav tab={tab} onChange={setTab} t={t} />
+        ) : null}
       </div>
       {showWelcome && <WelcomeDisclaimer t={t} onAccept={acceptWelcome} />}
     </div>

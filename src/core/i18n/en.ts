@@ -9,6 +9,7 @@ export const en: MessageTree = {
     history: 'History',
     info: 'Info',
     settings: 'Settings',
+    navMore: 'Menu',
   },
   common: {
     present: 'Yes',
@@ -97,8 +98,9 @@ export const en: MessageTree = {
       'Informational only — model knowledge, not legal or sanctions advice. AI can be wrong.',
     providerNotConfigured:
       'AI check is not configured. Add a key in .dev.vars and run `npm run pages:dev` (see README).',
-    rateLimited: 'Too many requests. Please wait and try again.',
-    rateLimitedDay: 'Daily limit reached. Please try again tomorrow.',
+    rateLimited:
+      'Too many requests. Limit: 5 checks per minute (and 1 at a time). Please wait a bit.',
+    rateLimitedDay: 'Daily limit reached (30 checks per day). Try again tomorrow.',
     forbiddenOrigin: 'Request not allowed from this origin.',
     badRequest: 'Invalid request.',
     parseError: 'Could not understand the answer. Please try again.',

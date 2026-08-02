@@ -46,8 +46,9 @@ const ALLOWED_IMAGE_MIME = new Set([
   'image/png',
   'image/webp',
 ]);
-const DEFAULT_RATE_MIN = 2;
-const DEFAULT_RATE_DAY = 10;
+/** Public free-tier defaults (overridable via env). */
+const DEFAULT_RATE_MIN = 5;
+const DEFAULT_RATE_DAY = 30;
 const ALL_DIMS: CheckDimension[] = [
   'origin',
   'manufacturer',
@@ -294,9 +295,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         return json(
           {
             ok: false,
-            error: 'Too many requests. Please wait and try again.',
+            error: `Too many requests. Limit: ${rateMin} checks per minute. Please wait about ${minute.retryAfterSec}s.`,
             code: 'rate_limited',
             jobId,
+            limit: rateMin,
+            window: 'minute',
+            retryAfterSec: minute.retryAfterSec,
           },
           429,
           { 'Retry-After': String(minute.retryAfterSec) }
@@ -312,9 +316,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         return json(
           {
             ok: false,
-            error: 'Daily limit reached. Please try again tomorrow.',
+            error: `Daily limit reached (${rateDay} checks per day). Please try again tomorrow.`,
             code: 'rate_limited_day',
             jobId,
+            limit: rateDay,
+            window: 'day',
+            retryAfterSec: day.retryAfterSec,
           },
           429,
           { 'Retry-After': String(day.retryAfterSec) }
@@ -329,9 +336,13 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return json(
         {
           ok: false,
-          error: 'A check is already running. Please wait.',
+          error:
+            'A check is already running (max 1 at a time). Please wait for it to finish.',
           code: 'rate_limited',
           jobId,
+          limit: 1,
+          window: 'inflight',
+          retryAfterSec: 30,
         },
         429,
         { 'Retry-After': '30' }
