@@ -28,7 +28,8 @@ export type ProgressStep = {
 
 export type RateLimitMeta = {
   limit?: number;
-  window?: 'minute' | 'day' | 'inflight' | string;
+  window?: 'short' | 'long' | 'minute' | 'day' | 'inflight' | string;
+  windowSec?: number;
   retryAfterSec?: number;
 };
 
@@ -67,6 +68,8 @@ function parseJsonPayload(data: Record<string, unknown>): CheckResponse {
             typeof data.limit === 'number' ? data.limit : undefined,
           window:
             typeof data.window === 'string' ? data.window : undefined,
+          windowSec:
+            typeof data.windowSec === 'number' ? data.windowSec : undefined,
           retryAfterSec:
             typeof data.retryAfterSec === 'number'
               ? data.retryAfterSec

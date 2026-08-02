@@ -123,16 +123,21 @@ export const en: MessageTree = {
     providerNotConfigured:
       'AI check is not configured. Add a key in .dev.vars and run `npm run pages:dev` (see README).',
     rateLimited:
-      'Free server RPM limit reached. Max 5 checks per minute (1 at a time). Please wait.',
+      'Free server limit: 1 check every 30 seconds. Please wait a bit.',
     rateLimitedDay:
-      'Free server daily limit reached (30 checks per day). Please try again tomorrow.',
+      'Free server limit: max 10 checks per 6 hours. Please try again later.',
     rateLimitBadge: 'Free server limit',
-    rateLimitFreeNote: 'Free server · max 5/min · 30/day · 1 at a time',
-    rateLimitRpmTitle: 'Free server RPM limit',
+    rateLimitFreeNote: 'Free server · 1 check / 30s · max 10 / 6 hours · 1 at a time',
+    rateLimitRpmTitle: 'Free server rate limit (30s)',
+    rateLimitedLongTitle: 'Free server 6-hour limit',
+    rateLimitShortDetail:
+      'Free server limit: {n} check(s) every {w}s. Wait about {s}s, then try again.',
+    rateLimitLongDetail:
+      'Free server limit: {n} checks per {h} hours. Try again in about {m} minutes.',
     rateLimitMinuteDetail:
-      'You hit the free server rate limit: {n} checks per minute. Wait about {s}s, then try again.',
+      'Free server limit: {n} check(s) every {w}s. Wait about {s}s, then try again.',
     rateLimitDayDetail:
-      'You hit the free server daily limit: {n} checks per day. Try again tomorrow.',
+      'Free server limit: {n} checks per {h} hours. Try again later.',
     rateLimitInflightDetail:
       'Free server allows only 1 check at a time. Wait for the current check to finish.',
     forbiddenOrigin: 'Request not allowed from this origin.',

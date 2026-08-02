@@ -65,14 +65,28 @@ export function CheckScreen({ state }: { state: AppState }) {
   const rateLimitMessage = (hit: RateHit): string => {
     const w = hit.meta?.window;
     const n = hit.meta?.limit;
-    const s = hit.meta?.retryAfterSec ?? 60;
-    if (hit.code === 'rate_limited_day' || w === 'day') {
-      return t('check.rateLimitDayDetail', { n: n ?? 30 });
+    const s = hit.meta?.retryAfterSec ?? 30;
+    const winSec = hit.meta?.windowSec;
+    if (hit.code === 'rate_limited_day' || w === 'long' || w === 'day') {
+      const hours = winSec
+        ? Math.max(1, Math.round(winSec / 3600))
+        : 6;
+      const waitMin = Math.max(1, Math.ceil(s / 60));
+      return t('check.rateLimitLongDetail', {
+        n: n ?? 10,
+        h: hours,
+        m: waitMin,
+      });
     }
     if (w === 'inflight') {
       return t('check.rateLimitInflightDetail');
     }
-    return t('check.rateLimitMinuteDetail', { n: n ?? 5, s });
+    // short / 30s RPM-style limit
+    return t('check.rateLimitShortDetail', {
+      n: n ?? 1,
+      w: winSec ?? 30,
+      s,
+    });
   };
 
   const runCheck = async () => {
@@ -303,8 +317,9 @@ export function CheckScreen({ state }: { state: AppState }) {
                 </span>
                 <strong className="rate-limit-title">
                   {rateHit.code === 'rate_limited_day' ||
+                  rateHit.meta?.window === 'long' ||
                   rateHit.meta?.window === 'day'
-                    ? t('check.rateLimitedDay')
+                    ? t('check.rateLimitedLongTitle')
                     : t('check.rateLimitRpmTitle')}
                 </strong>
               </div>

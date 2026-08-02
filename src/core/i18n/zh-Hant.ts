@@ -113,15 +113,20 @@ export const zhHant = {
       '僅供參考——依模型既有知識，非法律或制裁建議。AI 可能錯誤。',
     providerNotConfigured:
       '尚未設定 AI。請在 .dev.vars 加入金鑰，並執行 `npm run pages:dev`（見 README）。',
-    rateLimited: '已達免費伺服器每分鐘次數上限（每分鐘 5 次，同時 1 次）。請稍候。',
-    rateLimitedDay: '已達免費伺服器每日上限（每天 30 次）。請明天再試。',
+    rateLimited: '已達免費伺服器限制：每 30 秒 1 次。請稍候。',
+    rateLimitedDay: '已達免費伺服器限制：每 6 小時最多 10 次。請稍後再試。',
     rateLimitBadge: '免費伺服器限制',
-    rateLimitFreeNote: '免費伺服器 · 每分鐘最多 5 次 · 每天 30 次 · 同時 1 次',
-    rateLimitRpmTitle: '免費伺服器 RPM 限制',
+    rateLimitFreeNote: '免費伺服器 · 每 30 秒 1 次 · 每 6 小時最多 10 次 · 同時 1 次',
+    rateLimitRpmTitle: '免費伺服器速率限制（30 秒）',
+    rateLimitedLongTitle: '免費伺服器 6 小時上限',
+    rateLimitShortDetail:
+      '免費伺服器限制：每 {w} 秒 {n} 次。請約 {s} 秒後再試。',
+    rateLimitLongDetail:
+      '免費伺服器限制：每 {h} 小時 {n} 次。請約 {m} 分鐘後再試。',
     rateLimitMinuteDetail:
-      '已達免費伺服器每分鐘上限：{n} 次／分鐘。請約 {s} 秒後再試。',
+      '免費伺服器限制：每 {w} 秒 {n} 次。請約 {s} 秒後再試。',
     rateLimitDayDetail:
-      '已達免費伺服器每日上限：{n} 次／天。請明天再試。',
+      '免費伺服器限制：每 {h} 小時 {n} 次。請稍後再試。',
     rateLimitInflightDetail:
       '免費伺服器同時只能進行 1 次查詢。請等目前查詢完成。',
     forbiddenOrigin: '此來源不允許請求。',

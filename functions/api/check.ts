@@ -31,7 +31,17 @@ type Env = LlmEnv & {
   CHECK_ALLOWED_ORIGINS?: string;
   ASK_ALLOWED_ORIGINS?: string;
   CHECK_MODE?: string;
+  /** Max checks in short window (default 1) */
+  CHECK_RATE_SHORT_LIMIT?: string;
+  /** Short window seconds (default 30) */
+  CHECK_RATE_SHORT_WINDOW_SEC?: string;
+  /** Max checks in long window (default 10) */
+  CHECK_RATE_LONG_LIMIT?: string;
+  /** Long window seconds (default 21600 = 6 hours) */
+  CHECK_RATE_LONG_WINDOW_SEC?: string;
+  /** @deprecated use CHECK_RATE_SHORT_* */
   CHECK_RATE_PER_MINUTE?: string;
+  /** @deprecated use CHECK_RATE_LONG_* */
   CHECK_RATE_PER_DAY?: string;
   CHECK_CACHE_TTL_SEC?: string;
   LOG_IP_SALT?: string;
@@ -46,9 +56,15 @@ const ALLOWED_IMAGE_MIME = new Set([
   'image/png',
   'image/webp',
 ]);
-/** Public free-tier defaults (overridable via env). */
-const DEFAULT_RATE_MIN = 5;
-const DEFAULT_RATE_DAY = 30;
+/**
+ * Free-server defaults (overridable via env):
+ * - 1 check / 30 seconds
+ * - 10 checks / 6 hours
+ */
+const DEFAULT_SHORT_LIMIT = 1;
+const DEFAULT_SHORT_WINDOW_SEC = 30;
+const DEFAULT_LONG_LIMIT = 10;
+const DEFAULT_LONG_WINDOW_SEC = 6 * 60 * 60; // 6 hours
 const ALL_DIMS: CheckDimension[] = [
   'origin',
   'manufacturer',
@@ -281,50 +297,65 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       );
     }
 
-    const rateMin = Number(env.CHECK_RATE_PER_MINUTE) || DEFAULT_RATE_MIN;
-    const rateDay = Number(env.CHECK_RATE_PER_DAY) || DEFAULT_RATE_DAY;
+    const shortLimit =
+      Number(env.CHECK_RATE_SHORT_LIMIT) ||
+      Number(env.CHECK_RATE_PER_MINUTE) ||
+      DEFAULT_SHORT_LIMIT;
+    const shortWindowSec =
+      Number(env.CHECK_RATE_SHORT_WINDOW_SEC) || DEFAULT_SHORT_WINDOW_SEC;
+    const longLimit =
+      Number(env.CHECK_RATE_LONG_LIMIT) ||
+      Number(env.CHECK_RATE_PER_DAY) ||
+      DEFAULT_LONG_LIMIT;
+    const longWindowSec =
+      Number(env.CHECK_RATE_LONG_WINDOW_SEC) || DEFAULT_LONG_WINDOW_SEC;
 
     try {
-      const minute = await checkRateLimit({
+      // Short burst limit: default 1 check / 30s
+      const short = await checkRateLimit({
         key: ip,
-        limit: rateMin,
-        windowSec: 60,
-        namespace: 'check-min',
+        limit: shortLimit,
+        windowSec: shortWindowSec,
+        namespace: 'check-short-30s',
       });
-      if (!minute.ok) {
+      if (!short.ok) {
         return json(
           {
             ok: false,
-            error: `Free server RPM limit: ${rateMin} checks per minute. Wait about ${minute.retryAfterSec}s.`,
+            error: `Free server limit: max ${shortLimit} check(s) every ${shortWindowSec}s. Wait about ${short.retryAfterSec}s.`,
             code: 'rate_limited',
             jobId,
-            limit: rateMin,
-            window: 'minute',
-            retryAfterSec: minute.retryAfterSec,
+            limit: shortLimit,
+            window: 'short',
+            windowSec: shortWindowSec,
+            retryAfterSec: short.retryAfterSec,
           },
           429,
-          { 'Retry-After': String(minute.retryAfterSec) }
+          { 'Retry-After': String(short.retryAfterSec) }
         );
       }
-      const day = await checkRateLimit({
+      // Longer quota: default 10 checks / 6 hours
+      const long = await checkRateLimit({
         key: ip,
-        limit: rateDay,
-        windowSec: 86400,
-        namespace: 'check-day',
+        limit: longLimit,
+        windowSec: longWindowSec,
+        namespace: 'check-long-6h',
       });
-      if (!day.ok) {
+      if (!long.ok) {
+        const hours = Math.max(1, Math.round(longWindowSec / 3600));
         return json(
           {
             ok: false,
-            error: `Free server daily limit: ${rateDay} checks per day. Please try again tomorrow.`,
+            error: `Free server limit: max ${longLimit} checks per ${hours} hours. Please try again later (about ${Math.ceil(long.retryAfterSec / 60)} min).`,
             code: 'rate_limited_day',
             jobId,
-            limit: rateDay,
-            window: 'day',
-            retryAfterSec: day.retryAfterSec,
+            limit: longLimit,
+            window: 'long',
+            windowSec: longWindowSec,
+            retryAfterSec: long.retryAfterSec,
           },
           429,
-          { 'Retry-After': String(day.retryAfterSec) }
+          { 'Retry-After': String(long.retryAfterSec) }
         );
       }
     } catch {
