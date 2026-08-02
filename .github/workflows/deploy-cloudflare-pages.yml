@@ -1,0 +1,41 @@
+# Optional CI deploy — manual only (workflow_dispatch).
+# Default path for this project: deploy from your machine with `npm run deploy`.
+# Do not store API keys in the repo; use Cloudflare Pages secrets / local .dev.vars.
+
+name: Deploy Cloudflare Pages
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        env:
+          # Optional; set as GitHub Actions variable/secret if you want GTM in CI builds
+          VITE_GTM_ID: ${{ vars.VITE_GTM_ID }}
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=originwise

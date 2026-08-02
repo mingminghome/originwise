@@ -1,0 +1,31 @@
+# Copy to .dev.vars for `npm run pages:dev` (gitignored).
+# At least one provider key is required for live /api/check.
+#
+#   cp .dev.vars.example .dev.vars
+#   # edit .dev.vars — set GEMINI_API_KEY=...
+#   npm run pages:dev
+#
+# NOTE: Do not put VITE_* vars here — Wrangler secrets are for Functions only.
+# Client env (e.g. VITE_GTM_ID) belongs in .env / Cloudflare Pages *build* env.
+
+GEMINI_API_KEY=
+# OPENAI_API_KEY=
+# XAI_API_KEY=
+# ANTHROPIC_API_KEY=
+
+# Optional model overrides
+# GEMINI_MODEL=gemini-flash-lite-latest
+# OPENAI_MODEL=gpt-4o-mini
+# XAI_MODEL=grok-3-mini
+# ANTHROPIC_MODEL=claude-3-5-haiku-latest
+
+# CHECK_MODE=multi|dual|monolith
+#   multi   = sub-agents (identify/product/company/verify/alts) + AI pool (default when keys exist)
+#   dual    = 1–2 calls
+#   monolith = single LLM call
+# CHECK_ALLOWED_ORIGINS=http://localhost:8788
+# CHECK_RATE_PER_MINUTE=2
+# CHECK_RATE_PER_DAY=10
+# CHECK_CACHE_TTL_SEC=86400
+# POOL_DISABLE_PROVIDERS=
+# LOG_IP_SALT=

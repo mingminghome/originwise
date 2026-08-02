@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#111111" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="OriginWise" />
+    <meta name="application-name" content="OriginWise" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <title>OriginWise — China-related origin &amp; brand checker</title>
+    <meta
+      name="description"
+      content="OriginWise is a local-first web app to check product origin, manufacturer, and company relations related to China, plus optional brand alternatives. History stays on your device."
+    />
+    <meta name="robots" content="index,follow" />
+    <!-- GTM is injected at runtime from VITE_GTM_ID (see src/core/analytics/gtm.ts) -->
+    <style>
+      #ow-static-home {
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans TC',
+          sans-serif;
+        max-width: 40rem;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 3rem;
+        color: #111111;
+        line-height: 1.65;
+        background: #f2f2f2;
+        min-height: 100vh;
+        box-sizing: border-box;
+      }
+      #ow-static-home h1 {
+        font-size: 1.75rem;
+        margin: 0 0 0.75rem;
+      }
+      #ow-static-home .muted {
+        color: #6b6b6b;
+      }
+      html.ow-app-ready #ow-static-home {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="ow-static-home">
+      <h1>OriginWise</h1>
+      <p>
+        <strong>OriginWise</strong> helps you check whether a product, food
+        item, brand, or company is related to China — place of origin,
+        manufacturer, company relations, and optional alternatives.
+      </p>
+      <p class="muted">
+        Loading the full app… Enable JavaScript if nothing appears.
+      </p>
+      <p class="muted">
+        Informational only — not legal, trade, or sanctions advice. AI can be
+        wrong.
+      </p>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

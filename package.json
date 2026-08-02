@@ -1,0 +1,36 @@
+{
+  "name": "originwise",
+  "private": true,
+  "version": "0.2.0",
+  "description": "Local-first China-related product / brand / origin checker",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "test": "npx --yes tsx --test functions/_lib/synthesize.test.ts",
+    "preview": "vite preview",
+    "pages:dev": "npm run build && npx --yes wrangler pages dev dist --compatibility-date=2024-09-23",
+    "deploy": "npm run build && npx --yes wrangler pages deploy dist --project-name=originwise",
+    "deploy:preview": "npm run build && npx --yes wrangler pages deploy dist --project-name=originwise --branch=preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mingminghome/cn-related-check.git"
+  },
+  "dependencies": {
+    "lucide-react": "^1.25.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "oxlint": "^1.71.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1"
+  }
+}
