@@ -69,7 +69,7 @@ git init
 git add .
 git status                  # confirm .env / .dev.vars are NOT listed
 git commit -m "Initial commit: OriginWise"
-gh repo create cn-related-check --private --source=. --remote=origin --push
+gh repo create originwise --private --source=. --remote=origin --push
 ```
 
 CI deploy is **manual only** (optional). Prefer `npm run deploy` locally.
