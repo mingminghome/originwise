@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { Camera, Gauge, ImagePlus, Sparkles, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Camera, Gauge, ImagePlus, Sparkles, Square, X } from 'lucide-react';
 import type { ProgressStep, RateLimitMeta } from '../core/ai/client';
 import { engineRunCheck } from '../core/ai/engine';
 import { prepareCheckImage, type PreparedImage } from '../core/util/image';
@@ -13,6 +13,17 @@ type RateHit = {
   code: 'rate_limited' | 'rate_limited_day';
   meta?: RateLimitMeta;
 };
+
+/** Auto-retry only for short / inflight waits (not multi-hour caps). */
+function autoRetrySeconds(hit: RateHit): number | null {
+  const w = hit.meta?.window;
+  if (hit.code === 'rate_limited_day' || w === 'long' || w === 'day') {
+    return null;
+  }
+  const fallback = w === 'inflight' ? 15 : 30;
+  const s = hit.meta?.retryAfterSec ?? fallback;
+  return Math.max(1, Math.min(Math.ceil(s), 120));
+}
 
 export function CheckScreen({ state }: { state: AppState }) {
   const {
@@ -28,6 +39,8 @@ export function CheckScreen({ state }: { state: AppState }) {
   const [photo, setPhoto] = useState<PreparedImage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rateHit, setRateHit] = useState<RateHit | null>(null);
+  /** Seconds left until auto re-submit; null = not auto-retrying */
+  const [autoRetryLeft, setAutoRetryLeft] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CheckResult | null>(null);
   const [lastProvider, setLastProvider] = useState<string | null>(null);
@@ -35,10 +48,25 @@ export function CheckScreen({ state }: { state: AppState }) {
   const [progress, setProgress] = useState<ProgressStep[]>([]);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
+  const runCheckRef = useRef<() => Promise<void>>(async () => undefined);
 
   const canSubmit = Boolean(text.trim() || photo);
   const display = result ?? activeResult?.result ?? null;
+  const autoRetrying = autoRetryLeft != null;
   const showLanding = !display && !loading;
+
+  const cancelAutoRetry = useCallback(
+    (opts?: { quiet?: boolean }) => {
+      setAutoRetryLeft(null);
+      setRateHit(null);
+      if (!opts?.quiet) {
+        setError(t('check.rateLimitAutoCancelled'));
+      } else {
+        setError(null);
+      }
+    },
+    [t]
+  );
 
   const onPickPhoto = async (file: File | null | undefined) => {
     if (!file) return;
@@ -89,9 +117,10 @@ export function CheckScreen({ state }: { state: AppState }) {
     });
   };
 
-  const runCheck = async () => {
+  const runCheck = useCallback(async () => {
     setError(null);
     setRateHit(null);
+    setAutoRetryLeft(null);
     setResult(null);
     setActiveResult(null);
     setLastProvider(null);
@@ -132,6 +161,8 @@ export function CheckScreen({ state }: { state: AppState }) {
           };
           setRateHit(hit);
           setError(rateLimitMessage(hit));
+          const wait = autoRetrySeconds(hit);
+          if (wait != null) setAutoRetryLeft(wait);
           return;
         }
         const byCode: Record<string, string> = {
@@ -180,12 +211,46 @@ export function CheckScreen({ state }: { state: AppState }) {
     } finally {
       setLoading(false);
     }
-  };
+    // rateLimitMessage uses t; intentional deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable enough for submit flow
+  }, [
+    text,
+    photo,
+    settings.locale,
+    settings.geoScope,
+    settings.defaultDimensions,
+    t,
+    setActiveResult,
+    pushCheckHistory,
+  ]);
+
+  runCheckRef.current = () => runCheck();
+
+  // Countdown → auto-submit when free-server short/inflight limit clears
+  useEffect(() => {
+    if (autoRetryLeft == null) return;
+    if (autoRetryLeft <= 0) {
+      setAutoRetryLeft(null);
+      void runCheckRef.current();
+      return;
+    }
+    const id = window.setTimeout(() => {
+      setAutoRetryLeft((n) => (n == null ? null : n - 1));
+    }, 1000);
+    return () => window.clearTimeout(id);
+  }, [autoRetryLeft]);
+
+  // Unmount: drop pending auto-submit
+  useEffect(() => {
+    return () => {
+      setAutoRetryLeft(null);
+    };
+  }, []);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (canSubmit && !loading) void runCheck();
+      if (canSubmit && !loading && !autoRetrying) void runCheck();
     }
   };
 
@@ -200,6 +265,8 @@ export function CheckScreen({ state }: { state: AppState }) {
             setResult(null);
             setActiveResult(null);
             setError(null);
+            setRateHit(null);
+            setAutoRetryLeft(null);
           }}
         >
           OriginWise
@@ -292,15 +359,32 @@ export function CheckScreen({ state }: { state: AppState }) {
             </div>
           </div>
 
-          <button
-            type="button"
-            className="btn btn-primary check-search-submit"
-            disabled={loading || !canSubmit || Boolean(rateHit)}
-            onClick={() => void runCheck()}
-          >
-            <Sparkles size={16} />
-            {loading ? t('check.submitting') : t('check.submit')}
-          </button>
+          <div className="check-submit-row">
+            <button
+              type="button"
+              className="btn btn-primary check-search-submit"
+              disabled={loading || !canSubmit || autoRetrying}
+              onClick={() => void runCheck()}
+            >
+              <Sparkles size={16} />
+              {loading
+                ? t('check.submitting')
+                : autoRetrying
+                  ? t('check.rateLimitAutoIn', { s: autoRetryLeft ?? 0 })
+                  : t('check.submit')}
+            </button>
+            {autoRetrying ? (
+              <button
+                type="button"
+                className="btn btn-ghost check-auto-stop"
+                onClick={() => cancelAutoRetry()}
+                aria-label={t('check.rateLimitAutoStop')}
+              >
+                <Square size={14} fill="currentColor" />
+                {t('check.rateLimitAutoStop')}
+              </button>
+            ) : null}
+          </div>
 
           <p className="check-free-note muted">
             <Gauge size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
@@ -320,10 +404,27 @@ export function CheckScreen({ state }: { state: AppState }) {
                   rateHit.meta?.window === 'long' ||
                   rateHit.meta?.window === 'day'
                     ? t('check.rateLimitedLongTitle')
-                    : t('check.rateLimitRpmTitle')}
+                    : rateHit.meta?.window === 'inflight'
+                      ? t('check.rateLimitInflightTitle')
+                      : t('check.rateLimitRpmTitle')}
                 </strong>
               </div>
               <p className="rate-limit-detail">{rateLimitMessage(rateHit)}</p>
+              {autoRetrying ? (
+                <div className="rate-limit-auto-row">
+                  <p className="rate-limit-auto">
+                    {t('check.rateLimitAutoHint', { s: autoRetryLeft ?? 0 })}
+                  </p>
+                  <button
+                    type="button"
+                    className="btn btn-ghost rate-limit-stop-btn"
+                    onClick={() => cancelAutoRetry()}
+                  >
+                    <Square size={12} fill="currentColor" />
+                    {t('check.rateLimitAutoStop')}
+                  </button>
+                </div>
+              ) : null}
               <p className="rate-limit-policy muted">
                 {t('check.rateLimitFreeNote')}
               </p>

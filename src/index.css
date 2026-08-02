@@ -4310,6 +4310,51 @@ p {
   margin: 0;
   font-size: 0.78rem;
 }
+.rate-limit-auto-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin: 0 0 0.45rem;
+}
+.rate-limit-auto {
+  margin: 0;
+  flex: 1 1 12rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+}
+.rate-limit-stop-btn,
+.check-auto-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.rate-limit-stop-btn:hover,
+.check-auto-stop:hover {
+  border-color: var(--text-muted, var(--muted));
+}
+.check-submit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+.check-submit-row .check-search-submit {
+  flex: 1 1 auto;
+}
 
 /* AI pool list on result */
 .agents-pool-card {

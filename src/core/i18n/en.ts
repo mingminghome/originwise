@@ -130,6 +130,7 @@ export const en: MessageTree = {
     rateLimitFreeNote: 'Free server · 1 check / 30s · max 10 / 6 hours · 1 at a time',
     rateLimitRpmTitle: 'Free server rate limit (30s)',
     rateLimitedLongTitle: 'Free server 6-hour limit',
+    rateLimitInflightTitle: 'Check already in progress',
     rateLimitShortDetail:
       'Free server limit: {n} check(s) every {w}s. Wait about {s}s, then try again.',
     rateLimitLongDetail:
@@ -140,6 +141,10 @@ export const en: MessageTree = {
       'Free server limit: {n} checks per {h} hours. Try again later.',
     rateLimitInflightDetail:
       'Free server allows only 1 check at a time. Wait for the current check to finish.',
+    rateLimitAutoIn: 'Auto in {s}s…',
+    rateLimitAutoHint: 'Will auto-submit in {s}s when the free-server window opens.',
+    rateLimitAutoStop: 'Stop',
+    rateLimitAutoCancelled: 'Auto-submit cancelled. You can try again when ready.',
     forbiddenOrigin: 'Request not allowed from this origin.',
     badRequest: 'Invalid request.',
     parseError: 'Could not understand the answer. Please try again.',

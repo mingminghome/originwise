@@ -119,6 +119,7 @@ export const zhHant = {
     rateLimitFreeNote: '免費伺服器 · 每 30 秒 1 次 · 每 6 小時最多 10 次 · 同時 1 次',
     rateLimitRpmTitle: '免費伺服器速率限制（30 秒）',
     rateLimitedLongTitle: '免費伺服器 6 小時上限',
+    rateLimitInflightTitle: '已有查詢進行中',
     rateLimitShortDetail:
       '免費伺服器限制：每 {w} 秒 {n} 次。請約 {s} 秒後再試。',
     rateLimitLongDetail:
@@ -129,6 +130,10 @@ export const zhHant = {
       '免費伺服器限制：每 {h} 小時 {n} 次。請稍後再試。',
     rateLimitInflightDetail:
       '免費伺服器同時只能進行 1 次查詢。請等目前查詢完成。',
+    rateLimitAutoIn: '{s} 秒後自動送出…',
+    rateLimitAutoHint: '免費伺服器時段開放後，將於 {s} 秒後自動送出。',
+    rateLimitAutoStop: '停止',
+    rateLimitAutoCancelled: '已取消自動送出。準備好後可再試。',
     forbiddenOrigin: '此來源不允許請求。',
     badRequest: '請求無效。',
     parseError: '無法解析回覆，請再試一次。',
