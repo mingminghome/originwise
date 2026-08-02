@@ -161,6 +161,8 @@ export const en: MessageTree = {
     regionsTitle: 'Regions',
     altBrands: 'Similar brands (estimated)',
     altProducts: 'Similar products (estimated)',
+    altDisclaimer:
+      'Estimates only. Many appliances are made in China even if the brand is US/EU — we mark “Unknown” when manufacture is unclear instead of “Unrelated”.',
     estimated: 'est.',
     twNote: 'Taiwan is treated as a separate country and never as China-related for tiers.',
     region: {

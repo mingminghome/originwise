@@ -52,9 +52,13 @@ export type GraphEdge = {
 
 export type AlternativeItem = {
   name: string;
-  /** Advisory only — not decision-table certified */
+  /** Advisory — sanitized server-side; prefer unknown over false "none" */
   relationTier?: RelationTier;
   note?: string;
+  /** Manufacturing country if known (helps reject false "unrelated") */
+  madeIn?: string;
+  originCountry?: string;
+  hqCountry?: string;
 };
 
 export type CheckResult = {

@@ -315,6 +315,105 @@ function clampAltTier(raw: unknown): RelationTier | undefined {
   return clampTier(raw);
 }
 
+const CN_TEXT =
+  /\b(china|prc|mainland\s*china|people'?s\s*republic|made\s*in\s*cn|manufactured\s*in\s*china|中國|中国|中國大陸|中国大陆)\b/i;
+
+/**
+ * Sanitize LLM alternative tiers so we don't claim "Unrelated" for items
+ * commonly made in China (or with unknown manufacture).
+ */
+function sanitizeAlternative(
+  raw: {
+    name?: string;
+    relationTier?: unknown;
+    note?: string;
+    madeIn?: string;
+    originCountry?: string;
+    hqCountry?: string;
+    manufacturedIn?: string;
+  },
+  geoScope: GeoScope
+): {
+  name: string;
+  relationTier: RelationTier;
+  note?: string;
+  madeIn?: string;
+  originCountry?: string;
+  hqCountry?: string;
+} | null {
+  const name = String(raw.name ?? '').trim().slice(0, 80);
+  if (!name) return null;
+
+  const madeIn = raw.madeIn
+    ? String(raw.madeIn).trim().slice(0, 80)
+    : undefined;
+  const originCountry = raw.originCountry
+    ? String(raw.originCountry).trim().slice(0, 80)
+    : undefined;
+  const hqCountry = raw.hqCountry
+    ? String(raw.hqCountry).trim().slice(0, 80)
+    : undefined;
+  const noteRaw = raw.note ? String(raw.note).trim().slice(0, 220) : '';
+  const blob = [madeIn, originCountry, hqCountry, noteRaw, raw.manufacturedIn]
+    .filter(Boolean)
+    .join(' ');
+
+  const madeRegion = normalizeRegion(
+    madeIn || raw.manufacturedIn || originCountry
+  );
+  const hqRegion = normalizeRegion(hqCountry);
+  let tier = clampAltTier(raw.relationTier) ?? 'unknown';
+
+  const textSaysCn = CN_TEXT.test(blob);
+  const madeInCn = inScope(madeRegion, geoScope) || textSaysCn;
+  const hqInCn = inScope(hqRegion, geoScope);
+
+  if (madeInCn || hqInCn) {
+    // Manufacturing/HQ in scope → at least indirect; pure made-in CN → direct
+    if (
+      madeRegion === 'CN' ||
+      textSaysCn ||
+      (hqRegion === 'CN' && madeRegion === 'CN')
+    ) {
+      tier = 'direct';
+    } else if (tier === 'none' || tier === 'unknown') {
+      tier = 'indirect';
+    }
+  } else if (tier === 'none') {
+    // "Unrelated" requires explicit non-CN *manufacturing* evidence.
+    // HQ in USA/EU alone is NOT enough (e.g. Bissell/Shark units often made in CN).
+    const madeExplicitlyNonCn = isOutOfScopeGeo(madeRegion, geoScope);
+    const madeMissingOrVague =
+      !madeIn ||
+      madeRegion === 'UNKNOWN' ||
+      /^unknown|n\/a|null|unclear|various|varies|multiple|asia$/i.test(
+        madeIn
+      );
+    if (!madeExplicitlyNonCn || madeMissingOrVague) {
+      tier = 'unknown';
+    }
+  }
+
+  let note = noteRaw || undefined;
+  if (madeIn && note && !note.toLowerCase().includes(madeIn.toLowerCase())) {
+    note = `${note} · Made in: ${madeIn}`.slice(0, 220);
+  } else if (madeIn && !note) {
+    note = `Made in: ${madeIn}`;
+  }
+  if (tier === 'unknown' && !note) {
+    note = 'China link unclear — do not treat as confirmed non-China.';
+  }
+
+  return {
+    name,
+    relationTier: tier,
+    note,
+    madeIn,
+    originCountry,
+    hqCountry,
+  };
+}
+
 /**
  * Deterministic synthesize. Safe for Workers CPU budget.
  */
@@ -399,21 +498,23 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   }
 
   const alts = partials.alternatives;
+  const brandsSan = (alts?.brands ?? [])
+    .map((b) => sanitizeAlternative(b as Parameters<typeof sanitizeAlternative>[0], geoScope))
+    .filter((x): x is NonNullable<typeof x> => Boolean(x))
+    .slice(0, ALT_CAP);
+  const productsSan = (alts?.products ?? [])
+    .map((b) => sanitizeAlternative(b as Parameters<typeof sanitizeAlternative>[0], geoScope))
+    .filter((x): x is NonNullable<typeof x> => Boolean(x))
+    .slice(0, ALT_CAP);
   const alternatives =
-    alts && (alts.brands?.length || alts.products?.length)
-      ? {
-          brands: (alts.brands ?? []).slice(0, ALT_CAP).map((b) => ({
-            name: String(b.name).slice(0, 80),
-            relationTier: clampAltTier(b.relationTier),
-            note: b.note ? String(b.note).slice(0, 200) : undefined,
-          })),
-          products: (alts.products ?? []).slice(0, ALT_CAP).map((b) => ({
-            name: String(b.name).slice(0, 80),
-            relationTier: clampAltTier(b.relationTier),
-            note: b.note ? String(b.note).slice(0, 200) : undefined,
-          })),
-        }
+    brandsSan.length || productsSan.length
+      ? { brands: brandsSan, products: productsSan }
       : undefined;
+  if (alternatives) {
+    caveats.push(
+      'Similar brands/products tiers are estimates; many appliances are made in China even if HQ is elsewhere.'
+    );
+  }
 
   const degraded = Boolean(
     partials.productFailed ||

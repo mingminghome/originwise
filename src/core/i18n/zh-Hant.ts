@@ -150,6 +150,8 @@ export const zhHant = {
     regionsTitle: '地區',
     altBrands: '類似品牌（估計）',
     altProducts: '類似產品（估計）',
+    altDisclaimer:
+      '僅供估計。許多家電即使是歐美品牌也常在中國製造——產地不明時會標「未知」，不會輕易標「無直接關聯」。',
     estimated: '估計',
     twNote: '台灣一律視為獨立國家／地區，永不計入「中國相關」分級。',
     region: {

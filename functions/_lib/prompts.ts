@@ -80,12 +80,18 @@ Return ONLY JSON:
     "caveats": ["string"]
   },
   "alternatives": {
-    "brands": [{"name":"string","relationTier":"none|indirect|direct|unknown","note":"string"}],
-    "products": [{"name":"string","relationTier":"none|indirect|direct|unknown","note":"string"}]
+    "brands": [{"name":"string","madeIn":"string","hqCountry":"string","relationTier":"none|indirect|direct|unknown","note":"string"}],
+    "products": [{"name":"string","madeIn":"string","originCountry":"string","relationTier":"none|indirect|direct|unknown","note":"string"}]
   }
 }
-Omit alternatives.brands/products if not requested in dimensions.
-Omit fields you cannot support; use null-safe short strings. Max 6 alternatives each.
+ALTERNATIVES RULES (critical — do not mislead users):
+- Many appliances (steam cleaners, vacuums, small appliances) are MADE IN CHINA even if the brand HQ is US/EU.
+- relationTier "none" ONLY if you are confident made-in AND ownership are outside mainland China.
+- If made-in is China / PRC → relationTier "direct" (or "indirect" only if assembly is mixed and HQ is clearly non-CN).
+- If you do not know made-in for a product, use relationTier "unknown" — NEVER invent "none" / "Unrelated".
+- Prefer alternatives that are more clearly non-CN when possible; if none are reliable, still list options but mark "unknown" or "direct" honestly.
+- Max 6 each; short notes that mention made-in country when known.
+Omit alternatives if not requested in dimensions.
 
 ${fence('user_context', opts.ocrHint ? `OCR/entity hint: ${opts.ocrHint}` : '')}
 ${fence('user_item', opts.text || (opts.hasImage ? '(see attached photo)' : ''))}`;
@@ -184,11 +190,23 @@ export function buildAlternativesPrompt(opts: {
   contextJson: string;
 }): string {
   const lang = langLabel(opts.locale);
-  return `Suggest similar non-PRC-focused alternatives when possible. relationTier is advisory only. Respond in ${lang}.
+  return `Suggest similar product/brand alternatives for a quick China-relation compare. Respond in ${lang}.
 ${GEO_POLICY}
+
+CRITICAL ACCURACY (users get misled by false "unrelated"):
+- Do NOT assume a US/EU brand means products are not made in China. Many cleaning appliances (Bissell, Shark, etc.) have major manufacturing in China.
+- For each item set madeIn / originCountry / hqCountry when you know them (country name strings).
+- relationTier rules:
+  - "direct" = typically made in mainland China, or clear PRC HQ/ownership for that product line
+  - "indirect" = mixed supply chain / assembly / weaker PRC links
+  - "none" = ONLY if made-in is clearly outside mainland China AND company is not PRC-controlled (rare for small appliances — be careful)
+  - "unknown" = default when made-in is unclear — PREFER unknown over none
+- Notes should mention made-in when known (e.g. "Often made in China" / "HQ Germany, units vary").
+- Prefer alternatives that may be less China-linked when you can, but never fake "none".
+
 Return ONLY JSON:
-{"brands":[{"name":"string","relationTier":"none|indirect|direct|unknown","note":"string"}],"products":[{"name":"string","relationTier":"none|indirect|direct|unknown","note":"string"}]}
-Include brands: ${opts.wantBrands}. Include products: ${opts.wantProducts}. Max 6 each.
+{"brands":[{"name":"string","madeIn":"string","hqCountry":"string","relationTier":"none|indirect|direct|unknown","note":"string"}],"products":[{"name":"string","madeIn":"string","originCountry":"string","relationTier":"none|indirect|direct|unknown","note":"string"}]}
+Include brands: ${opts.wantBrands}. Include products: ${opts.wantProducts}. Max 4 each (quality over quantity).
 
 ${fence('entity', opts.entity)}
 ${fence('context', opts.contextJson)}`;

@@ -14,7 +14,14 @@ export function AlternativeCards({
   if (!brands.length && !products.length) return null;
 
   const renderItem = (
-    b: { name: string; relationTier?: RelationTier; note?: string },
+    b: {
+      name: string;
+      relationTier?: RelationTier;
+      note?: string;
+      madeIn?: string;
+      originCountry?: string;
+      hqCountry?: string;
+    },
     key: string
   ) => (
     <li key={key} className="alt-card">
@@ -31,12 +38,24 @@ export function AlternativeCards({
           </span>
         ) : null}
       </div>
+      {b.madeIn || b.originCountry || b.hqCountry ? (
+        <p className="muted alt-geo">
+          {[
+            b.madeIn ? `${t('check.madeIn')}: ${b.madeIn}` : null,
+            b.originCountry ? `${t('check.origin')}: ${b.originCountry}` : null,
+            b.hqCountry ? `${t('check.hq')}: ${b.hqCountry}` : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+      ) : null}
       {b.note ? <p className="muted">{b.note}</p> : null}
     </li>
   );
 
   return (
     <div className="alt-cards">
+      <p className="muted alt-disclaimer">{t('check.altDisclaimer')}</p>
       {brands.length ? (
         <div>
           <h3 className="result-section-title">{t('check.altBrands')}</h3>

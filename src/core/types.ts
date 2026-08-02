@@ -113,8 +113,22 @@ export type CheckResult = {
     caveats?: string[];
   };
   alternatives?: {
-    brands?: Array<{ name: string; relationTier?: RelationTier; note?: string }>;
-    products?: Array<{ name: string; relationTier?: RelationTier; note?: string }>;
+    brands?: Array<{
+      name: string;
+      relationTier?: RelationTier;
+      note?: string;
+      madeIn?: string;
+      originCountry?: string;
+      hqCountry?: string;
+    }>;
+    products?: Array<{
+      name: string;
+      relationTier?: RelationTier;
+      note?: string;
+      madeIn?: string;
+      originCountry?: string;
+      hqCountry?: string;
+    }>;
   };
   graph?: {
     nodes: Array<{
