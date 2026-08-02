@@ -3965,3 +3965,36 @@ p {
     animation: none !important;
   }
 }
+
+.how-flow-group {
+  fill: var(--bg-subtle);
+  stroke: var(--border);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+.how-flow-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--text-muted);
+}
+.how-flow-caption--strong {
+  fill: var(--text);
+  font-weight: 800;
+}
+.how-flow-legend {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.how-flow-legend li {
+  margin-bottom: 0.35rem;
+}
+.how-flow-legend strong {
+  color: var(--text);
+}
+/* 4-tab bottom nav: slightly smaller labels */
+.bottom-nav button {
+  font-size: 0.68rem;
+}

@@ -4,6 +4,7 @@ export const zhHant = {
   tabs: {
     check: '查詢',
     history: '紀錄',
+    info: '說明',
     settings: '設定',
   },
   common: {
@@ -195,22 +196,36 @@ export const zhHant = {
     privacy: '無需帳號。查詢紀錄留在這台手機／瀏覽器。',
     license: 'MIT 授權',
   },
+  info: {
+    title: '說明',
+    subtitle: '如何運作與關於本 App',
+  },
   how: {
     title: '如何運作',
     subtitle: '快速查是否與中國相關——保持簡單',
     aimTitle: '這個 App 做什麼',
     aimBody:
       '幫你快速判斷產品或品牌是否看起來與中國相關——例如產地、公司關聯等。不是深度研究工具，也不是法律查核。',
-    stepsTitle: '三個步驟',
+    stepsTitle: '白話說明',
     step1Title: '你提供資料',
     step1Body: '產品名稱、品牌，或包裝照片。',
     step2Title: 'AI 幫你查',
     step2Body:
-      '多個小檢查一起跑：產品產地、公司、以及快速交叉比對。若你有開啟，也可看類似品牌／產品。',
+      '小檢查：產品產地與公司（一起），再做快速交叉比對。若有開啟，也可看類似品牌。',
     step3Title: '得到簡單結果',
     step3Body:
       '彩色標籤：無直接關聯、間接、直接、或未知——並附上簡短原因。',
-    graphTitle: '流程圖',
+    graphTitle: '完整流程',
+    graphHint: '從你輸入到彩色結果。',
+    flowYou: '你（名稱／照片）',
+    flowAi: 'AI 檢查',
+    flowProduct: '產品產地',
+    flowCompany: '公司',
+    flowVerify: '交叉比對',
+    flowScore: '簡單評分',
+    flowResult: '彩色結果',
+    flowAiDetail: '先查產品產地與公司，再做快速交叉比對。',
+    flowScoreDetail: '把答案合成一個簡單分數。',
     badgeTitle: '顏色代表什麼',
     badgeNone: '無直接關聯 — 沒有清楚的中國關聯',
     badgeIndirect: '間接 — 較弱或部分關聯',

@@ -2,34 +2,27 @@ import { Camera, Search, Sparkles } from 'lucide-react';
 import type { AppState } from '../hooks/useAppState';
 import { TierBadge } from './TierBadge';
 
-/** Simple flow diagram — plain language, not technical. */
+/** Full simple flow: you → AI parts → score → result */
 function FlowGraph({
-  labels,
+  t,
 }: {
-  labels: { you: string; ai: string; result: string };
+  t: AppState['t'];
 }) {
   const w = 320;
-  const h = 168;
+  const h = 280;
   return (
     <svg
       className="how-flow-svg"
       viewBox={`0 0 ${w} ${h}`}
       width="100%"
       role="img"
-      aria-label={`${labels.you} → ${labels.ai} → ${labels.result}`}
+      aria-label={t('how.graphTitle')}
     >
-      {/* boxes */}
-      <rect x="12" y="48" width="84" height="56" rx="12" className="how-flow-box" />
-      <rect x="118" y="48" width="84" height="56" rx="12" className="how-flow-box" />
-      <rect x="224" y="48" width="84" height="56" rx="12" className="how-flow-box how-flow-box--accent" />
-      {/* arrows */}
-      <path d="M98 76 H114" className="how-flow-arrow" markerEnd="url(#how-arrow)" />
-      <path d="M204 76 H220" className="how-flow-arrow" markerEnd="url(#how-arrow)" />
       <defs>
         <marker
           id="how-arrow"
-          markerWidth="8"
-          markerHeight="8"
+          markerWidth="7"
+          markerHeight="7"
           refX="6"
           refY="3"
           orient="auto"
@@ -37,24 +30,71 @@ function FlowGraph({
           <path d="M0,0 L6,3 L0,6 Z" className="how-flow-arrow-head" />
         </marker>
       </defs>
-      {/* icons as simple circles + text */}
-      <text x="54" y="72" textAnchor="middle" className="how-flow-emoji">
+
+      {/* 1. You */}
+      <rect x="100" y="8" width="120" height="40" rx="10" className="how-flow-box" />
+      <text x="160" y="26" textAnchor="middle" className="how-flow-emoji">
         1
       </text>
-      <text x="54" y="90" textAnchor="middle" className="how-flow-caption">
-        {labels.you}
+      <text x="160" y="40" textAnchor="middle" className="how-flow-caption">
+        {t('how.flowYou')}
       </text>
-      <text x="160" y="72" textAnchor="middle" className="how-flow-emoji">
-        2
+
+      <path d="M160 48 V58" className="how-flow-arrow" markerEnd="url(#how-arrow)" />
+
+      {/* 2. AI group */}
+      <rect
+        x="24"
+        y="62"
+        width="272"
+        height="118"
+        rx="14"
+        className="how-flow-group"
+      />
+      <text x="160" y="80" textAnchor="middle" className="how-flow-group-label">
+        {t('how.flowAi')}
       </text>
-      <text x="160" y="90" textAnchor="middle" className="how-flow-caption">
-        {labels.ai}
+
+      {/* product + company side by side */}
+      <rect x="40" y="92" width="100" height="36" rx="8" className="how-flow-box" />
+      <text x="90" y="114" textAnchor="middle" className="how-flow-caption">
+        {t('how.flowProduct')}
       </text>
-      <text x="266" y="72" textAnchor="middle" className="how-flow-emoji">
-        3
+      <rect x="180" y="92" width="100" height="36" rx="8" className="how-flow-box" />
+      <text x="230" y="114" textAnchor="middle" className="how-flow-caption">
+        {t('how.flowCompany')}
       </text>
-      <text x="266" y="90" textAnchor="middle" className="how-flow-caption">
-        {labels.result}
+
+      <path d="M90 128 V140" className="how-flow-arrow" markerEnd="url(#how-arrow)" />
+      <path d="M230 128 V140" className="how-flow-arrow" markerEnd="url(#how-arrow)" />
+      <path d="M90 148 H230" className="how-flow-arrow" />
+
+      <rect x="100" y="140" width="120" height="28" rx="8" className="how-flow-box" />
+      <text x="160" y="158" textAnchor="middle" className="how-flow-caption">
+        {t('how.flowVerify')}
+      </text>
+
+      <path d="M160 180 V192" className="how-flow-arrow" markerEnd="url(#how-arrow)" />
+
+      {/* 3. Score */}
+      <rect x="100" y="196" width="120" height="32" rx="10" className="how-flow-box" />
+      <text x="160" y="216" textAnchor="middle" className="how-flow-caption">
+        {t('how.flowScore')}
+      </text>
+
+      <path d="M160 228 V240" className="how-flow-arrow" markerEnd="url(#how-arrow)" />
+
+      {/* 4. Result */}
+      <rect
+        x="88"
+        y="244"
+        width="144"
+        height="28"
+        rx="10"
+        className="how-flow-box how-flow-box--accent"
+      />
+      <text x="160" y="262" textAnchor="middle" className="how-flow-caption how-flow-caption--strong">
+        {t('how.flowResult')}
       </text>
     </svg>
   );
@@ -65,7 +105,14 @@ export function HowItWorksScreen({ state }: { state: AppState }) {
 
   return (
     <>
-      <header className="app-header">
+      <header className="app-header settings-subhead">
+        <button
+          type="button"
+          className="settings-back"
+          onClick={() => setTab('info')}
+        >
+          {t('common.back')}
+        </button>
         <div>
           <h1>{t('how.title')}</h1>
           <p className="subtitle">{t('how.subtitle')}</p>
@@ -79,13 +126,22 @@ export function HowItWorksScreen({ state }: { state: AppState }) {
 
       <section className="card stack">
         <h2 className="result-section-title">{t('how.graphTitle')}</h2>
-        <FlowGraph
-          labels={{
-            you: t('how.step1Title').slice(0, 12),
-            ai: t('how.step2Title').slice(0, 12),
-            result: t('how.step3Title').slice(0, 12),
-          }}
-        />
+        <p className="muted settings-hint">{t('how.graphHint')}</p>
+        <FlowGraph t={t} />
+        <ul className="how-flow-legend muted">
+          <li>
+            <strong>1.</strong> {t('how.step1Body')}
+          </li>
+          <li>
+            <strong>2.</strong> {t('how.flowAiDetail')}
+          </li>
+          <li>
+            <strong>3.</strong> {t('how.flowScoreDetail')}
+          </li>
+          <li>
+            <strong>4.</strong> {t('how.step3Body')}
+          </li>
+        </ul>
       </section>
 
       <section className="card stack">
@@ -159,13 +215,6 @@ export function HowItWorksScreen({ state }: { state: AppState }) {
         onClick={() => setTab('check')}
       >
         {t('how.tryBtn')}
-      </button>
-      <button
-        type="button"
-        className="btn btn-ghost btn-block"
-        onClick={() => setTab('settings')}
-      >
-        {t('common.back')}
       </button>
     </>
   );

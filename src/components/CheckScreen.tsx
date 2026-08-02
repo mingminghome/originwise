@@ -145,7 +145,7 @@ export function CheckScreen({ state }: { state: AppState }) {
           <button
             type="button"
             className="check-how-link"
-            onClick={() => setTab('how')}
+            onClick={() => setTab('info')}
           >
             {t('check.howLink')}
           </button>

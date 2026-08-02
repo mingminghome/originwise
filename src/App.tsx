@@ -4,6 +4,7 @@ import { BottomNav } from './components/BottomNav';
 import { CheckScreen } from './components/CheckScreen';
 import { HistoryScreen } from './components/HistoryScreen';
 import { HowItWorksScreen } from './components/HowItWorksScreen';
+import { InfoScreen } from './components/InfoScreen';
 import { InstallAppBanner } from './components/InstallAppBanner';
 import { SettingsScreen } from './components/SettingsScreen';
 import { WelcomeDisclaimer } from './components/WelcomeDisclaimer';
@@ -34,6 +35,7 @@ export default function App() {
           <InstallAppBanner t={t} />
           {tab === 'check' && <CheckScreen state={state} />}
           {tab === 'history' && <HistoryScreen state={state} />}
+          {tab === 'info' && <InfoScreen state={state} />}
           {tab === 'settings' && <SettingsScreen state={state} />}
           {tab === 'about' && <AboutScreen state={state} />}
           {tab === 'how' && <HowItWorksScreen state={state} />}

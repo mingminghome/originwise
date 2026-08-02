@@ -1,10 +1,11 @@
-import { History, Search, Settings } from 'lucide-react';
+import { CircleHelp, History, Search, Settings } from 'lucide-react';
 import type { TFunction } from '../core/i18n';
 import type { TabId } from '../hooks/useAppState';
 
 const items: Array<{ id: TabId; icon: typeof Search; labelKey: string }> = [
   { id: 'check', icon: Search, labelKey: 'tabs.check' },
   { id: 'history', icon: History, labelKey: 'tabs.history' },
+  { id: 'info', icon: CircleHelp, labelKey: 'tabs.info' },
   { id: 'settings', icon: Settings, labelKey: 'tabs.settings' },
 ];
 
@@ -22,7 +23,7 @@ export function BottomNav({
       {items.map(({ id, icon: Icon, labelKey }) => {
         const active =
           tab === id ||
-          (id === 'settings' && (tab === 'about' || tab === 'how'));
+          (id === 'info' && (tab === 'about' || tab === 'how'));
         return (
           <button
             key={id}

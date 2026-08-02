@@ -7,6 +7,7 @@ export const en: MessageTree = {
   tabs: {
     check: 'Check',
     history: 'History',
+    info: 'Info',
     settings: 'Settings',
   },
   common: {
@@ -205,22 +206,37 @@ export const en: MessageTree = {
     privacy: 'No account. Your history stays on this phone/browser.',
     license: 'MIT License',
   },
+  info: {
+    title: 'Info',
+    subtitle: 'How it works & about the app',
+  },
   how: {
     title: 'How it works',
     subtitle: 'Fast China-related check — keep it simple',
     aimTitle: 'What this app is for',
     aimBody:
       'Help you quickly see if a product or brand looks China-related — made there, company links, and so on. Not a deep research tool, not a legal check.',
-    stepsTitle: 'In 3 steps',
+    stepsTitle: 'In simple words',
     step1Title: 'You send something',
     step1Body: 'A product name, brand, or a photo of the package.',
     step2Title: 'We look it up with AI',
     step2Body:
-      'Several small checks run together: product place, company, and a quick double-check. Optional: similar brands/products if you turn that on.',
+      'Small checks run: product place and company (together), then a quick double-check. Optional: similar brands if you turn that on.',
     step3Title: 'You get a simple result',
     step3Body:
       'A color badge: Unrelated, Indirect, Direct, or Unknown — plus a short why.',
-    graphTitle: 'The flow',
+    graphTitle: 'Full flow',
+    graphHint: 'From your input to the color badge.',
+    flowYou: 'You (name / photo)',
+    flowAi: 'AI checks',
+    flowProduct: 'Product place',
+    flowCompany: 'Company',
+    flowVerify: 'Double-check',
+    flowScore: 'Simple score',
+    flowResult: 'Color result',
+    flowAiDetail:
+      'Product place + company run first, then a quick double-check.',
+    flowScoreDetail: 'We combine the answers into one simple score.',
     badgeTitle: 'What the colors mean',
     badgeNone: 'Unrelated — no clear China link found',
     badgeIndirect: 'Indirect — weaker or partial link',

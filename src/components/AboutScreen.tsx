@@ -7,7 +7,14 @@ export function AboutScreen({ state }: { state: AppState }) {
   const { t, setTab } = state;
   return (
     <>
-      <header className="app-header">
+      <header className="app-header settings-subhead">
+        <button
+          type="button"
+          className="settings-back"
+          onClick={() => setTab('info')}
+        >
+          {t('common.back')}
+        </button>
         <div>
           <h1>{t('about.title')}</h1>
           <p className="subtitle">
@@ -40,13 +47,6 @@ export function AboutScreen({ state }: { state: AppState }) {
             {PROJECT.repoLabel}
           </a>
         </div>
-        <button
-          type="button"
-          className="btn btn-ghost btn-block"
-          onClick={() => setTab('settings')}
-        >
-          {t('common.back')}
-        </button>
       </section>
     </>
   );

@@ -2,8 +2,6 @@ import { useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
-  HelpCircle,
-  Info,
   Languages,
   Search,
   Trash2,
@@ -215,31 +213,6 @@ export function SettingsScreen({ state }: { state: AppState }) {
           <span>
             <Trash2 size={16} style={{ verticalAlign: -2, marginRight: 8 }} />
             {t('settings.panelData')}
-          </span>
-          <ChevronRight size={18} />
-        </button>
-      </section>
-
-      <section className="card settings-menu">
-        <button
-          type="button"
-          className="settings-row"
-          onClick={() => setTab('how')}
-        >
-          <span>
-            <HelpCircle size={16} style={{ verticalAlign: -2, marginRight: 8 }} />
-            {t('settings.howItWorks')}
-          </span>
-          <ChevronRight size={18} />
-        </button>
-        <button
-          type="button"
-          className="settings-row"
-          onClick={() => setTab('about')}
-        >
-          <span>
-            <Info size={16} style={{ verticalAlign: -2, marginRight: 8 }} />
-            {t('settings.about')}
           </span>
           <ChevronRight size={18} />
         </button>
