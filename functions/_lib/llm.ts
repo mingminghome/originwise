@@ -42,7 +42,9 @@ export const ASK_PROVIDERS: AskProviderId[] = [
  * Free-tier / cost-biased model chains (tried in order until one succeeds).
  * Order: higher free caps / cheaper first, then quality fallbacks, then legacy ids.
  *
- * OpenAI data-sharing (when opted in): mini/nano ~10M tok/day; flagship ~1M/day.
+ * OpenAI Free tier (usage tiers): prefer high-limit mini models.
+ *   Typical Free: ~50 RPD shared, mini e.g. gpt-5.4-mini ~100k TPM / 10 RPM / 200k TPD
+ *   Flagship (gpt-5.5 etc.) is worse for free (3 RPM / 10k TPM) — avoid first.
  * Gemini: Flash-Lite free RPD is typically higher than Flash.
  * Claude: Haiku is the low-cost tier (trial credits go furthest).
  * Grok: credits apply to any model; start with current flagship, then cheaper ids.
@@ -58,11 +60,16 @@ export const FREE_TIER_MODEL_CHAINS: Record<AskProviderId, readonly string[]> = 
     'gemini-2.0-flash',
   ],
   openai: [
-    'gpt-4.1-mini',
+    // Free-tier friendly (higher TPM/RPM on Free org limits)
+    'gpt-5.4-mini',
+    'gpt-5.6-luna',
+    // Legacy free/data-share mini ids (if still enabled on the org)
     'gpt-5-mini',
+    'gpt-4.1-mini',
     'gpt-4.1-nano',
-    'gpt-5-nano',
     'gpt-4o-mini',
+    // Last resort — low Free RPM/TPM
+    'gpt-5.5',
   ],
   grok: [
     'grok-4.5',
@@ -263,6 +270,11 @@ function openAiUserContent(
   ];
 }
 
+/** GPT-5+ chat models often want max_completion_tokens and omit temperature. */
+function isOpenAiGpt5Family(model: string): boolean {
+  return /^gpt-5/i.test(model.trim());
+}
+
 async function callOpenAiCompatible(opts: {
   baseUrl: string;
   apiKey: string;
@@ -271,15 +283,25 @@ async function callOpenAiCompatible(opts: {
   image?: LlmImage;
   /** OpenAI supports json_object; xAI often does too */
   jsonMode?: boolean;
+  /** OpenAI GPT-5 path vs classic max_tokens (xAI stays classic) */
+  openAiStyle?: boolean;
 }): Promise<CallOnce> {
+  const openAi = opts.openAiStyle !== false && opts.baseUrl.includes('api.openai.com');
+  const gpt5 = openAi && isOpenAiGpt5Family(opts.model);
+
   const body: Record<string, unknown> = {
     model: opts.model,
     messages: [
       { role: 'user', content: openAiUserContent(opts.prompt, opts.image) },
     ],
-    temperature: 0.15,
-    max_tokens: MAX_OUTPUT_TOKENS,
   };
+  if (gpt5) {
+    // Reasoning/chat GPT-5 family: use max_completion_tokens; default temperature
+    body.max_completion_tokens = MAX_OUTPUT_TOKENS;
+  } else {
+    body.temperature = 0.15;
+    body.max_tokens = MAX_OUTPUT_TOKENS;
+  }
   if (opts.jsonMode !== false) {
     body.response_format = { type: 'json_object' };
   }

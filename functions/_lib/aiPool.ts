@@ -4,7 +4,7 @@
  *
  * Free-tier reality (2026):
  * - Gemini: real free Flash-Lite RPD (most reliable free API)
- * - OpenAI: free tokens only with data-sharing opt-in (else quota)
+ * - OpenAI Free tier: low RPD (~50/day); prefer mini (gpt-5.4-mini) over flagship
  * - Anthropic: one-time trial credits, not ongoing free
  * - xAI: trial/credits required; no unlimited free model
  *

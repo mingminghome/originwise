@@ -11,7 +11,8 @@
 # Gemini = most reliable free API (leave this on)
 GEMINI_API_KEY=
 # Optional free-ish keys — only uncomment if that console actually has free quota:
-#   OpenAI: data-sharing opt-in required or you get upstream_quota
+#   OpenAI Free tier: low RPD (~50/day) + model TPM/RPM. Prefer mini (gpt-5.4-mini).
+#     upstream_quota = hit RPM/RPD/TPD or no usable Free access — check Usage Tiers.
 #   Anthropic: trial credits only (no ongoing free tier)
 #   xAI: needs trial/credits (no unlimited free)
 # OPENAI_API_KEY=
@@ -25,8 +26,9 @@ GEMINI_API_KEY=
 #
 # Free-tier-biased chains (see functions/_lib/llm.ts FREE_TIER_MODEL_CHAINS):
 #   Gemini  : flash-lite → 3.5/3.1/2.5 flash-lite → flash fallbacks
-#   OpenAI  : gpt-4.1-mini → gpt-5-mini → nano → gpt-4o-mini
-#             (data-sharing: mini/nano ~10M tok/day; large ~1M/day — opt in)
+#   OpenAI  : gpt-5.4-mini → gpt-5.6-luna → legacy mini → gpt-5.5 last
+#             Free org example limits: mini ~100k TPM / 10 RPM / 50 RPD / 200k TPD
+#             Flagship gpt-5.5: ~10k TPM / 3 RPM / 50 RPD (avoid for pool)
 #   Grok    : grok-4.5 → grok-4.3 → grok-4.20 non-reasoning → grok-4
 #   Claude  : claude-haiku-4-5 → dated haiku snapshot
 # ---------------------------------------------------------------------------
@@ -36,7 +38,7 @@ GEMINI_API_KEY=
 # ANTHROPIC_MODEL=auto
 #
 # Pin examples (still falls back if that model fails):
-# OPENAI_MODEL=gpt-4.1-mini
+# OPENAI_MODEL=gpt-5.4-mini
 # XAI_MODEL=grok-4.5
 # ANTHROPIC_MODEL=claude-haiku-4-5
 

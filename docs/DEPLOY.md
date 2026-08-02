@@ -102,7 +102,7 @@ If you deploy without setting `VITE_GTM_ID` in `.env`, production has no GTM unt
 | `CHECK_CACHE_TTL_SEC` | Default `86400` |
 | `POOL_DISABLE_PROVIDERS` | Optional, e.g. `openai,grok,claude` to force Gemini-only |
 | `LOG_IP_SALT` | Optional log hashing salt |
-| `*_MODEL` | `auto` (default free-tier chain + fallback) or pin an id e.g. `gpt-4.1-mini`, `grok-4.5`, `claude-haiku-4-5` |
+| `*_MODEL` | `auto` (default free-tier chain + fallback) or pin e.g. `gpt-5.4-mini`, `grok-4.5`, `claude-haiku-4-5` |
 
 At least **one** AI provider secret is required for live checks.
 
@@ -113,9 +113,11 @@ Having an API **key** is not the same as free **quota**. OriginWise will try fre
 | Provider | Ongoing free API? | What you must do |
 |----------|-------------------|------------------|
 | **Gemini** | Yes (Flash / Flash-Lite rate limits) | Key in AI Studio — most reliable free path |
-| **OpenAI** | Only with **data-sharing opt-in** (mini/nano ~10M tok/day) | Console → enable data sharing; unpaid accounts without opt-in get `upstream_quota` |
+| **OpenAI** | **Free tier** usage tier (auto-upgrades after paid credit purchases) | Check **Settings → Limits**. Free orgs often have **~50 RPD** and per-model TPM/RPM. Prefer **mini** models (`gpt-5.4-mini`, `gpt-5.6-luna`) — higher TPM than flagship (`gpt-5.5` is only ~3 RPM). `upstream_quota` = hit RPM/RPD/TPD or no remaining Free access |
 | **Anthropic** | No ongoing free tier (one-time trial credits) | Trial spent → `upstream_quota`; add credits or remove secret |
 | **xAI Grok** | Trial / credit program, not unlimited free | Console credits required; empty balance → `upstream_error` |
+
+**OpenAI Free tier tip:** OriginWise defaults to `gpt-5.4-mini` then `gpt-5.6-luna`. Pin with `OPENAI_MODEL=gpt-5.4-mini` if you want that only first. Hitting 50 RPD on Free means all models stop for the day until the window resets.
 
 **Local `.dev.vars` does not update Cloudflare.** Production secrets live in Pages → Settings. If you comment out keys locally, production still uses old secrets until you change them.
 
