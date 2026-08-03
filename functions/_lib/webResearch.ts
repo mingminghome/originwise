@@ -9,8 +9,13 @@
  *   WEB_LOOKUP=auto|on|off  (default auto = on when Gemini key present)
  *   GEMINI_API_KEY=…        required for this path
  *   GEMINI_WEB_MODEL=…      optional pin for grounded search only
- *                           (default chain starts with gemini-2.5-flash —
- *                           NOT the free-tier flash-lite LLM chain)
+ *
+ * Free-tier reality (2026 AI Studio “new user” keys):
+ *   - Gemini 3 family often shows Search grounding **0 / 0** (not usage burn).
+ *   - gemini-2.5-flash* may return 404 “no longer available to new users”.
+ *   - Plain generateContent can still succeed while google_search returns 429.
+ *   Enabling billing / paid Search grounding is required for the web row on
+ *   those accounts — see docs/DEPLOY.md.
  *
  * Docs:
  *   https://ai.google.dev/gemini-api/docs/google-search
@@ -40,21 +45,24 @@ const BRIEF_MAX = 2200;
 const SOURCE_CAP = 8;
 
 /**
- * Grounding-capable models, ordered for web search reliability.
+ * Models for Google Search grounding, ordered for current free-tier availability.
  *
- * Do NOT reuse FREE_TIER_MODEL_CHAINS (flash-lite-first): lite models share a
- * tighter free grounding quota and are a poor default for Search. Community /
- * plugin configs (e.g. plugins.entries.google.config.webSearch.model) and Google
- * samples commonly pin gemini-2.5-flash for this tool.
+ * Prefer Gemini 3.x flash ids that still accept new-user keys. Legacy 2.5/2.0
+ * ids often 404 or have free-tier generate limit 0 for new accounts — keep as
+ * last-resort only for older keys that still have Search RPD on those models.
  *
  * @see https://ai.google.dev/gemini-api/docs/google-search#supported-models
  */
 export const WEB_SEARCH_MODEL_CHAIN: readonly string[] = [
+  'gemini-3.5-flash-lite',
+  'gemini-3.5-flash',
+  'gemini-flash-lite-latest',
+  'gemini-flash-latest',
+  'gemini-3.6-flash',
+  'gemini-3.1-flash-lite',
+  // Legacy / older free Search RPD pools (often blocked for new users)
   'gemini-2.5-flash',
   'gemini-2.0-flash',
-  'gemini-flash-latest',
-  'gemini-2.5-flash-lite',
-  'gemini-flash-lite-latest',
 ];
 
 export function isWebLookupEnabled(env: WebResearchEnv): boolean {
@@ -126,30 +134,59 @@ type GeminiGrounded = {
   }>;
 };
 
-/** Map Gemini HTTP failures for web research (exported for unit tests). */
+/**
+ * Map Gemini HTTP failures for web research (exported for unit tests).
+ *
+ * Distinguishes “you burned RPD” from “this model/tool has free limit 0 / gone”.
+ */
 export function mapWebResearchHttpError(status: number, body: string): string {
   const msg = body.toLowerCase();
-  // True rate/quota exhaustion only — do not treat generic "grounding" text as quota
-  // (that previously aborted the chain before gemini-2.5-flash could run).
+
+  // Dead / retired model ids for new users (not a rate-limit burn)
   if (
-    status === 429 ||
-    /resource.?exhausted|rate.?limit|quota.?exceeded|insufficient.?quota|billing/.test(
+    status === 404 ||
+    /no longer available to new users|is not found for api version|model .* not found/.test(
       msg
     )
   ) {
-    return 'upstream_quota';
+    return 'model_unavailable';
   }
-  if (status === 503 || status === 504) return 'upstream_unavailable';
-  // Model / tool unsupported → try next model in chain
+
+  // Free-tier entitlement is zero for this model/metric (dashboard may show 0/0)
   if (
-    status === 400 ||
-    status === 404 ||
-    /not found|not supported|unsupported|invalid.?argument|unknown.?tool|google.?search/.test(
+    /limit:\s*0\b/.test(msg) ||
+    /quota exceeded for metric:.*free_tier.*limit:\s*0/.test(msg)
+  ) {
+    return 'search_grounding_unavailable';
+  }
+
+  if (
+    status === 429 ||
+    /resource.?exhausted|rate.?limit|quota.?exceeded|insufficient.?quota/.test(
       msg
     )
+  ) {
+    // When Search grounding free quota is 0/0, Google still returns 429
+    // RESOURCE_EXHAUSTED with a generic billing message (usage can be 0).
+    // Treat Search-tool 429s as grounding entitlement, not “busy from usage”.
+    if (
+      /billing|plan and billing|check your plan/.test(msg) ||
+      status === 429
+    ) {
+      return 'search_grounding_unavailable';
+    }
+    return 'upstream_quota';
+  }
+
+  if (status === 503 || status === 504) return 'upstream_unavailable';
+
+  if (
+    status === 400 ||
+    /not supported|unsupported|invalid.?argument|unknown.?tool/.test(msg)
   ) {
     return 'upstream_error';
   }
+
   return 'upstream_error';
 }
 
@@ -258,7 +295,7 @@ export async function runWebResearch(opts: {
 
   const models = webSearchModelChain(opts.env);
   let last = 'upstream_error';
-  let consecutiveQuota = 0;
+  let consecutiveHardFail = 0;
   for (const model of models) {
     const out = await callGeminiGrounded(apiKey, model, prompt);
     if (out.ok) {
@@ -280,14 +317,34 @@ export async function runWebResearch(opts: {
       };
     }
     last = out.code;
-    // Per-model quotas exist — try next model once or twice, then stop burning latency
-    if (out.code === 'upstream_quota') {
-      consecutiveQuota += 1;
-      if (consecutiveQuota >= 2) break;
+
+    // Model id dead for this key — try next without counting as entitlement fail
+    if (out.code === 'model_unavailable' || out.code === 'upstream_error') {
+      consecutiveHardFail = 0;
       continue;
     }
-    consecutiveQuota = 0;
-    // empty / model unsupported / transient → try next grounding model
+
+    // Search grounding not entitled / free 0/0 / 429 with Search tool:
+    // try one more model (older keys may still have 2.x Search RPD), then stop.
+    if (
+      out.code === 'search_grounding_unavailable' ||
+      out.code === 'upstream_quota'
+    ) {
+      consecutiveHardFail += 1;
+      if (consecutiveHardFail >= 2) {
+        last = 'search_grounding_unavailable';
+        break;
+      }
+      continue;
+    }
+
+    if (out.code === 'upstream_unavailable') {
+      consecutiveHardFail += 1;
+      if (consecutiveHardFail >= 2) break;
+      continue;
+    }
+
+    consecutiveHardFail = 0;
   }
 
   return {

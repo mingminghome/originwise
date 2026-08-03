@@ -14,16 +14,16 @@ import {
 } from './webResearch';
 
 describe('WEB_SEARCH_MODEL_CHAIN', () => {
-  it('starts with gemini-2.5-flash (not flash-lite)', () => {
-    assert.equal(WEB_SEARCH_MODEL_CHAIN[0], 'gemini-2.5-flash');
-    assert.ok(!WEB_SEARCH_MODEL_CHAIN[0]!.includes('lite'));
+  it('prefers current Gemini 3 flash ids for new-user keys', () => {
+    assert.equal(WEB_SEARCH_MODEL_CHAIN[0], 'gemini-3.5-flash-lite');
+    assert.ok(WEB_SEARCH_MODEL_CHAIN.includes('gemini-3.5-flash'));
   });
 
-  it('includes stable flash fallbacks before lite', () => {
-    const flashIdx = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-2.5-flash');
-    const liteIdx = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-2.5-flash-lite');
-    assert.ok(flashIdx >= 0);
-    assert.ok(liteIdx > flashIdx);
+  it('keeps legacy 2.5-flash later in the chain', () => {
+    const modern = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-3.5-flash-lite');
+    const legacy = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-2.5-flash');
+    assert.ok(modern >= 0);
+    assert.ok(legacy > modern);
   });
 });
 
@@ -40,19 +40,18 @@ describe('webSearchModelChain', () => {
 
   it('pins GEMINI_WEB_MODEL first then falls back', () => {
     const chain = webSearchModelChain({
-      GEMINI_WEB_MODEL: 'gemini-2.0-flash',
+      GEMINI_WEB_MODEL: 'gemini-3.6-flash',
     });
-    assert.equal(chain[0], 'gemini-2.0-flash');
-    assert.ok(chain.includes('gemini-2.5-flash'));
-    // no duplicate preferred id
-    assert.equal(chain.filter((m) => m === 'gemini-2.0-flash').length, 1);
+    assert.equal(chain[0], 'gemini-3.6-flash');
+    assert.ok(chain.includes('gemini-3.5-flash-lite'));
+    assert.equal(chain.filter((m) => m === 'gemini-3.6-flash').length, 1);
   });
 
   it('strips models/ prefix', () => {
     const chain = webSearchModelChain({
-      GEMINI_WEB_MODEL: 'models/gemini-2.5-flash',
+      GEMINI_WEB_MODEL: 'models/gemini-3.5-flash',
     });
-    assert.equal(chain[0], 'gemini-2.5-flash');
+    assert.equal(chain[0], 'gemini-3.5-flash');
   });
 });
 
@@ -75,32 +74,42 @@ describe('isWebLookupEnabled', () => {
 });
 
 describe('mapWebResearchHttpError', () => {
-  it('maps 429 and resource exhausted to upstream_quota', () => {
-    assert.equal(mapWebResearchHttpError(429, 'Too Many Requests'), 'upstream_quota');
+  it('maps new-user retired models to model_unavailable', () => {
     assert.equal(
-      mapWebResearchHttpError(403, 'RESOURCE_EXHAUSTED: quota'),
-      'upstream_quota'
-    );
-    assert.equal(
-      mapWebResearchHttpError(400, 'rate limit exceeded'),
-      'upstream_quota'
+      mapWebResearchHttpError(
+        404,
+        'This model models/gemini-2.5-flash is no longer available to new users.'
+      ),
+      'model_unavailable'
     );
   });
 
-  it('does NOT treat bare "grounding" mention as quota', () => {
+  it('maps free-tier limit:0 and search 429 to search_grounding_unavailable', () => {
+    assert.equal(
+      mapWebResearchHttpError(
+        429,
+        'Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash'
+      ),
+      'search_grounding_unavailable'
+    );
+    assert.equal(
+      mapWebResearchHttpError(
+        429,
+        'You exceeded your current quota, please check your plan and billing details.'
+      ),
+      'search_grounding_unavailable'
+    );
+  });
+
+  it('does NOT treat bare model-tool errors as quota', () => {
     assert.equal(
       mapWebResearchHttpError(400, 'Grounding not available for this model'),
       'upstream_error'
     );
   });
 
-  it('maps unavailable and generic errors', () => {
+  it('maps unavailable', () => {
     assert.equal(mapWebResearchHttpError(503, 'busy'), 'upstream_unavailable');
-    assert.equal(mapWebResearchHttpError(500, 'boom'), 'upstream_error');
-    assert.equal(
-      mapWebResearchHttpError(404, 'model not found'),
-      'upstream_error'
-    );
   });
 });
 
@@ -125,7 +134,7 @@ describe('runWebResearch', () => {
     assert.equal(called, false);
   });
 
-  it('falls through to gemini-2.5-flash after lite/model error (not abort on grounding text)', async () => {
+  it('skips model_unavailable and succeeds on next model', async () => {
     const modelsTried: string[] = [];
     mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -133,18 +142,36 @@ describe('runWebResearch', () => {
       const model = m?.[1] ?? 'unknown';
       modelsTried.push(model);
 
-      // Fail first model if somehow lite; succeed on 2.5-flash
-      if (model === 'gemini-2.5-flash') {
+      if (model === 'gemini-3.5-flash-lite') {
+        return new Response(
+          JSON.stringify({
+            error: {
+              message:
+                'This model models/gemini-3.5-flash-lite is no longer available to new users.',
+              status: 'NOT_FOUND',
+            },
+          }),
+          { status: 404, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      if (model === 'gemini-3.5-flash') {
         return new Response(
           JSON.stringify({
             candidates: [
               {
                 content: {
-                  parts: [{ text: 'Made in Poland; brand Japan; Foxconn parent.' }],
+                  parts: [
+                    { text: 'Made in Poland; brand Japan; Foxconn parent.' },
+                  ],
                 },
                 groundingMetadata: {
                   groundingChunks: [
-                    { web: { title: 'Sharp', uri: 'https://example.com/sharp' } },
+                    {
+                      web: {
+                        title: 'Sharp',
+                        uri: 'https://example.com/sharp',
+                      },
+                    },
                   ],
                 },
               },
@@ -154,10 +181,8 @@ describe('runWebResearch', () => {
         );
       }
       return new Response(
-        JSON.stringify({
-          error: { message: 'Grounding not supported on this model' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: { message: 'fail' } }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     });
 
@@ -168,21 +193,28 @@ describe('runWebResearch', () => {
     });
 
     assert.equal(out.ok, true);
-    assert.equal(out.model, 'gemini-2.5-flash');
+    assert.equal(out.model, 'gemini-3.5-flash');
     assert.ok(out.brief.includes('Poland'));
-    assert.ok(out.sources.some((s) => s.includes('example.com')));
-    // Primary attempt is 2.5-flash
-    assert.equal(modelsTried[0], 'gemini-2.5-flash');
+    assert.deepEqual(modelsTried.slice(0, 2), [
+      'gemini-3.5-flash-lite',
+      'gemini-3.5-flash',
+    ]);
   });
 
-  it('tries next model after one quota, stops after two consecutive quotas', async () => {
+  it('stops after two search_grounding_unavailable and reports that code', async () => {
     const modelsTried: string[] = [];
     mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
       const url = String(input);
       const m = url.match(/models\/([^:]+):generateContent/);
       modelsTried.push(m?.[1] ?? 'unknown');
       return new Response(
-        JSON.stringify({ error: { message: 'Resource exhausted' } }),
+        JSON.stringify({
+          error: {
+            message:
+              'You exceeded your current quota, please check your plan and billing details.',
+            status: 'RESOURCE_EXHAUSTED',
+          },
+        }),
         { status: 429, headers: { 'Content-Type': 'application/json' } }
       );
     });
@@ -194,8 +226,7 @@ describe('runWebResearch', () => {
     });
 
     assert.equal(out.ok, false);
-    assert.equal(out.error, 'upstream_quota');
-    // Two consecutive quota failures → stop (not entire chain)
+    assert.equal(out.error, 'search_grounding_unavailable');
     assert.equal(modelsTried.length, 2);
   });
 
@@ -220,12 +251,12 @@ describe('runWebResearch', () => {
       locale: 'en',
       env: {
         GEMINI_API_KEY: 'k',
-        GEMINI_WEB_MODEL: 'gemini-2.0-flash',
+        GEMINI_WEB_MODEL: 'gemini-3.6-flash',
       },
     });
 
     assert.equal(out.ok, true);
-    assert.equal(modelsTried[0], 'gemini-2.0-flash');
-    assert.equal(out.model, 'gemini-2.0-flash');
+    assert.equal(modelsTried[0], 'gemini-3.6-flash');
+    assert.equal(out.model, 'gemini-3.6-flash');
   });
 });

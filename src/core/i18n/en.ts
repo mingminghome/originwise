@@ -67,10 +67,22 @@ export const en: MessageTree = {
     agentsTitle: 'AI pool used',
     agentsSummary: '{total} calls · {ok} ok · {fail} failed',
     agentsHint:
-      'Each row is one free-server AI call. Failed calls often mean quota or timeout; we still try others or a single fallback.',
+      'Each row is one free-server AI call. Failed calls often mean quota, model access, or timeout; we still try others or a single fallback. Live web needs Gemini Search grounding entitlement (not the same as text RPM).',
     agentOk: 'OK',
     agentFail: 'Failed ({err})',
     agentFailUnknown: 'error',
+    agentError: {
+      upstream_quota: 'quota / rate limit',
+      upstream_error: 'upstream error',
+      upstream_unavailable: 'service unavailable',
+      empty_response: 'empty response',
+      model_unavailable: 'model not available on this API key',
+      search_grounding_unavailable:
+        'Google Search grounding not available on this free key (Gemini 3 Search is often 0/0; 2.5 Flash may be blocked for new users)',
+      disabled: 'disabled',
+      gemini_not_configured: 'Gemini not configured',
+      no_entity: 'no product name',
+    },
     agent: {
       identify: 'Read label / name',
       product: 'Product place',

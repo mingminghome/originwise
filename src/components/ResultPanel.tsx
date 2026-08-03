@@ -19,6 +19,14 @@ function providerLabel(p: string | undefined, t: TFunction): string {
   return label === key ? p : label;
 }
 
+/** Map raw agent error codes to short UI labels. */
+function agentErrorLabel(code: string | undefined, t: TFunction): string {
+  if (!code) return t('check.agentFailUnknown');
+  const key = `check.agentError.${code}`;
+  const label = t(key);
+  return label === key ? code : label;
+}
+
 function AgentsPoolCard({
   agents,
   provider,
@@ -74,7 +82,7 @@ function AgentsPoolCard({
                   {ok
                     ? t('check.agentOk')
                     : t('check.agentFail', {
-                        err: a.error || t('check.agentFailUnknown'),
+                        err: agentErrorLabel(a.error, t),
                       })}
                   {typeof a.ms === 'number' ? ` · ${a.ms}ms` : null}
                 </p>

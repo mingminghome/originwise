@@ -128,7 +128,8 @@ Having an API **key** is not the same as free **quota**. OriginWise will try fre
 
 | Provider | Ongoing free API? | What you must do |
 |----------|-------------------|------------------|
-| **Gemini** | Yes (Flash / Flash-Lite rate limits) | Key in AI Studio — most reliable free path. **Web row** uses Search grounding on `gemini-2.5-flash` (not flash-lite); grounding has its own free RPD shared with that model class — plain agents can still succeed when web fails |
+| **Gemini** | Yes (Flash / Flash-Lite rate limits) | Key in AI Studio — most reliable free path for **text** agents. **Web row** needs **Search grounding**, which is a *separate* quota line in AI Studio (Tools → Search grounding). |
+| **Gemini Search (web)** | Often **no usable free path for new keys** | Check AI Studio rate limits: **Gemini 3 Search = 0/0** means grounded search cannot run on free Gemini 3 models. **Gemini 2.5 Search** may show 1.5K RPD, but `gemini-2.5-flash` often returns *“no longer available to new users”*, and 2.5 Pro / 2.0 free generate may be **limit: 0**. Result: dashboard RPD left ≠ API can call Search. **Fix:** enable billing (paid Search on Gemini 3), use a key that still has 2.5 Flash access, or set `WEB_LOOKUP=off`. UI error: `search_grounding_unavailable`. |
 | **OpenAI** | **Free tier** usage tier (auto-upgrades after paid credit purchases) | Check **Settings → Limits**. Free orgs often have **~50 RPD** and per-model TPM/RPM. Prefer **mini** models (`gpt-5.4-mini`, `gpt-5.6-luna`) — higher TPM than flagship (`gpt-5.5` is only ~3 RPM). `upstream_quota` = hit RPM/RPD/TPD or no remaining Free access |
 | **Anthropic** | No ongoing free tier (one-time trial credits) | Trial spent → `upstream_quota`; add credits or remove secret |
 | **xAI Grok** | Trial / credit program, not unlimited free | Console credits required; empty balance → `upstream_error` |

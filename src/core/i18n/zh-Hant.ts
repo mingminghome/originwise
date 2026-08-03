@@ -63,10 +63,22 @@ export const zhHant = {
     agentsTitle: '使用的 AI 池',
     agentsSummary: '共 {total} 次呼叫 · 成功 {ok} · 失敗 {fail}',
     agentsHint:
-      '每一列是一次免費伺服器 AI 呼叫。失敗多半是配額或逾時；我們會再試其他模型或改用單一完整查詢。',
+      '每一列是一次免費伺服器 AI 呼叫。失敗多半是配額、模型權限或逾時；我們會再試其他模型。即時網頁查詢需要 Gemini Search grounding（與一般文字 RPM 不同）。',
     agentOk: '成功',
     agentFail: '失敗（{err}）',
     agentFailUnknown: '錯誤',
+    agentError: {
+      upstream_quota: '配額／速率限制',
+      upstream_error: '上游錯誤',
+      upstream_unavailable: '服務暫時不可用',
+      empty_response: '空回應',
+      model_unavailable: '此 API 金鑰無法使用該模型',
+      search_grounding_unavailable:
+        '此免費金鑰無法使用 Google 搜尋 grounding（Gemini 3 Search 常為 0/0；2.5 Flash 可能對新用戶停用）',
+      disabled: '已關閉',
+      gemini_not_configured: '未設定 Gemini',
+      no_entity: '無產品名稱',
+    },
     agent: {
       identify: '讀取名稱／標籤',
       product: '產品產地',
