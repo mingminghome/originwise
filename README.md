@@ -47,6 +47,7 @@ Taiwan is always treated as a **separate country** (not China-related for tiers)
 - **Taiwan policy** — always a separate country for tiering  
 - **i18n** — English + Traditional Chinese  
 - **Optional GTM** — via `VITE_GTM_ID` only (never hardcoded)  
+- **Optional Search Console** — via `VITE_GOOGLE_SITE_VERIFICATION` (HTML meta; never hardcoded)  
 - **Optional “Buy me a pint”** — via `VITE_BUY_ME_A_PINT_URL` only (never hardcoded)   
 - **Providers** — server keys only; users never paste API keys in the UI  
 
@@ -77,7 +78,7 @@ npm run pages:dev                    # full SPA + /api/check (recommended)
 | File | Commit? |
 |------|---------|
 | `.dev.vars` | **Never** — AI keys for local `pages:dev` |
-| `.env` / `.env.local` | **Never** — e.g. `VITE_GTM_ID`, `VITE_BUY_ME_A_PINT_URL` |
+| `.env` / `.env.local` | **Never** — e.g. `VITE_GTM_ID`, `VITE_GOOGLE_SITE_VERIFICATION`, `VITE_BUY_ME_A_PINT_URL` |
 | `*.example` | Yes — empty placeholders only |
 
 For self-hosting (Cloudflare Pages, env keys, CI), see [docs/DEPLOY.md](./docs/DEPLOY.md).

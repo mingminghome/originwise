@@ -4,6 +4,11 @@ interface ImportMetaEnv {
   /** Google Tag Manager container ID, e.g. GTM-XXXXXXX. Empty disables GTM. */
   readonly VITE_GTM_ID?: string;
   /**
+   * Google Search Console HTML meta verification token (content=…).
+   * Empty = no meta tag. Public; not a secret.
+   */
+  readonly VITE_GOOGLE_SITE_VERIFICATION?: string;
+  /**
    * Buy Me a Coffee / support URL. Empty hides the “Buy me a pint” UI.
    * Example: https://buymeacoffee.com/your-slug
    */

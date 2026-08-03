@@ -85,6 +85,7 @@ Cloudflare Pages → Settings → Environment variables → **Build**:
 | Variable | Notes |
 |----------|--------|
 | `VITE_GTM_ID` | Optional. e.g. `GTM-XXXXXXX`. Empty = no GTM. |
+| `VITE_GOOGLE_SITE_VERIFICATION` | Optional Search Console meta `content` token. Empty = no meta tag. |
 | `VITE_BUY_ME_A_PINT_URL` | Optional support link. Empty = hide “Buy me a pint”. |
 | `VITE_BUY_ME_A_PINT_IMG` | Optional button image URL. BMC profile URLs get a default image. |
 
