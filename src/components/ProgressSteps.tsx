@@ -6,6 +6,7 @@ const ORDER = [
   'start',
   'cache',
   'identify',
+  'web',
   'monolith',
   'dual_core',
   'product',

@@ -37,6 +37,11 @@ import type {
 } from './schema';
 import type { GeoScope } from './regions';
 import { synthesize } from './synthesize';
+import {
+  isWebLookupEnabled,
+  runWebResearch,
+  type WebResearchEnv,
+} from './webResearch';
 
 export type ProgressEvent = {
   type: 'progress';
@@ -46,10 +51,11 @@ export type ProgressEvent = {
   detail?: string;
 };
 
-export type OrchestratorEnv = LlmEnv & {
-  CHECK_MODE?: string;
-  POOL_DISABLE_PROVIDERS?: string;
-};
+export type OrchestratorEnv = LlmEnv &
+  WebResearchEnv & {
+    CHECK_MODE?: string;
+    POOL_DISABLE_PROVIDERS?: string;
+  };
 
 export type OrchestratorInput = {
   jobId: string;
@@ -86,8 +92,56 @@ export type OrchestratorErr = {
 
 export type ProgressEmit = (ev: ProgressEvent) => void;
 
-/** Includes one free-tier retry budget when preferred providers are dead. */
-const MAX_CALLS = 7;
+/** Includes web research + free-tier retry budget when preferred providers are dead. */
+const MAX_CALLS = 8;
+
+/**
+ * Optional Gemini Google Search pass. Soft-fail; returns brief for prompts.
+ */
+async function maybeWebResearch(
+  opts: {
+    jobId: string;
+    locale: string;
+    entity: string;
+    ocrText?: string;
+    env: OrchestratorEnv;
+    agents: AgentMeta[];
+  },
+  emit: ProgressEmit
+): Promise<{ brief: string; used: boolean }> {
+  const { jobId, locale, entity, ocrText, env, agents } = opts;
+  if (!isWebLookupEnabled(env)) {
+    emit({ type: 'progress', jobId, step: 'web', status: 'skipped' });
+    return { brief: '', used: false };
+  }
+  emit({ type: 'progress', jobId, step: 'web', status: 'running' });
+  const wr = await runWebResearch({ entity, ocrText, locale, env });
+  agents.push({
+    id: 'web',
+    provider: 'gemini',
+    ok: wr.ok,
+    error: wr.ok ? undefined : wr.error,
+    ms: wr.ms,
+  });
+  if (wr.ok && wr.brief.trim()) {
+    emit({
+      type: 'progress',
+      jobId,
+      step: 'web',
+      status: 'done',
+      detail: wr.model,
+    });
+    return { brief: wr.brief, used: true };
+  }
+  emit({
+    type: 'progress',
+    jobId,
+    step: 'web',
+    status: 'error',
+    detail: wr.error || 'empty',
+  });
+  return { brief: '', used: false };
+}
 
 type JsonCallResult =
   | { ok: true; obj: Record<string, unknown>; ms: number }
@@ -282,6 +336,24 @@ async function runMulti(
   }
 
   const entity = entitySeed(text, identify);
+
+  // Live web research (Gemini Google Search) before product/company
+  const web = await maybeWebResearch(
+    {
+      jobId,
+      locale,
+      entity,
+      ocrText: identify?.ocrText,
+      env,
+      agents,
+    },
+    emit
+  );
+  if (web.used) {
+    // Count as one budget unit (separate from LLM pool calls, but tracks load)
+    calls += 1;
+  }
+
   const sequential =
     (assignProvider('product', env, new Set(), deadProviders)?.sequential ??
       true) === true;
@@ -304,6 +376,7 @@ async function runMulti(
         locale,
         entity,
         ocrText: identify?.ocrText,
+        webContext: web.brief,
       }),
       env,
       agents,
@@ -341,6 +414,7 @@ async function runMulti(
         locale,
         entity,
         productHint: product ? JSON.stringify(product).slice(0, 400) : '',
+        webContext: web.brief,
       }),
       env,
       agents,
@@ -424,6 +498,7 @@ async function runMulti(
         wantBrands: dimensions.includes('alt_brands'),
         wantProducts: dimensions.includes('alt_products'),
         contextJson: JSON.stringify({ product, company }).slice(0, 1000),
+        webContext: web.brief,
       }),
       env,
       agents,
@@ -472,6 +547,7 @@ async function runMulti(
     queryText: text,
     companySkipped: !shouldRunCompany(dimensions),
     productSkipped: !shouldRunProduct(dimensions),
+    webEnriched: web.used,
     partials: {
       identify,
       product,
@@ -495,6 +571,13 @@ async function runMonolith(
   emit: ProgressEmit
 ): Promise<OrchestratorOk | OrchestratorErr> {
   const { jobId, locale, text, image, geoScope, dimensions, env } = input;
+  const agents: AgentMeta[] = [];
+  const entity = entitySeed(text);
+  const web = await maybeWebResearch(
+    { jobId, locale, entity, env, agents },
+    emit
+  );
+
   emit({ type: 'progress', jobId, step: 'monolith', status: 'running' });
   const asg = assignProvider('monolith', env);
   if (!asg) {
@@ -503,6 +586,7 @@ async function runMonolith(
       code: 'provider_not_configured',
       error: 'Check is temporarily unavailable.',
       httpStatus: 503,
+      agents,
     };
   }
   const out = await callJson(
@@ -513,19 +597,18 @@ async function runMonolith(
       geoScope,
       dimensions,
       hasImage: Boolean(image),
+      webContext: web.brief,
     }),
     env,
     image
   );
-  const agents: AgentMeta[] = [
-    {
-      id: 'monolith',
-      provider: asg.provider,
-      ok: out.ok,
-      error: out.ok ? undefined : out.code,
-      ms: out.ms,
-    },
-  ];
+  agents.push({
+    id: 'monolith',
+    provider: asg.provider,
+    ok: out.ok,
+    error: out.ok ? undefined : out.code,
+    ms: out.ms,
+  });
   if (!out.ok) {
     emit({
       type: 'progress',
@@ -563,6 +646,7 @@ async function runMonolith(
     queryText: text,
     companySkipped: !shouldRunCompany(dimensions),
     productSkipped: !shouldRunProduct(dimensions),
+    webEnriched: web.used,
     partials: {
       product: shouldRunProduct(dimensions) ? product : null,
       company: shouldRunCompany(dimensions) ? company : null,
@@ -581,6 +665,11 @@ async function runDual(
 ): Promise<OrchestratorOk | OrchestratorErr> {
   const { jobId, locale, text, image, geoScope, dimensions, env } = input;
   const agents: AgentMeta[] = [];
+  const entity = entitySeed(text);
+  const web = await maybeWebResearch(
+    { jobId, locale, entity, env, agents },
+    emit
+  );
 
   emit({ type: 'progress', jobId, step: 'dual_core', status: 'running' });
   const asg = assignProvider('dual_core', env);
@@ -590,6 +679,7 @@ async function runDual(
       code: 'provider_not_configured',
       error: 'Check is temporarily unavailable.',
       httpStatus: 503,
+      agents,
     };
   }
   const core = await callJson(
@@ -599,6 +689,7 @@ async function runDual(
       text,
       geoScope,
       hasImage: Boolean(image),
+      webContext: web.brief,
     }),
     env,
     image
@@ -641,10 +732,11 @@ async function runDual(
         asg2.provider,
         buildAlternativesPrompt({
           locale,
-          entity: entitySeed(text),
+          entity,
           wantBrands: dimensions.includes('alt_brands'),
           wantProducts: dimensions.includes('alt_products'),
           contextJson: JSON.stringify({ product, company }).slice(0, 1000),
+          webContext: web.brief,
         }),
         env
       );
@@ -682,6 +774,7 @@ async function runDual(
     queryText: text,
     companySkipped: !shouldRunCompany(dimensions),
     productSkipped: !shouldRunProduct(dimensions),
+    webEnriched: web.used,
     partials: {
       product: shouldRunProduct(dimensions) ? product : null,
       company: shouldRunCompany(dimensions) ? company : null,

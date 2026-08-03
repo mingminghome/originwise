@@ -6,7 +6,7 @@
 #   npm run pages:dev
 #
 # NOTE: Do not put VITE_* vars here — Wrangler secrets are for Functions only.
-# Client env (e.g. VITE_GTM_ID) belongs in .env / Cloudflare Pages *build* env.
+# Client env (e.g. VITE_GTM_ID, VITE_BUY_ME_A_PINT_URL) belongs in .env / Cloudflare Pages *build* env.
 
 # Gemini = most reliable free API (leave this on)
 GEMINI_API_KEY=
@@ -46,6 +46,12 @@ GEMINI_API_KEY=
 #   multi   = sub-agents (identify/product/company/verify/alts) + AI pool (default when keys exist)
 #   dual    = 1–2 calls
 #   monolith = single LLM call
+#
+# Live web research (Gemini Google Search grounding) before product/company agents:
+#   WEB_LOOKUP=auto  (default) — on when GEMINI_API_KEY is set
+#   WEB_LOOKUP=on    — force on (still needs Gemini key)
+#   WEB_LOOKUP=off   — model memory only (old behaviour)
+# WEB_LOOKUP=auto
 # CHECK_ALLOWED_ORIGINS=http://localhost:8788
 # Free-server rate limits (defaults shown)
 # CHECK_RATE_SHORT_LIMIT=1

@@ -47,6 +47,7 @@ Taiwan is always treated as a **separate country** (not China-related for tiers)
 - **Taiwan policy** — always a separate country for tiering  
 - **i18n** — English + Traditional Chinese  
 - **Optional GTM** — via `VITE_GTM_ID` only (never hardcoded)  
+- **Optional “Buy me a pint”** — via `VITE_BUY_ME_A_PINT_URL` only (never hardcoded)   
 - **Providers** — server keys only; users never paste API keys in the UI  
 
 ---
@@ -55,7 +56,7 @@ Taiwan is always treated as a **separate country** (not China-related for tiers)
 
 ```bash
 npm install
-cp .env.example .env                 # optional e.g. VITE_GTM_ID
+cp .env.example .env                 # optional e.g. VITE_GTM_ID, VITE_BUY_ME_A_PINT_URL
 cp .dev.vars.example .dev.vars
 # put at least one of: GEMINI_API_KEY / OPENAI_API_KEY / XAI_API_KEY / ANTHROPIC_API_KEY
 
@@ -76,7 +77,7 @@ npm run pages:dev                    # full SPA + /api/check (recommended)
 | File | Commit? |
 |------|---------|
 | `.dev.vars` | **Never** — AI keys for local `pages:dev` |
-| `.env` / `.env.local` | **Never** — e.g. `VITE_GTM_ID` |
+| `.env` / `.env.local` | **Never** — e.g. `VITE_GTM_ID`, `VITE_BUY_ME_A_PINT_URL` |
 | `*.example` | Yes — empty placeholders only |
 
 For self-hosting (Cloudflare Pages, env keys, CI), see [docs/DEPLOY.md](./docs/DEPLOY.md).

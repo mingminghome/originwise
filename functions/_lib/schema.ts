@@ -72,7 +72,7 @@ export type CheckResult = {
   regions: RegionCode[];
   geoScope: GeoScope;
   disclaimerKey: string;
-  knowledgeBasis: 'model_memory';
+  knowledgeBasis: 'model_memory' | 'web_enriched';
   knowledgeCutoffNote: string;
   product?: {
     name?: string;
@@ -204,6 +204,8 @@ export const ALT_CAP = 6;
 export const DEFAULT_DISCLAIMER_KEY = 'check.disclaimer';
 export const KNOWLEDGE_NOTE =
   'Based on general model knowledge only (no live web lookup). Brand origin, component plants, and final assembly/COO can differ by SKU/market — prefer packaging labels. Not a corporate registry or customs database. Informational — not legal, trade, or sanctions advice.';
+export const WEB_KNOWLEDGE_NOTE =
+  'Includes a live web research pass (Google Search via Gemini grounding) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.';
 
 export function clampTier(raw: unknown): RelationTier {
   const s = String(raw ?? '')

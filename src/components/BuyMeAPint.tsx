@@ -1,10 +1,10 @@
 import { Beer } from 'lucide-react';
-import { PROJECT } from '../core/project';
 import type { TFunction } from '../core/i18n';
+import { resolveBuyMeAPint } from '../core/support/buyMeAPint';
 
 /**
- * ComboWise-style “Buy me a pint” support link.
- * `compact` = top-bar chip; full = About footer with official BMC button image.
+ * ComboWise-style “Buy me a pint” support link (env: VITE_BUY_ME_A_PINT_URL).
+ * Hidden when unset. `compact` = top-bar chip; full = About footer button.
  */
 export function BuyMeAPint({
   t,
@@ -13,11 +13,14 @@ export function BuyMeAPint({
   t: TFunction;
   compact?: boolean;
 }) {
+  const cfg = resolveBuyMeAPint();
+  if (!cfg) return null;
+
   if (compact) {
     return (
       <a
         className="buy-pint-chip"
-        href={PROJECT.buyMeAPintUrl}
+        href={cfg.url}
         target="_blank"
         rel="noopener noreferrer"
         aria-label={t('support.buyMeAPint')}
@@ -29,20 +32,35 @@ export function BuyMeAPint({
     );
   }
 
+  if (cfg.img) {
+    return (
+      <a
+        href={cfg.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={t('support.buyMeAPint')}
+        className="buy-pint-full"
+      >
+        <img
+          src={cfg.img}
+          alt={t('support.buyMeAPint')}
+          height={40}
+          loading="lazy"
+        />
+      </a>
+    );
+  }
+
   return (
     <a
-      href={PROJECT.buyMeAPintUrl}
+      href={cfg.url}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={t('support.buyMeAPint')}
-      className="buy-pint-full"
+      className="buy-pint-chip buy-pint-full-text"
     >
-      <img
-        src={PROJECT.buyMeAPintImg}
-        alt={t('support.buyMeAPint')}
-        height={40}
-        loading="lazy"
-      />
+      <Beer size={16} strokeWidth={2.2} aria-hidden />
+      <span>{t('support.buyMeAPint')}</span>
     </a>
   );
 }

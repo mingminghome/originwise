@@ -124,7 +124,7 @@ export const en: MessageTree = {
     },
     caveats: 'Caveats',
     disclaimer:
-      'Informational only — model knowledge, not legal or sanctions advice. AI can be wrong.',
+      'Informational only — model knowledge and optional live web research, not legal or sanctions advice. AI can be wrong.',
     providerNotConfigured:
       'AI check is not configured. Add a key in .dev.vars and run `npm run pages:dev` (see README).',
     rateLimited:
@@ -223,6 +223,7 @@ export const en: MessageTree = {
       start: 'Starting',
       cache: 'Cache',
       identify: 'Reading label',
+      web: 'Web research',
       monolith: 'Full analysis',
       dual_core: 'Product & company',
       product: 'Product origin',

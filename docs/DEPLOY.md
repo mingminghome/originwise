@@ -23,7 +23,7 @@ If a key was ever pasted into chat, a PR, or git history, **rotate it**.
 ```bash
 npm install
 cp .dev.vars.example .dev.vars   # add at least one AI provider key
-cp .env.example .env             # optional: VITE_GTM_ID=GTM-XXXXXXX
+cp .env.example .env             # optional: VITE_GTM_ID, VITE_BUY_ME_A_PINT_URL
 
 npm run pages:dev
 # http://localhost:8788
@@ -85,15 +85,18 @@ Cloudflare Pages → Settings → Environment variables → **Build**:
 | Variable | Notes |
 |----------|--------|
 | `VITE_GTM_ID` | Optional. e.g. `GTM-XXXXXXX`. Empty = no GTM. |
+| `VITE_BUY_ME_A_PINT_URL` | Optional support link. Empty = hide “Buy me a pint”. |
+| `VITE_BUY_ME_A_PINT_IMG` | Optional button image URL. BMC profile URLs get a default image. |
 
-For **local deploy**, GTM is baked in at `npm run build` from your local `.env` (if set).  
-If you deploy without setting `VITE_GTM_ID` in `.env`, production has no GTM until you rebuild with it or use a CI build that has the var.
+For **local deploy**, these are baked in at `npm run build` from your local `.env` (if set).  
+If you deploy without them, production has no GTM / no pint button until you rebuild with the vars.
 
 ### 5. Function config (non-secret)
 
 | Variable | Notes |
 |----------|--------|
 | `CHECK_MODE` | `multi` (default when keys exist) \| `dual` \| `monolith` |
+| `WEB_LOOKUP` | `auto` (default) / `on` / `off`. Live web research via Gemini Google Search when `GEMINI_API_KEY` is set. |
 | `CHECK_ALLOWED_ORIGINS` | Comma-separated extra origins for custom domains |
 | `CHECK_RATE_SHORT_LIMIT` | Default `1` (checks per short window) |
 | `CHECK_RATE_SHORT_WINDOW_SEC` | Default `30` (seconds) |

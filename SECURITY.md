@@ -33,6 +33,7 @@ See `.dev.vars.example` and `.env.example`.
 - Never commit `.dev.vars`, `.env`, or real API keys / account IDs / GTM container IDs in docs.
 - Production AI keys: Cloudflare Pages **encrypted** secrets only.
 - Optional analytics: build env `VITE_GTM_ID` only (not in source).
+- Optional support link: build env `VITE_BUY_ME_A_PINT_URL` only (not in source).
 - Rotate keys if they leak (chat, screenshots, git history, public repos).
 
 ## Reporting

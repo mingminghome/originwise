@@ -115,7 +115,7 @@ export const zhHant = {
     },
     caveats: '注意事項',
     disclaimer:
-      '僅供參考——依模型既有知識，非法律或制裁建議。AI 可能錯誤。',
+      '僅供參考——依模型知識與（若啟用）即時網頁研究，非法律或制裁建議。AI 可能錯誤。',
     providerNotConfigured:
       '尚未設定 AI。請在 .dev.vars 加入金鑰，並執行 `npm run pages:dev`（見 README）。',
     rateLimited: '已達免費伺服器限制：每 30 秒 1 次。請稍候。',
@@ -212,6 +212,7 @@ export const zhHant = {
       start: '開始',
       cache: '快取',
       identify: '讀取標籤',
+      web: '網頁研究',
       monolith: '完整分析',
       dual_core: '產品與公司',
       product: '產品產地',

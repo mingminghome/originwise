@@ -78,7 +78,7 @@ export type CheckResult = {
   regions?: RegionCode[];
   geoScope?: GeoScope;
   disclaimerKey?: string;
-  knowledgeBasis?: 'model_memory';
+  knowledgeBasis?: 'model_memory' | 'web_enriched';
   knowledgeCutoffNote?: string;
   product?: {
     name?: string;

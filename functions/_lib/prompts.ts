@@ -58,6 +58,14 @@ COMPANY / OWNERSHIP (critical):
 - Prefer "unknown" over inventing parent control percentages.
 `.trim();
 
+const WEB_CONTEXT_RULE = `
+WEB RESEARCH (when <web_research> is present and not empty):
+- Treat it as CURRENT public web findings (may include citations). Prefer it over stale training memory for ownership, HQ, and typical made-in.
+- Packaging OCR / "Made in" on THIS unit still beats generic web claims for madeIn of this exact SKU.
+- If web and memory conflict, prefer the more specific SKU/market source; note the conflict in notes/caveats.
+- Do not invent registry IDs or ownership % that are not supported by web or clear knowledge.
+`.trim();
+
 export function buildMonolithPrompt(opts: {
   locale: string;
   text: string;
@@ -65,6 +73,7 @@ export function buildMonolithPrompt(opts: {
   dimensions: CheckDimension[];
   hasImage: boolean;
   ocrHint?: string;
+  webContext?: string;
 }): string {
   const lang = langLabel(opts.locale);
   const dims = opts.dimensions.join(', ');
@@ -81,6 +90,7 @@ CRITICAL
 ${GEO_POLICY}
 ${PRODUCT_FACT_RULES}
 ${COMPANY_FACT_RULES}
+${WEB_CONTEXT_RULE}
 ${imageRule}
 
 geoScope setting (for context labels only): ${opts.geoScope}
@@ -137,6 +147,7 @@ ALTERNATIVES ACCURACY:
 Omit alternatives if not requested in dimensions.
 
 ${fence('user_context', opts.ocrHint ? `OCR/entity hint: ${opts.ocrHint}` : '')}
+${fence('web_research', opts.webContext || '')}
 ${fence('user_item', opts.text || (opts.hasImage ? '(see attached photo)' : ''))}`;
 }
 
@@ -157,33 +168,39 @@ export function buildProductPrompt(opts: {
   locale: string;
   entity: string;
   ocrText?: string;
+  webContext?: string;
 }): string {
   const lang = langLabel(opts.locale);
   return `Extract product origin / manufacturing facts. Respond in ${lang}.
 ${GEO_POLICY}
 ${PRODUCT_FACT_RULES}
+${WEB_CONTEXT_RULE}
 Return ONLY JSON:
 {"name":"string","brand":"string","originCountry":"string","madeIn":"string","manufacturedIn":"string","manufacturer":"string","manufacturerCountry":"string","category":"string","componentsOrigin":"string","confidence":0.0,"notes":["string"]}
 
 ${fence('entity', opts.entity)}
-${fence('ocr', opts.ocrText || '')}`;
+${fence('ocr', opts.ocrText || '')}
+${fence('web_research', opts.webContext || '')}`;
 }
 
 export function buildCompanyPrompt(opts: {
   locale: string;
   entity: string;
   productHint?: string;
+  webContext?: string;
 }): string {
   const lang = langLabel(opts.locale);
   return `Extract company HQ / ownership facts for China-relation analysis. Respond in ${lang}.
 ${GEO_POLICY}
 ${COMPANY_FACT_RULES}
+${WEB_CONTEXT_RULE}
 If unsure of legal parents, omit or set unknown — do not invent.
 Return ONLY JSON:
 {"name":"string","legalName":"string","hqCountry":"string","parents":[{"name":"string","country":"string","control":"majority|wholly|minority|unknown"}],"chinaRelations":[{"type":"string","country":"string","strength":"strong|moderate|weak","note":"string"}],"confidence":0.0,"notes":["string"]}
 
 ${fence('entity', opts.entity)}
-${fence('product_hint', opts.productHint || '')}`;
+${fence('product_hint', opts.productHint || '')}
+${fence('web_research', opts.webContext || '')}`;
 }
 
 export function buildVerifyPrompt(opts: {
@@ -214,6 +231,7 @@ export function buildDualCorePrompt(opts: {
   text: string;
   geoScope: GeoScope;
   hasImage: boolean;
+  webContext?: string;
 }): string {
   const lang = langLabel(opts.locale);
   const imageRule = opts.hasImage
@@ -223,6 +241,7 @@ export function buildDualCorePrompt(opts: {
 ${GEO_POLICY}
 ${PRODUCT_FACT_RULES}
 ${COMPANY_FACT_RULES}
+${WEB_CONTEXT_RULE}
 ${imageRule}
 geoScope=${opts.geoScope} (TW is never China for tiers; greater_china may include HK/MO only).
 
@@ -233,6 +252,7 @@ Return ONLY JSON:
   "verification": {"consistent":true,"conflicts":["string"],"confidence":0.0,"caveats":["string"]}
 }
 
+${fence('web_research', opts.webContext || '')}
 ${fence('user_item', opts.text || (opts.hasImage ? '(see photo)' : ''))}`;
 }
 
@@ -242,10 +262,12 @@ export function buildAlternativesPrompt(opts: {
   wantBrands: boolean;
   wantProducts: boolean;
   contextJson: string;
+  webContext?: string;
 }): string {
   const lang = langLabel(opts.locale);
   return `You suggest LOWER China-involvement alternatives for the user's item. Respond in ${lang}.
 ${GEO_POLICY}
+${WEB_CONTEXT_RULE}
 
 GOAL (exact user intent):
 - Brands and products the user can buy INSTEAD of the checked item, chosen because they are NOT made in mainland China, or have a CLEARLY LOWER share of China involvement (manufacture, supply, ownership) than the checked item.
@@ -274,5 +296,6 @@ Include brands: ${opts.wantBrands}. Include products: ${opts.wantProducts}.
 Max 4 each. Quality over quantity — empty list is better than China-heavy "similar" items.
 
 ${fence('entity', opts.entity)}
-${fence('context', opts.contextJson)}`;
+${fence('context', opts.contextJson)}
+${fence('web_research', opts.webContext || '')}`;
 }

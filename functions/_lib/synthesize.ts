@@ -9,6 +9,7 @@ import {
   GRAPH_EDGE_CAP,
   GRAPH_NODE_CAP,
   KNOWLEDGE_NOTE,
+  WEB_KNOWLEDGE_NOTE,
   clampTier,
   type AgentPartials,
   type CheckResult,
@@ -33,6 +34,8 @@ export type SynthesizeInput = {
   /** When company agent was skipped by dimensions */
   companySkipped?: boolean;
   productSkipped?: boolean;
+  /** Live web research brief was successfully retrieved this job */
+  webEnriched?: boolean;
 };
 
 type Factors = {
@@ -652,8 +655,8 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     regions: f.regions,
     geoScope,
     disclaimerKey: DEFAULT_DISCLAIMER_KEY,
-    knowledgeBasis: 'model_memory',
-    knowledgeCutoffNote: KNOWLEDGE_NOTE,
+    knowledgeBasis: input.webEnriched ? 'web_enriched' : 'model_memory',
+    knowledgeCutoffNote: input.webEnriched ? WEB_KNOWLEDGE_NOTE : KNOWLEDGE_NOTE,
     product: p
       ? {
           name: p.name,
