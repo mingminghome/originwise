@@ -83,6 +83,10 @@ export type CheckResult = {
     manufacturer?: string;
     manufacturerCountry?: string;
     category?: string;
+    /** Major parts / global line when different from final madeIn */
+    componentsOrigin?: string;
+    /** Multi-layer origin explanations (brand vs factory vs final COO) */
+    notes?: string[];
   };
   company?: {
     name?: string;
@@ -199,7 +203,7 @@ export const ALT_CAP = 6;
 
 export const DEFAULT_DISCLAIMER_KEY = 'check.disclaimer';
 export const KNOWLEDGE_NOTE =
-  'Based on general model knowledge only; not a live corporate registry or customs database. Informational — not legal, trade, or sanctions advice.';
+  'Based on general model knowledge only (no live web lookup). Brand origin, component plants, and final assembly/COO can differ by SKU/market — prefer packaging labels. Not a corporate registry or customs database. Informational — not legal, trade, or sanctions advice.';
 
 export function clampTier(raw: unknown): RelationTier {
   const s = String(raw ?? '')

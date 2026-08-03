@@ -167,7 +167,13 @@ export function ResultPanel({
                 ) : null}
                 {result.product.originCountry ? (
                   <li>
-                    {t('check.origin')}: {result.product.originCountry}
+                    {t('check.brandOrigin')}: {result.product.originCountry}
+                  </li>
+                ) : null}
+                {result.product.componentsOrigin ? (
+                  <li>
+                    {t('check.componentsOrigin')}:{' '}
+                    {result.product.componentsOrigin}
                   </li>
                 ) : null}
                 {result.product.manufacturer ? (
@@ -176,6 +182,12 @@ export function ResultPanel({
                     {result.product.manufacturerCountry
                       ? ` (${result.product.manufacturerCountry})`
                       : ''}
+                  </li>
+                ) : null}
+                {result.product.notes?.length ? (
+                  <li className="fact-notes">
+                    {t('check.productNotes')}:{' '}
+                    {result.product.notes.join(' · ')}
                   </li>
                 ) : null}
               </ul>

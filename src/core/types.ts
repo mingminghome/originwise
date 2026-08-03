@@ -89,6 +89,8 @@ export type CheckResult = {
     manufacturer?: string;
     manufacturerCountry?: string;
     category?: string;
+    componentsOrigin?: string;
+    notes?: string[];
   };
   company?: {
     name?: string;

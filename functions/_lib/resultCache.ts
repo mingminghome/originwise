@@ -20,7 +20,7 @@ function sortedDims(dims: CheckDimension[]): string {
 export async function cacheKeyHash(parts: CacheLookupKey): Promise<string> {
   const material = [
     // Bump when product/company prompts or synthesize alt rules change (invalidate stale wrong answers)
-    'check:v3',
+    'check:v4',
     normalizeQuery(parts.text),
     parts.locale,
     parts.geoScope,

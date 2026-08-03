@@ -531,6 +531,13 @@ export function synthesize(input: SynthesizeInput): CheckResult {
       caveats.push(String(c));
     }
   }
+  // Surface multi-layer origin notes (users often only read caveats)
+  if (partials.product?.notes?.length) {
+    for (const n of partials.product.notes.slice(0, 3)) {
+      const s = String(n).trim();
+      if (s) caveats.push(s);
+    }
+  }
 
   // Post-pass: conflict + direct → cap confidence
   if (tier === 'direct' && f.F_CONFLICT) {
@@ -571,7 +578,10 @@ export function synthesize(input: SynthesizeInput): CheckResult {
 
   const summaryParts: string[] = [];
   if (p?.madeIn) summaryParts.push(`Made in: ${p.madeIn}`);
-  if (p?.originCountry) summaryParts.push(`Origin: ${p.originCountry}`);
+  if (p?.originCountry) summaryParts.push(`Brand origin: ${p.originCountry}`);
+  if (p?.componentsOrigin) {
+    summaryParts.push(`Components/global line: ${String(p.componentsOrigin).slice(0, 80)}`);
+  }
   if (c?.hqCountry) summaryParts.push(`HQ: ${c.hqCountry}`);
   if (c?.name) summaryParts.push(`Company: ${c.name}`);
   if (!summaryParts.length) {
@@ -654,6 +664,12 @@ export function synthesize(input: SynthesizeInput): CheckResult {
           manufacturer: p.manufacturer,
           manufacturerCountry: p.manufacturerCountry,
           category: p.category,
+          componentsOrigin: p.componentsOrigin
+            ? String(p.componentsOrigin).slice(0, 160)
+            : undefined,
+          notes: Array.isArray(p.notes)
+            ? p.notes.map((n) => String(n).slice(0, 220)).filter(Boolean).slice(0, 5)
+            : undefined,
         }
       : id
         ? { name: id.name, brand: id.brand, category: id.category }

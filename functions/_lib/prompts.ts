@@ -24,15 +24,31 @@ GEO / TIER POLICY (for facts only — final tier is computed server-side):
 
 /** Shared product geo accuracy rules (monolith / product / dual). */
 const PRODUCT_FACT_RULES = `
-PRODUCT GEO FIELDS (critical accuracy — users act on madeIn):
-- madeIn / manufacturedIn = country where THIS specific unit/SKU is assembled or officially labeled "Made in …" / country of origin for that model. Prefer label, packaging COO, retailer COO for the exact model string.
-- originCountry = brand design / commercial brand home market (e.g. Sharp → Japan). Do NOT copy originCountry into madeIn.
-- manufacturerCountry = legal manufacturer domicile (often brand HQ country).
-- NEVER set madeIn=China only because "many appliances are made in China" or because the brand is Japanese/Korean/EU but often produced in Asia.
-- When a full model/SKU is present (e.g. UA-PE30U-WB), use model-specific knowledge. Regional suffixes (E/U/B, market codes) can mean DIFFERENT factories — EU-market units may be Poland or elsewhere while other SKUs are China. Do not collapse all SKUs to one country.
-- If made-in for that exact SKU is not known with reasonable confidence, set madeIn to "unknown" (and lower confidence) — never invent China.
-- On packaging photos, prefer printed "Made in" / "Country of origin" over brand stereotypes.
-- Put uncertainty in notes[] (e.g. "SKU-specific COO may be Poland for EU market; other variants may differ").
+MULTI-LAYER ORIGIN (critical — do not collapse into one country):
+Products often have SEPARATE layers. Report each layer; never substitute one for another.
+
+1) originCountry = brand design / brand home market (e.g. Sharp → Japan). Not the factory.
+2) manufacturerCountry = legal manufacturer domicile (often same as brand HQ).
+3) madeIn / manufacturedIn = FINAL legal country of origin for THIS unit/SKU:
+   - Prefer packaging "Made in …" / "Country of origin" / retailer COO for this exact model.
+   - Final assembly or EU/UK localization plant counts as madeIn when that is the official stamp
+     (e.g. Sharp Consumer Electronics Poland in Ostaszewo for some EU/UK SKUs → madeIn "Poland").
+   - Do NOT put brand HQ or global Asia factory into madeIn when the unit is labeled elsewhere.
+4) componentsOrigin = where major parts / global line may be built (Thailand, China, etc.) when
+   different from final madeIn. Use free text (e.g. "Thailand and/or China for global PE30 line").
+5) notes[] MUST explain multi-layer cases when layers differ, e.g.:
+   "Brand Japan; compact PE30 line often Thailand/China globally; UK UA-PE30U-WB units frequently final-assembled/packaged in Poland for Europe/UK — use label if it says Made in Poland."
+
+SKU / MARKET RULES:
+- Full model strings matter (e.g. UA-PE30U-WB vs UA-PE30E-WB vs other Sharp purifiers).
+- Market suffixes (U = UK plug, E = EU, etc.) often mean localization at a regional hub — COO can be Poland even if the family is also made in Thailand/China elsewhere.
+- NEVER set madeIn=China only because "many appliances are made in China" or the brand is Japanese.
+- NEVER invent China when the user or label says Poland/Thailand/EU.
+- If exact SKU made-in is uncertain: madeIn "unknown", lower confidence, and put candidates in notes — do not guess China.
+- Photo/OCR "Made in" / "Country of origin" ALWAYS beats brand stereotypes and generic web guesses.
+
+WORKED PATTERN (illustrative — still verify against label/model knowledge):
+- Query "Sharp UA-PE30U-WB": originCountry Japan; madeIn often Poland for UK-market units (European assembly/distribution hub); componentsOrigin may note Thailand (and sometimes China for other Sharp purifier lines, not necessarily this compact SKU); notes explain layers.
 `.trim();
 
 const COMPANY_FACT_RULES = `
@@ -53,8 +69,8 @@ export function buildMonolithPrompt(opts: {
   const lang = langLabel(opts.locale);
   const dims = opts.dimensions.join(', ');
   const imageRule = opts.hasImage
-    ? '- A product/packaging photo is attached. Read readable text (brand, made-in, manufacturer).'
-    : '- No photo; use the user text only.';
+    ? '- A product/packaging photo is attached. PRIORITY: read "Made in", "Country of origin", model number, manufacturer address. Label text overrides stereotypes.'
+    : '- No photo; use the user text only. Honor exact model/SKU; if multi-layer origin, put final COO in madeIn and other layers in componentsOrigin/notes.';
 
   return `You are OriginWise, an informational assistant that extracts product origin and company facts related to China (PRC).
 
@@ -178,7 +194,13 @@ export function buildVerifyPrompt(opts: {
   const lang = langLabel(opts.locale);
   return `Cross-check product vs company partials for contradictions. Respond in ${lang}.
 ${GEO_POLICY}
-Flag conflicts such as: brand HQ Japan but madeIn China (not necessarily a conflict — note both); or parent listed as China when it is Taiwan (Foxconn/Hon Hai is TW).
+NOT automatic conflicts (use caveats instead):
+- Brand HQ Japan + madeIn Poland/Thailand/China (multi-layer origin is normal).
+- componentsOrigin Asia + madeIn Poland (final assembly vs components).
+Real conflicts to flag:
+- Parent listed as China when it is Taiwan (Foxconn/Hon Hai is TW).
+- madeIn contradicts explicit packaging OCR if both are present.
+- Invented China when notes/OCR say otherwise.
 Return ONLY JSON:
 {"consistent":true,"conflicts":["string"],"confidence":0.0,"caveats":["string"]}
 
@@ -195,8 +217,8 @@ export function buildDualCorePrompt(opts: {
 }): string {
   const lang = langLabel(opts.locale);
   const imageRule = opts.hasImage
-    ? '- A packaging photo is attached; read brand and made-in / country-of-origin text carefully (prefer label over stereotypes).'
-    : '- No photo; use user text only. Honor exact model/SKU for made-in.';
+    ? '- Packaging photo attached: prioritize Made in / Country of origin / model on the label over brand stereotypes.'
+    : '- No photo; honor exact model/SKU. Multi-layer: brand Japan ≠ madeIn; final COO for this SKU goes in madeIn; Asia plants may be componentsOrigin only.';
   return `You are OriginWise. Extract product origin and company facts related to China (PRC). Respond in ${lang}.
 ${GEO_POLICY}
 ${PRODUCT_FACT_RULES}
