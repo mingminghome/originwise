@@ -2159,6 +2159,9 @@ p {
 }
 
 /* OriginWise settings row */
+.settings-menu {
+  padding: 0.35rem 1rem;
+}
 .settings-row {
   display: flex;
   align-items: center;
@@ -2169,6 +2172,22 @@ p {
   font-weight: 700;
   color: var(--text);
   text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+.settings-row + .settings-row {
+  border-top: 1px solid var(--border);
+}
+.settings-version {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  text-align: center;
+}
+.settings-hint {
+  font-size: 0.85rem;
+  margin: 0 0 0.5rem;
 }
 
 .stack {
@@ -4308,12 +4327,16 @@ p {
   border-top: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.45rem;
 }
 .about-pint-label {
   margin: 0;
   font-size: 0.85rem;
+  text-align: center;
+}
+.buy-pint-full-text {
+  margin-top: 0.35rem;
 }
 .top-nav-icon {
   width: 40px;

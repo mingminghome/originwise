@@ -1,11 +1,3 @@
-import { useState } from 'react';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Languages,
-  Search,
-  Trash2,
-} from 'lucide-react';
 import {
   ALL_DIMENSIONS,
   type CheckDimension,
@@ -18,7 +10,6 @@ import { APP_VERSION } from '../version';
 import { CleanDataPanel } from './CleanDataPanel';
 import { TopNavIcons } from './TopNavIcons';
 import { StyledCheckbox } from './ui/StyledCheckbox';
-import { StyledRadioGroup } from './ui/StyledRadioGroup';
 
 const DIM_LABEL: Record<CheckDimension, string> = {
   origin: 'settings.dimOrigin',
@@ -28,10 +19,8 @@ const DIM_LABEL: Record<CheckDimension, string> = {
   alt_products: 'settings.dimAltProducts',
 };
 
-type Panel = 'home' | 'display' | 'check' | 'data';
-
 /**
- * Settings hub: short menu + one panel at a time (avoids a long scroll).
+ * Flat Settings (BabyWise-aligned): all preferences as cards, no nested hub.
  */
 export function SettingsScreen({ state }: { state: AppState }) {
   const {
@@ -43,7 +32,6 @@ export function SettingsScreen({ state }: { state: AppState }) {
     setTab,
     tab,
   } = state;
-  const [panel, setPanel] = useState<Panel>('home');
 
   const patch = (partial: Partial<typeof settings>) => {
     updateSettings({ ...settings, ...partial });
@@ -57,133 +45,9 @@ export function SettingsScreen({ state }: { state: AppState }) {
     patch({ defaultDimensions: ALL_DIMENSIONS.filter((d) => set.has(d)) });
   };
 
-  if (panel === 'display') {
-    return (
-      <>
-        <header className="app-header settings-subhead">
-          <button
-            type="button"
-            className="settings-back"
-            onClick={() => setPanel('home')}
-          >
-            <ChevronLeft size={20} />
-            {t('common.back')}
-          </button>
-          <h1>{t('settings.panelDisplay')}</h1>
-        </header>
-        <section className="card stack">
-          <div className="field">
-            <label>{t('settings.language')}</label>
-            <StyledRadioGroup
-              name="locale"
-              value={settings.locale}
-              onChange={(v) => patch({ locale: v as Locale })}
-              options={[
-                { value: 'en', label: 'English' },
-                { value: 'zh-Hant', label: '繁體中文' },
-              ]}
-            />
-          </div>
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label>{t('settings.theme')}</label>
-            <StyledRadioGroup
-              name="theme"
-              value={settings.theme}
-              onChange={(v) => patch({ theme: v as ThemeMode })}
-              options={[
-                { value: 'system', label: t('settings.themeSystem') },
-                { value: 'light', label: t('settings.themeLight') },
-                { value: 'dark', label: t('settings.themeDark') },
-              ]}
-            />
-          </div>
-        </section>
-      </>
-    );
-  }
-
-  if (panel === 'check') {
-    return (
-      <>
-        <header className="app-header settings-subhead">
-          <button
-            type="button"
-            className="settings-back"
-            onClick={() => setPanel('home')}
-          >
-            <ChevronLeft size={20} />
-            {t('common.back')}
-          </button>
-          <h1>{t('settings.panelCheck')}</h1>
-        </header>
-        <section className="card stack">
-          <div className="field">
-            <label>{t('settings.geoScope')}</label>
-            <p className="muted settings-hint">{t('settings.geoScopeHint')}</p>
-            <StyledRadioGroup
-              name="geoScope"
-              value={settings.geoScope}
-              onChange={(v) => patch({ geoScope: v as GeoScope })}
-              options={[
-                { value: 'prc', label: t('settings.geoScopePrc') },
-                {
-                  value: 'greater_china',
-                  label: t('settings.geoScopeGreater'),
-                },
-              ]}
-            />
-          </div>
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label>{t('settings.dimensions')}</label>
-            <p className="muted settings-hint">{t('settings.dimensionsHint')}</p>
-            <div className="stack" style={{ gap: '0.45rem', marginTop: 6 }}>
-              {ALL_DIMENSIONS.map((dim) => (
-                <StyledCheckbox
-                  key={dim}
-                  checked={settings.defaultDimensions.includes(dim)}
-                  onChange={(on) => toggleDim(dim, on)}
-                  label={t(DIM_LABEL[dim])}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-      </>
-    );
-  }
-
-  if (panel === 'data') {
-    return (
-      <>
-        <header className="app-header settings-subhead">
-          <button
-            type="button"
-            className="settings-back"
-            onClick={() => setPanel('home')}
-          >
-            <ChevronLeft size={20} />
-            {t('common.back')}
-          </button>
-          <h1>{t('settings.panelData')}</h1>
-        </header>
-        <section className="card">
-          <CleanDataPanel
-            t={t}
-            summary={dataSummary}
-            onClean={cleanData}
-            onCleaned={(cat) => {
-              if (cat === 'all') setTab('check');
-            }}
-          />
-        </section>
-      </>
-    );
-  }
-
-  // Home menu — short, no long scroll
   return (
-    <>
-      <header className="app-header">
+    <div className="layout-grid">
+      <header className="app-header span-2">
         <div>
           <h1>{t('settings.title')}</h1>
           <p className="subtitle">{t('settings.subtitle')}</p>
@@ -191,45 +55,104 @@ export function SettingsScreen({ state }: { state: AppState }) {
         <TopNavIcons tab={tab} onChange={setTab} t={t} />
       </header>
 
-      <section className="card settings-menu">
-        <button
-          type="button"
-          className="settings-row"
-          onClick={() => setPanel('display')}
-        >
-          <span>
-            <Languages size={16} style={{ verticalAlign: -2, marginRight: 8 }} />
-            {t('settings.panelDisplay')}
-          </span>
-          <ChevronRight size={18} />
-        </button>
-        <button
-          type="button"
-          className="settings-row"
-          onClick={() => setPanel('check')}
-        >
-          <span>
-            <Search size={16} style={{ verticalAlign: -2, marginRight: 8 }} />
-            {t('settings.panelCheck')}
-          </span>
-          <ChevronRight size={18} />
-        </button>
-        <button
-          type="button"
-          className="settings-row"
-          onClick={() => setPanel('data')}
-        >
-          <span>
-            <Trash2 size={16} style={{ verticalAlign: -2, marginRight: 8 }} />
-            {t('settings.panelData')}
-          </span>
-          <ChevronRight size={18} />
-        </button>
+      <section className="card">
+        <h2 className="section-title">{t('settings.language')}</h2>
+        <div className="chip-row">
+          {(
+            [
+              ['en', 'English'],
+              ['zh-Hant', '繁體中文'],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={`chip ${settings.locale === id ? 'active' : ''}`}
+              onClick={() => patch({ locale: id as Locale })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </section>
 
-      <p className="muted settings-version">
+      <section className="card">
+        <h2 className="section-title">{t('settings.theme')}</h2>
+        <div className="chip-row">
+          {(
+            [
+              ['system', 'settings.themeSystem'],
+              ['light', 'settings.themeLight'],
+              ['dark', 'settings.themeDark'],
+            ] as const
+          ).map(([id, key]) => (
+            <button
+              key={id}
+              type="button"
+              className={`chip ${settings.theme === id ? 'active' : ''}`}
+              onClick={() => patch({ theme: id as ThemeMode })}
+            >
+              {t(key)}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="card span-2">
+        <h2 className="section-title">{t('settings.geoScope')}</h2>
+        <p className="muted" style={{ fontSize: '0.85rem', marginBottom: 10 }}>
+          {t('settings.geoScopeHint')}
+        </p>
+        <div className="chip-row">
+          {(
+            [
+              ['prc', 'settings.geoScopePrc'],
+              ['greater_china', 'settings.geoScopeGreater'],
+            ] as const
+          ).map(([id, key]) => (
+            <button
+              key={id}
+              type="button"
+              className={`chip ${settings.geoScope === id ? 'active' : ''}`}
+              onClick={() => patch({ geoScope: id as GeoScope })}
+            >
+              {t(key)}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="card span-2">
+        <h2 className="section-title">{t('settings.dimensions')}</h2>
+        <p className="muted" style={{ fontSize: '0.85rem', marginBottom: 10 }}>
+          {t('settings.dimensionsHint')}
+        </p>
+        <div className="stack" style={{ gap: '0.45rem' }}>
+          {ALL_DIMENSIONS.map((dim) => (
+            <StyledCheckbox
+              key={dim}
+              checked={settings.defaultDimensions.includes(dim)}
+              onChange={(on) => toggleDim(dim, on)}
+              label={t(DIM_LABEL[dim])}
+            />
+          ))}
+        </div>
+      </section>
+
+      <div className="span-2">
+        <CleanDataPanel
+          t={t}
+          summary={dataSummary}
+          onClean={cleanData}
+          onCleaned={(cat) => {
+            if (cat === 'all') setTab('check');
+          }}
+        />
+      </div>
+
+      <p className="muted settings-version span-2">
         {t('settings.version', { v: APP_VERSION })}
       </p>
-    </>
+    </div>
   );
 }

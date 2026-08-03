@@ -1,6 +1,7 @@
 import type { MessageTree } from './en';
 
 export const zhHant = {
+  appName: 'OriginWise',
   tabs: {
     check: '查詢',
     history: '紀錄',
@@ -275,9 +276,47 @@ export const zhHant = {
   },
   about: {
     title: '關於',
+    tagline: '簡單的中國相關產品查詢',
+    intro:
+      'OriginWise 幫你快速看產品或品牌是否看起來與中國相關——產地、製造商與公司關聯，並可選較低關聯替代。查詢紀錄留在本裝置。',
     body: 'OriginWise 用簡單方式，快速看日常產品／品牌是否與中國相關。AI 可能不完整或出錯。',
     privacy: '無需帳號。查詢紀錄留在這台手機／瀏覽器。',
     license: 'MIT 授權',
+    licenseShort: 'MIT',
+    openSourceTitle: '開放原始碼 · MIT',
+    openSourceBody:
+      '本專案以 MIT 授權提供的免費軟體。你可以使用、複製、修改、合併、發佈、散布與再授權，也可使用自己的 API 金鑰自行部署。',
+    copyrightLine: 'Copyright © {year} {name}',
+    licenseAsIs: '依「現況」提供，不附帶保證。完整授權條款請見 GitHub。',
+    linkSource: '原始碼',
+    linkLicense: 'MIT 授權',
+    linkIssues: '問題與回饋',
+    linkReleases: '版本發布',
+    linkSecurity: '安全政策',
+    privacyTitle: '你的隱私',
+    privacyLead: '我們把事情做得很單純：不用註冊帳號，查詢紀錄也只留在你的手機或電腦。',
+    privacyBullet1: '查詢紀錄、設定與偏好，只存在此瀏覽器、這部裝置裡。',
+    privacyBullet2: '沒有登入，也不會把你的查詢日記備份到雲端。',
+    privacyBullet3: '可隨時在設定裡用「刪除本機資料」全部刪掉。',
+    privacyBullet4:
+      '執行查詢時，名稱或照片只用於取得該次回答。我們不會把包裝當成產品目錄保存。',
+    privacyBullet5: '照片會先在裝置上壓縮再上傳，不會當成伺服器紀錄保存。',
+    privacyPolicyLink: '隱私權政策',
+    termsLink: '使用條款',
+    designTitle: '它怎麼運作',
+    designLead: '快速多代理 AI 查詢，再以固定計分表合成——不是法律資料庫。',
+    designLocalTitle: '什麼會留在你的裝置',
+    designLocalBody:
+      'App 載入後，紀錄、語言、主題與查詢偏好只存在此瀏覽器。清除網站資料，或使用「刪除本機資料」，就可以移除。',
+    designWhyTitle: '為什麼這樣做',
+    designWhy1: '想在手機上快速查，不必註冊帳號。',
+    designWhy2: '紀錄跟你在一起——想刪隨時可刪。',
+    designWhy3: 'AI 可能出錯；我們會顯示注意事項，且台灣在分級上視為獨立。',
+    disclaimerTitle: '請注意',
+    disclaimerBody:
+      'OriginWise 僅供參考——不是法律、關務或制裁建議。AI 與分級標籤可能不完整或有誤。重要決定請自行再確認。',
+    createdBy: '維護者',
+    contributionsWelcome: '歡迎在 GitHub 提出 Issue 或 Pull Request。',
   },
   how: {
     title: '如何運作',

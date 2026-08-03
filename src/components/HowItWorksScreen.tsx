@@ -104,8 +104,8 @@ export function HowItWorksScreen({ state }: { state: AppState }) {
   const { t, setTab } = state;
 
   return (
-    <>
-      <header className="app-header settings-subhead">
+    <div className="layout-grid">
+      <header className="app-header span-2 settings-subhead">
         <button
           type="button"
           className="settings-back"
@@ -113,18 +113,18 @@ export function HowItWorksScreen({ state }: { state: AppState }) {
         >
           {t('common.back')}
         </button>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h1>{t('how.title')}</h1>
           <p className="subtitle">{t('how.subtitle')}</p>
         </div>
       </header>
 
-      <section className="card stack">
+      <section className="card stack span-2">
         <h2 className="result-section-title">{t('how.aimTitle')}</h2>
         <p>{t('how.aimBody')}</p>
       </section>
 
-      <section className="card stack">
+      <section className="card stack span-2">
         <h2 className="result-section-title">{t('how.graphTitle')}</h2>
         <p className="muted settings-hint">{t('how.graphHint')}</p>
         <FlowGraph t={t} />
@@ -144,7 +144,7 @@ export function HowItWorksScreen({ state }: { state: AppState }) {
         </ul>
       </section>
 
-      <section className="card stack">
+      <section className="card stack span-2">
         <h2 className="result-section-title">{t('how.stepsTitle')}</h2>
         <ol className="how-steps">
           <li>
@@ -177,7 +177,7 @@ export function HowItWorksScreen({ state }: { state: AppState }) {
         </ol>
       </section>
 
-      <section className="card stack">
+      <section className="card stack span-2">
         <h2 className="result-section-title">{t('how.badgeTitle')}</h2>
         <ul className="how-badge-list">
           <li>
@@ -199,23 +199,23 @@ export function HowItWorksScreen({ state }: { state: AppState }) {
         </ul>
       </section>
 
-      <section className="card stack">
+      <section className="card stack span-2">
         <h2 className="result-section-title">{t('how.twTitle')}</h2>
         <p className="muted">{t('how.twBody')}</p>
       </section>
 
-      <section className="card stack">
+      <section className="card stack span-2">
         <h2 className="result-section-title">{t('how.privacyTitle')}</h2>
         <p className="muted">{t('how.privacyBody')}</p>
       </section>
 
       <button
         type="button"
-        className="btn btn-primary btn-block"
+        className="btn btn-primary btn-block span-2"
         onClick={() => setTab('check')}
       >
         {t('how.tryBtn')}
       </button>
-    </>
+    </div>
   );
 }

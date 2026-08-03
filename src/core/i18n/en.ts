@@ -4,6 +4,7 @@ export type MessageTree = {
 };
 
 export const en: MessageTree = {
+  appName: 'OriginWise',
   tabs: {
     check: 'Check',
     history: 'History',
@@ -287,9 +288,54 @@ export const en: MessageTree = {
   },
   about: {
     title: 'About',
+    tagline: 'A simple China-related product check',
+    intro:
+      'OriginWise helps you quickly see if a product or brand looks China-related — place of origin, manufacturer, and company links — with optional lower-involvement alternatives. Checks stay on this device.',
     body: 'OriginWise is a simple tool for a fast China-related check on everyday products and brands. AI can be incomplete or wrong.',
     privacy: 'No account. Your history stays on this phone/browser.',
     license: 'MIT License',
+    licenseShort: 'MIT',
+    openSourceTitle: 'Open source · MIT',
+    openSourceBody:
+      'This project is free software under the MIT License. You may use, copy, modify, merge, publish, distribute, and sublicense it — including for your own deployment with your own API keys.',
+    copyrightLine: 'Copyright © {year} {name}',
+    licenseAsIs:
+      'Provided “as is”, without warranty. See the full license text on GitHub.',
+    linkSource: 'Source code',
+    linkLicense: 'MIT License',
+    linkIssues: 'Issues & feedback',
+    linkReleases: 'Releases',
+    linkSecurity: 'Security policy',
+    privacyTitle: 'Your privacy',
+    privacyLead:
+      'We keep things simple: no account, and your check history stays on your phone or computer.',
+    privacyBullet1:
+      'Past checks, settings, and preferences are saved only in this browser on your device.',
+    privacyBullet2: 'There is no login and no cloud copy of your check diary.',
+    privacyBullet3:
+      'You can wipe everything anytime with Delete local data in Settings.',
+    privacyBullet4:
+      'When you run a check, the name or photo is sent only for that answer. We do not keep packages as a product catalogue.',
+    privacyBullet5:
+      'Photos are compressed on your device before upload and are not stored as server records.',
+    privacyPolicyLink: 'Privacy policy',
+    termsLink: 'Terms of use',
+    designTitle: 'How it works',
+    designLead:
+      'Fast multi-agent AI check, then a fixed scoring table — not a legal database.',
+    designLocalTitle: 'What stays on your device',
+    designLocalBody:
+      'After the app loads, your history, language, theme, and check preferences are saved only in this browser. Clear site data or use Delete local data to remove them.',
+    designWhyTitle: 'Why we built it this way',
+    designWhy1: 'Quick mobile checks without creating an account.',
+    designWhy2: 'History stays with you — wipe it anytime.',
+    designWhy3:
+      'AI can be wrong; we surface caveats and treat Taiwan as a separate country for tiers.',
+    disclaimerTitle: 'Please note',
+    disclaimerBody:
+      'OriginWise is informational only — not legal, customs, or sanctions advice. AI and tier labels can be incomplete or wrong. Always verify critical decisions yourself.',
+    createdBy: 'Maintained by',
+    contributionsWelcome: 'Issues and pull requests are welcome on GitHub.',
   },
   how: {
     title: 'How it works',
