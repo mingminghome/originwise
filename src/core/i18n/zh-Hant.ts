@@ -28,6 +28,11 @@ export const zhHant = {
     action: '安裝',
     dismiss: '關閉安裝提示',
   },
+  support: {
+    buyMeAPint: '請我喝一杯',
+    pintShort: '請杯',
+    thanks: '若 OriginWise 對你有幫助，歡迎請我喝一杯：',
+  },
   welcome: {
     title: '歡迎使用 OriginWise',
     body: '快速查：這項產品／品牌是否與中國相關？輸入名稱或拍包裝即可。AI 可能出錯——非法律建議。',

@@ -4246,11 +4246,74 @@ p {
   color: var(--text);
   padding: 0.25rem 0;
 }
+.top-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
 .top-nav-icons {
   display: flex;
   align-items: center;
   gap: 0.15rem;
-  margin-left: auto;
+}
+/* ComboWise-style support chip (top-right on front page) */
+.buy-pint-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 34px;
+  padding: 0 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(91, 108, 240, 0.45);
+  background: rgba(91, 108, 240, 0.12);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  line-height: 1;
+}
+.buy-pint-chip:hover {
+  background: rgba(91, 108, 240, 0.2);
+  border-color: rgba(91, 108, 240, 0.65);
+}
+[data-theme='dark'] .buy-pint-chip {
+  background: rgba(91, 108, 240, 0.18);
+  border-color: rgba(139, 152, 245, 0.45);
+  color: #e8ebff;
+}
+.buy-pint-chip-text {
+  display: none;
+}
+@media (min-width: 380px) {
+  .buy-pint-chip-text {
+    display: inline;
+  }
+}
+.buy-pint-full {
+  display: inline-block;
+  line-height: 0;
+}
+.buy-pint-full img {
+  display: block;
+  height: 40px;
+  width: auto;
+  max-width: 100%;
+}
+.about-pint {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+.about-pint-label {
+  margin: 0;
+  font-size: 0.85rem;
 }
 .top-nav-icon {
   width: 40px;

@@ -1,9 +1,11 @@
 import { CircleHelp, History, Settings } from 'lucide-react';
 import type { TFunction } from '../core/i18n';
 import type { TabId } from '../hooks/useAppState';
+import { BuyMeAPint } from './BuyMeAPint';
 
 /**
  * Compact icon nav (top-right) — used on Check (Google-style) and wide layouts.
+ * Includes ComboWise-style “Buy me a pint” on the front page chrome.
  */
 export function TopNavIcons({
   tab,
@@ -31,25 +33,28 @@ export function TopNavIcons({
   ];
 
   return (
-    <nav className="top-nav-icons" aria-label={t('tabs.navMore')}>
-      {items.map(({ id, icon: Icon, labelKey, activeWhen }) => {
-        const active = activeWhen
-          ? activeWhen.includes(tab)
-          : tab === id;
-        return (
-          <button
-            key={id}
-            type="button"
-            className={active ? 'top-nav-icon is-active' : 'top-nav-icon'}
-            onClick={() => onChange(id)}
-            aria-label={t(labelKey)}
-            title={t(labelKey)}
-            aria-current={active ? 'page' : undefined}
-          >
-            <Icon size={20} strokeWidth={active ? 2.4 : 2} />
-          </button>
-        );
-      })}
-    </nav>
+    <div className="top-nav-right">
+      <BuyMeAPint t={t} compact />
+      <nav className="top-nav-icons" aria-label={t('tabs.navMore')}>
+        {items.map(({ id, icon: Icon, labelKey, activeWhen }) => {
+          const active = activeWhen
+            ? activeWhen.includes(tab)
+            : tab === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              className={active ? 'top-nav-icon is-active' : 'top-nav-icon'}
+              onClick={() => onChange(id)}
+              aria-label={t(labelKey)}
+              title={t(labelKey)}
+              aria-current={active ? 'page' : undefined}
+            >
+              <Icon size={20} strokeWidth={active ? 2.4 : 2} />
+            </button>
+          );
+        })}
+      </nav>
+    </div>
   );
 }

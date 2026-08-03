@@ -31,6 +31,11 @@ export const en: MessageTree = {
     action: 'Install',
     dismiss: 'Dismiss install prompt',
   },
+  support: {
+    buyMeAPint: 'Buy me a pint',
+    pintShort: 'Pint',
+    thanks: 'If OriginWise helps you, you can buy me a pint:',
+  },
   welcome: {
     title: 'Welcome to OriginWise',
     body: 'Quick check: is this product or brand China-related? Type a name or snap a package. AI can be wrong — not legal advice.',

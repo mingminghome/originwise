@@ -2,6 +2,7 @@ import { ExternalLink } from 'lucide-react';
 import { PROJECT } from '../core/project';
 import type { AppState } from '../hooks/useAppState';
 import { APP_VERSION } from '../version';
+import { BuyMeAPint } from './BuyMeAPint';
 
 export function AboutScreen({ state }: { state: AppState }) {
   const { t, setTab } = state;
@@ -46,6 +47,10 @@ export function AboutScreen({ state }: { state: AppState }) {
             <ExternalLink size={16} />
             {PROJECT.repoLabel}
           </a>
+        </div>
+        <div className="about-pint">
+          <p className="muted about-pint-label">{t('support.thanks')}</p>
+          <BuyMeAPint t={t} />
         </div>
       </section>
     </>
