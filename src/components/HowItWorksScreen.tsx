@@ -109,7 +109,7 @@ export function HowItWorksScreen({ state }: { state: AppState }) {
         <button
           type="button"
           className="settings-back"
-          onClick={() => setTab('info')}
+          onClick={() => setTab('about')}
         >
           {t('common.back')}
         </button>

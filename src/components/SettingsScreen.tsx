@@ -16,6 +16,7 @@ import {
 import type { AppState } from '../hooks/useAppState';
 import { APP_VERSION } from '../version';
 import { CleanDataPanel } from './CleanDataPanel';
+import { TopNavIcons } from './TopNavIcons';
 import { StyledCheckbox } from './ui/StyledCheckbox';
 import { StyledRadioGroup } from './ui/StyledRadioGroup';
 
@@ -33,8 +34,15 @@ type Panel = 'home' | 'display' | 'check' | 'data';
  * Settings hub: short menu + one panel at a time (avoids a long scroll).
  */
 export function SettingsScreen({ state }: { state: AppState }) {
-  const { settings, updateSettings, t, cleanData, dataSummary, setTab } =
-    state;
+  const {
+    settings,
+    updateSettings,
+    t,
+    cleanData,
+    dataSummary,
+    setTab,
+    tab,
+  } = state;
   const [panel, setPanel] = useState<Panel>('home');
 
   const patch = (partial: Partial<typeof settings>) => {
@@ -180,6 +188,7 @@ export function SettingsScreen({ state }: { state: AppState }) {
           <h1>{t('settings.title')}</h1>
           <p className="subtitle">{t('settings.subtitle')}</p>
         </div>
+        <TopNavIcons tab={tab} onChange={setTab} t={t} />
       </header>
 
       <section className="card settings-menu">

@@ -50,6 +50,19 @@ Taiwan is always treated as a **separate country** (not China-related for tiers)
 - **Optional Search Console** — via `VITE_GOOGLE_SITE_VERIFICATION` (HTML meta; never hardcoded)  
 - **Optional “Buy me a pint”** — via `VITE_BUY_ME_A_PINT_URL` only (never hardcoded)   
 - **Providers** — server keys only; users never paste API keys in the UI  
+- **Navigation** — bottom: Check · History; top-right: About · Settings (+ pint chip)
+
+### Navigation (UX)
+
+Aligned with BabyWise (Wise-family pattern):
+
+| Control | Tabs / actions |
+|---------|----------------|
+| **Bottom nav** | Check · History (primary tools) |
+| **Top-right icons** | About · Settings (+ pint when env URL is set) |
+| **About** | Top-level (no Info hub); **How it works** opens from About |
+| **Settings** | Top-level preferences & clean data only |
+| **Check home** | Full-chrome search UI (bottom nav hidden); top icons still reach About/Settings |
 
 ---
 
@@ -70,6 +83,7 @@ npm run pages:dev                    # full SPA + /api/check (recommended)
 | `npm run dev` | Vite only — Check API is a **stub** (provider not configured) |
 | `npm run pages:dev` | Build + Wrangler Pages with real Functions + secrets |
 | `npm run build` | Typecheck + production `dist/` |
+| `npm run deploy` | Build + deploy to Cloudflare Pages (`originwise`) |
 | `npm test` | Unit tests |
 | `npm run lint` | Oxlint (if configured) |
 

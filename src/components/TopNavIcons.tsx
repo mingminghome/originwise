@@ -1,11 +1,11 @@
-import { CircleHelp, History, Settings } from 'lucide-react';
+import { CircleHelp, Settings } from 'lucide-react';
 import type { TFunction } from '../core/i18n';
 import type { TabId } from '../hooks/useAppState';
 import { BuyMeAPint } from './BuyMeAPint';
 
 /**
- * Compact icon nav (top-right) — used on Check (Google-style) and wide layouts.
- * Includes ComboWise-style “Buy me a pint” on the front page chrome.
+ * Compact icon nav (top-right) — About / Settings (BabyWise-aligned).
+ * “Buy me a pint” chip when VITE_BUY_ME_A_PINT_URL is set.
  */
 export function TopNavIcons({
   tab,
@@ -18,16 +18,16 @@ export function TopNavIcons({
 }) {
   const items: Array<{
     id: TabId;
-    icon: typeof History;
+    icon: typeof Settings;
     labelKey: string;
     activeWhen?: TabId[];
   }> = [
-    { id: 'history', icon: History, labelKey: 'tabs.history' },
     {
-      id: 'info',
+      id: 'about',
       icon: CircleHelp,
-      labelKey: 'tabs.info',
-      activeWhen: ['info', 'how', 'about'],
+      labelKey: 'tabs.about',
+      // How-it-works is a sub-page of About
+      activeWhen: ['about', 'how'],
     },
     { id: 'settings', icon: Settings, labelKey: 'tabs.settings' },
   ];

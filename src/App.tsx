@@ -4,7 +4,6 @@ import { BottomNav } from './components/BottomNav';
 import { CheckScreen } from './components/CheckScreen';
 import { HistoryScreen } from './components/HistoryScreen';
 import { HowItWorksScreen } from './components/HowItWorksScreen';
-import { InfoScreen } from './components/InfoScreen';
 import { InstallAppBanner } from './components/InstallAppBanner';
 import { SettingsScreen } from './components/SettingsScreen';
 import { WelcomeDisclaimer } from './components/WelcomeDisclaimer';
@@ -28,8 +27,8 @@ export default function App() {
     setShowWelcome(false);
   };
 
-  const hideBottomNav =
-    tab === 'check' || tab === 'how' || tab === 'about';
+  // Check keeps Google-style full chrome (no bottom nav). Other tabs show primary nav.
+  const hideBottomNav = tab === 'check';
   const isCheckHome = tab === 'check';
 
   return (
@@ -52,7 +51,6 @@ export default function App() {
           {!isCheckHome ? <InstallAppBanner t={t} /> : null}
           {tab === 'check' && <CheckScreen state={state} />}
           {tab === 'history' && <HistoryScreen state={state} />}
-          {tab === 'info' && <InfoScreen state={state} />}
           {tab === 'settings' && <SettingsScreen state={state} />}
           {tab === 'about' && <AboutScreen state={state} />}
           {tab === 'how' && <HowItWorksScreen state={state} />}

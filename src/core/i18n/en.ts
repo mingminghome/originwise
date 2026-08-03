@@ -7,7 +7,7 @@ export const en: MessageTree = {
   tabs: {
     check: 'Check',
     history: 'History',
-    info: 'Info',
+    about: 'About',
     settings: 'Settings',
     navMore: 'Menu',
   },
@@ -290,10 +290,6 @@ export const en: MessageTree = {
     body: 'OriginWise is a simple tool for a fast China-related check on everyday products and brands. AI can be incomplete or wrong.',
     privacy: 'No account. Your history stays on this phone/browser.',
     license: 'MIT License',
-  },
-  info: {
-    title: 'Info',
-    subtitle: 'How it works & about the app',
   },
   how: {
     title: 'How it works',

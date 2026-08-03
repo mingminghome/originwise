@@ -4,7 +4,7 @@ export const zhHant = {
   tabs: {
     check: '查詢',
     history: '紀錄',
-    info: '說明',
+    about: '關於',
     settings: '設定',
     navMore: '選單',
   },
@@ -278,10 +278,6 @@ export const zhHant = {
     body: 'OriginWise 用簡單方式，快速看日常產品／品牌是否與中國相關。AI 可能不完整或出錯。',
     privacy: '無需帳號。查詢紀錄留在這台手機／瀏覽器。',
     license: 'MIT 授權',
-  },
-  info: {
-    title: '說明',
-    subtitle: '如何運作與關於本 App',
   },
   how: {
     title: '如何運作',

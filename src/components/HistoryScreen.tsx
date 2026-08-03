@@ -1,6 +1,7 @@
 import { Image as ImageIcon, Trash2 } from 'lucide-react';
 import type { AppState } from '../hooks/useAppState';
 import { TierBadge } from './TierBadge';
+import { TopNavIcons } from './TopNavIcons';
 
 function formatWhen(iso: string, locale: string): string {
   const d = new Date(iso);
@@ -25,6 +26,7 @@ export function HistoryScreen({ state }: { state: AppState }) {
     removeCheckHistory,
     setActiveResult,
     setTab,
+    tab,
   } = state;
 
   return (
@@ -34,6 +36,7 @@ export function HistoryScreen({ state }: { state: AppState }) {
           <h1>{t('history.title')}</h1>
           <p className="subtitle">{t('history.subtitle')}</p>
         </div>
+        <TopNavIcons tab={tab} onChange={setTab} t={t} />
       </header>
 
       {checkHistory.length === 0 ? (

@@ -1,12 +1,11 @@
-import { CircleHelp, History, Search, Settings } from 'lucide-react';
+import { History, Search } from 'lucide-react';
 import type { TFunction } from '../core/i18n';
 import type { TabId } from '../hooks/useAppState';
 
+/** Primary tabs only — About / Settings live in top-right icons (BabyWise-aligned). */
 const items: Array<{ id: TabId; icon: typeof Search; labelKey: string }> = [
   { id: 'check', icon: Search, labelKey: 'tabs.check' },
   { id: 'history', icon: History, labelKey: 'tabs.history' },
-  { id: 'info', icon: CircleHelp, labelKey: 'tabs.info' },
-  { id: 'settings', icon: Settings, labelKey: 'tabs.settings' },
 ];
 
 export function BottomNav({
@@ -21,9 +20,7 @@ export function BottomNav({
   return (
     <nav className="bottom-nav" aria-label="Main">
       {items.map(({ id, icon: Icon, labelKey }) => {
-        const active =
-          tab === id ||
-          (id === 'info' && (tab === 'about' || tab === 'how'));
+        const active = tab === id;
         return (
           <button
             key={id}

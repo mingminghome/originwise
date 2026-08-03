@@ -60,6 +60,17 @@ Change the project name in `package.json` script or:
 npx wrangler pages deploy dist --project-name=YOUR_PROJECT_NAME
 ```
 
+### App shell (for support / QA)
+
+After deploy, smoke the SPA navigation:
+
+| Area | Expected |
+|------|----------|
+| Bottom nav | **Check** · **History** only |
+| Top-right icons | **About** · **Settings** (+ optional pint chip) |
+| About | Top-level; link to **How it works** |
+| Settings | Preferences & delete data only (no About nest) |
+
 ### 3. Production secrets (Functions)
 
 Set **encrypted** secrets on the Pages project (dashboard or CLI).  

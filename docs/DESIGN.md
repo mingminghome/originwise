@@ -776,13 +776,14 @@ Pool health (no secrets): available providers, vision-capable list, rate-limit p
 
 #### Navigation (**v1 locked**)
 
-**Bottom nav: Check | History | Settings** (3 tabs). **About** nested under Settings (BabyWise-style nesting for About).
+**Bottom nav: Check | History** (primary tools only). **About** and **Settings** are top-level screens opened from **top-right icon buttons** (Buy me a pint chip optional). **How it works** is a sub-page of About (not a separate Info hub). Matches BabyWise shell navigation.
 
-| Tab | Screen |
+| Area | Screen |
 |-----|--------|
-| Check | `CheckScreen` — composer + progress + last few history snippets optional |
-| History | `HistoryScreen` — full list |
-| Settings | `SettingsScreen` + About entry + Clean Data |
+| Check | `CheckScreen` — composer + progress; top-right About/Settings icons |
+| History | `HistoryScreen` — full list; top-right icons |
+| About | `AboutScreen` (top-level) → optional `HowItWorksScreen` |
+| Settings | `SettingsScreen` + Clean Data (no About nest) |
 
 #### CheckScreen (Ask-like)
 
@@ -1293,7 +1294,7 @@ Rationale: 10 jobs × ≤5 calls ≈ **≤50 LLM calls/day/IP** — safer for pu
 | 17 | **Single key → sequential multi** (or env monolith); never hard-error if one key works | Day-one dev/prod reality |
 | 18 | **Policy B** schedule: product‖company → verify → alternatives; **no re-run** | Fits 5-call cap; better alts quality |
 | 19 | **Dimensions hard-skip agents** | Real cost control |
-| 20 | Nav: **Check \| History \| Settings**; About under Settings | Clear PR1 shell |
+| 20 | Nav: **Check \| History** bottom; **About \| Settings** top-right icons (How under About) | Clear PR1 shell; aligned with BabyWise |
 | 21 | `CHECK_MODE`: multi \| dual \| monolith | Ops rollback ladder |
 | 22 | Results are **model memory only** (`knowledgeBasis`) in v1 | Honest about no live registry |
 
@@ -1352,7 +1353,7 @@ Incremental, independently reviewable. **Order = merge order.**
 - **Title:** `chore: scaffold OriginWise SPA (Vite/React/TS) on Cloudflare Pages layout`
 - **Files:** `package.json`, `vite.config.ts`, `tsconfig*`, `index.html`, `src/main.tsx`, `src/App.tsx`, `src/index.css`, `public/*`, `.gitignore`, `.env.example`, `.dev.vars.example`, `README.md` stub
 - **Dependencies:** none
-- **Description:** Shell with bottom nav **Check | History | Settings**; About placeholder route/section under Settings; slate/teal theme; `pages:dev` script. No API.
+- **Description:** Shell with bottom nav **Check | History**; About + Settings via top-right icons; How it works under About; slate/teal theme; `pages:dev` script. No API.
 
 ### PR 2 — Local-first storage, i18n, settings, clean data
 
