@@ -8,13 +8,21 @@
  * Env:
  *   WEB_LOOKUP=auto|on|off  (default auto = on when Gemini key present)
  *   GEMINI_API_KEY=…        required for this path
- *   GEMINI_MODEL=…          optional; same free-tier chain as llm.ts
+ *   GEMINI_WEB_MODEL=…      optional pin for grounded search only
+ *                           (default chain starts with gemini-2.5-flash —
+ *                           NOT the free-tier flash-lite LLM chain)
+ *
+ * Docs:
+ *   https://ai.google.dev/gemini-api/docs/google-search
+ *   https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/grounding/grounding-with-google-search
  */
 
-import { modelChain, type LlmEnv } from './llm';
+import type { LlmEnv } from './llm';
 
 export type WebResearchEnv = LlmEnv & {
   WEB_LOOKUP?: string;
+  /** Override model for Google Search grounding only (not product/company agents). */
+  GEMINI_WEB_MODEL?: string;
 };
 
 export type WebResearchResult = {
@@ -31,6 +39,24 @@ export type WebResearchResult = {
 const BRIEF_MAX = 2200;
 const SOURCE_CAP = 8;
 
+/**
+ * Grounding-capable models, ordered for web search reliability.
+ *
+ * Do NOT reuse FREE_TIER_MODEL_CHAINS (flash-lite-first): lite models share a
+ * tighter free grounding quota and are a poor default for Search. Community /
+ * plugin configs (e.g. plugins.entries.google.config.webSearch.model) and Google
+ * samples commonly pin gemini-2.5-flash for this tool.
+ *
+ * @see https://ai.google.dev/gemini-api/docs/google-search#supported-models
+ */
+export const WEB_SEARCH_MODEL_CHAIN: readonly string[] = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-flash-latest',
+  'gemini-2.5-flash-lite',
+  'gemini-flash-lite-latest',
+];
+
 export function isWebLookupEnabled(env: WebResearchEnv): boolean {
   const raw = String(env.WEB_LOOKUP ?? 'auto')
     .toLowerCase()
@@ -44,6 +70,16 @@ export function isWebLookupEnabled(env: WebResearchEnv): boolean {
   }
   // auto
   return hasGemini;
+}
+
+/** Resolve try-order for grounded Google Search (separate from agent LLM chain). */
+export function webSearchModelChain(env: WebResearchEnv): string[] {
+  const raw = env.GEMINI_WEB_MODEL?.trim().replace(/^models\//, '') || '';
+  const lower = raw.toLowerCase();
+  if (!raw || lower === 'auto' || lower === 'free' || lower === 'default') {
+    return [...WEB_SEARCH_MODEL_CHAIN];
+  }
+  return [raw, ...WEB_SEARCH_MODEL_CHAIN.filter((m) => m !== raw)];
 }
 
 function buildResearchPrompt(opts: {
@@ -77,7 +113,7 @@ OCR / LABEL HINT: ${(opts.ocrText || '(none)').slice(0, 500)}`;
 }
 
 type GeminiGrounded = {
-  error?: { message?: string };
+  error?: { message?: string; status?: string; code?: number };
   candidates?: Array<{
     content?: { parts?: Array<{ text?: string }> };
     groundingMetadata?: {
@@ -90,15 +126,30 @@ type GeminiGrounded = {
   }>;
 };
 
-function mapHttpError(status: number, body: string): string {
+/** Map Gemini HTTP failures for web research (exported for unit tests). */
+export function mapWebResearchHttpError(status: number, body: string): string {
   const msg = body.toLowerCase();
+  // True rate/quota exhaustion only — do not treat generic "grounding" text as quota
+  // (that previously aborted the chain before gemini-2.5-flash could run).
   if (
     status === 429 ||
-    /quota|rate limit|resource exhausted|billing|grounding/.test(msg)
+    /resource.?exhausted|rate.?limit|quota.?exceeded|insufficient.?quota|billing/.test(
+      msg
+    )
   ) {
     return 'upstream_quota';
   }
   if (status === 503 || status === 504) return 'upstream_unavailable';
+  // Model / tool unsupported → try next model in chain
+  if (
+    status === 400 ||
+    status === 404 ||
+    /not found|not supported|unsupported|invalid.?argument|unknown.?tool|google.?search/.test(
+      msg
+    )
+  ) {
+    return 'upstream_error';
+  }
   return 'upstream_error';
 }
 
@@ -118,10 +169,11 @@ async function callGeminiGrounded(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        // Grounding with Google Search (current tool name)
+        // Gemini Developer API: snake_case tool (Vertex uses googleSearch camelCase)
         tools: [{ google_search: {} }],
         generationConfig: {
-          temperature: 0.2,
+          // Google grounding docs recommend temperature ~1.0 for search quality
+          temperature: 1.0,
           maxOutputTokens: 1400,
         },
       }),
@@ -135,13 +187,13 @@ async function callGeminiGrounded(
   try {
     data = JSON.parse(raw) as GeminiGrounded;
   } catch {
-    return { ok: false, code: mapHttpError(res.status, raw) };
+    return { ok: false, code: mapWebResearchHttpError(res.status, raw) };
   }
 
   if (!res.ok) {
     return {
       ok: false,
-      code: mapHttpError(res.status, data.error?.message || raw),
+      code: mapWebResearchHttpError(res.status, data.error?.message || raw),
     };
   }
 
@@ -204,8 +256,9 @@ export async function runWebResearch(opts: {
     locale: opts.locale,
   });
 
-  const models = modelChain('gemini', opts.env);
+  const models = webSearchModelChain(opts.env);
   let last = 'upstream_error';
+  let consecutiveQuota = 0;
   for (const model of models) {
     const out = await callGeminiGrounded(apiKey, model, prompt);
     if (out.ok) {
@@ -227,8 +280,14 @@ export async function runWebResearch(opts: {
       };
     }
     last = out.code;
-    // Model unsupported tool / bad request — try next model
-    if (out.code === 'upstream_quota') break;
+    // Per-model quotas exist — try next model once or twice, then stop burning latency
+    if (out.code === 'upstream_quota') {
+      consecutiveQuota += 1;
+      if (consecutiveQuota >= 2) break;
+      continue;
+    }
+    consecutiveQuota = 0;
+    // empty / model unsupported / transient → try next grounding model
   }
 
   return {

@@ -52,6 +52,11 @@ GEMINI_API_KEY=
 #   WEB_LOOKUP=on    — force on (still needs Gemini key)
 #   WEB_LOOKUP=off   — model memory only (old behaviour)
 # WEB_LOOKUP=auto
+#
+# Grounded search uses a SEPARATE model chain (not GEMINI_MODEL / flash-lite agents).
+# Default primary: gemini-2.5-flash (same class as plugins … webSearch.model).
+# GEMINI_WEB_MODEL=gemini-2.5-flash
+# GEMINI_WEB_MODEL=auto
 # CHECK_ALLOWED_ORIGINS=http://localhost:8788
 # Free-server rate limits (defaults shown)
 # CHECK_RATE_SHORT_LIMIT=1

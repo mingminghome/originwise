@@ -614,6 +614,7 @@ const ROLE_PREF: Record<AgentId, ProviderId[]> = {
 | Provider | Default model | Env override |
 |----------|---------------|--------------|
 | gemini | free-tier chain: flash-lite → 3.5/3.1/2.5 lite → flash | `GEMINI_MODEL=auto` or pin |
+| gemini **web** (Google Search grounding) | separate chain: **`gemini-2.5-flash`** → 2.0-flash → flash-latest → lite fallbacks | `GEMINI_WEB_MODEL` pin; do not reuse agent flash-lite chain |
 | openai | free-tier chain: `gpt-5.4-mini` → `gpt-5.6-luna` → legacy mini → `gpt-5.5` last | `OPENAI_MODEL=auto` or pin |
 | grok | free-tier chain: `grok-4.5` → `grok-4.3` → 4.20 non-reasoning → `grok-4` | `XAI_MODEL=auto` or pin |
 | claude | free-tier chain: `claude-haiku-4-5` → dated haiku | `ANTHROPIC_MODEL=auto` or pin |

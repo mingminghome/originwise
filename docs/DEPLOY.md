@@ -109,6 +109,7 @@ If you deploy without them, production has no GTM / no pint button until you reb
 |----------|--------|
 | `CHECK_MODE` | `multi` (default when keys exist) \| `dual` \| `monolith` |
 | `WEB_LOOKUP` | `auto` (default) / `on` / `off`. Live web research via Gemini Google Search when `GEMINI_API_KEY` is set. |
+| `GEMINI_WEB_MODEL` | Optional. Model for **grounded web search only** (default chain starts with `gemini-2.5-flash`). Independent of `GEMINI_MODEL` / flash-lite agent chain. |
 | `CHECK_ALLOWED_ORIGINS` | Comma-separated extra origins for custom domains |
 | `CHECK_RATE_SHORT_LIMIT` | Default `1` (checks per short window) |
 | `CHECK_RATE_SHORT_WINDOW_SEC` | Default `30` (seconds) |
@@ -127,7 +128,7 @@ Having an API **key** is not the same as free **quota**. OriginWise will try fre
 
 | Provider | Ongoing free API? | What you must do |
 |----------|-------------------|------------------|
-| **Gemini** | Yes (Flash / Flash-Lite rate limits) | Key in AI Studio — most reliable free path |
+| **Gemini** | Yes (Flash / Flash-Lite rate limits) | Key in AI Studio — most reliable free path. **Web row** uses Search grounding on `gemini-2.5-flash` (not flash-lite); grounding has its own free RPD shared with that model class — plain agents can still succeed when web fails |
 | **OpenAI** | **Free tier** usage tier (auto-upgrades after paid credit purchases) | Check **Settings → Limits**. Free orgs often have **~50 RPD** and per-model TPM/RPM. Prefer **mini** models (`gpt-5.4-mini`, `gpt-5.6-luna`) — higher TPM than flagship (`gpt-5.5` is only ~3 RPM). `upstream_quota` = hit RPM/RPD/TPD or no remaining Free access |
 | **Anthropic** | No ongoing free tier (one-time trial credits) | Trial spent → `upstream_quota`; add credits or remove secret |
 | **xAI Grok** | Trial / credit program, not unlimited free | Console credits required; empty balance → `upstream_error` |
