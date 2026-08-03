@@ -7,8 +7,9 @@ import {
 } from '../core/types';
 import type { AppState } from '../hooks/useAppState';
 import { APP_VERSION } from '../version';
+import { AppTopBar } from './AppTopBar';
 import { CleanDataPanel } from './CleanDataPanel';
-import { TopNavIcons } from './TopNavIcons';
+import { InstallAppBanner } from './InstallAppBanner';
 import { StyledCheckbox } from './ui/StyledCheckbox';
 
 const DIM_LABEL: Record<CheckDimension, string> = {
@@ -47,13 +48,19 @@ export function SettingsScreen({ state }: { state: AppState }) {
 
   return (
     <div className="layout-grid">
-      <header className="app-header span-2">
-        <div>
+      <div className="span-2">
+        <AppTopBar
+          t={t}
+          tab={tab}
+          onChange={setTab}
+          onBrandClick={() => setTab('check')}
+        />
+        <InstallAppBanner t={t} />
+        <header className="app-page-head">
           <h1>{t('settings.title')}</h1>
           <p className="subtitle">{t('settings.subtitle')}</p>
-        </div>
-        <TopNavIcons tab={tab} onChange={setTab} t={t} />
-      </header>
+        </header>
+      </div>
 
       <section className="card">
         <h2 className="section-title">{t('settings.language')}</h2>

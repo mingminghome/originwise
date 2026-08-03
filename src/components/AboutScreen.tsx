@@ -14,8 +14,9 @@ import { PROJECT } from '../core/project';
 import { isBuyMeAPintEnabled } from '../core/support/buyMeAPint';
 import type { AppState } from '../hooks/useAppState';
 import { APP_VERSION } from '../version';
+import { AppTopBar } from './AppTopBar';
 import { BuyMeAPint } from './BuyMeAPint';
-import { TopNavIcons } from './TopNavIcons';
+import { InstallAppBanner } from './InstallAppBanner';
 
 type OssLink = {
   href: string;
@@ -42,13 +43,19 @@ export function AboutScreen({ state }: { state: AppState }) {
 
   return (
     <div className="layout-grid">
-      <header className="app-header span-2">
-        <div>
+      <div className="span-2">
+        <AppTopBar
+          t={t}
+          tab={tab}
+          onChange={setTab}
+          onBrandClick={() => setTab('check')}
+        />
+        <InstallAppBanner t={t} />
+        <header className="app-page-head">
           <h1>{t('about.title')}</h1>
           <p className="subtitle">{t('about.tagline')}</p>
-        </div>
-        <TopNavIcons tab={tab} onChange={setTab} t={t} />
-      </header>
+        </header>
+      </div>
 
       <section className="card span-2">
         <div className="about-hero">

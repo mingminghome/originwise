@@ -162,7 +162,8 @@ p {
 }
 
 .app-shell {
-  --shell-max: 480px;
+  /* Same frame width for Check / History / About / Settings */
+  --shell-max: min(640px, 100%);
   max-width: var(--shell-max);
   width: 100%;
   height: 100%;
@@ -170,7 +171,8 @@ p {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  padding-bottom: calc(var(--nav-h) + var(--safe-bottom) + 12px);
+  /* No bottom/side main menu — top-right icons only */
+  padding-bottom: max(12px, var(--safe-bottom));
   position: relative;
   overflow: hidden;
   box-sizing: border-box;
@@ -179,12 +181,14 @@ p {
 .app-main {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 1rem 1.1rem 1.5rem;
+  padding: 0.75rem 1rem 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
   overflow-x: hidden;
   overflow-y: auto;
+  /* Keep content width stable whether Settings (scroll) or Check (often no bar) */
+  scrollbar-gutter: stable;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
@@ -196,7 +200,7 @@ p {
   }
 
   .app-shell {
-    --shell-max: 440px;
+    --shell-max: min(720px, 100%);
     height: calc(100dvh - 2.5rem);
     max-height: calc(100dvh - 2.5rem);
     border-radius: 28px;
@@ -205,22 +209,16 @@ p {
     box-shadow:
       0 4px 8px rgba(15, 23, 42, 0.04),
       0 24px 64px rgba(15, 23, 42, 0.12);
-    padding-bottom: calc(var(--nav-h) + 12px);
+    padding-bottom: max(16px, var(--safe-bottom));
   }
 
-  .bottom-nav {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    transform: none;
-    border-radius: 0 0 28px 28px;
+  .app-main {
+    padding: 0.85rem 1.5rem 1.25rem;
   }
 
   .fab {
     right: 1.25rem;
-    bottom: calc(var(--nav-h) + 1rem);
+    bottom: 1.25rem;
   }
 }
 
@@ -235,7 +233,7 @@ p {
   width: 100%;
 }
 
-/* Wide web dashboard layout — top-aligned, fixed height frame */
+/* Wide web layout — same shell width for every tab */
 @media (min-width: 1024px) {
   .app-page {
     align-items: flex-start;
@@ -243,75 +241,21 @@ p {
   }
 
   .app-shell {
-    --shell-max: 960px;
-    display: grid;
-    grid-template-columns: 200px 1fr;
-    grid-template-rows: minmax(0, 1fr);
-    height: calc(100dvh - 2.5rem);
-    max-height: calc(100dvh - 2.5rem);
-  }
-
-  .app-shell .bottom-nav {
-    position: relative;
-    grid-column: 1;
-    grid-row: 1;
-    width: auto;
-    height: auto;
-    min-height: 100%;
-    padding: 1.25rem 0.75rem;
-    padding-bottom: 1.25rem;
+    --shell-max: min(920px, 100%);
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
-    border-top: none;
-    border-right: 1px solid var(--border);
-    border-radius: 28px 0 0 28px;
-    background: var(--bg-subtle);
-  }
-
-  .app-shell .bottom-nav button {
-    flex-direction: row;
-    justify-content: flex-start;
-    gap: 0.65rem;
-    min-height: 48px;
-    padding: 0.55rem 0.85rem;
-    border-radius: 12px;
-    font-size: 0.9rem;
-  }
-
-  .app-shell .bottom-nav button.active {
-    background: var(--primary-soft);
+    height: calc(100dvh - 2.5rem);
+    max-height: calc(100dvh - 2.5rem);
+    padding-bottom: max(16px, var(--safe-bottom));
+    border-radius: 28px;
   }
 
   .app-main {
-    grid-column: 2;
-    grid-row: 1;
     min-height: 0;
     min-width: 0;
-    padding: 1.35rem 1.5rem 1.75rem;
-    padding-bottom: 1.75rem;
-  }
-
-  /* Check home: no side nav — single column, content centered */
-  .app-shell--check {
-    display: flex !important;
-    flex-direction: column;
-    grid-template-columns: none;
-    grid-template-rows: none;
-    --shell-max: min(720px, 100%);
-    padding-bottom: max(16px, var(--safe-bottom));
-  }
-  .app-shell--check .app-main,
-  .app-shell--check .app-main--check {
-    grid-column: auto;
-    grid-row: auto;
     width: 100%;
     flex: 1 1 auto;
-    min-height: 0;
-  }
-
-  .app-shell {
-    padding-bottom: 0;
+    padding: 1rem 1.5rem 1.5rem;
   }
 
   .layout-grid {
@@ -331,6 +275,36 @@ p {
   }
 }
 
+/* Shared top chrome (brand + icons) — same on every tab */
+.app-topbar,
+.check-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  flex-shrink: 0;
+  margin: 0 0 0.35rem;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
+/* Page title block under the shared top bar (History / About / Settings) */
+.app-page-head {
+  margin: 0 0 0.35rem;
+  padding: 0;
+}
+.app-page-head h1 {
+  font-size: 1.35rem;
+  margin: 0;
+}
+.app-page-head .subtitle {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin-top: 0.15rem;
+}
+
+/* Legacy headers (e.g. How-it-works back row) */
 .app-header {
   display: flex;
   align-items: center;
@@ -338,11 +312,10 @@ p {
   gap: 0.75rem;
   padding: 0.25rem 0 0.5rem;
 }
-
 .app-header h1 {
   font-size: 1.35rem;
+  margin: 0;
 }
-
 .app-header .subtitle {
   color: var(--text-muted);
   font-size: 0.88rem;
@@ -495,42 +468,6 @@ p {
 }
 
 [data-theme='dark'] .chip.active {
-  color: var(--primary);
-}
-
-.bottom-nav {
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 0;
-  width: min(var(--shell-max, 480px), 100%);
-  height: calc(var(--nav-h) + var(--safe-bottom));
-  padding-bottom: var(--safe-bottom);
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  background: color-mix(in srgb, var(--bg-card) 92%, transparent);
-  backdrop-filter: blur(12px);
-  border-top: 1px solid var(--border);
-  z-index: 40;
-}
-
-.bottom-nav button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.15rem;
-  color: var(--text-muted);
-  font-size: 0.7rem;
-  font-weight: 600;
-  min-height: var(--nav-h);
-}
-
-.bottom-nav button.active {
-  color: var(--primary-deep);
-}
-
-[data-theme='dark'] .bottom-nav button.active {
   color: var(--primary);
 }
 
@@ -4217,53 +4154,29 @@ p {
 .how-flow-legend strong {
   color: var(--text);
 }
-/* 4-tab bottom nav: slightly smaller labels */
-.bottom-nav button {
-  font-size: 0.68rem;
-}
-
-/* —— Google-style Check home (centered in app-main) —— */
-.app-shell--no-bottom {
-  padding-bottom: max(12px, var(--safe-bottom));
-}
-.app-shell--check {
-  /* Slightly wider shell so the search bar can sit centered */
-  --shell-max: min(640px, 100%);
-}
-.app-shell--check.app-shell--no-bottom {
-  padding-bottom: max(16px, var(--safe-bottom));
-}
-
-/* app-main becomes a full-height flex host for Check */
+/* —— Google-style Check home (same shell width as other tabs) —— */
+/* app-main--check keeps full-height flex host; padding inherits from .app-main */
 .app-main--check {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: stretch;
   gap: 0;
-  padding: 0.65rem 1rem 1rem;
   min-height: 0;
   flex: 1 1 auto;
   overflow-x: hidden;
   overflow-y: auto;
 }
 
-.check-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  width: 100%;
-  flex-shrink: 0;
-  margin: 0 0 0.25rem;
-}
 .check-brand {
   font-family: var(--font-heading);
   font-weight: 800;
   font-size: 1.05rem;
   letter-spacing: -0.03em;
   color: var(--text);
-  padding: 0.25rem 0;
+  padding: 0;
+  line-height: 1.2;
+  text-align: left;
 }
 .top-nav-right {
   display: flex;
@@ -4500,29 +4413,11 @@ p {
 }
 
 @media (min-width: 720px) {
-  .app-shell--check {
-    --shell-max: min(720px, 100%);
-  }
-  .app-main--check {
-    padding: 0.85rem 1.5rem 1.25rem;
-  }
   .check-hero-title {
     font-size: 2.5rem;
   }
   .check-search-card {
     max-width: 36rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  /* Full-width check on large screens (not phone card column) */
-  .app-shell--check {
-    --shell-max: min(920px, 100%);
-    border-radius: 28px;
-  }
-  .app-shell--check.app-shell {
-    display: flex;
-    flex-direction: column;
   }
 }
 

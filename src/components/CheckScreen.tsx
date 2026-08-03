@@ -5,9 +5,9 @@ import { engineRunCheck } from '../core/ai/engine';
 import { prepareCheckImage, type PreparedImage } from '../core/util/image';
 import type { AppState } from '../hooks/useAppState';
 import type { CheckResult } from '../core/types';
+import { AppTopBar } from './AppTopBar';
 import { ProgressSteps } from './ProgressSteps';
 import { ResultPanel } from './ResultPanel';
-import { TopNavIcons } from './TopNavIcons';
 
 type RateHit = {
   code: 'rate_limited' | 'rate_limited_day';
@@ -279,23 +279,18 @@ export function CheckScreen({ state }: { state: AppState }) {
 
   return (
     <div className={showLanding ? 'check-google' : 'check-with-result'}>
-      {/* Top bar: brand + icons (Google-style chrome) */}
-      <div className="check-topbar">
-        <button
-          type="button"
-          className="check-brand"
-          onClick={() => {
-            setResult(null);
-            setActiveResult(null);
-            setError(null);
-            setRateHit(null);
-            setAutoRetryLeft(null);
-          }}
-        >
-          OriginWise
-        </button>
-        <TopNavIcons tab={tab} onChange={setTab} t={t} />
-      </div>
+      <AppTopBar
+        t={t}
+        tab={tab}
+        onChange={setTab}
+        onBrandClick={() => {
+          setResult(null);
+          setActiveResult(null);
+          setError(null);
+          setRateHit(null);
+          setAutoRetryLeft(null);
+        }}
+      />
 
       <div className={showLanding ? 'check-hero' : 'check-hero check-hero--compact'}>
         {showLanding ? (

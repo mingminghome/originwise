@@ -1,10 +1,11 @@
-import { CircleHelp, Settings } from 'lucide-react';
+import { CircleHelp, History, Settings } from 'lucide-react';
 import type { TFunction } from '../core/i18n';
 import type { TabId } from '../hooks/useAppState';
 import { BuyMeAPint } from './BuyMeAPint';
 
 /**
- * Compact icon nav (top-right) — About / Settings (BabyWise-aligned).
+ * Compact icon nav (top-right): History / About / Settings.
+ * Replaces the old bottom main menu. Home is Check (brand / default tab).
  * “Buy me a pint” chip when VITE_BUY_ME_A_PINT_URL is set.
  */
 export function TopNavIcons({
@@ -22,6 +23,7 @@ export function TopNavIcons({
     labelKey: string;
     activeWhen?: TabId[];
   }> = [
+    { id: 'history', icon: History, labelKey: 'tabs.history' },
     {
       id: 'about',
       icon: CircleHelp,
