@@ -14,16 +14,22 @@ import {
 } from './webResearch';
 
 describe('WEB_SEARCH_MODEL_CHAIN', () => {
-  it('prefers current Gemini 3 flash ids for new-user keys', () => {
-    assert.equal(WEB_SEARCH_MODEL_CHAIN[0], 'gemini-3.5-flash-lite');
-    assert.ok(WEB_SEARCH_MODEL_CHAIN.includes('gemini-3.5-flash'));
+  it('prefers Default Search pool models first (robotics ER)', () => {
+    assert.equal(WEB_SEARCH_MODEL_CHAIN[0], 'gemini-robotics-er-2-preview');
+    assert.ok(
+      WEB_SEARCH_MODEL_CHAIN.includes('gemini-robotics-er-1.6-preview')
+    );
   });
 
-  it('keeps legacy 2.5-flash later in the chain', () => {
-    const modern = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-3.5-flash-lite');
+  it('keeps Flash and legacy 2.5 after Default-pool models', () => {
+    const robotics = WEB_SEARCH_MODEL_CHAIN.indexOf(
+      'gemini-robotics-er-2-preview'
+    );
+    const flash = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-3.5-flash-lite');
     const legacy = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-2.5-flash');
-    assert.ok(modern >= 0);
-    assert.ok(legacy > modern);
+    assert.ok(robotics >= 0);
+    assert.ok(flash > robotics);
+    assert.ok(legacy > flash);
   });
 });
 
@@ -142,19 +148,19 @@ describe('runWebResearch', () => {
       const model = m?.[1] ?? 'unknown';
       modelsTried.push(model);
 
-      if (model === 'gemini-3.5-flash-lite') {
+      if (model === 'gemini-robotics-er-2-preview') {
         return new Response(
           JSON.stringify({
             error: {
               message:
-                'This model models/gemini-3.5-flash-lite is no longer available to new users.',
+                'This model models/gemini-robotics-er-2-preview is no longer available.',
               status: 'NOT_FOUND',
             },
           }),
           { status: 404, headers: { 'Content-Type': 'application/json' } }
         );
       }
-      if (model === 'gemini-3.5-flash') {
+      if (model === 'gemini-robotics-er-1.6-preview') {
         return new Response(
           JSON.stringify({
             candidates: [
@@ -193,11 +199,11 @@ describe('runWebResearch', () => {
     });
 
     assert.equal(out.ok, true);
-    assert.equal(out.model, 'gemini-3.5-flash');
+    assert.equal(out.model, 'gemini-robotics-er-1.6-preview');
     assert.ok(out.brief.includes('Poland'));
     assert.deepEqual(modelsTried.slice(0, 2), [
-      'gemini-3.5-flash-lite',
-      'gemini-3.5-flash',
+      'gemini-robotics-er-2-preview',
+      'gemini-robotics-er-1.6-preview',
     ]);
   });
 

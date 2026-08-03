@@ -47,20 +47,29 @@ const SOURCE_CAP = 8;
 /**
  * Models for Google Search grounding, ordered for current free-tier availability.
  *
- * Prefer Gemini 3.x flash ids that still accept new-user keys. Legacy 2.5/2.0
- * ids often 404 or have free-tier generate limit 0 for new accounts — keep as
- * last-resort only for older keys that still have Search RPD on those models.
+ * AI Studio free keys often split Search RPD by family:
+ *   - Gemini 3 Search: frequently **0 / 0** (Flash/Flash-Lite agents work without Search)
+ *   - Gemini 2.5 Search: RPD may show, but `gemini-2.5-flash*` can be blocked for new users
+ *   - **Default Search** (~1.5K RPD): includes robotics ER / deep-research / Gemma, etc.
+ *
+ * Live probe on free new-user keys: `gemini-robotics-er-2-preview` successfully
+ * returns `groundingMetadata` via `tools: [{ google_search: {} }]` against Default RPD.
+ * Prefer that first so the web row works without paid Gemini 3 Search.
  *
  * @see https://ai.google.dev/gemini-api/docs/google-search#supported-models
  */
 export const WEB_SEARCH_MODEL_CHAIN: readonly string[] = [
+  // Default Search grounding pool (free ~1.5K RPD on many free keys)
+  'gemini-robotics-er-2-preview',
+  'gemini-robotics-er-1.6-preview',
+  // Standard Flash (needs Gemini 3/2.5 Search entitlement — often 0 free for 3.x)
   'gemini-3.5-flash-lite',
   'gemini-3.5-flash',
   'gemini-flash-lite-latest',
   'gemini-flash-latest',
   'gemini-3.6-flash',
   'gemini-3.1-flash-lite',
-  // Legacy / older free Search RPD pools (often blocked for new users)
+  // Legacy 2.x (blocked or free generate limit 0 for many new keys)
   'gemini-2.5-flash',
   'gemini-2.0-flash',
 ];

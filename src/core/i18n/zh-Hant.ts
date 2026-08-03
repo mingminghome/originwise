@@ -74,7 +74,7 @@ export const zhHant = {
       empty_response: '空回應',
       model_unavailable: '此 API 金鑰無法使用該模型',
       search_grounding_unavailable:
-        '此免費金鑰無法使用 Google 搜尋 grounding（Gemini 3 Search 常為 0/0；2.5 Flash 可能對新用戶停用）',
+        '此金鑰無法使用 Google 搜尋 grounding（可試 Default 池模型／開通計費；Gemini 3 Search 常為 0/0）',
       disabled: '已關閉',
       gemini_not_configured: '未設定 Gemini',
       no_entity: '無產品名稱',

@@ -54,11 +54,11 @@ GEMINI_API_KEY=
 # WEB_LOOKUP=auto
 #
 # Grounded search uses a SEPARATE model chain (not GEMINI_MODEL / flash-lite agents).
-# Default: gemini-3.5-flash-lite → 3.5-flash → … → legacy 2.5/2.0.
-# Free new-user keys often cannot use Search (Gemini 3 Search 0/0; 2.5 Flash blocked).
-# Enable billing for paid Search, or WEB_LOOKUP=off. Pin example:
-# GEMINI_WEB_MODEL=gemini-3.5-flash
+# Default primary: gemini-robotics-er-2-preview (AI Studio "Default" Search RPD ~1.5K).
+# Then ER 1.6 → 3.x flash → legacy 2.x. Gemini 3 Search is often free 0/0.
+# GEMINI_WEB_MODEL=gemini-robotics-er-2-preview
 # GEMINI_WEB_MODEL=auto
+# WEB_LOOKUP=off  # skip web if needed
 # CHECK_ALLOWED_ORIGINS=http://localhost:8788
 # Free-server rate limits (defaults shown)
 # CHECK_RATE_SHORT_LIMIT=1

@@ -614,7 +614,7 @@ const ROLE_PREF: Record<AgentId, ProviderId[]> = {
 | Provider | Default model | Env override |
 |----------|---------------|--------------|
 | gemini | free-tier chain: flash-lite → 3.5/3.1/2.5 lite → flash | `GEMINI_MODEL=auto` or pin |
-| gemini **web** (Google Search grounding) | separate chain: **3.5 flash-lite → 3.5 flash → latest aliases → legacy 2.5/2.0** | `GEMINI_WEB_MODEL` pin. Free new-user keys often cannot run Search (Gemini 3 Search 0/0; 2.5 Flash blocked) — soft-fail `search_grounding_unavailable` |
+| gemini **web** (Google Search grounding) | **`gemini-robotics-er-2-preview`** (Default Search free pool) → ER 1.6 → 3.x flash → legacy 2.x | `GEMINI_WEB_MODEL` pin. Free Flash Search often 0/0; Default-pool robotics models work on free keys |
 | openai | free-tier chain: `gpt-5.4-mini` → `gpt-5.6-luna` → legacy mini → `gpt-5.5` last | `OPENAI_MODEL=auto` or pin |
 | grok | free-tier chain: `grok-4.5` → `grok-4.3` → 4.20 non-reasoning → `grok-4` | `XAI_MODEL=auto` or pin |
 | claude | free-tier chain: `claude-haiku-4-5` → dated haiku | `ANTHROPIC_MODEL=auto` or pin |

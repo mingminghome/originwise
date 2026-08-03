@@ -78,7 +78,7 @@ export const en: MessageTree = {
       empty_response: 'empty response',
       model_unavailable: 'model not available on this API key',
       search_grounding_unavailable:
-        'Google Search grounding not available on this free key (Gemini 3 Search is often 0/0; 2.5 Flash may be blocked for new users)',
+        'Google Search grounding not available on this key (try Default-pool models / enable billing; Gemini 3 Search is often 0/0)',
       disabled: 'disabled',
       gemini_not_configured: 'Gemini not configured',
       no_entity: 'no product name',
