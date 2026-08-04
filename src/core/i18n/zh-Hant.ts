@@ -53,6 +53,7 @@ export const zhHant = {
     submitting: '查詢中…',
     needInput: '請輸入產品名稱或加入照片。',
     howLink: '如何運作',
+    newCheck: '新查詢',
     comingSoon: '查詢 API 將於後續版本提供。紀錄與設定已可用。',
     photoTooLarge: '壓縮後照片仍過大。',
     photoInvalid: '無法讀取此圖片。',

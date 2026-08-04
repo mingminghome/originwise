@@ -7,7 +7,6 @@ import {
 } from '../core/types';
 import type { AppState } from '../hooks/useAppState';
 import { APP_VERSION } from '../version';
-import { AppTopBar } from './AppTopBar';
 import { CleanDataPanel } from './CleanDataPanel';
 import { InstallAppBanner } from './InstallAppBanner';
 import { StyledCheckbox } from './ui/StyledCheckbox';
@@ -31,7 +30,6 @@ export function SettingsScreen({ state }: { state: AppState }) {
     cleanData,
     dataSummary,
     setTab,
-    tab,
   } = state;
 
   const patch = (partial: Partial<typeof settings>) => {
@@ -49,12 +47,6 @@ export function SettingsScreen({ state }: { state: AppState }) {
   return (
     <div className="layout-grid">
       <div className="span-2">
-        <AppTopBar
-          t={t}
-          tab={tab}
-          onChange={setTab}
-          onBrandClick={() => setTab('check')}
-        />
         <InstallAppBanner t={t} />
         <header className="app-page-head">
           <h1>{t('settings.title')}</h1>

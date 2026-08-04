@@ -56,6 +56,7 @@ export const en: MessageTree = {
     submitting: 'Checking…',
     needInput: 'Type a product name or add a photo.',
     howLink: 'How it works',
+    newCheck: 'New check',
     comingSoon:
       'Check API ships in a later PR. History and settings are ready.',
     photoTooLarge: 'Photo is too large after compress.',

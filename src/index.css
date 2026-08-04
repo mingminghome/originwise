@@ -147,118 +147,179 @@ p {
   margin: 0;
 }
 
-/* Page canvas — fixed viewport height, top-aligned shell so content
-   length (e.g. Calendar Today vs Month) does not resize/jump the frame. */
+/* Full-bleed canvas (SourceWise / Google-style — no phone frame) */
 .app-page {
-  height: 100dvh;
-  min-height: 100dvh;
-  max-height: 100dvh;
-  padding: var(--safe-top) 0 0;
-  box-sizing: border-box;
+  height: 100%;
+  width: 100%;
+  max-width: none;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  justify-content: stretch;
+  background: var(--bg);
+  box-shadow: none;
+  border: none;
+  outline: none;
   overflow: hidden;
 }
 
 .app-shell {
-  /* Same frame width for Check / History / About / Settings */
-  --shell-max: min(640px, 100%);
-  max-width: var(--shell-max);
   width: 100%;
+  max-width: none;
   height: 100%;
-  min-height: 0;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  /* No bottom/side main menu — top-right icons only */
-  padding-bottom: max(12px, var(--safe-bottom));
+  background: var(--bg);
   position: relative;
+  box-shadow: none !important;
+  border: none !important;
+  outline: none;
   overflow: hidden;
+}
+
+/*
+ * Floating top nav: sits over content with glass blur.
+ * No solid strip / bottom border that frames the page.
+ */
+.top-bar {
+  --top-bar-h: 52px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--top-bar-h);
+  padding: calc(6px + var(--safe-top)) clamp(12px, 2.5vw, 24px) 6px;
+  border: none;
+  border-bottom: none;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  backdrop-filter: saturate(1.2) blur(14px);
+  -webkit-backdrop-filter: saturate(1.2) blur(14px);
+  box-shadow: none;
+  pointer-events: none; /* let clicks pass except on controls */
   box-sizing: border-box;
 }
 
+.top-bar > * {
+  pointer-events: auto;
+}
+
+.top-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.03em;
+  cursor: pointer;
+  padding: 6px 8px;
+  margin-left: -8px;
+  border-radius: 10px;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.top-brand:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.top-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Floating icon cluster (pill) — not a full-width chrome strip */
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-card) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme='dark'] .top-actions {
+  background: color-mix(in srgb, var(--bg-card) 80%, transparent);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+.icon-btn {
+  border: none;
+  background: transparent;
+  color: var(--text);
+  padding: 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:hover {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.icon-btn.is-active {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
 .app-main {
-  flex: 1 1 auto;
+  flex: 1;
   min-height: 0;
-  padding: 0.75rem 1rem 1.25rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  /*
+   * Always reserve classic-scrollbar width so Check (short) vs
+   * Settings/About/History (tall) don’t shift horizontal layout.
+   * Overlay scrollbars (macOS default) don’t take space — no jump either way.
+   */
+  scrollbar-gutter: stable;
+  /* room for floating top bar */
+  padding-top: calc(var(--safe-top) + 58px);
+  padding-left: clamp(16px, 4vw, 48px);
+  padding-right: clamp(16px, 4vw, 48px);
+  padding-bottom: calc(20px + var(--safe-bottom));
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  overflow-x: hidden;
-  overflow-y: auto;
-  /* Keep content width stable whether Settings (scroll) or Check (often no bar) */
-  scrollbar-gutter: stable;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
 
-/* Desktop / tablet: phone-app card on a soft canvas (still top-aligned) */
-@media (min-width: 720px) {
-  .app-page {
-    padding: 1.25rem 1.25rem 1.25rem;
-  }
-
-  .app-shell {
-    --shell-max: min(720px, 100%);
-    height: calc(100dvh - 2.5rem);
-    max-height: calc(100dvh - 2.5rem);
-    border-radius: 28px;
-    border: 1px solid var(--border);
-    background: color-mix(in srgb, var(--bg-card) 88%, transparent);
-    box-shadow:
-      0 4px 8px rgba(15, 23, 42, 0.04),
-      0 24px 64px rgba(15, 23, 42, 0.12);
-    padding-bottom: max(16px, var(--safe-bottom));
-  }
-
-  .app-main {
-    padding: 0.85rem 1.5rem 1.25rem;
-  }
-
-  .fab {
-    right: 1.25rem;
-    bottom: 1.25rem;
+/* Older engines without scrollbar-gutter: always show the Y track. */
+@supports not (scrollbar-gutter: stable) {
+  .app-main,
+  .app-main--check {
+    overflow-y: scroll;
   }
 }
 
-/* Stack cards with gap on phone / app frame; desktop becomes 2-col below */
+/* Stack cards with gap on phone; desktop becomes 2-col below */
 .layout-grid {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+  width: 100%;
+  max-width: min(48rem, 100%);
+  margin: 0 auto;
 }
 
 .layout-grid > .span-2 {
   width: 100%;
 }
 
-/* Wide web layout — same shell width for every tab */
-@media (min-width: 1024px) {
-  .app-page {
-    align-items: flex-start;
-    justify-content: center;
-  }
-
-  .app-shell {
-    --shell-max: min(920px, 100%);
-    display: flex;
-    flex-direction: column;
-    height: calc(100dvh - 2.5rem);
-    max-height: calc(100dvh - 2.5rem);
-    padding-bottom: max(16px, var(--safe-bottom));
-    border-radius: 28px;
-  }
-
-  .app-main {
-    min-height: 0;
-    min-width: 0;
-    width: 100%;
-    flex: 1 1 auto;
-    padding: 1rem 1.5rem 1.5rem;
-  }
-
+@media (min-width: 900px) {
   .layout-grid {
+    max-width: min(52rem, 100%);
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
@@ -273,20 +334,6 @@ p {
     right: 1.5rem;
     bottom: 1.5rem;
   }
-}
-
-/* Shared top chrome (brand + icons) — same on every tab */
-.app-topbar,
-.check-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  width: 100%;
-  flex-shrink: 0;
-  margin: 0 0 0.35rem;
-  min-height: 40px;
-  box-sizing: border-box;
 }
 
 /* Page title block under the shared top bar (History / About / Settings) */
@@ -4154,8 +4201,7 @@ p {
 .how-flow-legend strong {
   color: var(--text);
 }
-/* —— Google-style Check home (same shell width as other tabs) —— */
-/* app-main--check keeps full-height flex host; padding inherits from .app-main */
+/* —— SourceWise / Google-style Check home —— */
 .app-main--check {
   display: flex;
   flex-direction: column;
@@ -4164,33 +4210,13 @@ p {
   gap: 0;
   min-height: 0;
   flex: 1 1 auto;
+  /* same scroll host as other tabs — keep scrollbar-gutter: stable from .app-main */
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
-.check-brand {
-  font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: 1.05rem;
-  letter-spacing: -0.03em;
-  color: var(--text);
-  padding: 0;
-  line-height: 1.2;
-  text-align: left;
-}
-.top-nav-right {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-.top-nav-icons {
-  display: flex;
-  align-items: center;
-  gap: 0.15rem;
-}
-/* ComboWise-style support chip (top-right on front page) */
+/* Support chip (top-right; VITE_BUY_ME_A_PINT_URL) */
 .buy-pint-chip {
   display: inline-flex;
   align-items: center;
@@ -4219,7 +4245,7 @@ p {
 .buy-pint-chip-text {
   display: none;
 }
-@media (min-width: 380px) {
+@media (min-width: 420px) {
   .buy-pint-chip-text {
     display: inline;
   }
@@ -4251,19 +4277,16 @@ p {
 .buy-pint-full-text {
   margin-top: 0.35rem;
 }
-.top-nav-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+
+.linkish {
+  border: none;
+  background: none;
   color: var(--text-muted);
-}
-.top-nav-icon:hover,
-.top-nav-icon.is-active {
-  background: var(--bg-subtle);
-  color: var(--text);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  font-size: 0.9rem;
 }
 
 /* Root of Check screen fills app-main and centers the hero */
@@ -4272,13 +4295,11 @@ p {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 100%;
   flex: 1 1 auto;
   min-height: 0;
   box-sizing: border-box;
 }
 .check-google {
-  /* Fill remaining main area so justify-center works */
   min-height: 100%;
 }
 
@@ -4288,64 +4309,84 @@ p {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.85rem;
+  gap: 0.75rem;
   width: 100%;
-  max-width: 36rem;
+  max-width: 40rem;
   margin: 0 auto;
-  padding: 0.5rem 0 1.5rem;
+  padding: 1rem 0 2rem;
   text-align: center;
   box-sizing: border-box;
 }
 .check-hero--compact {
   flex: 0 0 auto;
   justify-content: flex-start;
-  padding: 0.35rem 0 0.85rem;
-  gap: 0.65rem;
-  max-width: 100%;
+  padding: 0.25rem 0 0.75rem;
+  gap: 0.5rem;
+  max-width: min(48rem, 100%);
+}
+.check-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  color: var(--text);
 }
 .check-hero-title {
-  font-size: clamp(1.75rem, 5vw, 2.35rem);
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 6vw, 2.75rem);
   font-weight: 800;
   letter-spacing: -0.03em;
   margin: 0;
-  text-align: center;
   width: 100%;
 }
 .check-hero-sub {
   margin: 0 auto;
-  max-width: 22rem;
-  font-size: 0.95rem;
+  max-width: 26rem;
+  font-size: 0.98rem;
   line-height: 1.45;
-  text-align: center;
 }
 .check-search-card {
   width: 100%;
-  max-width: 32rem;
-  margin-left: auto;
-  margin-right: auto;
+  max-width: 36rem;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 0.75rem;
+  gap: 0.65rem;
   text-align: left;
   box-sizing: border-box;
+}
+.check-hero--compact .check-search-card {
+  max-width: min(48rem, 100%);
 }
 .check-search-row {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.25rem;
   width: 100%;
   box-sizing: border-box;
-  padding: 0.45rem 0.55rem 0.45rem 1rem;
+  padding: 0.4rem 0.45rem 0.4rem 0.95rem;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--bg-card);
   box-shadow: var(--shadow);
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
 }
 .check-search-row:focus-within {
   border-color: var(--text-muted);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.1);
+}
+[data-theme='dark'] .check-search-row:focus-within {
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+}
+.check-search-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
 }
 .check-search-input {
   flex: 1;
@@ -4354,10 +4395,9 @@ p {
   background: transparent;
   outline: none;
   font: inherit;
-  font-size: 1rem;
+  font-size: 1.05rem;
   color: var(--text);
-  min-height: 40px;
-  text-align: left;
+  min-height: 42px;
 }
 .check-search-input::placeholder {
   color: var(--text-muted);
@@ -4365,31 +4405,57 @@ p {
 .check-search-tools {
   display: flex;
   align-items: center;
-  gap: 0.1rem;
+  gap: 0.05rem;
   flex-shrink: 0;
 }
 .check-icon-btn {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
+  border: none;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  background: transparent;
   color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
 }
 .check-icon-btn:hover:not(:disabled) {
   background: var(--bg-subtle);
   color: var(--text);
 }
 .check-icon-btn:disabled {
-  opacity: 0.45;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.check-go {
+  background: var(--primary);
+  color: var(--text-on-accent);
+}
+.check-go:hover:not(:disabled) {
+  background: var(--primary-hover);
+  color: var(--text-on-accent);
+}
+.check-hero-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
 }
 .check-search-submit {
-  align-self: center;
   min-width: 9rem;
   border-radius: 999px;
-  padding-left: 1.4rem;
-  padding-right: 1.4rem;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+.check-compact-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 0.25rem;
 }
 .check-photo {
   margin: 0 auto;
@@ -4397,36 +4463,43 @@ p {
   display: flex;
   justify-content: center;
 }
+.check-body {
+  width: 100%;
+  max-width: min(48rem, 100%);
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+.check-progress {
+  margin-bottom: 12px;
+}
 .check-result-card {
   margin-top: 0.25rem;
   width: 100%;
-  max-width: 36rem;
-  margin-left: auto;
-  margin-right: auto;
   box-sizing: border-box;
 }
-.check-with-result .check-hero {
-  max-width: 36rem;
-}
-.check-with-result .check-search-card {
-  max-width: 36rem;
-}
 
-@media (min-width: 720px) {
+@media (min-width: 900px) {
   .check-hero-title {
-    font-size: 2.5rem;
+    font-size: 3rem;
   }
   .check-search-card {
-    max-width: 36rem;
+    max-width: 40rem;
+  }
+  .check-hero--compact .check-search-card {
+    max-width: min(52rem, 100%);
+  }
+  .check-body {
+    max-width: min(52rem, 100%);
   }
 }
 
 /* Free server rate limit label */
 .check-free-note {
   margin: 0;
-  font-size: 0.75rem;
-  text-align: center;
+  font-size: 0.8rem;
   line-height: 1.4;
+  max-width: 26rem;
+  text-align: center;
 }
 .rate-limit-banner {
   margin-top: 0.35rem;
@@ -4516,11 +4589,8 @@ p {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  width: 100%;
-}
-.check-submit-row .check-search-submit {
-  flex: 1 1 auto;
 }
 .check-recheck-row {
   margin-top: 0.85rem;

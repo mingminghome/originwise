@@ -1,10 +1,11 @@
+import { Globe2 } from 'lucide-react';
 import type { TFunction } from '../core/i18n';
 import type { TabId } from '../hooks/useAppState';
 import { TopNavIcons } from './TopNavIcons';
 
 /**
- * Shared chrome: OriginWise brand (left) + top-right icons.
- * Same layout on Check / History / About / Settings so edges align.
+ * Floating chrome (SourceWise-style): brand left + pint + icon cluster right.
+ * Sits over content with glass blur — not a solid page frame strip.
  */
 export function AppTopBar({
   t,
@@ -18,15 +19,19 @@ export function AppTopBar({
   onBrandClick: () => void;
 }) {
   return (
-    <div className="app-topbar">
+    <header className="top-bar">
       <button
         type="button"
-        className="check-brand"
+        className="top-brand"
         onClick={onBrandClick}
+        aria-label={t('appName')}
       >
-        OriginWise
+        <Globe2 size={18} strokeWidth={2.2} aria-hidden />
+        <span>{t('appName')}</span>
       </button>
-      <TopNavIcons tab={tab} onChange={onChange} t={t} />
-    </div>
+      <div className="top-end">
+        <TopNavIcons tab={tab} onChange={onChange} t={t} />
+      </div>
+    </header>
   );
 }

@@ -1,6 +1,5 @@
 import { Image as ImageIcon, Trash2 } from 'lucide-react';
 import type { AppState } from '../hooks/useAppState';
-import { AppTopBar } from './AppTopBar';
 import { InstallAppBanner } from './InstallAppBanner';
 import { TierBadge } from './TierBadge';
 
@@ -27,29 +26,24 @@ export function HistoryScreen({ state }: { state: AppState }) {
     removeCheckHistory,
     setActiveResult,
     setTab,
-    tab,
   } = state;
 
   return (
-    <>
-      <AppTopBar
-        t={t}
-        tab={tab}
-        onChange={setTab}
-        onBrandClick={() => setTab('check')}
-      />
-      <InstallAppBanner t={t} />
-      <header className="app-page-head">
-        <h1>{t('history.title')}</h1>
-        <p className="subtitle">{t('history.subtitle')}</p>
-      </header>
+    <div className="layout-grid">
+      <div className="span-2">
+        <InstallAppBanner t={t} />
+        <header className="app-page-head">
+          <h1>{t('history.title')}</h1>
+          <p className="subtitle">{t('history.subtitle')}</p>
+        </header>
+      </div>
 
       {checkHistory.length === 0 ? (
-        <section className="card">
+        <section className="card span-2">
           <p className="muted">{t('history.empty')}</p>
         </section>
       ) : (
-        <section className="card ask-history-card">
+        <section className="card ask-history-card span-2">
           <ul className="ask-history-list">
             {checkHistory.map((item) => (
               <li key={item.id} className="ask-history-item">
@@ -92,6 +86,6 @@ export function HistoryScreen({ state }: { state: AppState }) {
           </ul>
         </section>
       )}
-    </>
+    </div>
   );
 }

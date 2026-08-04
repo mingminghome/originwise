@@ -5,7 +5,7 @@ import { BuyMeAPint } from './BuyMeAPint';
 
 /**
  * Compact icon nav (top-right): History / About / Settings.
- * Replaces the old bottom main menu. Home is Check (brand / default tab).
+ * SourceWise-style floating pill cluster. Home is Check (brand / default tab).
  * “Buy me a pint” chip when VITE_BUY_ME_A_PINT_URL is set.
  */
 export function TopNavIcons({
@@ -35,9 +35,9 @@ export function TopNavIcons({
   ];
 
   return (
-    <div className="top-nav-right">
+    <>
       <BuyMeAPint t={t} compact />
-      <nav className="top-nav-icons" aria-label={t('tabs.navMore')}>
+      <nav className="top-actions" aria-label={t('tabs.navMore')}>
         {items.map(({ id, icon: Icon, labelKey, activeWhen }) => {
           const active = activeWhen
             ? activeWhen.includes(tab)
@@ -46,7 +46,7 @@ export function TopNavIcons({
             <button
               key={id}
               type="button"
-              className={active ? 'top-nav-icon is-active' : 'top-nav-icon'}
+              className={active ? 'icon-btn is-active' : 'icon-btn'}
               onClick={() => onChange(id)}
               aria-label={t(labelKey)}
               title={t(labelKey)}
@@ -57,6 +57,6 @@ export function TopNavIcons({
           );
         })}
       </nav>
-    </div>
+    </>
   );
 }

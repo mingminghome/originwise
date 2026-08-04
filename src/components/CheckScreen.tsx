@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, Gauge, ImagePlus, Sparkles, Square, X } from 'lucide-react';
+import {
+  Camera,
+  Gauge,
+  Globe2,
+  ImagePlus,
+  Sparkles,
+  Square,
+  X,
+} from 'lucide-react';
 import type { ProgressStep, RateLimitMeta } from '../core/ai/client';
 import { engineRunCheck } from '../core/ai/engine';
 import { prepareCheckImage, type PreparedImage } from '../core/util/image';
 import type { AppState } from '../hooks/useAppState';
 import type { CheckResult } from '../core/types';
-import { AppTopBar } from './AppTopBar';
 import { ProgressSteps } from './ProgressSteps';
 import { ResultPanel } from './ResultPanel';
 
@@ -25,7 +32,14 @@ function autoRetrySeconds(hit: RateHit): number | null {
   return Math.max(1, Math.min(Math.ceil(s), 120));
 }
 
-export function CheckScreen({ state }: { state: AppState }) {
+export function CheckScreen({
+  state,
+  resetToken = 0,
+}: {
+  state: AppState;
+  /** When this increments (brand click), return to empty landing. */
+  resetToken?: number;
+}) {
   const {
     t,
     settings,
@@ -33,7 +47,6 @@ export function CheckScreen({ state }: { state: AppState }) {
     setActiveResult,
     pushCheckHistory,
     setTab,
-    tab,
   } = state;
   const [text, setText] = useState('');
   const [photo, setPhoto] = useState<PreparedImage | null>(null);
@@ -96,6 +109,18 @@ export function CheckScreen({ state }: { state: AppState }) {
   const clearComposer = () => {
     setText('');
     setPhoto(null);
+  };
+
+  const clearToLanding = () => {
+    setResult(null);
+    setActiveResult(null);
+    setError(null);
+    setRateHit(null);
+    setAutoRetryLeft(null);
+    setProgress([]);
+    setLastProvider(null);
+    setCached(false);
+    clearComposer();
   };
 
   const rateLimitMessage = (hit: RateHit): string => {
@@ -270,6 +295,32 @@ export function CheckScreen({ state }: { state: AppState }) {
     };
   }, []);
 
+  // History item selected while on another tab → show that result
+  useEffect(() => {
+    if (activeResult?.result) {
+      setResult(null);
+      setError(null);
+      setRateHit(null);
+      setAutoRetryLeft(null);
+      setProgress([]);
+    }
+  }, [activeResult]);
+
+  // Brand / home: force empty front page
+  useEffect(() => {
+    if (resetToken <= 0) return;
+    setResult(null);
+    setActiveResult(null);
+    setError(null);
+    setRateHit(null);
+    setAutoRetryLeft(null);
+    setProgress([]);
+    setLastProvider(null);
+    setCached(false);
+    setText('');
+    setPhoto(null);
+  }, [resetToken, setActiveResult]);
+
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -279,23 +330,17 @@ export function CheckScreen({ state }: { state: AppState }) {
 
   return (
     <div className={showLanding ? 'check-google' : 'check-with-result'}>
-      <AppTopBar
-        t={t}
-        tab={tab}
-        onChange={setTab}
-        onBrandClick={() => {
-          setResult(null);
-          setActiveResult(null);
-          setError(null);
-          setRateHit(null);
-          setAutoRetryLeft(null);
-        }}
-      />
-
-      <div className={showLanding ? 'check-hero' : 'check-hero check-hero--compact'}>
+      <div
+        className={
+          showLanding ? 'check-hero' : 'check-hero check-hero--compact'
+        }
+      >
         {showLanding ? (
           <>
-            <h1 className="check-hero-title">{t('check.title')}</h1>
+            <div className="check-logo" aria-hidden>
+              <Globe2 size={36} strokeWidth={2} />
+            </div>
+            <h1 className="check-hero-title">{t('appName')}</h1>
             <p className="check-hero-sub muted">{t('check.subtitle')}</p>
           </>
         ) : null}
@@ -338,6 +383,12 @@ export function CheckScreen({ state }: { state: AppState }) {
           ) : null}
 
           <div className="check-search-row">
+            <Sparkles
+              size={18}
+              className="check-search-icon"
+              strokeWidth={2}
+              aria-hidden
+            />
             <input
               id="check-input"
               className="check-search-input"
@@ -349,15 +400,31 @@ export function CheckScreen({ state }: { state: AppState }) {
               }
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
-              disabled={loading}
+              disabled={loading || autoRetrying}
               autoComplete="off"
+              autoFocus
               enterKeyHint="search"
+              aria-label={t('check.title')}
             />
+            {text.trim() || photo ? (
+              <button
+                type="button"
+                className="check-icon-btn"
+                aria-label={t('common.cancel')}
+                disabled={loading || autoRetrying}
+                onClick={() => {
+                  setText('');
+                  setPhoto(null);
+                }}
+              >
+                <X size={18} />
+              </button>
+            ) : null}
             <div className="check-search-tools">
               <button
                 type="button"
                 className="check-icon-btn"
-                disabled={loading}
+                disabled={loading || autoRetrying}
                 aria-label={t('check.photo')}
                 title={t('check.photo')}
                 onClick={() => cameraRef.current?.click()}
@@ -367,49 +434,88 @@ export function CheckScreen({ state }: { state: AppState }) {
               <button
                 type="button"
                 className="check-icon-btn"
-                disabled={loading}
+                disabled={loading || autoRetrying}
                 aria-label={t('check.gallery')}
                 title={t('check.gallery')}
                 onClick={() => galleryRef.current?.click()}
               >
                 <ImagePlus size={18} />
               </button>
+              <button
+                type="button"
+                className="check-icon-btn check-go"
+                disabled={loading || !canSubmit || autoRetrying}
+                aria-label={t('check.submit')}
+                title={t('check.submit')}
+                onClick={() => void runCheck()}
+              >
+                <Sparkles size={18} />
+              </button>
             </div>
           </div>
 
-          <div className="check-submit-row">
-            <button
-              type="button"
-              className="btn btn-primary check-search-submit"
-              disabled={loading || !canSubmit || autoRetrying}
-              onClick={() => void runCheck()}
-            >
-              <Sparkles size={16} />
-              {loading
-                ? t('check.submitting')
-                : autoRetrying
-                  ? t('check.rateLimitAutoIn', { s: autoRetryLeft ?? 0 })
-                  : t('check.submit')}
-            </button>
-            {autoRetrying ? (
+          {showLanding ? (
+            <div className="check-hero-actions">
+              <div className="check-submit-row">
+                <button
+                  type="button"
+                  className="btn btn-primary check-search-submit"
+                  disabled={loading || !canSubmit || autoRetrying}
+                  onClick={() => void runCheck()}
+                >
+                  <Sparkles size={16} />
+                  {loading
+                    ? t('check.submitting')
+                    : autoRetrying
+                      ? t('check.rateLimitAutoIn', { s: autoRetryLeft ?? 0 })
+                      : t('check.submit')}
+                </button>
+                {autoRetrying ? (
+                  <button
+                    type="button"
+                    className="btn btn-ghost check-auto-stop"
+                    onClick={() => cancelAutoRetry()}
+                    aria-label={t('check.rateLimitAutoStop')}
+                  >
+                    <Square size={14} fill="currentColor" />
+                    {t('check.rateLimitAutoStop')}
+                  </button>
+                ) : null}
+              </div>
+              <p className="check-free-note muted">
+                <Gauge size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
+                {t('check.rateLimitFreeNote')}
+              </p>
               <button
                 type="button"
-                className="btn btn-ghost check-auto-stop"
-                onClick={() => cancelAutoRetry()}
-                aria-label={t('check.rateLimitAutoStop')}
+                className="linkish"
+                onClick={() => setTab('how')}
               >
-                <Square size={14} fill="currentColor" />
-                {t('check.rateLimitAutoStop')}
+                {t('check.howLink')}
               </button>
-            ) : null}
-          </div>
-
-          <p className="check-free-note muted">
-            <Gauge size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
-            {t('check.rateLimitFreeNote')}
-          </p>
-
-          {loading ? <ProgressSteps steps={progress} t={t} /> : null}
+            </div>
+          ) : (
+            <div className="check-compact-actions">
+              {autoRetrying ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost check-auto-stop"
+                  onClick={() => cancelAutoRetry()}
+                  aria-label={t('check.rateLimitAutoStop')}
+                >
+                  <Square size={14} fill="currentColor" />
+                  {t('check.rateLimitAutoStop')}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="linkish"
+                onClick={clearToLanding}
+              >
+                {t('check.newCheck')}
+              </button>
+            </div>
+          )}
 
           {rateHit ? (
             <div className="rate-limit-banner" role="alert">
@@ -457,8 +563,16 @@ export function CheckScreen({ state }: { state: AppState }) {
         </section>
       </div>
 
+      {loading ? (
+        <div className="check-body">
+          <div className="card progress-card check-progress">
+            <ProgressSteps steps={progress} t={t} />
+          </div>
+        </div>
+      ) : null}
+
       {display && !loading ? (
-        <section className="card check-result-card">
+        <section className="card check-result-card check-body">
           <ResultPanel
             result={display}
             provider={lastProvider}
@@ -476,7 +590,9 @@ export function CheckScreen({ state }: { state: AppState }) {
                 {t('check.forceRefresh')}
               </button>
               {cached ? (
-                <p className="muted check-recheck-hint">{t('check.forceRefreshHint')}</p>
+                <p className="muted check-recheck-hint">
+                  {t('check.forceRefreshHint')}
+                </p>
               ) : null}
             </div>
           ) : null}

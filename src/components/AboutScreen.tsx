@@ -14,7 +14,6 @@ import { PROJECT } from '../core/project';
 import { isBuyMeAPintEnabled } from '../core/support/buyMeAPint';
 import type { AppState } from '../hooks/useAppState';
 import { APP_VERSION } from '../version';
-import { AppTopBar } from './AppTopBar';
 import { BuyMeAPint } from './BuyMeAPint';
 import { InstallAppBanner } from './InstallAppBanner';
 
@@ -26,7 +25,7 @@ type OssLink = {
 
 /** Top-level About screen — BabyWise-aligned multi-card layout. */
 export function AboutScreen({ state }: { state: AppState }) {
-  const { t, setTab, tab } = state;
+  const { t, setTab } = state;
   const showPint = isBuyMeAPintEnabled();
 
   const ossLinks: OssLink[] = [
@@ -44,12 +43,6 @@ export function AboutScreen({ state }: { state: AppState }) {
   return (
     <div className="layout-grid">
       <div className="span-2">
-        <AppTopBar
-          t={t}
-          tab={tab}
-          onChange={setTab}
-          onBrandClick={() => setTab('check')}
-        />
         <InstallAppBanner t={t} />
         <header className="app-page-head">
           <h1>{t('about.title')}</h1>
