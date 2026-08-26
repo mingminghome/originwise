@@ -23,6 +23,9 @@ function resolveGtmId(): string | null {
 /**
  * Install GTM script + noscript iframe when VITE_GTM_ID is configured.
  * Safe to call once at app bootstrap.
+ *
+ * Page views and actions are pushed from `track.ts` after this runs.
+ * Map those dataLayer events to GA4 in GTM (see docs/DEPLOY.md).
  */
 export function installGtm(): string | null {
   const id = resolveGtmId();

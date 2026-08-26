@@ -1,4 +1,5 @@
 import { Beer } from 'lucide-react';
+import { trackEvent } from '../core/analytics/track';
 import type { TFunction } from '../core/i18n';
 import { resolveBuyMeAPint } from '../core/support/buyMeAPint';
 
@@ -25,6 +26,9 @@ export function BuyMeAPint({
         rel="noopener noreferrer"
         aria-label={t('support.buyMeAPint')}
         title={t('support.buyMeAPint')}
+        onClick={() =>
+          trackEvent({ event: 'support_click', placement: 'chip' })
+        }
       >
         <Beer size={16} strokeWidth={2.2} aria-hidden />
         <span className="buy-pint-chip-text">{t('support.pintShort')}</span>
@@ -40,6 +44,9 @@ export function BuyMeAPint({
         rel="noopener noreferrer"
         aria-label={t('support.buyMeAPint')}
         className="buy-pint-full"
+        onClick={() =>
+          trackEvent({ event: 'support_click', placement: 'full' })
+        }
       >
         <img
           src={cfg.img}
@@ -58,6 +65,9 @@ export function BuyMeAPint({
       rel="noopener noreferrer"
       aria-label={t('support.buyMeAPint')}
       className="buy-pint-chip buy-pint-full-text"
+      onClick={() =>
+        trackEvent({ event: 'support_click', placement: 'full' })
+      }
     >
       <Beer size={16} strokeWidth={2.2} aria-hidden />
       <span>{t('support.buyMeAPint')}</span>

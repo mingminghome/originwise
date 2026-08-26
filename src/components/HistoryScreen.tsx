@@ -1,4 +1,5 @@
 import { Image as ImageIcon, Trash2 } from 'lucide-react';
+import { trackEvent } from '../core/analytics/track';
 import type { AppState } from '../hooks/useAppState';
 import { InstallAppBanner } from './InstallAppBanner';
 import { TierBadge } from './TierBadge';
@@ -51,6 +52,11 @@ export function HistoryScreen({ state }: { state: AppState }) {
                   type="button"
                   className="ask-history-main"
                   onClick={() => {
+                    trackEvent({
+                      event: 'history_open_result',
+                      relation_tier: item.result.relationTier,
+                      has_photo: item.hadImage,
+                    });
                     setActiveResult(item);
                     setTab('check');
                   }}

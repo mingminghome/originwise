@@ -10,6 +10,11 @@ import {
 } from 'lucide-react';
 import type { ProgressStep, RateLimitMeta } from '../core/ai/client';
 import { engineRunCheck } from '../core/ai/engine';
+import {
+  checkInputType,
+  safeErrorCode,
+  trackEvent,
+} from '../core/analytics/track';
 import { prepareCheckImage, type PreparedImage } from '../core/util/image';
 import type { AppState } from '../hooks/useAppState';
 import type { CheckResult } from '../core/types';
@@ -178,6 +183,12 @@ export function CheckScreen({
         return;
       }
       lastInputRef.current = { question, photo: attached };
+      const inputType = checkInputType(Boolean(question), Boolean(attached));
+      trackEvent({
+        event: 'check_start',
+        input_type: inputType,
+        force_refresh: forceRefresh,
+      });
       setLoading(true);
       try {
         const out = await engineRunCheck({
@@ -197,6 +208,11 @@ export function CheckScreen({
           },
         });
         if (!out.ok) {
+          trackEvent({
+            event: 'check_error',
+            error_code: safeErrorCode(out.code),
+            input_type: inputType,
+          });
           if (
             out.code === 'rate_limited' ||
             out.code === 'rate_limited_day'
@@ -241,6 +257,13 @@ export function CheckScreen({
         setLastProvider(out.provider ?? null);
         setCached(Boolean(out.cached));
         setResult(out.result);
+        trackEvent({
+          event: 'check_complete',
+          relation_tier: out.result.relationTier,
+          has_photo: Boolean(attached),
+          cached: Boolean(out.cached),
+          force_refresh: forceRefresh,
+        });
         clearComposer();
         const queryLabel =
           question ||

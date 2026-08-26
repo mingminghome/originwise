@@ -103,6 +103,61 @@ Cloudflare Pages → Settings → Environment variables → **Build**:
 For **local deploy**, these are baked in at `npm run build` from your local `.env` (if set).  
 If you deploy without them, production has no GTM / no pint button until you rebuild with the vars.
 
+### 4b. Map OriginWise dataLayer events in GTM → GA4
+
+The SPA never changes the URL. GTM/GA Enhanced Measurement therefore only sees `/` unless you map the app’s `dataLayer` events.
+
+**Turn off automatic page views** on the GA4 Configuration tag (`send_page_view` = false). Otherwise the first Check screen is counted twice.
+
+**Data Layer variables** (Data Layer Version 2):
+
+| Variable name | Data Layer Variable Name |
+|---|---|
+| DL - page_path | `page_path` |
+| DL - page_title | `page_title` |
+| DL - page_location | `page_location` |
+| DL - input_type | `input_type` |
+| DL - relation_tier | `relation_tier` |
+| DL - has_photo | `has_photo` |
+| DL - cached | `cached` |
+| DL - force_refresh | `force_refresh` |
+| DL - error_code | `error_code` |
+| DL - placement | `placement` |
+
+**Triggers** — Custom Event, fire on all Custom Events matching:
+
+| Trigger | Event name |
+|---|---|
+| CE - virtual_page_view | `virtual_page_view` |
+| CE - disclaimer_accept | `disclaimer_accept` |
+| CE - check_start | `check_start` |
+| CE - check_complete | `check_complete` |
+| CE - check_error | `check_error` |
+| CE - history_open_result | `history_open_result` |
+| CE - support_click | `support_click` |
+
+**Tags**
+
+1. **GA4 Event — page_view** (this is what fills Pages and screens)
+   - Event name: `page_view`
+   - Trigger: CE - virtual_page_view
+   - Event parameters:
+     - `page_path` → {{DL - page_path}}
+     - `page_title` → {{DL - page_title}}
+     - `page_location` → {{DL - page_location}}
+
+2. **GA4 Event** tags (one per action, or one tag with Event name = {{Event}})
+   - `disclaimer_accept` — no extra params
+   - `check_start` — `input_type`, `force_refresh`
+   - `check_complete` — `relation_tier`, `has_photo`, `cached`, `force_refresh`
+   - `check_error` — `error_code`, `input_type`
+   - `history_open_result` — `relation_tier`, `has_photo`
+   - `support_click` — `placement`
+
+**Preview:** GTM Preview on the live site, switch tabs, run a check. You should see `virtual_page_view` then `check_start` / `check_complete`. Query text and photos must not appear in the dataLayer.
+
+In GA4, mark `check_complete` as a conversion if you want a primary success metric.
+
 ### 5. Function config (non-secret)
 
 | Variable | Notes |

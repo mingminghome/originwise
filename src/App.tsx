@@ -6,6 +6,7 @@ import { HistoryScreen } from './components/HistoryScreen';
 import { HowItWorksScreen } from './components/HowItWorksScreen';
 import { SettingsScreen } from './components/SettingsScreen';
 import { WelcomeDisclaimer } from './components/WelcomeDisclaimer';
+import { trackEvent, trackPage } from './core/analytics/track';
 import {
   hasDisclaimerAck,
   saveDisclaimerAck,
@@ -23,9 +24,14 @@ export default function App() {
     if (!hasDisclaimerAck()) setShowWelcome(true);
   }, [dataSummary.keyCount]);
 
+  useEffect(() => {
+    trackPage(tab);
+  }, [tab]);
+
   const acceptWelcome = () => {
     saveDisclaimerAck();
     setShowWelcome(false);
+    trackEvent({ event: 'disclaimer_accept' });
   };
 
   // SourceWise-style shell: floating top bar + full-bleed main (no phone frame).
