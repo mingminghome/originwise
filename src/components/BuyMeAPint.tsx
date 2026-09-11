@@ -4,7 +4,7 @@ import type { TFunction } from '../core/i18n';
 import { resolveBuyMeAPint } from '../core/support/buyMeAPint';
 
 /**
- * ComboWise-style “Buy me a pint” support link (env: VITE_BUY_ME_A_PINT_URL).
+ * Optional “Buy me a pint” support link (env: VITE_BUY_ME_A_PINT_URL).
  * Hidden when unset. `compact` = top-bar chip; full = About footer button.
  */
 export function BuyMeAPint({

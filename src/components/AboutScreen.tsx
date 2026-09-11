@@ -23,7 +23,7 @@ type OssLink = {
   Icon: typeof Code2;
 };
 
-/** Top-level About screen — BabyWise-aligned multi-card layout. */
+/** Top-level About screen — multi-card layout. */
 export function AboutScreen({ state }: { state: AppState }) {
   const { t, setTab } = state;
   const showPint = isBuyMeAPintEnabled();

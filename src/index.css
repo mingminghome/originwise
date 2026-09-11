@@ -147,7 +147,7 @@ p {
   margin: 0;
 }
 
-/* Full-bleed canvas (SourceWise / Google-style — no phone frame) */
+/* Full-bleed canvas (no phone frame) */
 .app-page {
   height: 100%;
   width: 100%;
@@ -4201,7 +4201,7 @@ p {
 .how-flow-legend strong {
   color: var(--text);
 }
-/* —— SourceWise / Google-style Check home —— */
+/* —— Check home —— */
 .app-main--check {
   display: flex;
   flex-direction: column;

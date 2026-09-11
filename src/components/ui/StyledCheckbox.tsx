@@ -11,7 +11,7 @@ type Props = {
 };
 
 /**
- * Custom checkbox (no native input) aligned with warm BabyWise chrome.
+ * Custom checkbox (no native input).
  */
 export function StyledCheckbox({
   checked,

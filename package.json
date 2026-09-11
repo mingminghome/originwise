@@ -2,7 +2,7 @@
   "name": "originwise",
   "private": true,
   "version": "0.3.0",
-  "description": "Local-first China-related product / brand / origin checker",
+  "description": "Local-first product origin checker",
   "license": "MIT",
   "type": "module",
   "scripts": {

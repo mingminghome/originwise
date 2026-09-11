@@ -4,7 +4,7 @@ import type { TabId } from '../hooks/useAppState';
 import { TopNavIcons } from './TopNavIcons';
 
 /**
- * Floating chrome (SourceWise-style): brand left + pint + icon cluster right.
+ * Floating chrome: brand left + pint + icon cluster right.
  * Sits over content with glass blur — not a solid page frame strip.
  */
 export function AppTopBar({

@@ -1,15 +1,14 @@
-# OriginWise — China-Related Product / Brand / Origin Checker
+# OriginWise — Product Origin Checker
 
 | Field | Value |
 |-------|--------|
-| **Product name** | **OriginWise** (final) |
-| **Repo / workspace** | `cn-related-check` |
-| **Author** | _TBD_ |
+| **Product name** | **OriginWise** |
+| **Repo / workspace** | `originwise` |
+| **Author** | MingMingHomeWork |
 | **Date** | 2026-08-02 |
-| **Status** | **Approved for implementation** (rev 4 — product-owner decisions locked) |
-| **Primary reference** | BabyWise (sibling *Wise-family app; Cloudflare Pages SPA + Functions patterns) |
+| **Status** | Implemented |
 | **Deploy target** | Cloudflare Pages (SPA + Pages Functions) |
-| **Scaffold model** | **Inspired by BabyWise, not a fork/submodule** — greenfield code, ported patterns |
+| **Scaffold** | Greenfield React + Vite SPA with Pages Functions |
 
 ---
 
@@ -17,7 +16,7 @@
 
 **OriginWise** is a local-first progressive web app that helps users check whether a product, food item, brand, or company is related to the **People’s Republic of China (PRC)** — covering place of origin, manufacturer origin, company ownership/relations, and similar brand/product alternatives. Users submit a product name and/or a packaging/label photo; the server runs a **multi-agent AI pipeline** (identify, product, company, verify, alternatives) across a **free-tier AI provider pool**, then a **deterministic TypeScript synthesizer** builds a structured `CheckResult` (relation tier, explainable factors, origin regions, company graph, alternatives).
 
-The app reuses BabyWise’s proven stack and security model (React 19 + Vite + TypeScript, Cloudflare Pages SPA + `functions/`, localStorage-only history/settings, client image compress, server-built prompts, multi-provider LLM keys, Cache API rate limits, EN + zh-Hant i18n). The core differentiator vs BabyWise’s single-shot Ask is **orchestrated multi-agent fan-out with progress streaming** and pure-TS tier synthesis — not a monolithic LLM call.
+Stack: React 19 + Vite + TypeScript, Cloudflare Pages SPA + `functions/`, localStorage-only history/settings, client image compress, server-built prompts, multi-provider LLM keys, Cache API rate limits, EN + zh-Hant i18n. The check path is **orchestrated multi-agent fan-out with progress streaming** and pure-TS tier synthesis — not a single monolithic LLM call.
 
 ```
 Browser (SPA)  →  localStorage (history, settings)
@@ -37,9 +36,9 @@ Browser (SPA)  →  localStorage (history, settings)
 
 ### Current state
 
-- Workspace `cn-related-check` is **greenfield** (design docs only; no app code to migrate).
-- BabyWise demonstrates a production-ready *Wise-family* pattern: mobile-first cards, bottom nav, local-first storage, hardened `/api/ask`, free-tier multi-provider LLM pool.
-- No separate “combowise” repo was found; treat ComboWise as the same product-family UX lineage (mobile-first, local-first, Cloudflare Pages) referenced in BabyWise `docs/DEPLOY.md`.
+- Shipped as a Cloudflare Pages SPA + Pages Function (`/api/check`).
+- Local-first: history and settings stay in the browser.
+- Multi-provider LLM pool with job-level rate limits.
 
 ### Pain points this product addresses
 
@@ -48,10 +47,6 @@ Browser (SPA)  →  localStorage (history, settings)
 3. **Trust & cross-check** — Single LLM answers hallucinate corporate ownership; a dedicated **verification agent** plus **deterministic tier rules** reduce silent inconsistency.
 4. **Cost control** — Naive multi-call chains exhaust free AI tiers and Workers **CPU/subrequest** budgets; needs parallel-or-sequential schedules, call budget, caching, and job-level rate limits.
 
-### Why not fork BabyWise
-
-This is a **new product**, not a pregnancy diary. Domain types, prompts, result UI (graphs, relation tiers), and API (multi-agent job + progress) diverge enough that scaffolding *inspired by* BabyWise is cleaner than a fork merge.
-
 ---
 
 ## Goals & Non-Goals
@@ -59,15 +54,15 @@ This is a **new product**, not a pregnancy diary. Domain types, prompts, result 
 ### Goals
 
 1. Deploy to **Cloudflare Pages** (static SPA + Pages Functions under `functions/`).
-2. **Text and/or photo** check input (camera + gallery), with client-side compress (BabyWise `prepareAskImage` pattern).
+2. **Text and/or photo** check input (camera + gallery), with client-side compress.
 3. Cover: product/food place of origin; manufacturer origin; company relations to PRC; similar brand alternatives; similar product alternatives.
 4. **Multi-agent orchestration** with shared workload (not one monolithic query by default).
 5. **AI free-tier pool** — distribute agent tasks across configured providers; degrade gracefully to **single-key sequential or monolith**.
 6. **Speed** via parallelism (when multi-provider), optional cache, cheap first-pass, streaming progress.
 7. **Rich result UI**: relation tier, **tier reasons**, origin map/chips, company relation graph, alternatives cards, confidence + caveats.
 8. **Processing screen** showing per-agent progress.
-9. **Past query history** (local only; BabyWise Ask history pattern).
-10. **Settings + Clean Data** (selective wipe; BabyWise `CleanDataPanel` pattern).
+9. **Past query history** (local only).
+10. **Settings + Clean Data** (selective wipe).
 11. Privacy: no accounts; photos not stored server-side; history local only.
 12. Clear **informational disclaimer** — knowledge-cutoff / non-authoritative; not legal/sanctions advice; AI can be wrong.
 
@@ -87,7 +82,7 @@ This is a **new product**, not a pregnancy diary. Domain types, prompts, result 
 
 **Final decision: OriginWise.**
 
-Ship under **OriginWise** in code (`originwise_v1_*` storage prefix, package name `originwise`; repo may remain `cn-related-check`). Rejected alternatives (ChinaCheck, SupplyWise, BrandTrace, RelateCN) are historical only.
+Ship under **OriginWise** in code (`originwise_v1_*` storage prefix, package name `originwise`).
 
 ---
 
@@ -1276,8 +1271,8 @@ Rationale: 10 jobs × ≤5 calls ≈ **≤50 LLM calls/day/IP** — safer for pu
 
 | # | Decision | Rationale |
 |---|----------|-----------|
-| 1 | Product name **OriginWise** (final); repo `cn-related-check` | Owner locked; Wise-family branding |
-| 2 | Scaffold **inspired by BabyWise, not a fork** | Domain divergence |
+| 1 | Product name **OriginWise**; repo `originwise` | Locked |
+| 2 | Greenfield scaffold (not a fork) | Domain-specific types, prompts, and API |
 | 3 | Deterministic TS orchestrator + pure-TS synthesize | Testable; call budget; CF CPU-friendly |
 | 4 | Max **4–5 LLM calls**; parallel max **3** multi-provider / **1** single-provider | Free AI + Workers subrequest/CPU reality |
 | 5 | **SSE one-POST** v1; JSON fallback | Progress without DO |

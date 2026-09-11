@@ -20,7 +20,7 @@ const DIM_LABEL: Record<CheckDimension, string> = {
 };
 
 /**
- * Flat Settings (BabyWise-aligned): all preferences as cards, no nested hub.
+ * Flat Settings: all preferences as cards, no nested hub.
  */
 export function SettingsScreen({ state }: { state: AppState }) {
   const {

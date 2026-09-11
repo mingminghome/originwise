@@ -5,7 +5,7 @@ import { BuyMeAPint } from './BuyMeAPint';
 
 /**
  * Compact icon nav (top-right): History / About / Settings.
- * SourceWise-style floating pill cluster. Home is Check (brand / default tab).
+ * Home is Check (brand / default tab).
  * “Buy me a pint” chip when VITE_BUY_ME_A_PINT_URL is set.
  */
 export function TopNavIcons({

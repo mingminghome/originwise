@@ -1,6 +1,6 @@
 /**
  * Client-side image prep for Check (resize + JPEG compress).
- * Ported from BabyWise prepareAskImage pattern.
+ * Resize + JPEG compress before upload.
  */
 
 export type PreparedImage = {

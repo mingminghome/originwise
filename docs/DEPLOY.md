@@ -1,7 +1,7 @@
 # Deploy OriginWise
 
 **Default for this project:** develop and deploy **from your machine** with Wrangler.  
-GitHub can stay **private** (source backup only). CI deploy is optional and off by default.
+CI deploy is optional and off by default.
 
 ---
 
@@ -66,10 +66,9 @@ After deploy, smoke the SPA navigation:
 
 | Area | Expected |
 |------|----------|
-| Bottom nav | **Check** · **History** only |
-| Top-right icons | **About** · **Settings** (+ optional pint chip) |
+| Top bar | Brand (Check) · **History** · **About** · **Settings** (+ optional pint chip) |
 | About | Top-level; link to **How it works** |
-| Settings | Preferences & delete data only (no About nest) |
+| Settings | Preferences & delete data only |
 
 ### 3. Production secrets (Functions)
 
@@ -205,18 +204,10 @@ POOL_DISABLE_PROVIDERS=openai,grok,claude
 
 ---
 
-## GitHub (private) — source only
-
-```bash
-# after git init + first commit (see README)
-gh repo create cn-related-check --private --source=. --remote=origin --push
-# or create empty private repo on GitHub, then:
-# git remote add origin git@github.com:YOUR_USER/cn-related-check.git
-# git push -u origin main
-```
+## GitHub
 
 CI workflow (`.github/workflows/deploy-cloudflare-pages.yml`) is **manual only**  
-(`workflow_dispatch`) so a private push does not auto-deploy until you opt in.
+(`workflow_dispatch`) so a push does not auto-deploy until you opt in.
 
 To enable optional CI deploy later: add Actions secrets  
 `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, then run the workflow from the Actions tab.

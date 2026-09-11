@@ -34,7 +34,7 @@ export default function App() {
     trackEvent({ event: 'disclaimer_accept' });
   };
 
-  // SourceWise-style shell: floating top bar + full-bleed main (no phone frame).
+  // Floating top bar + full-bleed main (no phone frame).
   const isCheckHome = tab === 'check';
 
   return (

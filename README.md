@@ -2,19 +2,19 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
-Local-first **China-related product / brand / origin checker**: place of origin, manufacturer, company relations, and optional alternatives.
+Local-first **product origin checker**: place of origin, manufacturer, company relations, and optional alternatives.
 
 **Live demo:** [https://originwise.pages.dev](https://originwise.pages.dev)  
 **License:** [MIT](./LICENSE) · **Security:** [SECURITY.md](./SECURITY.md)
 
-**Production path:** static SPA on **Cloudflare Pages** + stateless **Pages Function** AI check (`/api/check`).  
+**Production path:** static SPA on **Cloudflare Pages** + stateless **Pages Function** (`/api/check`).  
 History and settings stay in the browser — **not stored as a server-side product database**.
 
 ```
 Browser  →  Pages (SPA)  →  localStorage (history, settings)
          →  POST /api/check  (SSE or JSON)
               → multi-agent pool | dual | monolith
-              → pure-TS relation tiers synthesize
+              → pure-TS relation tiers
 ```
 
 ---
@@ -29,40 +29,28 @@ Useful for:
 |------|----------------|
 | **Text or photo check** | Product / brand name and optional packaging image (client compress) |
 | **Relation tiers** | Origin, manufacturer, and company-link style badges (pure-TS synthesize) |
-| **Multi-agent AI** | Free-tier pool (Gemini / OpenAI / Grok / Claude) with SSE progress |
+| **Multi-agent AI** | Provider pool (Gemini / OpenAI / Grok / Claude) with SSE progress |
 | **Graph & alternatives** | Visual links plus optional alternative suggestions |
 | **History** | Local history + settings; wipe on device anytime |
-| **Privacy** | No account; diary of checks stays on-device |
+| **Privacy** | No account; check history stays on-device |
 
-Taiwan is always treated as a **separate country** (not China-related for tiers). AI results can be wrong — verify critical decisions yourself. Details: [SECURITY.md](./SECURITY.md) · [privacy.html](./public/privacy.html).
+Taiwan is always treated as a **separate country** for relation tiers. AI results can be wrong — verify critical decisions yourself. Details: [SECURITY.md](./SECURITY.md) · [privacy.html](./public/privacy.html).
 
 ---
 
 ## Features
 
-- **Text and/or packaging photo** — client-side compress before upload  
-- **Multi-agent pipeline** — free-tier AI pool (Gemini / OpenAI / Grok / Claude)  
-- **SSE progress UI** — relation tier badges, region chips, graph, alternatives  
-- **History + settings** — delete local data anytime  
-- **Taiwan policy** — always a separate country for tiering  
-- **i18n** — English + Traditional Chinese  
-- **Optional GTM** — via `VITE_GTM_ID` only (never hardcoded)  
-- **Optional Search Console** — via `VITE_GOOGLE_SITE_VERIFICATION` (HTML meta; never hardcoded)  
-- **Optional “Buy me a pint”** — via `VITE_BUY_ME_A_PINT_URL` only (never hardcoded)   
-- **Providers** — server keys only; users never paste API keys in the UI  
-- **Navigation** — bottom: Check · History; top-right: About · Settings (+ pint chip)
-
-### Navigation (UX)
-
-Aligned with BabyWise (Wise-family pattern):
-
-| Control | Tabs / actions |
-|---------|----------------|
-| **Bottom nav** | Check · History (primary tools) |
-| **Top-right icons** | About · Settings (+ pint when env URL is set) |
-| **About** | Top-level (no Info hub); **How it works** opens from About |
-| **Settings** | Top-level preferences & clean data only |
-| **Check home** | Full-chrome search UI (bottom nav hidden); top icons still reach About/Settings |
+- **Text and/or packaging photo** — client-side compress before upload
+- **Multi-agent pipeline** — AI pool (Gemini / OpenAI / Grok / Claude)
+- **SSE progress UI** — relation tier badges, region chips, graph, alternatives
+- **History + settings** — delete local data anytime
+- **Taiwan policy** — always a separate country for tiering
+- **i18n** — English + Traditional Chinese
+- **Optional GTM** — via `VITE_GTM_ID` only (never hardcoded)
+- **Optional Search Console** — via `VITE_GOOGLE_SITE_VERIFICATION` (HTML meta; never hardcoded)
+- **Optional “Buy me a pint”** — via `VITE_BUY_ME_A_PINT_URL` only (never hardcoded)
+- **Providers** — server keys only; users never paste API keys in the UI
+- **Navigation** — floating top bar: brand (Check) · History · About · Settings (+ optional pint chip)
 
 ---
 
@@ -101,10 +89,10 @@ For self-hosting (Cloudflare Pages, env keys, CI), see [docs/DEPLOY.md](./docs/D
 
 ## Privacy & security (summary)
 
-- No accounts, no server-side product catalogue of user checks.  
-- `/api/check` proxies analysis to the AI provider; rate-limit / origin checks apply where configured.  
-- Photos are compressed client-side; not stored as server records.  
-- **Never commit** `.env` or `.dev.vars` (gitignored). Rotate keys if they leak.  
+- No accounts, no server-side product catalogue of user checks.
+- `/api/check` proxies analysis to the AI provider; rate-limit / origin checks apply where configured.
+- Photos are compressed client-side; not stored as server records.
+- **Never commit** `.env` or `.dev.vars` (gitignored). Rotate keys if they leak.
 - Details: [SECURITY.md](./SECURITY.md) · [privacy.html](./public/privacy.html)
 
 ---
