@@ -8,10 +8,26 @@ import { afterEach, describe, it, mock } from 'node:test';
 import {
   isWebLookupEnabled,
   mapWebResearchHttpError,
+  parseInteractionSearch,
   runWebResearch,
   WEB_SEARCH_MODEL_CHAIN,
   webSearchModelChain,
 } from './webResearch';
+
+function modelFromFetch(input: RequestInfo | URL, init?: RequestInit): string {
+  const url = String(input);
+  const m = url.match(/models\/([^:]+):generateContent/);
+  if (m?.[1]) return m[1];
+  if (url.includes('/interactions')) {
+    try {
+      const body = JSON.parse(String(init?.body || '{}')) as { model?: string };
+      return body.model || 'interactions';
+    } catch {
+      return 'interactions';
+    }
+  }
+  return 'unknown';
+}
 
 describe('WEB_SEARCH_MODEL_CHAIN', () => {
   it('prefers official Search Flash models first', () => {
@@ -19,15 +35,40 @@ describe('WEB_SEARCH_MODEL_CHAIN', () => {
     assert.ok(WEB_SEARCH_MODEL_CHAIN.includes('gemini-3.5-flash-lite'));
   });
 
-  it('keeps 2.5 Flash and robotics ER after current Flash ids', () => {
+  it('keeps 3.7 Flash near the front and 2.5 after Gemini 3', () => {
+    assert.equal(WEB_SEARCH_MODEL_CHAIN[1], 'gemini-3.7-flash');
     const flash = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-3.5-flash-lite');
     const legacy = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-2.5-flash');
-    const robotics = WEB_SEARCH_MODEL_CHAIN.indexOf(
-      'gemini-robotics-er-2-preview'
-    );
     assert.ok(flash >= 0);
     assert.ok(legacy > flash);
-    assert.ok(robotics > legacy);
+  });
+});
+
+describe('parseInteractionSearch', () => {
+  it('reads output_text and url_citation annotations', () => {
+    const parsed = parseInteractionSearch({
+      output_text: 'Spain won Euro 2024.',
+      steps: [
+        {
+          type: 'model_output',
+          content: [
+            {
+              type: 'text',
+              text: 'Spain won Euro 2024.',
+              annotations: [
+                {
+                  type: 'url_citation',
+                  title: 'UEFA',
+                  url: 'https://uefa.com/euro2024',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    assert.equal(parsed.text, 'Spain won Euro 2024.');
+    assert.deepEqual(parsed.sources, ['UEFA — https://uefa.com/euro2024']);
   });
 });
 
@@ -138,57 +179,46 @@ describe('runWebResearch', () => {
     assert.equal(called, false);
   });
 
-  it('skips model_unavailable and succeeds on next model', async () => {
-    const modelsTried: string[] = [];
-    mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
-      const url = String(input);
-      const m = url.match(/models\/([^:]+):generateContent/);
-      const model = m?.[1] ?? 'unknown';
-      modelsTried.push(model);
-
-      if (model === 'gemini-3.8-flash') {
+  it('uses Interactions API google_search on gemini-3.8-flash first', async () => {
+    const urls: string[] = [];
+    let toolType = '';
+    mock.method(
+      globalThis,
+      'fetch',
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        urls.push(url);
+        const body = JSON.parse(String(init?.body || '{}')) as {
+          model?: string;
+          tools?: Array<{ type?: string }>;
+        };
+        toolType = body.tools?.[0]?.type || '';
         return new Response(
           JSON.stringify({
-            error: {
-              message:
-                'This model models/gemini-3.8-flash is no longer available.',
-              status: 'NOT_FOUND',
-            },
-          }),
-          { status: 404, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-      if (model === 'gemini-3.5-flash-lite') {
-        return new Response(
-          JSON.stringify({
-            candidates: [
+            output_text: 'Made in Poland; brand Japan.',
+            steps: [
               {
-                content: {
-                  parts: [
-                    { text: 'Made in Poland; brand Japan; Foxconn parent.' },
-                  ],
-                },
-                groundingMetadata: {
-                  groundingChunks: [
-                    {
-                      web: {
+                type: 'model_output',
+                content: [
+                  {
+                    type: 'text',
+                    text: 'Made in Poland; brand Japan.',
+                    annotations: [
+                      {
+                        type: 'url_citation',
                         title: 'Sharp',
-                        uri: 'https://example.com/sharp',
+                        url: 'https://example.com/sharp',
                       },
-                    },
-                  ],
-                },
+                    ],
+                  },
+                ],
               },
             ],
           }),
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         );
       }
-      return new Response(
-        JSON.stringify({ error: { message: 'fail' } }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    });
+    );
 
     const out = await runWebResearch({
       entity: 'Sharp UA-PE30U-WB Air Purifier',
@@ -197,31 +227,79 @@ describe('runWebResearch', () => {
     });
 
     assert.equal(out.ok, true);
-    assert.equal(out.model, 'gemini-3.5-flash-lite');
+    assert.equal(out.model, 'gemini-3.8-flash');
     assert.ok(out.brief.includes('Poland'));
-    assert.deepEqual(modelsTried.slice(0, 2), [
-      'gemini-3.8-flash',
-      'gemini-3.5-flash-lite',
-    ]);
+    assert.ok(out.brief.includes('Sharp'));
+    assert.ok(urls[0]?.includes('/v1beta/interactions'));
+    assert.equal(toolType, 'google_search');
+  });
+
+  it('skips model_unavailable and succeeds on next model', async () => {
+    const modelsTried: string[] = [];
+    mock.method(
+      globalThis,
+      'fetch',
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const model = modelFromFetch(input, init);
+        modelsTried.push(model);
+
+        if (model === 'gemini-3.8-flash' || model === 'gemini-3.7-flash') {
+          return new Response(
+            JSON.stringify({
+              error: {
+                message: `This model models/${model} is no longer available.`,
+                status: 'NOT_FOUND',
+              },
+            }),
+            { status: 404, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (model === 'gemini-3.6-flash') {
+          return new Response(
+            JSON.stringify({
+              output_text: 'Made in Poland; brand Japan; Foxconn parent.',
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response(
+          JSON.stringify({ error: { message: 'fail' } }),
+          { status: 500, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    );
+
+    const out = await runWebResearch({
+      entity: 'Sharp UA-PE30U-WB Air Purifier',
+      locale: 'en',
+      env: { GEMINI_API_KEY: 'test-key' },
+    });
+
+    assert.equal(out.ok, true);
+    assert.equal(out.model, 'gemini-3.6-flash');
+    assert.ok(out.brief.includes('Poland'));
+    assert.equal(modelsTried[0], 'gemini-3.8-flash');
   });
 
   it('tries several Search models before giving up on grounding quota', async () => {
     const modelsTried: string[] = [];
-    mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
-      const url = String(input);
-      const m = url.match(/models\/([^:]+):generateContent/);
-      modelsTried.push(m?.[1] ?? 'unknown');
-      return new Response(
-        JSON.stringify({
-          error: {
-            message:
-              'You exceeded your current quota, please check your plan and billing details.',
-            status: 'RESOURCE_EXHAUSTED',
-          },
-        }),
-        { status: 429, headers: { 'Content-Type': 'application/json' } }
-      );
-    });
+    mock.method(
+      globalThis,
+      'fetch',
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        modelsTried.push(modelFromFetch(input, init));
+        return new Response(
+          JSON.stringify({
+            error: {
+              message:
+                'You exceeded your current quota, please check your plan and billing details.',
+              status: 'RESOURCE_EXHAUSTED',
+            },
+          }),
+          { status: 429, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    );
 
     const out = await runWebResearch({
       entity: 'Test Product',
@@ -232,25 +310,23 @@ describe('runWebResearch', () => {
     assert.equal(out.ok, false);
     assert.equal(out.error, 'search_grounding_unavailable');
     assert.equal(modelsTried[0], 'gemini-3.8-flash');
-    assert.ok(modelsTried.length >= 4);
+    assert.ok(modelsTried.length >= 3);
     assert.ok(modelsTried.length <= WEB_SEARCH_MODEL_CHAIN.length);
   });
 
   it('uses pinned GEMINI_WEB_MODEL first', async () => {
     const modelsTried: string[] = [];
-    mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
-      const url = String(input);
-      const m = url.match(/models\/([^:]+):generateContent/);
-      modelsTried.push(m?.[1] ?? 'unknown');
-      return new Response(
-        JSON.stringify({
-          candidates: [
-            { content: { parts: [{ text: 'brief from pin' }] } },
-          ],
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
-    });
+    mock.method(
+      globalThis,
+      'fetch',
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        modelsTried.push(modelFromFetch(input, init));
+        return new Response(
+          JSON.stringify({ output_text: 'brief from pin' }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    );
 
     const out = await runWebResearch({
       entity: 'Widget',

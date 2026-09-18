@@ -2,8 +2,9 @@
  * Live web research for check jobs (v1.1).
  *
  * Uses Gemini Grounding with Google Search when GEMINI_API_KEY is set and
- * WEB_LOOKUP is not off. Failures are soft — orchestrator continues on
- * model memory only.
+ * WEB_LOOKUP is not off. Gemini 3.x uses the Interactions API
+ * (`tools: [{ type: "google_search" }]`); generateContent is the fallback.
+ * Failures are soft — orchestrator continues on model memory only.
  *
  * Env:
  *   WEB_LOOKUP=auto|on|off  (default auto = on when Gemini key present)
@@ -46,35 +47,37 @@ const BRIEF_MAX = 2200;
 const SOURCE_CAP = 8;
 
 /**
- * Models for Google Search grounding, ordered for current availability.
+ * Models for Google Search grounding (current docs, Sept 2026).
  *
- * Official Search-capable Flash models first (3.8 / 3.5 / 3.1, then 2.5).
- * Robotics ER is last-ditch Default-pool — it often 429s slowly and used to
- * abort the chain after two failures before Flash was tried.
+ * Gemini 3.x Search now goes through the Interactions API:
+ *   POST /v1beta/interactions  tools: [{ type: "google_search" }]
+ *   default model: gemini-3.8-flash
+ * generateContent + `{ google_search: {} }` remains a fallback (legacy).
  *
  * @see https://ai.google.dev/gemini-api/docs/google-search#supported-models
  */
 export const WEB_SEARCH_MODEL_CHAIN: readonly string[] = [
   'gemini-3.8-flash',
+  'gemini-3.7-flash',
+  'gemini-3.6-flash',
   'gemini-3.5-flash-lite',
   'gemini-3.5-flash',
   'gemini-3.1-flash-lite',
+  'gemini-3-flash-preview',
   'gemini-flash-lite-latest',
   'gemini-flash-latest',
-  'gemini-3.6-flash',
   'gemini-2.5-flash-lite',
   'gemini-2.5-flash',
   'gemini-2.0-flash',
-  'gemini-robotics-er-2-preview',
-  'gemini-robotics-er-1.6-preview',
 ];
 
-/** Per-model wall clock so a slow 429 cannot burn the whole job. */
-const GROUNDED_FETCH_MS = 7000;
+/** Interactions Search can take several seconds; fail-fast generateContent stays shorter. */
+const INTERACTIONS_FETCH_MS = 18000;
+const GENERATE_CONTENT_FETCH_MS = 7000;
 /** Stop after this many Search-tool quota / 0-entitlement misses. */
-const MAX_GROUNDING_FAILS = 5;
+const MAX_GROUNDING_FAILS = 4;
 /** Hard cap for the whole web pass (orchestrator still continues without it). */
-const WEB_PASS_BUDGET_MS = 20000;
+const WEB_PASS_BUDGET_MS = 40000;
 
 export function isWebLookupEnabled(env: WebResearchEnv): boolean {
   const raw = String(env.WEB_LOOKUP ?? 'auto')
@@ -147,6 +150,56 @@ type GeminiGrounded = {
   }>;
 };
 
+type InteractionResp = {
+  error?: { message?: string; status?: string; code?: number };
+  output_text?: string;
+  steps?: Array<{
+    type?: string;
+    content?: Array<{
+      type?: string;
+      text?: string;
+      annotations?: Array<{
+        type?: string;
+        url?: string;
+        title?: string;
+      }>;
+    }>;
+  }>;
+};
+
+function usesInteractionsSearch(model: string): boolean {
+  return /gemini-3/i.test(model) || /flash-latest|flash-lite-latest/i.test(model);
+}
+
+function pushSource(sources: string[], title?: string, uri?: string): void {
+  const t = title?.trim();
+  const u = uri?.trim();
+  if (!t && !u) return;
+  const line = t && u ? `${t} — ${u}` : t || u || '';
+  if (line && !sources.includes(line)) sources.push(line);
+}
+
+/** Parse Interactions API Search response (exported for tests). */
+export function parseInteractionSearch(data: InteractionResp): {
+  text: string;
+  sources: string[];
+} {
+  const sources: string[] = [];
+  let text = String(data.output_text ?? '').trim();
+  for (const step of data.steps ?? []) {
+    if (step.type !== 'model_output') continue;
+    for (const block of step.content ?? []) {
+      if (block.type !== 'text') continue;
+      if (!text && block.text?.trim()) text = block.text.trim();
+      for (const ann of block.annotations ?? []) {
+        if (ann.type === 'url_citation') pushSource(sources, ann.title, ann.url);
+        if (sources.length >= SOURCE_CAP) break;
+      }
+    }
+  }
+  return { text, sources };
+}
+
 /**
  * Map Gemini HTTP failures for web research (exported for unit tests).
  *
@@ -203,27 +256,78 @@ export function mapWebResearchHttpError(status: number, body: string): string {
   return 'upstream_error';
 }
 
-async function callGeminiGrounded(
+type GroundedCall =
+  | { ok: true; text: string; sources: string[] }
+  | { ok: false; code: string };
+
+function readJsonError(raw: string): string {
+  try {
+    const data = JSON.parse(raw) as { error?: { message?: string } };
+    return data.error?.message || raw;
+  } catch {
+    return raw;
+  }
+}
+
+/** Current Search path: Interactions API + tools: [{ type: "google_search" }]. */
+async function callInteractionsSearch(
   apiKey: string,
   model: string,
   prompt: string
-): Promise<
-  | { ok: true; text: string; sources: string[] }
-  | { ok: false; code: string }
-> {
+): Promise<GroundedCall> {
+  const url = 'https://generativelanguage.googleapis.com/v1beta/interactions';
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      signal: AbortSignal.timeout(INTERACTIONS_FETCH_MS),
+      body: JSON.stringify({
+        model,
+        input: prompt,
+        tools: [{ type: 'google_search' }],
+        store: false,
+      }),
+    });
+  } catch {
+    return { ok: false, code: 'upstream_unavailable' };
+  }
+
+  const raw = await res.text();
+  if (!res.ok) {
+    return { ok: false, code: mapWebResearchHttpError(res.status, readJsonError(raw)) };
+  }
+  let data: InteractionResp;
+  try {
+    data = JSON.parse(raw) as InteractionResp;
+  } catch {
+    return { ok: false, code: 'empty_response' };
+  }
+  const parsed = parseInteractionSearch(data);
+  if (!parsed.text) return { ok: false, code: 'empty_response' };
+  return { ok: true, text: parsed.text, sources: parsed.sources };
+}
+
+/** Legacy Search path: generateContent + tools: [{ google_search: {} }]. */
+async function callGenerateContentSearch(
+  apiKey: string,
+  model: string,
+  prompt: string
+): Promise<GroundedCall> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
   let res: Response;
   try {
     res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(GROUNDED_FETCH_MS),
+      signal: AbortSignal.timeout(GENERATE_CONTENT_FETCH_MS),
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        // Gemini Developer API: snake_case tool (Vertex uses googleSearch camelCase)
         tools: [{ google_search: {} }],
         generationConfig: {
-          // Google grounding docs recommend temperature ~1.0 for search quality
           temperature: 1.0,
           maxOutputTokens: 1400,
         },
@@ -255,15 +359,32 @@ async function callGeminiGrounded(
 
   const sources: string[] = [];
   for (const chunk of cand?.groundingMetadata?.groundingChunks ?? []) {
-    const title = chunk.web?.title?.trim();
-    const uri = chunk.web?.uri?.trim();
-    if (!title && !uri) continue;
-    const line = title && uri ? `${title} — ${uri}` : title || uri || '';
-    if (line && !sources.includes(line)) sources.push(line);
+    pushSource(sources, chunk.web?.title, chunk.web?.uri);
     if (sources.length >= SOURCE_CAP) break;
   }
 
   return { ok: true, text: text.trim(), sources };
+}
+
+async function callGeminiGrounded(
+  apiKey: string,
+  model: string,
+  prompt: string
+): Promise<GroundedCall> {
+  if (usesInteractionsSearch(model)) {
+    const ix = await callInteractionsSearch(apiKey, model, prompt);
+    if (ix.ok) return ix;
+    if (
+      ix.code === 'search_grounding_unavailable' ||
+      ix.code === 'upstream_quota'
+    ) {
+      return ix;
+    }
+    const gc = await callGenerateContentSearch(apiKey, model, prompt);
+    if (gc.ok) return gc;
+    return ix;
+  }
+  return callGenerateContentSearch(apiKey, model, prompt);
 }
 
 /**
