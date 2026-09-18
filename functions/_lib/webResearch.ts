@@ -11,12 +11,10 @@
  *   GEMINI_API_KEY=…        required for this path
  *   GEMINI_WEB_MODEL=…      optional pin for grounded search only
  *
- * Free-tier reality (2026 AI Studio “new user” keys):
- *   - Gemini 3 family often shows Search grounding **0 / 0** (not usage burn).
- *   - gemini-2.5-flash* may return 404 “no longer available to new users”.
- *   - Plain generateContent can still succeed while google_search returns 429.
- *   Enabling billing / paid Search grounding is required for the web row on
- *   those accounts — see docs/DEPLOY.md.
+ * Free-tier Search is a SEPARATE quota from text RPM/RPD (AI Studio → Tools):
+ *   - Gemini 3 Search: often **0 / 0** — do not try these first
+ *   - Gemini 2.5 Search / Gemini 2 Search: typically **1.5K RPD**
+ *   - Default Search: typically **1.5K RPD** (robotics ER, Gemma, …)
  *
  * Docs:
  *   https://ai.google.dev/gemini-api/docs/google-search
@@ -41,34 +39,40 @@ export type WebResearchResult = {
   ms: number;
   error?: string;
   model?: string;
+  provider?: 'gemini' | 'grok';
 };
 
 const BRIEF_MAX = 2200;
 const SOURCE_CAP = 8;
 
 /**
- * Models for Google Search grounding (current docs, Sept 2026).
+ * Try order follows Search *entitlement*, not the newest Flash id.
  *
- * Gemini 3.x Search now goes through the Interactions API:
- *   POST /v1beta/interactions  tools: [{ type: "google_search" }]
- *   default model: gemini-3.8-flash
- * generateContent + `{ google_search: {} }` remains a fallback (legacy).
+ * AI Studio “Tools → Search grounding” buckets (typical free key):
+ *   Default Search  ~1.5K RPD  → robotics ER
+ *   Gemini 2.5 Search ~1.5K RPD
+ *   Gemini 2 Search   ~1.5K RPD
+ *   Gemini 3 Search   often 0/0  → last
+ *
+ * Gemini 3.x uses Interactions (`/v1beta2/interactions`, type: google_search).
+ * 2.x / robotics use generateContent + `{ google_search: {} }`.
  *
  * @see https://ai.google.dev/gemini-api/docs/google-search#supported-models
  */
 export const WEB_SEARCH_MODEL_CHAIN: readonly string[] = [
-  'gemini-3.8-flash',
-  'gemini-3.7-flash',
-  'gemini-3.6-flash',
-  'gemini-3.5-flash-lite',
-  'gemini-3.5-flash',
-  'gemini-3.1-flash-lite',
-  'gemini-3-flash-preview',
-  'gemini-flash-lite-latest',
-  'gemini-flash-latest',
+  'gemini-robotics-er-2-preview',
+  'gemini-robotics-er-1.6-preview',
   'gemini-2.5-flash-lite',
   'gemini-2.5-flash',
   'gemini-2.0-flash',
+  'gemini-3.1-flash-lite',
+  'gemini-3.5-flash-lite',
+  'gemini-3.8-flash',
+  'gemini-3.7-flash',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash',
+  'gemini-flash-lite-latest',
+  'gemini-flash-latest',
 ];
 
 /** Interactions Search can take several seconds; fail-fast generateContent stays shorter. */
@@ -153,6 +157,7 @@ type GeminiGrounded = {
 type InteractionResp = {
   error?: { message?: string; status?: string; code?: number };
   output_text?: string;
+  outputText?: string;
   steps?: Array<{
     type?: string;
     content?: Array<{
@@ -161,11 +166,17 @@ type InteractionResp = {
       annotations?: Array<{
         type?: string;
         url?: string;
+        uri?: string;
         title?: string;
       }>;
     }>;
   }>;
 };
+
+const INTERACTIONS_URLS = [
+  'https://generativelanguage.googleapis.com/v1beta2/interactions',
+  'https://generativelanguage.googleapis.com/v1beta/interactions',
+] as const;
 
 function usesInteractionsSearch(model: string): boolean {
   return /gemini-3/i.test(model) || /flash-latest|flash-lite-latest/i.test(model);
@@ -185,14 +196,17 @@ export function parseInteractionSearch(data: InteractionResp): {
   sources: string[];
 } {
   const sources: string[] = [];
-  let text = String(data.output_text ?? '').trim();
+  let text = String(data.output_text ?? data.outputText ?? '').trim();
   for (const step of data.steps ?? []) {
-    if (step.type !== 'model_output') continue;
+    if (step.type !== 'model_output' && step.type !== 'google_search_result') {
+      continue;
+    }
     for (const block of step.content ?? []) {
-      if (block.type !== 'text') continue;
+      if (block.type && block.type !== 'text') continue;
       if (!text && block.text?.trim()) text = block.text.trim();
       for (const ann of block.annotations ?? []) {
-        if (ann.type === 'url_citation') pushSource(sources, ann.title, ann.url);
+        if (ann.type && ann.type !== 'url_citation') continue;
+        pushSource(sources, ann.title, ann.url || ann.uri);
         if (sources.length >= SOURCE_CAP) break;
       }
     }
@@ -269,16 +283,16 @@ function readJsonError(raw: string): string {
   }
 }
 
-/** Current Search path: Interactions API + tools: [{ type: "google_search" }]. */
-async function callInteractionsSearch(
+let rememberedInteractionsUrl: string | null = null;
+
+async function postInteractions(
+  url: string,
   apiKey: string,
   model: string,
   prompt: string
-): Promise<GroundedCall> {
-  const url = 'https://generativelanguage.googleapis.com/v1beta/interactions';
-  let res: Response;
+): Promise<{ res: Response; raw: string } | { ok: false; code: string }> {
   try {
-    res = await fetch(url, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -292,23 +306,55 @@ async function callInteractionsSearch(
         store: false,
       }),
     });
+    const raw = await res.text();
+    return { res, raw };
   } catch {
     return { ok: false, code: 'upstream_unavailable' };
   }
+}
 
-  const raw = await res.text();
-  if (!res.ok) {
-    return { ok: false, code: mapWebResearchHttpError(res.status, readJsonError(raw)) };
+/** Current Search path: Interactions API + tools: [{ type: "google_search" }]. */
+async function callInteractionsSearch(
+  apiKey: string,
+  model: string,
+  prompt: string
+): Promise<GroundedCall> {
+  const urls = rememberedInteractionsUrl
+    ? [rememberedInteractionsUrl]
+    : [...INTERACTIONS_URLS];
+  let last: GroundedCall = { ok: false, code: 'upstream_error' };
+
+  for (const url of urls) {
+    const posted = await postInteractions(url, apiKey, model, prompt);
+    if ('code' in posted && posted.ok === false) {
+      last = posted;
+      continue;
+    }
+    const { res, raw } = posted as { res: Response; raw: string };
+    if (!res.ok) {
+      last = {
+        ok: false,
+        code: mapWebResearchHttpError(res.status, readJsonError(raw)),
+      };
+      if (last.code === 'search_grounding_unavailable') return last;
+      continue;
+    }
+    let data: InteractionResp;
+    try {
+      data = JSON.parse(raw) as InteractionResp;
+    } catch {
+      last = { ok: false, code: 'empty_response' };
+      continue;
+    }
+    const parsed = parseInteractionSearch(data);
+    if (!parsed.text) {
+      last = { ok: false, code: 'empty_response' };
+      continue;
+    }
+    rememberedInteractionsUrl = url;
+    return { ok: true, text: parsed.text, sources: parsed.sources };
   }
-  let data: InteractionResp;
-  try {
-    data = JSON.parse(raw) as InteractionResp;
-  } catch {
-    return { ok: false, code: 'empty_response' };
-  }
-  const parsed = parseInteractionSearch(data);
-  if (!parsed.text) return { ok: false, code: 'empty_response' };
-  return { ok: true, text: parsed.text, sources: parsed.sources };
+  return last;
 }
 
 /** Legacy Search path: generateContent + tools: [{ google_search: {} }]. */

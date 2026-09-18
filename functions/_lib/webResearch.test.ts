@@ -30,17 +30,16 @@ function modelFromFetch(input: RequestInfo | URL, init?: RequestInit): string {
 }
 
 describe('WEB_SEARCH_MODEL_CHAIN', () => {
-  it('prefers official Search Flash models first', () => {
-    assert.equal(WEB_SEARCH_MODEL_CHAIN[0], 'gemini-3.8-flash');
-    assert.ok(WEB_SEARCH_MODEL_CHAIN.includes('gemini-3.5-flash-lite'));
-  });
-
-  it('keeps 3.7 Flash near the front and 2.5 after Gemini 3', () => {
-    assert.equal(WEB_SEARCH_MODEL_CHAIN[1], 'gemini-3.7-flash');
-    const flash = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-3.5-flash-lite');
-    const legacy = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-2.5-flash');
-    assert.ok(flash >= 0);
-    assert.ok(legacy > flash);
+  it('prefers Default Search / 2.5 Search pools before Gemini 3 (often 0/0)', () => {
+    assert.equal(WEB_SEARCH_MODEL_CHAIN[0], 'gemini-robotics-er-2-preview');
+    const defaultPool = WEB_SEARCH_MODEL_CHAIN.indexOf(
+      'gemini-robotics-er-2-preview'
+    );
+    const flash25 = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-2.5-flash-lite');
+    const flash3 = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-3.8-flash');
+    assert.ok(defaultPool >= 0);
+    assert.ok(flash25 > defaultPool);
+    assert.ok(flash3 > flash25);
   });
 });
 
@@ -179,7 +178,7 @@ describe('runWebResearch', () => {
     assert.equal(called, false);
   });
 
-  it('uses Interactions API google_search on gemini-3.8-flash first', async () => {
+  it('uses Interactions API google_search when a Gemini 3 model is pinned', async () => {
     const urls: string[] = [];
     let toolType = '';
     mock.method(
@@ -223,14 +222,20 @@ describe('runWebResearch', () => {
     const out = await runWebResearch({
       entity: 'Sharp UA-PE30U-WB Air Purifier',
       locale: 'en',
-      env: { GEMINI_API_KEY: 'test-key' },
+      env: {
+        GEMINI_API_KEY: 'test-key',
+        GEMINI_WEB_MODEL: 'gemini-3.8-flash',
+      },
     });
 
     assert.equal(out.ok, true);
     assert.equal(out.model, 'gemini-3.8-flash');
     assert.ok(out.brief.includes('Poland'));
     assert.ok(out.brief.includes('Sharp'));
-    assert.ok(urls[0]?.includes('/v1beta/interactions'));
+    assert.ok(
+      urls[0]?.includes('/v1beta2/interactions') ||
+        urls[0]?.includes('/v1beta/interactions')
+    );
     assert.equal(toolType, 'google_search');
   });
 
@@ -243,7 +248,7 @@ describe('runWebResearch', () => {
         const model = modelFromFetch(input, init);
         modelsTried.push(model);
 
-        if (model === 'gemini-3.8-flash' || model === 'gemini-3.7-flash') {
+        if (model === 'gemini-robotics-er-2-preview') {
           return new Response(
             JSON.stringify({
               error: {
@@ -254,10 +259,18 @@ describe('runWebResearch', () => {
             { status: 404, headers: { 'Content-Type': 'application/json' } }
           );
         }
-        if (model === 'gemini-3.6-flash') {
+        if (model === 'gemini-robotics-er-1.6-preview') {
           return new Response(
             JSON.stringify({
-              output_text: 'Made in Poland; brand Japan; Foxconn parent.',
+              candidates: [
+                {
+                  content: {
+                    parts: [
+                      { text: 'Made in Poland; brand Japan; Foxconn parent.' },
+                    ],
+                  },
+                },
+              ],
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } }
           );
@@ -276,9 +289,9 @@ describe('runWebResearch', () => {
     });
 
     assert.equal(out.ok, true);
-    assert.equal(out.model, 'gemini-3.6-flash');
+    assert.equal(out.model, 'gemini-robotics-er-1.6-preview');
     assert.ok(out.brief.includes('Poland'));
-    assert.equal(modelsTried[0], 'gemini-3.8-flash');
+    assert.equal(modelsTried[0], 'gemini-robotics-er-2-preview');
   });
 
   it('tries several Search models before giving up on grounding quota', async () => {
@@ -309,7 +322,7 @@ describe('runWebResearch', () => {
 
     assert.equal(out.ok, false);
     assert.equal(out.error, 'search_grounding_unavailable');
-    assert.equal(modelsTried[0], 'gemini-3.8-flash');
+    assert.equal(modelsTried[0], 'gemini-robotics-er-2-preview');
     assert.ok(modelsTried.length >= 3);
     assert.ok(modelsTried.length <= WEB_SEARCH_MODEL_CHAIN.length);
   });
