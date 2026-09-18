@@ -54,8 +54,6 @@ export function CheckScreen({
     setTab,
   } = state;
   const [text, setText] = useState('');
-  const [partsText, setPartsText] = useState('');
-  const [showParts, setShowParts] = useState(false);
   const [photo, setPhoto] = useState<PreparedImage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rateHit, setRateHit] = useState<RateHit | null>(null);
@@ -72,13 +70,8 @@ export function CheckScreen({
     async () => undefined
   );
   /** Keep last successful/attempted inputs for re-check after composer is cleared */
-  const lastInputRef = useRef<{
-    question: string;
-    parts: string;
-    photo: PreparedImage | null;
-  }>({
+  const lastInputRef = useRef<{ question: string; photo: PreparedImage | null }>({
     question: '',
-    parts: '',
     photo: null,
   });
 
@@ -120,15 +113,7 @@ export function CheckScreen({
 
   const clearComposer = () => {
     setText('');
-    setPartsText('');
     setPhoto(null);
-  };
-
-  const composeQuestion = (product: string, parts: string): string => {
-    const p = product.trim();
-    const extra = parts.trim();
-    if (!extra) return p;
-    return `${p || 'Product'}\n\nAlso check these parts / spares / ingredients for China origin:\n${extra}`;
   };
 
   const clearToLanding = () => {
@@ -182,29 +167,22 @@ export function CheckScreen({
       setCached(false);
       setProgress([]);
 
-      let productName = text.trim();
-      let extraParts = partsText.trim();
+      let question = text.trim();
       let attached = photo;
       // Re-check after composer cleared: reuse last attempt (or result title)
-      if (!productName && !attached) {
-        productName = lastInputRef.current.question;
-        extraParts = lastInputRef.current.parts;
+      if (!question && !attached) {
+        question = lastInputRef.current.question;
         attached = lastInputRef.current.photo;
       }
-      if (!productName && !attached) {
+      if (!question && !attached) {
         const fallbackTitle = (result ?? activeResult?.result)?.title?.trim();
-        if (fallbackTitle) productName = fallbackTitle;
+        if (fallbackTitle) question = fallbackTitle;
       }
-      if (!productName && !attached) {
+      if (!question && !attached) {
         setError(t('check.needInput'));
         return;
       }
-      const question = composeQuestion(productName, extraParts);
-      lastInputRef.current = {
-        question: productName,
-        parts: extraParts,
-        photo: attached,
-      };
+      lastInputRef.current = { question, photo: attached };
       const inputType = checkInputType(Boolean(question), Boolean(attached));
       trackEvent({
         event: 'check_start',
@@ -288,7 +266,7 @@ export function CheckScreen({
         });
         clearComposer();
         const queryLabel =
-          productName ||
+          question ||
           out.result.title ||
           t('check.unnamedPhoto');
         pushCheckHistory({
@@ -305,7 +283,6 @@ export function CheckScreen({
     },
     [
       text,
-      partsText,
       photo,
       result,
       activeResult?.result,
@@ -364,8 +341,6 @@ export function CheckScreen({
     setLastProvider(null);
     setCached(false);
     setText('');
-    setPartsText('');
-    setShowParts(false);
     setPhoto(null);
   }, [resetToken, setActiveResult]);
 
@@ -462,7 +437,6 @@ export function CheckScreen({
                 disabled={loading || autoRetrying}
                 onClick={() => {
                   setText('');
-                  setPartsText('');
                   setPhoto(null);
                 }}
               >
@@ -501,28 +475,6 @@ export function CheckScreen({
                 <Sparkles size={18} />
               </button>
             </div>
-          </div>
-
-          <div className="check-parts">
-            <button
-              type="button"
-              className="check-parts-toggle"
-              aria-expanded={showParts || Boolean(partsText.trim())}
-              onClick={() => setShowParts((v) => !v)}
-            >
-              {t('check.partsOptional')}
-            </button>
-            {showParts || partsText.trim() ? (
-              <textarea
-                className="check-parts-input"
-                rows={2}
-                value={partsText}
-                placeholder={t('check.partsPlaceholder')}
-                onChange={(e) => setPartsText(e.target.value)}
-                disabled={loading || autoRetrying}
-                aria-label={t('check.partsTitle')}
-              />
-            ) : null}
           </div>
 
           {showLanding ? (

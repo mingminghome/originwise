@@ -59,11 +59,9 @@ export const ro = {
     photoTooLarge: 'Fotografia este încă prea mare după comprimare.',
     photoInvalid: 'Nu s-a putut citi acea imagine.',
     unnamedPhoto: '(foto)',
-    partsOptional: 'Verifică și piese / ingrediente',
-    partsPlaceholder: 'ex. baterie, încărcător, făină de grâu…',
     partsTitle: 'Piese, rezerve și ingrediente',
     partsHint:
-      'Componente, piese de rezervă sau ingrediente majore și dacă par legate de China.',
+      'Izolat din acest produs — componente, piese de rezervă sau ingrediente majore și dacă par legate de China.',
     partKind: {
       part: 'Piesă',
       spare: 'Rezervă',

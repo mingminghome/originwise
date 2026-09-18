@@ -59,11 +59,9 @@ export const cs = {
     photoTooLarge: 'Fotka je po kompresi stále příliš velká.',
     photoInvalid: 'Tento obrázek se nepodařilo přečíst.',
     unnamedPhoto: '(fotka)',
-    partsOptional: 'Zkontrolovat i díly / složky',
-    partsPlaceholder: 'např. baterie, nabíječka, pšeničná mouka…',
     partsTitle: 'Díly, náhradní díly a složky',
     partsHint:
-      'Hlavní komponenty, náhradní díly nebo složky a zda působí jako spojené s Čínou.',
+      'Vyčleněno z tohoto produktu — hlavní komponenty, náhradní díly nebo složky a zda působí jako spojené s Čínou.',
     partKind: {
       part: 'Díl',
       spare: 'Náhradní díl',

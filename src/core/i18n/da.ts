@@ -59,11 +59,9 @@ export const da = {
     photoTooLarge: 'Fotoet er stadig for stort efter komprimering.',
     photoInvalid: 'Kunne ikke læse det billede.',
     unnamedPhoto: '(foto)',
-    partsOptional: 'Tjek også dele / ingredienser',
-    partsPlaceholder: 'f.eks. batteri, oplader, hvedemel…',
     partsTitle: 'Dele, reservedele og ingredienser',
     partsHint:
-      'Vigtige komponenter, reservedele eller ingredienser og om de ser Kina-relaterede ud.',
+      'Isoleret fra dette produkt — vigtige komponenter, reservedele eller ingredienser og om de ser Kina-relaterede ud.',
     partKind: {
       part: 'Del',
       spare: 'Reservedel',

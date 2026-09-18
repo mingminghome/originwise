@@ -59,11 +59,9 @@ export const pt = {
     photoTooLarge: 'A foto continua demasiado grande após a compressão.',
     photoInvalid: 'Não foi possível ler essa imagem.',
     unnamedPhoto: '(foto)',
-    partsOptional: 'Verificar também peças / ingredientes',
-    partsPlaceholder: 'ex. bateria, carregador, farinha de trigo…',
     partsTitle: 'Peças, reservas e ingredientes',
     partsHint:
-      'Componentes, peças de reserva ou ingredientes principais e se parecem ligados à China.',
+      'Isolado deste produto — componentes, peças de reserva ou ingredientes principais e se parecem ligados à China.',
     partKind: {
       part: 'Peça',
       spare: 'Reserva',

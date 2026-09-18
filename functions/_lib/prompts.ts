@@ -35,12 +35,14 @@ Products often have SEPARATE layers. Report each layer; never substitute one for
    - Do NOT put brand HQ or global Asia factory into madeIn when the unit is labeled elsewhere.
 4) componentsOrigin = where major parts / global line may be built (Thailand, China, etc.) when
    different from final madeIn. Use free text (e.g. "Thailand and/or China for global PE30 line").
-5) parts[] = individual components, spare parts, or ingredients with THEIR own origin:
+5) parts[] — ALWAYS isolate from THIS product (do not wait for the user to list them):
+   - Infer typical major BOM / recipe / service items for this category and SKU from
+     web research, packaging/OCR, and product knowledge.
+   - Food, drink, cosmetics, supplements → ingredients. Devices/tools → parts and common spares.
    - kind: "part" | "spare" | "ingredient" | "component"
-   - If the user listed specific parts/spares/ingredients, include EACH named item.
    - madeIn / originCountry per item; chinaRelated true ONLY for mainland China (never Taiwan).
    - Unknown origin: omit chinaRelated or false; say unknown in note. Do not invent China.
-   - Max 8. Skip trivia; keep major BOM / recipe / service-part items.
+   - Max 8. Skip trivia; keep items that can change a China-relation judgment.
 6) notes[] MUST explain multi-layer cases when layers differ, e.g.:
    "Brand Japan; compact PE30 line often Thailand/China globally; UK UA-PE30U-WB units frequently final-assembled/packaged in Poland for Europe/UK — use label if it says Made in Poland."
 
@@ -53,7 +55,7 @@ SKU / MARKET RULES:
 - Photo/OCR "Made in" / "Country of origin" ALWAYS beats brand stereotypes and generic web guesses.
 
 WORKED PATTERN (illustrative — still verify against label/model knowledge):
-- Query "Sharp UA-PE30U-WB": originCountry Japan; madeIn often Poland for UK-market units (European assembly/distribution hub); componentsOrigin may note Thailand (and sometimes China for other Sharp purifier lines, not necessarily this compact SKU); notes explain layers.
+- Query "Sharp UA-PE30U-WB": originCountry Japan; madeIn often Poland for UK-market units (European assembly/distribution hub); componentsOrigin may note Thailand (and sometimes China for other Sharp purifier lines, not necessarily this compact SKU); parts[] isolate HEPA/filter, fan motor, plastics when known; notes explain layers.
 `.trim();
 
 const COMPANY_FACT_RULES = `

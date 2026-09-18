@@ -59,11 +59,9 @@ export const pl = {
     photoTooLarge: 'Zdjęcie jest nadal za duże po kompresji.',
     photoInvalid: 'Nie udało się odczytać tego obrazu.',
     unnamedPhoto: '(zdjęcie)',
-    partsOptional: 'Sprawdź też części / składniki',
-    partsPlaceholder: 'np. bateria, ładowarka, mąka pszenna…',
     partsTitle: 'Części, zamienniki i składniki',
     partsHint:
-      'Główne komponenty, części zamienne lub składniki i czy wyglądają na związane z Chinami.',
+      'Wyodrębnione z tego produktu — główne komponenty, części zamienne lub składniki i czy wyglądają na związane z Chinami.',
     partKind: {
       part: 'Część',
       spare: 'Zamiennik',

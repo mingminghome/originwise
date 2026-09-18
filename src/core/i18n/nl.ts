@@ -59,11 +59,9 @@ export const nl = {
     photoTooLarge: 'Foto is na comprimeren nog te groot.',
     photoInvalid: 'Die afbeelding kon niet worden gelezen.',
     unnamedPhoto: '(foto)',
-    partsOptional: 'Ook onderdelen / ingrediënten checken',
-    partsPlaceholder: 'bijv. accu, lader, tarwemeel…',
     partsTitle: 'Onderdelen, reservedelen en ingrediënten',
     partsHint:
-      'Belangrijke componenten, reservedelen of ingrediënten en of ze China-gerelateerd lijken.',
+      'Uit dit product gehaald — belangrijke componenten, reservedelen of ingrediënten en of ze China-gerelateerd lijken.',
     partKind: {
       part: 'Onderdeel',
       spare: 'Reservedel',

@@ -59,11 +59,9 @@ export const fr = {
     photoTooLarge: 'La photo reste trop volumineuse après compression.',
     photoInvalid: 'Impossible de lire cette image.',
     unnamedPhoto: '(photo)',
-    partsOptional: 'Vérifier aussi pièces / ingrédients',
-    partsPlaceholder: 'ex. batterie, chargeur, farine de blé…',
     partsTitle: 'Pièces, rechanges et ingrédients',
     partsHint:
-      'Composants, pièces de rechange ou ingrédients majeurs et s’ils semblent liés à la Chine.',
+      'Isolé depuis ce produit — composants, pièces de rechange ou ingrédients majeurs et s’ils semblent liés à la Chine.',
     partKind: {
       part: 'Pièce',
       spare: 'Rechange',

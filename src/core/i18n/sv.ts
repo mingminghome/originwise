@@ -59,11 +59,9 @@ export const sv = {
     photoTooLarge: 'Fotot är fortfarande för stort efter komprimering.',
     photoInvalid: 'Kunde inte läsa den bilden.',
     unnamedPhoto: '(foto)',
-    partsOptional: 'Kolla också delar / ingredienser',
-    partsPlaceholder: 't.ex. batteri, laddare, vetemjöl…',
     partsTitle: 'Delar, reservdelar och ingredienser',
     partsHint:
-      'Viktiga komponenter, reservdelar eller ingredienser och om de verkar Kina-kopplade.',
+      'Isolerat från den här produkten — viktiga komponenter, reservdelar eller ingredienser och om de verkar Kina-kopplade.',
     partKind: {
       part: 'Del',
       spare: 'Reservdel',

@@ -59,11 +59,9 @@ export const fi = {
     photoTooLarge: 'Kuva on pakkauksen jälkeenkin liian suuri.',
     photoInvalid: 'Kuvaa ei voitu lukea.',
     unnamedPhoto: '(kuva)',
-    partsOptional: 'Tarkista myös osat / ainesosat',
-    partsPlaceholder: 'esim. akku, laturi, vehnäjauho…',
     partsTitle: 'Osat, varaosat ja ainesosat',
     partsHint:
-      'Tärkeät komponentit, varaosat tai ainesosat ja näyttävätkö ne Kiina-liittyviltä.',
+      'Eristetty tästä tuotteesta — tärkeät komponentit, varaosat tai ainesosat ja näyttävätkö ne Kiina-liittyviltä.',
     partKind: {
       part: 'Osa',
       spare: 'Varaosa',

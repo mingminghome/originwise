@@ -116,7 +116,9 @@ Collect and summarize (bullet points, dense, factual):
 2) Legal manufacturer / parent company HQ country (Taiwan is NOT China)
 3) Typical "Made in" / country of origin for this model or product line (note market variants)
 4) Mainland China links: ownership, manufacturing, assembly, major suppliers
-5) Major parts, spare parts, or ingredients and where THEY are made (if known)
+5) Isolate major parts, spare parts, or ingredients AND where THEY are typically made
+   (not only the finished unit). Food/cosmetics: key ingredients. Devices: battery, board,
+   display, motor, optics, etc. when public. Flag mainland China vs other countries.
 6) Any recent ownership changes
 
 Rules:

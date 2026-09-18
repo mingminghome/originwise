@@ -59,11 +59,9 @@ export const de = {
     photoTooLarge: 'Foto ist nach der Kompression noch zu groß.',
     photoInvalid: 'Dieses Bild konnte nicht gelesen werden.',
     unnamedPhoto: '(Foto)',
-    partsOptional: 'Auch Teile / Zutaten prüfen',
-    partsPlaceholder: 'z. B. Akku, Ladegerät, Weizenmehl…',
     partsTitle: 'Teile, Ersatzteile & Zutaten',
     partsHint:
-      'Wichtige Komponenten, Ersatzteile oder Zutaten und ob sie China-bezogen wirken.',
+      'Aus diesem Produkt isoliert — wichtige Komponenten, Ersatzteile oder Zutaten und ob sie China-bezogen wirken.',
     partKind: {
       part: 'Teil',
       spare: 'Ersatzteil',

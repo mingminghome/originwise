@@ -59,11 +59,9 @@ export const hu = {
     photoTooLarge: 'A fotó tömörítés után is túl nagy.',
     photoInvalid: 'Ezt a képet nem sikerült beolvasni.',
     unnamedPhoto: '(fotó)',
-    partsOptional: 'Alkatrészek / hozzávalók is',
-    partsPlaceholder: 'pl. akkumulátor, töltő, búzaliszt…',
     partsTitle: 'Alkatrészek, pótalkatrészek és hozzávalók',
     partsHint:
-      'Főbb alkatrészek, pótalkatrészek vagy hozzávalók, és Kínához kapcsolódónak tűnnek-e.',
+      'Ebből a termékből kiemelve — főbb alkatrészek, pótalkatrészek vagy hozzávalók, és Kínához kapcsolódónak tűnnek-e.',
     partKind: {
       part: 'Alkatrész',
       spare: 'Pótalkatrész',

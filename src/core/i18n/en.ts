@@ -62,11 +62,9 @@ export const en: MessageTree = {
     photoTooLarge: 'Photo is too large after compress.',
     photoInvalid: 'Could not read that image.',
     unnamedPhoto: '(photo)',
-    partsOptional: 'Also check parts / ingredients',
-    partsPlaceholder: 'e.g. battery, charger, wheat flour…',
     partsTitle: 'Parts, spares & ingredients',
     partsHint:
-      'Major components, spare parts, or ingredients and whether they look China-linked.',
+      'Isolated from this product — major components, spare parts, or ingredients and whether they look China-linked.',
     partKind: {
       part: 'Part',
       spare: 'Spare',

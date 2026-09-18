@@ -58,10 +58,8 @@ export const zhHant = {
     photoTooLarge: '壓縮後照片仍過大。',
     photoInvalid: '無法讀取此圖片。',
     unnamedPhoto: '（照片）',
-    partsOptional: '一併查零件／食材',
-    partsPlaceholder: '例如：電池、充電器、麵粉…',
     partsTitle: '零件、備件與食材',
-    partsHint: '主要零件、備件或食材，以及是否看起來與中國相關。',
+    partsHint: '由本產品自動拆出：主要零件、備件或食材，以及是否看起來與中國相關。',
     partKind: {
       part: '零件',
       spare: '備件',
