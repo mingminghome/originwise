@@ -30,15 +30,19 @@ function modelFromFetch(input: RequestInfo | URL, init?: RequestInit): string {
 }
 
 describe('WEB_SEARCH_MODEL_CHAIN', () => {
-  it('prefers Default Search / 2.5 Search pools before Gemini 3 (often 0/0)', () => {
+  it('prefers Default Search / Gemini 2 pools before Gemini 3 (often 0/0)', () => {
     assert.equal(WEB_SEARCH_MODEL_CHAIN[0], 'gemini-robotics-er-2-preview');
-    const defaultPool = WEB_SEARCH_MODEL_CHAIN.indexOf(
+    const robotics = WEB_SEARCH_MODEL_CHAIN.indexOf(
       'gemini-robotics-er-2-preview'
     );
+    const gemma = WEB_SEARCH_MODEL_CHAIN.indexOf('gemma-4-31b-it');
+    const flash2 = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-2.0-flash');
     const flash25 = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-2.5-flash-lite');
     const flash3 = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-3.8-flash');
-    assert.ok(defaultPool >= 0);
-    assert.ok(flash25 > defaultPool);
+    assert.ok(robotics >= 0);
+    assert.ok(gemma > robotics);
+    assert.ok(flash2 > gemma);
+    assert.ok(flash25 > flash2);
     assert.ok(flash3 > flash25);
   });
 });
@@ -323,8 +327,9 @@ describe('runWebResearch', () => {
     assert.equal(out.ok, false);
     assert.equal(out.error, 'search_grounding_unavailable');
     assert.equal(modelsTried[0], 'gemini-robotics-er-2-preview');
-    assert.ok(modelsTried.length >= 3);
-    assert.ok(modelsTried.length <= WEB_SEARCH_MODEL_CHAIN.length);
+    assert.ok(modelsTried.includes('gemini-2.0-flash'));
+    assert.ok(modelsTried.includes('gemma-4-31b-it'));
+    assert.ok(modelsTried.length >= 4);
   });
 
   it('uses pinned GEMINI_WEB_MODEL first', async () => {

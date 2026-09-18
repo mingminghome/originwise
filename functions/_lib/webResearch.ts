@@ -60,28 +60,31 @@ const SOURCE_CAP = 8;
  * @see https://ai.google.dev/gemini-api/docs/google-search#supported-models
  */
 export const WEB_SEARCH_MODEL_CHAIN: readonly string[] = [
+  // Default Search (~1.5K RPD on this key)
   'gemini-robotics-er-2-preview',
   'gemini-robotics-er-1.6-preview',
+  'gemma-4-31b-it',
+  'gemma-4-26b-a4b-it',
+  // Gemini 2 Search (~1.5K RPD) — 2.5 Search is often billed as Gemini 3 (0/0)
+  'gemini-2.0-flash',
   'gemini-2.5-flash-lite',
   'gemini-2.5-flash',
-  'gemini-2.0-flash',
+  // Gemini 3 Search is often 0/0 on free keys — last
   'gemini-3.1-flash-lite',
   'gemini-3.5-flash-lite',
   'gemini-3.8-flash',
   'gemini-3.7-flash',
   'gemini-3.6-flash',
   'gemini-3.5-flash',
-  'gemini-flash-lite-latest',
-  'gemini-flash-latest',
 ];
 
-/** Interactions Search can take several seconds; fail-fast generateContent stays shorter. */
-const INTERACTIONS_FETCH_MS = 18000;
+/** Keep per-call short so a 0/0 Search 429 cannot stall the whole pass. */
+const INTERACTIONS_FETCH_MS = 8000;
 const GENERATE_CONTENT_FETCH_MS = 7000;
-/** Stop after this many Search-tool quota / 0-entitlement misses. */
-const MAX_GROUNDING_FAILS = 4;
+/** Gemini 3 Search is often 0/0 — stop that family after this many 429s. */
+const MAX_GEMINI3_SEARCH_FAILS = 2;
 /** Hard cap for the whole web pass (orchestrator still continues without it). */
-const WEB_PASS_BUDGET_MS = 40000;
+const WEB_PASS_BUDGET_MS = 45000;
 
 export function isWebLookupEnabled(env: WebResearchEnv): boolean {
   const raw = String(env.WEB_LOOKUP ?? 'auto')
@@ -178,7 +181,7 @@ const INTERACTIONS_URLS = [
   'https://generativelanguage.googleapis.com/v1beta/interactions',
 ] as const;
 
-function usesInteractionsSearch(model: string): boolean {
+function isGemini3SearchFamily(model: string): boolean {
   return /gemini-3/i.test(model) || /flash-latest|flash-lite-latest/i.test(model);
 }
 
@@ -417,20 +420,20 @@ async function callGeminiGrounded(
   model: string,
   prompt: string
 ): Promise<GroundedCall> {
-  if (usesInteractionsSearch(model)) {
-    const ix = await callInteractionsSearch(apiKey, model, prompt);
-    if (ix.ok) return ix;
-    if (
-      ix.code === 'search_grounding_unavailable' ||
-      ix.code === 'upstream_quota'
-    ) {
-      return ix;
-    }
-    const gc = await callGenerateContentSearch(apiKey, model, prompt);
-    if (gc.ok) return gc;
-    return ix;
+  const gemini3 = isGemini3SearchFamily(model);
+  const first = gemini3 ? callInteractionsSearch : callGenerateContentSearch;
+  const second = gemini3 ? callGenerateContentSearch : callInteractionsSearch;
+  const a = await first(apiKey, model, prompt);
+  if (a.ok) return a;
+  const b = await second(apiKey, model, prompt);
+  if (b.ok) return b;
+  if (
+    a.code === 'search_grounding_unavailable' ||
+    b.code === 'search_grounding_unavailable'
+  ) {
+    return { ok: false, code: 'search_grounding_unavailable' };
   }
-  return callGenerateContentSearch(apiKey, model, prompt);
+  return b.code !== 'upstream_error' ? b : a;
 }
 
 /**
@@ -476,7 +479,7 @@ export async function runWebResearch(opts: {
 
   const models = webSearchModelChain(opts.env);
   let last = 'upstream_error';
-  let groundingFails = 0;
+  let gemini3Fails = 0;
   let timeouts = 0;
   for (const model of models) {
     if (Date.now() - t0 >= WEB_PASS_BUDGET_MS) break;
@@ -497,6 +500,7 @@ export async function runWebResearch(opts: {
         sources: out.sources,
         ms: Date.now() - t0,
         model,
+        provider: 'gemini',
       };
     }
     last = out.code;
@@ -510,9 +514,13 @@ export async function runWebResearch(opts: {
       out.code === 'search_grounding_unavailable' ||
       out.code === 'upstream_quota'
     ) {
-      groundingFails += 1;
       last = 'search_grounding_unavailable';
-      if (groundingFails >= MAX_GROUNDING_FAILS) break;
+      // Gemini 3 Search is often 0/0 — don't spend the rest of the budget there.
+      // Default / 2.x pools must still be tried even after several 429s.
+      if (isGemini3SearchFamily(model)) {
+        gemini3Fails += 1;
+        if (gemini3Fails >= MAX_GEMINI3_SEARCH_FAILS) break;
+      }
       continue;
     }
 
