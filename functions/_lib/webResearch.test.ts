@@ -10,9 +10,42 @@ import {
   mapWebResearchHttpError,
   parseInteractionSearch,
   runWebResearch,
-  WEB_SEARCH_MODEL_CHAIN,
+  searchGroundingPool,
+  selectDefaultSearchModels,
   webSearchModelChain,
 } from './webResearch';
+
+const LISTED_MODELS = {
+  models: [
+    { name: 'models/gemini-3.8-flash', supportedGenerationMethods: ['generateContent'] },
+    { name: 'models/gemini-2.5-flash-lite', supportedGenerationMethods: ['generateContent'] },
+    { name: 'models/gemini-robotics-er-1.6-preview', supportedGenerationMethods: ['generateContent'] },
+    { name: 'models/gemini-robotics-er-2-preview', supportedGenerationMethods: ['generateContent'] },
+    { name: 'models/gemma-4-31b-it', supportedGenerationMethods: ['generateContent'] },
+    { name: 'models/gemini-embedding-001', supportedGenerationMethods: ['embedContent'] },
+  ],
+};
+
+function isModelsListUrl(url: string): boolean {
+  return /\/v1beta\/models(\?|$)/.test(url) && !url.includes('generateContent');
+}
+
+function withListedModels(
+  handler: (
+    input: RequestInfo | URL,
+    init?: RequestInit
+  ) => Promise<Response>
+): (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> {
+  return async (input, init) => {
+    if (isModelsListUrl(String(input))) {
+      return new Response(JSON.stringify(LISTED_MODELS), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return handler(input, init);
+  };
+}
 
 function modelFromFetch(input: RequestInfo | URL, init?: RequestInit): string {
   const url = String(input);
@@ -29,21 +62,33 @@ function modelFromFetch(input: RequestInfo | URL, init?: RequestInit): string {
   return 'unknown';
 }
 
-describe('WEB_SEARCH_MODEL_CHAIN', () => {
-  it('prefers Default Search / Gemini 2 pools before Gemini 3 (often 0/0)', () => {
-    assert.equal(WEB_SEARCH_MODEL_CHAIN[0], 'gemini-robotics-er-2-preview');
-    const robotics = WEB_SEARCH_MODEL_CHAIN.indexOf(
-      'gemini-robotics-er-2-preview'
+describe('searchGroundingPool / selectDefaultSearchModels', () => {
+  it('classifies Gemini families vs Default pool', () => {
+    assert.equal(searchGroundingPool('gemini-3.8-flash'), 'gemini3');
+    assert.equal(searchGroundingPool('gemini-2.5-flash-lite'), 'gemini25');
+    assert.equal(searchGroundingPool('gemini-2.0-flash'), 'gemini2');
+    assert.equal(
+      searchGroundingPool('gemini-robotics-er-2-preview'),
+      'default'
     );
-    const gemma = WEB_SEARCH_MODEL_CHAIN.indexOf('gemma-4-31b-it');
-    const flash2 = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-2.0-flash');
-    const flash25 = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-2.5-flash-lite');
-    const flash3 = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-3.8-flash');
-    assert.ok(robotics >= 0);
-    assert.ok(gemma > robotics);
-    assert.ok(flash2 > gemma);
-    assert.ok(flash25 > flash2);
-    assert.ok(flash3 > flash25);
+    assert.equal(searchGroundingPool('gemma-4-31b-it'), 'default');
+    assert.equal(searchGroundingPool('gemini-embedding-001'), 'skip');
+  });
+
+  it('keeps only Default-pool ids from a live model list', () => {
+    const selected = selectDefaultSearchModels([
+      'gemini-3.8-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-robotics-er-1.6-preview',
+      'gemini-robotics-er-2-preview',
+      'gemma-4-31b-it',
+    ]);
+    assert.deepEqual(selected, [
+      'gemini-robotics-er-2-preview',
+      'gemini-robotics-er-1.6-preview',
+      'gemma-4-31b-it',
+    ]);
+    assert.ok(!selected.includes('gemini-3.8-flash'));
   });
 });
 
@@ -76,23 +121,17 @@ describe('parseInteractionSearch', () => {
 });
 
 describe('webSearchModelChain', () => {
-  it('default / auto uses dedicated chain, not agent free-tier order', () => {
-    assert.deepEqual(webSearchModelChain({}), [...WEB_SEARCH_MODEL_CHAIN]);
-    assert.deepEqual(webSearchModelChain({ GEMINI_WEB_MODEL: 'auto' }), [
-      ...WEB_SEARCH_MODEL_CHAIN,
-    ]);
-    assert.deepEqual(webSearchModelChain({ GEMINI_WEB_MODEL: 'free' }), [
-      ...WEB_SEARCH_MODEL_CHAIN,
-    ]);
+  it('auto / default / free means discover (no hardcoded ids)', () => {
+    assert.deepEqual(webSearchModelChain({}), []);
+    assert.deepEqual(webSearchModelChain({ GEMINI_WEB_MODEL: 'auto' }), []);
+    assert.deepEqual(webSearchModelChain({ GEMINI_WEB_MODEL: 'default' }), []);
   });
 
-  it('pins GEMINI_WEB_MODEL first then falls back', () => {
+  it('pins GEMINI_WEB_MODEL only', () => {
     const chain = webSearchModelChain({
       GEMINI_WEB_MODEL: 'gemini-3.6-flash',
     });
-    assert.equal(chain[0], 'gemini-3.6-flash');
-    assert.ok(chain.includes('gemini-3.5-flash-lite'));
-    assert.equal(chain.filter((m) => m === 'gemini-3.6-flash').length, 1);
+    assert.deepEqual(chain, ['gemini-3.6-flash']);
   });
 
   it('strips models/ prefix', () => {
@@ -248,7 +287,7 @@ describe('runWebResearch', () => {
     mock.method(
       globalThis,
       'fetch',
-      async (input: RequestInfo | URL, init?: RequestInit) => {
+      withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
         const model = modelFromFetch(input, init);
         modelsTried.push(model);
 
@@ -283,7 +322,7 @@ describe('runWebResearch', () => {
           JSON.stringify({ error: { message: 'fail' } }),
           { status: 500, headers: { 'Content-Type': 'application/json' } }
         );
-      }
+      })
     );
 
     const out = await runWebResearch({
@@ -303,7 +342,7 @@ describe('runWebResearch', () => {
     mock.method(
       globalThis,
       'fetch',
-      async (input: RequestInfo | URL, init?: RequestInit) => {
+      withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
         modelsTried.push(modelFromFetch(input, init));
         return new Response(
           JSON.stringify({
@@ -315,7 +354,7 @@ describe('runWebResearch', () => {
           }),
           { status: 429, headers: { 'Content-Type': 'application/json' } }
         );
-      }
+      })
     );
 
     const out = await runWebResearch({
@@ -327,9 +366,9 @@ describe('runWebResearch', () => {
     assert.equal(out.ok, false);
     assert.equal(out.error, 'search_grounding_unavailable');
     assert.equal(modelsTried[0], 'gemini-robotics-er-2-preview');
-    assert.ok(modelsTried.includes('gemini-2.0-flash'));
     assert.ok(modelsTried.includes('gemma-4-31b-it'));
-    assert.ok(modelsTried.length >= 4);
+    assert.ok(!modelsTried.includes('gemini-3.8-flash'));
+    assert.ok(modelsTried.length >= 3);
   });
 
   it('uses pinned GEMINI_WEB_MODEL first', async () => {

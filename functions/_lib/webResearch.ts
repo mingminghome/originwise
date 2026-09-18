@@ -46,37 +46,54 @@ const BRIEF_MAX = 2200;
 const SOURCE_CAP = 8;
 
 /**
- * Try order follows Search *entitlement*, not the newest Flash id.
+ * AI Studio Search grounding buckets (Tools → Search grounding):
+ *   Default   — not Gemini 2 / 2.5 / 3 (robotics ER, Gemma, deep-research, …)
+ *   Gemini 2 / 2.5 / 3 — billed by family; Gemini 3 is often 0/0 on free keys
  *
- * AI Studio “Tools → Search grounding” buckets (typical free key):
- *   Default Search  ~1.5K RPD  → robotics ER
- *   Gemini 2.5 Search ~1.5K RPD
- *   Gemini 2 Search   ~1.5K RPD
- *   Gemini 3 Search   often 0/0  → last
- *
- * Gemini 3.x uses Interactions (`/v1beta2/interactions`, type: google_search).
- * 2.x / robotics use generateContent + `{ google_search: {} }`.
- *
- * @see https://ai.google.dev/gemini-api/docs/google-search#supported-models
+ * There is no API id named "Default". We list models for this key and keep
+ * only the Default-pool ids (no hardcoded Flash version names).
  */
-export const WEB_SEARCH_MODEL_CHAIN: readonly string[] = [
-  // Default Search (~1.5K RPD on this key)
-  'gemini-robotics-er-2-preview',
-  'gemini-robotics-er-1.6-preview',
-  'gemma-4-31b-it',
-  'gemma-4-26b-a4b-it',
-  // Gemini 2 Search (~1.5K RPD) — 2.5 Search is often billed as Gemini 3 (0/0)
-  'gemini-2.0-flash',
-  'gemini-2.5-flash-lite',
-  'gemini-2.5-flash',
-  // Gemini 3 Search is often 0/0 on free keys — last
-  'gemini-3.1-flash-lite',
-  'gemini-3.5-flash-lite',
-  'gemini-3.8-flash',
-  'gemini-3.7-flash',
-  'gemini-3.6-flash',
-  'gemini-3.5-flash',
-];
+export type SearchGroundingPool =
+  | 'default'
+  | 'gemini2'
+  | 'gemini25'
+  | 'gemini3'
+  | 'skip';
+
+export function stripModelPrefix(name: string): string {
+  return name.replace(/^models\//, '').trim();
+}
+
+export function searchGroundingPool(modelId: string): SearchGroundingPool {
+  const n = stripModelPrefix(modelId).toLowerCase();
+  if (
+    /embedding|tts|veo|lyria|live|transcribe|computer-use|imagen|image/.test(n)
+  ) {
+    return 'skip';
+  }
+  if (/gemini-3/.test(n)) return 'gemini3';
+  if (/gemini-2\.5/.test(n)) return 'gemini25';
+  if (/^gemini-2([.-]|$)/.test(n)) return 'gemini2';
+  return 'default';
+}
+
+/** Rank Default-pool ids: robotics ER, then Gemma, then other non-Gemini-Flash. */
+function defaultPoolRank(id: string): number {
+  const n = id.toLowerCase();
+  if (n.includes('robotics-er')) return 0;
+  if (n.includes('gemma')) return 1;
+  if (n.includes('deep-research')) return 2;
+  return 3;
+}
+
+export function selectDefaultSearchModels(listedIds: string[]): string[] {
+  const ids = listedIds
+    .map(stripModelPrefix)
+    .filter((id) => id && searchGroundingPool(id) === 'default');
+  const uniq = [...new Set(ids)];
+  uniq.sort((a, b) => defaultPoolRank(a) - defaultPoolRank(b) || b.localeCompare(a));
+  return uniq;
+}
 
 /** Keep per-call short so a 0/0 Search 429 cannot stall the whole pass. */
 const INTERACTIONS_FETCH_MS = 8000;
@@ -101,14 +118,73 @@ export function isWebLookupEnabled(env: WebResearchEnv): boolean {
   return hasGemini;
 }
 
-/** Resolve try-order for grounded Google Search (separate from agent LLM chain). */
-export function webSearchModelChain(env: WebResearchEnv): string[] {
+function pinnedWebModel(env: WebResearchEnv): string | undefined {
   const raw = env.GEMINI_WEB_MODEL?.trim().replace(/^models\//, '') || '';
   const lower = raw.toLowerCase();
   if (!raw || lower === 'auto' || lower === 'free' || lower === 'default') {
-    return [...WEB_SEARCH_MODEL_CHAIN];
+    return undefined;
   }
-  return [raw, ...WEB_SEARCH_MODEL_CHAIN.filter((m) => m !== raw)];
+  return raw;
+}
+
+/** Pin only — auto/default discovers Default-pool models from the Models API. */
+export function webSearchModelChain(env: WebResearchEnv): string[] {
+  const pin = pinnedWebModel(env);
+  return pin ? [pin] : [];
+}
+
+type ListedModel = {
+  name?: string;
+  supportedGenerationMethods?: string[];
+};
+
+async function listGenerateContentModelIds(apiKey: string): Promise<string[]> {
+  const ids: string[] = [];
+  let pageToken = '';
+  for (let page = 0; page < 4; page += 1) {
+    const url = new URL(
+      'https://generativelanguage.googleapis.com/v1beta/models'
+    );
+    url.searchParams.set('key', apiKey);
+    url.searchParams.set('pageSize', '100');
+    if (pageToken) url.searchParams.set('pageToken', pageToken);
+    let res: Response;
+    try {
+      res = await fetch(url.toString(), {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000),
+      });
+    } catch {
+      break;
+    }
+    if (!res.ok) break;
+    let data: { models?: ListedModel[]; nextPageToken?: string };
+    try {
+      data = (await res.json()) as typeof data;
+    } catch {
+      break;
+    }
+    for (const m of data.models ?? []) {
+      const methods = m.supportedGenerationMethods ?? [];
+      if (methods.length && !methods.includes('generateContent')) continue;
+      const id = stripModelPrefix(m.name || '');
+      if (id) ids.push(id);
+    }
+    pageToken = data.nextPageToken || '';
+    if (!pageToken) break;
+  }
+  return ids;
+}
+
+/** Default Search pool for this API key (discovered, not a hardcoded Flash id). */
+export async function resolveWebSearchModels(
+  apiKey: string,
+  env: WebResearchEnv
+): Promise<string[]> {
+  const pin = pinnedWebModel(env);
+  if (pin) return [pin];
+  const listed = await listGenerateContentModelIds(apiKey);
+  return selectDefaultSearchModels(listed);
 }
 
 function buildResearchPrompt(opts: {
@@ -477,7 +553,16 @@ export async function runWebResearch(opts: {
     locale: opts.locale,
   });
 
-  const models = webSearchModelChain(opts.env);
+  const models = await resolveWebSearchModels(apiKey, opts.env);
+  if (!models.length) {
+    return {
+      ok: false,
+      brief: '',
+      sources: [],
+      ms: Date.now() - t0,
+      error: 'search_grounding_unavailable',
+    };
+  }
   let last = 'upstream_error';
   let gemini3Fails = 0;
   let timeouts = 0;

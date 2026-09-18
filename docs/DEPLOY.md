@@ -183,7 +183,7 @@ Having an API **key** is not the same as free **quota**. OriginWise will try fre
 | Provider | Ongoing free API? | What you must do |
 |----------|-------------------|------------------|
 | **Gemini** | Yes (Flash / Flash-Lite rate limits) | Key in AI Studio — most reliable free path for **text** agents. **Web row** needs **Search grounding**, which is a *separate* quota line in AI Studio (Tools → Search grounding). |
-| **Gemini Search (web)** | Split by family in AI Studio | **Gemini 3 Search** is often **0/0**. **Default Search (~1.5K)** = robotics ER / Gemma 4. **Gemini 2 Search (~1.5K)** = `gemini-2.0-flash`. 2.5 Search is sometimes billed as Gemini 3. OriginWise tries robotics → Gemma → 2.0 → 2.5 → Gemini 3 last, and tries both generateContent and Interactions per model. |
+| **Gemini Search (web)** | Split by family in AI Studio | **Default Search (~1.5K RPD)** is a quota bucket, not a model id. OriginWise lists models for this key and only uses the Default pool (robotics ER, Gemma, …) — not Gemini 3 Flash (often **0/0**). Pin a model with `GEMINI_WEB_MODEL=…` if needed. |
 | **OpenAI** | **Free tier** usage tier (auto-upgrades after paid credit purchases) | Check **Settings → Limits**. Free orgs often have **~50 RPD** and per-model TPM/RPM. Prefer **mini** models (`gpt-5.4-mini`, `gpt-5.6-luna`) — higher TPM than flagship (`gpt-5.5` is only ~3 RPM). `upstream_quota` = hit RPM/RPD/TPD or no remaining Free access |
 | **Anthropic** | No ongoing free tier (one-time trial credits) | Trial spent → `upstream_quota`; add credits or remove secret |
 | **xAI Grok** | Trial / credit program, not unlimited free | Console credits required; empty balance → `upstream_error` |
