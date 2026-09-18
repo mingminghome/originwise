@@ -50,6 +50,17 @@ export type GraphEdge = {
   chinaRelated?: boolean;
 };
 
+export type PartKind = 'part' | 'spare' | 'ingredient' | 'component';
+
+export type ProductPart = {
+  name: string;
+  kind?: PartKind;
+  originCountry?: string;
+  madeIn?: string;
+  chinaRelated?: boolean;
+  note?: string;
+};
+
 export type AlternativeItem = {
   name: string;
   /** Advisory — sanitized server-side; prefer unknown over false "none" */
@@ -85,6 +96,8 @@ export type CheckResult = {
     category?: string;
     /** Major parts / global line when different from final madeIn */
     componentsOrigin?: string;
+    /** Structured BOM / spares / ingredients when known */
+    parts?: ProductPart[];
     /** Multi-layer origin explanations (brand vs factory vs final COO) */
     notes?: string[];
   };
@@ -144,6 +157,7 @@ export type ProductPartial = {
   manufacturerCountry?: string;
   category?: string;
   componentsOrigin?: string;
+  parts?: ProductPart[];
   confidence?: number;
   notes?: string[];
 };
@@ -197,9 +211,10 @@ export type AgentPartials = {
   companyFailed?: boolean;
 };
 
-export const GRAPH_NODE_CAP = 20;
-export const GRAPH_EDGE_CAP = 30;
+export const GRAPH_NODE_CAP = 24;
+export const GRAPH_EDGE_CAP = 36;
 export const ALT_CAP = 6;
+export const PART_CAP = 8;
 
 export const DEFAULT_DISCLAIMER_KEY = 'check.disclaimer';
 export const KNOWLEDGE_NOTE =

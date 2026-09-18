@@ -57,6 +57,17 @@ export const zhHant = {
     comingSoon: '查詢 API 將於後續版本提供。紀錄與設定已可用。',
     photoTooLarge: '壓縮後照片仍過大。',
     photoInvalid: '無法讀取此圖片。',
+    unnamedPhoto: '（照片）',
+    partsOptional: '一併查零件／食材',
+    partsPlaceholder: '例如：電池、充電器、麵粉…',
+    partsTitle: '零件、備件與食材',
+    partsHint: '主要零件、備件或食材，以及是否看起來與中國相關。',
+    partKind: {
+      part: '零件',
+      spare: '備件',
+      ingredient: '食材',
+      component: '元件',
+    },
     progressHint: '正在分析產地與公司資訊…',
     stepMonolith: '收集產品與公司訊號',
     answeredBy: '主要回答：{name}',
@@ -67,6 +78,7 @@ export const zhHant = {
       '每一列是一次免費伺服器 AI 呼叫。失敗多半是配額、模型權限或逾時；我們會再試其他模型。即時網頁查詢需要 Gemini Search grounding（與一般文字 RPM 不同）。',
     agentOk: '成功',
     agentFail: '失敗（{err}）',
+    agentSkipped: '略過（{err}）',
     agentFailUnknown: '錯誤',
     agentError: {
       upstream_quota: '配額／速率限制',
@@ -75,7 +87,7 @@ export const zhHant = {
       empty_response: '空回應',
       model_unavailable: '此 API 金鑰無法使用該模型',
       search_grounding_unavailable:
-        '此金鑰無法使用 Google 搜尋 grounding（可試 Default 池模型／開通計費；Gemini 3 Search 常為 0/0）',
+        '此金鑰沒有 Google 搜尋 — 改用模型知識',
       disabled: '已關閉',
       gemini_not_configured: '未設定 Gemini',
       no_entity: '無產品名稱',
@@ -130,6 +142,10 @@ export const zhHant = {
     caveats: '注意事項',
     disclaimer:
       '僅供參考——依模型知識與（若啟用）即時網頁研究，非法律或制裁建議。AI 可能錯誤。',
+    knowledgeModel:
+      '僅依一般模型知識（未做即時網頁查詢）。品牌來源、零件工廠與最終組裝／原產地可能因型號／市場而異——請以包裝標示為準。不是公司登記或關務資料庫。僅供參考——非法律、貿易或制裁建議。',
+    knowledgeWeb:
+      '含即時網頁研究（經 Gemini grounding 的 Google 搜尋）以及模型知識。仍不是公司登記或關務資料庫——標示與官方文件可能與網頁不符。僅供參考——非法律、貿易或制裁建議。',
     providerNotConfigured:
       '尚未設定 AI。請在 .dev.vars 加入金鑰，並執行 `npm run pages:dev`（見 README）。',
     rateLimited: '已達免費伺服器限制：每 30 秒 1 次。請稍候。',
@@ -206,6 +222,10 @@ export const zhHant = {
       ownership: '所有權',
       affiliation: '品牌',
       manufacturing: '產地',
+      part: '零件',
+      spare: '備件',
+      ingredient: '食材',
+      component: '元件',
     },
     regionsTitle: '地區',
     altBrands: '較低中國關聯品牌（估計）',

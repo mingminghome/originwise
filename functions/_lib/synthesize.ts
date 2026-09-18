@@ -9,12 +9,15 @@ import {
   GRAPH_EDGE_CAP,
   GRAPH_NODE_CAP,
   KNOWLEDGE_NOTE,
+  PART_CAP,
   WEB_KNOWLEDGE_NOTE,
   clampTier,
   type AgentPartials,
   type CheckResult,
   type GraphEdge,
   type GraphNode,
+  type PartKind,
+  type ProductPart,
   type RelationTier,
 } from './schema';
 import {
@@ -100,8 +103,23 @@ function extractFactors(
   const mfg = normalizeRegion(p.manufacturerCountry);
   const hq = normalizeRegion(c.hqCountry);
   const component = normalizeRegion(p.componentsOrigin);
+  const partRegions = (p.parts ?? []).map((part) =>
+    normalizeRegion(part.madeIn || part.originCountry)
+  );
+  const F_PART_CN = (p.parts ?? []).some((part) => {
+    const pr = normalizeRegion(part.madeIn || part.originCountry);
+    if (pr !== 'UNKNOWN') return inScope(pr, geoScope);
+    return Boolean(part.chinaRelated);
+  });
 
-  const regions = uniqRegions([madeIn, origin, mfg, hq, component]);
+  const regions = uniqRegions([
+    madeIn,
+    origin,
+    mfg,
+    hq,
+    component,
+    ...partRegions,
+  ]);
 
   // Parent majority in scope
   let F_PARENT_CN_MAJORITY = false;
@@ -148,7 +166,9 @@ function extractFactors(
   const F_MFG_CN = inScope(mfg, geoScope);
   const F_HQ_CN = inScope(hq, geoScope);
   const F_COMPONENT_CN =
-    inScope(component, geoScope) && !F_MADE_IN_CN && !F_MFG_CN;
+    (inScope(component, geoScope) || F_PART_CN) &&
+    !F_MADE_IN_CN &&
+    !F_MFG_CN;
 
   const geos = [madeIn, origin, mfg, hq];
   const F_EXPLICIT_NON_CN_GEO = geos.some((r) => isOutOfScopeGeo(r, geoScope));
@@ -234,6 +254,47 @@ function decideTier(f: Factors): {
   }
   // Priority 6
   return { tier: 'unknown', tierReasons: [...f.reasons, 'insufficient'] };
+}
+
+const PART_KINDS = new Set<PartKind>([
+  'part',
+  'spare',
+  'ingredient',
+  'component',
+]);
+
+function sanitizeParts(raw: unknown): ProductPart[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ProductPart[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const rec = item as Record<string, unknown>;
+    const name = String(rec.name ?? '').trim().slice(0, 80);
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const kindRaw = String(rec.kind ?? 'part')
+      .toLowerCase()
+      .trim();
+    const kind: PartKind = PART_KINDS.has(kindRaw as PartKind)
+      ? (kindRaw as PartKind)
+      : 'part';
+    out.push({
+      name,
+      kind,
+      originCountry: rec.originCountry
+        ? String(rec.originCountry).trim().slice(0, 80)
+        : undefined,
+      madeIn: rec.madeIn ? String(rec.madeIn).trim().slice(0, 80) : undefined,
+      chinaRelated:
+        typeof rec.chinaRelated === 'boolean' ? rec.chinaRelated : undefined,
+      note: rec.note ? String(rec.note).trim().slice(0, 160) : undefined,
+    });
+    if (out.length >= PART_CAP) break;
+  }
+  return out;
 }
 
 function buildGraph(
@@ -326,6 +387,52 @@ function buildGraph(
         label: 'HQ',
         type: 'hq',
         chinaRelated: inScope(hq, geoScope),
+      });
+    }
+  }
+
+  const parts = sanitizeParts(p?.parts);
+  for (const part of parts) {
+    const pr = normalizeRegion(part.madeIn || part.originCountry);
+    const partCn =
+      pr !== 'UNKNOWN' ? inScope(pr, geoScope) : Boolean(part.chinaRelated);
+    const id = `part:${part.name}`.slice(0, 64);
+    addNode({
+      id,
+      label: part.name,
+      kind: part.kind || 'part',
+      region: pr,
+      chinaRelated: partCn,
+    });
+    addEdge({
+      from: productId,
+      to: id,
+      label: part.kind || 'part',
+      type: part.kind || 'part',
+      strength: partCn ? 'moderate' : 'weak',
+      chinaRelated: partCn,
+    });
+    const placeLabel = (part.madeIn || part.originCountry || '').trim();
+    if (placeLabel && pr !== 'UNKNOWN') {
+      const reuse = nodes.find(
+        (n) => n.kind === 'place' && n.region === pr
+      );
+      const placeId = reuse?.id || `place:part:${pr}`.slice(0, 64);
+      if (!reuse) {
+        addNode({
+          id: placeId,
+          label: placeLabel.slice(0, 40),
+          kind: 'place',
+          region: pr,
+          chinaRelated: inScope(pr, geoScope),
+        });
+      }
+      addEdge({
+        from: id,
+        to: placeId,
+        label: 'made in',
+        type: 'manufacturing',
+        chinaRelated: inScope(pr, geoScope),
       });
     }
   }
@@ -585,6 +692,15 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   if (p?.componentsOrigin) {
     summaryParts.push(`Components/global line: ${String(p.componentsOrigin).slice(0, 80)}`);
   }
+  const resultParts = sanitizeParts(p?.parts);
+  if (resultParts.length) {
+    summaryParts.push(
+      `Parts: ${resultParts
+        .slice(0, 4)
+        .map((x) => x.name)
+        .join(', ')}`
+    );
+  }
   if (c?.hqCountry) summaryParts.push(`HQ: ${c.hqCountry}`);
   if (c?.name) summaryParts.push(`Company: ${c.name}`);
   if (!summaryParts.length) {
@@ -670,6 +786,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
           componentsOrigin: p.componentsOrigin
             ? String(p.componentsOrigin).slice(0, 160)
             : undefined,
+          parts: resultParts.length ? resultParts : undefined,
           notes: Array.isArray(p.notes)
             ? p.notes.map((n) => String(n).slice(0, 220)).filter(Boolean).slice(0, 5)
             : undefined,

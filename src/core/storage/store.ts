@@ -1,3 +1,4 @@
+import { normalizeLocale, parseLocale, type Locale } from '../i18n/locales';
 import {
   ALL_DIMENSIONS,
   DEFAULT_DIMENSIONS,
@@ -6,7 +7,6 @@ import {
   type CheckHistoryItem,
   type DataCategory,
   type GeoScope,
-  type Locale,
   type ThemeMode,
 } from '../types';
 import { STORAGE_KEYS, STORAGE_PREFIX } from './keys';
@@ -36,9 +36,18 @@ function writeJson(key: string, value: unknown): void {
   }
 }
 
-function normalizeLocale(raw: unknown): Locale {
-  const s = String(raw ?? '');
-  return s.startsWith('zh') ? 'zh-Hant' : 'en';
+function detectLocale(): Locale {
+  try {
+    if (typeof navigator === 'undefined') return 'en';
+    const candidates = [navigator.language, ...(navigator.languages ?? [])];
+    for (const item of candidates) {
+      const matched = parseLocale(item);
+      if (matched) return matched;
+    }
+  } catch {
+    /* ignore */
+  }
+  return 'en';
 }
 
 function normalizeTheme(raw: unknown): ThemeMode {
@@ -71,7 +80,9 @@ export function getSettings(): AppSettings {
     STORAGE_KEYS.settings,
     null
   );
-  if (!stored) return getDefaultSettings();
+  if (!stored) {
+    return { ...getDefaultSettings(), locale: detectLocale() };
+  }
   return {
     ...getDefaultSettings(),
     ...stored,

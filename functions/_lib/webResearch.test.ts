@@ -14,22 +14,20 @@ import {
 } from './webResearch';
 
 describe('WEB_SEARCH_MODEL_CHAIN', () => {
-  it('prefers Default Search pool models first (robotics ER)', () => {
-    assert.equal(WEB_SEARCH_MODEL_CHAIN[0], 'gemini-robotics-er-2-preview');
-    assert.ok(
-      WEB_SEARCH_MODEL_CHAIN.includes('gemini-robotics-er-1.6-preview')
-    );
+  it('prefers official Search Flash models first', () => {
+    assert.equal(WEB_SEARCH_MODEL_CHAIN[0], 'gemini-3.8-flash');
+    assert.ok(WEB_SEARCH_MODEL_CHAIN.includes('gemini-3.5-flash-lite'));
   });
 
-  it('keeps Flash and legacy 2.5 after Default-pool models', () => {
+  it('keeps 2.5 Flash and robotics ER after current Flash ids', () => {
+    const flash = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-3.5-flash-lite');
+    const legacy = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-2.5-flash');
     const robotics = WEB_SEARCH_MODEL_CHAIN.indexOf(
       'gemini-robotics-er-2-preview'
     );
-    const flash = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-3.5-flash-lite');
-    const legacy = WEB_SEARCH_MODEL_CHAIN.indexOf('gemini-2.5-flash');
-    assert.ok(robotics >= 0);
-    assert.ok(flash > robotics);
+    assert.ok(flash >= 0);
     assert.ok(legacy > flash);
+    assert.ok(robotics > legacy);
   });
 });
 
@@ -148,19 +146,19 @@ describe('runWebResearch', () => {
       const model = m?.[1] ?? 'unknown';
       modelsTried.push(model);
 
-      if (model === 'gemini-robotics-er-2-preview') {
+      if (model === 'gemini-3.8-flash') {
         return new Response(
           JSON.stringify({
             error: {
               message:
-                'This model models/gemini-robotics-er-2-preview is no longer available.',
+                'This model models/gemini-3.8-flash is no longer available.',
               status: 'NOT_FOUND',
             },
           }),
           { status: 404, headers: { 'Content-Type': 'application/json' } }
         );
       }
-      if (model === 'gemini-robotics-er-1.6-preview') {
+      if (model === 'gemini-3.5-flash-lite') {
         return new Response(
           JSON.stringify({
             candidates: [
@@ -199,15 +197,15 @@ describe('runWebResearch', () => {
     });
 
     assert.equal(out.ok, true);
-    assert.equal(out.model, 'gemini-robotics-er-1.6-preview');
+    assert.equal(out.model, 'gemini-3.5-flash-lite');
     assert.ok(out.brief.includes('Poland'));
     assert.deepEqual(modelsTried.slice(0, 2), [
-      'gemini-robotics-er-2-preview',
-      'gemini-robotics-er-1.6-preview',
+      'gemini-3.8-flash',
+      'gemini-3.5-flash-lite',
     ]);
   });
 
-  it('stops after two search_grounding_unavailable and reports that code', async () => {
+  it('tries several Search models before giving up on grounding quota', async () => {
     const modelsTried: string[] = [];
     mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -233,7 +231,9 @@ describe('runWebResearch', () => {
 
     assert.equal(out.ok, false);
     assert.equal(out.error, 'search_grounding_unavailable');
-    assert.equal(modelsTried.length, 2);
+    assert.equal(modelsTried[0], 'gemini-3.8-flash');
+    assert.ok(modelsTried.length >= 4);
+    assert.ok(modelsTried.length <= WEB_SEARCH_MODEL_CHAIN.length);
   });
 
   it('uses pinned GEMINI_WEB_MODEL first', async () => {

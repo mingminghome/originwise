@@ -1680,6 +1680,49 @@ p {
   margin: 0;
   padding-left: 1.1rem;
 }
+.parts-block {
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border);
+}
+.parts-block-title {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+.parts-block-hint {
+  margin: 0.2rem 0 0.45rem;
+  font-size: 0.78rem;
+}
+.parts-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.parts-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+.parts-item--cn {
+  border-color: #b45309;
+  background: rgba(217, 119, 6, 0.08);
+}
+.parts-item-name {
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+.parts-item-meta,
+.parts-item-note {
+  font-size: 0.78rem;
+}
 .tier-reasons-list {
   margin: 0.4rem 0 0;
   padding-left: 1.15rem;
@@ -2002,21 +2045,37 @@ p {
 .graph-node {
   fill: var(--bg-card, #fff);
   stroke: var(--text);
+  stroke-width: 1.6;
+}
+.graph-node--product {
   stroke-width: 2;
+}
+.graph-node--place {
+  fill: var(--bg-subtle, #f7f7f7);
+  stroke-dasharray: 3 2;
+}
+.graph-node--part,
+.graph-node--spare,
+.graph-node--ingredient,
+.graph-node--component {
+  stroke-width: 1.4;
 }
 .graph-node--cn {
   fill: rgba(217, 119, 6, 0.12);
   stroke: #b45309;
-  stroke-width: 2.5;
+  stroke-width: 2.2;
+  stroke-dasharray: none;
 }
 [data-theme='dark'] .graph-node--cn {
   fill: rgba(251, 191, 36, 0.12);
   stroke: #fbbf24;
 }
 .graph-node-kind {
-  font-size: 11px;
+  font-size: 8px;
   font-weight: 700;
-  fill: var(--text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  fill: var(--text-muted);
   pointer-events: none;
 }
 .graph-edge {
@@ -2062,9 +2121,10 @@ p {
   fill: #fcd34d;
 }
 .graph-label {
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 650;
   fill: var(--text);
+  pointer-events: none;
 }
 .graph-rel-list {
   list-style: none;
@@ -4408,6 +4468,46 @@ p {
   gap: 0.05rem;
   flex-shrink: 0;
 }
+.check-parts {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  padding: 0 0.35rem;
+}
+.check-parts-toggle {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.check-parts-toggle:hover {
+  color: var(--text);
+}
+.check-parts-input {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 2.6rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+}
+.check-parts-input:focus {
+  outline: 2px solid var(--primary-border);
+  outline-offset: 1px;
+}
 .check-icon-btn {
   width: 42px;
   height: 42px;
@@ -4672,6 +4772,10 @@ p {
   color: #b42318;
   background: rgba(220, 60, 50, 0.12);
 }
+.agent-row--skip .agent-row-status {
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+}
 [data-theme='dark'] .agent-row--ok .agent-row-status {
   color: #6ee7a8;
   background: rgba(34, 197, 120, 0.16);
@@ -4679,6 +4783,10 @@ p {
 [data-theme='dark'] .agent-row--fail .agent-row-status {
   color: #fca5a5;
   background: rgba(248, 113, 113, 0.14);
+}
+[data-theme='dark'] .agent-row--skip .agent-row-status {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.06);
 }
 .agent-row-body {
   flex: 1;

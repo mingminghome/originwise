@@ -63,6 +63,31 @@ describe('synthesize decision table', () => {
     assert.ok(r.tierReasons.includes('hq_cn'));
   });
 
+  it('CN ingredient with JP made-in → indirect (component)', () => {
+    const r = synthesize({
+      jobId: 't-parts',
+      geoScope: 'prc',
+      companySkipped: true,
+      partials: {
+        product: {
+          name: 'Snack',
+          madeIn: 'Japan',
+          parts: [
+            {
+              name: 'soy sauce',
+              kind: 'ingredient',
+              madeIn: 'China',
+              chinaRelated: true,
+            },
+          ],
+        },
+      },
+    });
+    assert.equal(r.relationTier, 'indirect');
+    assert.ok(r.tierReasons.includes('component_cn'));
+    assert.ok(r.graph.nodes.some((n) => n.kind === 'ingredient'));
+  });
+
   it('empty signals → unknown', () => {
     const r = synthesize({
       jobId: 't4',

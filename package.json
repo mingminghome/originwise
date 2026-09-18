@@ -9,7 +9,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "npx --yes tsx --test functions/_lib/synthesize.test.ts functions/_lib/webResearch.test.ts",
+    "test": "npx --yes tsx --test functions/_lib/synthesize.test.ts functions/_lib/webResearch.test.ts src/core/i18n/catalogs.test.ts",
     "preview": "vite preview",
     "pages:dev": "npm run build && npx --yes wrangler pages dev dist --compatibility-date=2024-09-23",
     "deploy": "npm run build && npx --yes wrangler pages deploy dist --project-name=originwise",

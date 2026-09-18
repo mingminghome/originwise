@@ -45,7 +45,7 @@ Taiwan is always treated as a **separate country** for relation tiers. AI result
 - **SSE progress UI** — relation tier badges, region chips, graph, alternatives
 - **History + settings** — delete local data anytime
 - **Taiwan policy** — always a separate country for tiering
-- **i18n** — English + Traditional Chinese
+- **i18n** — English, Traditional Chinese, and major EU languages (CS, DA, DE, EL, ES, FI, FR, HU, IT, NL, PL, PT, RO, SV)
 - **Optional GTM** — via `VITE_GTM_ID` only (never hardcoded)
 - **Optional Search Console** — via `VITE_GOOGLE_SITE_VERIFICATION` (HTML meta; never hardcoded)
 - **Optional “Buy me a pint”** — via `VITE_BUY_ME_A_PINT_URL` only (never hardcoded)

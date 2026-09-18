@@ -22,6 +22,7 @@
  *   https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/grounding/grounding-with-google-search
  */
 
+import { langLabel } from './locale';
 import type { LlmEnv } from './llm';
 
 export type WebResearchEnv = LlmEnv & {
@@ -45,34 +46,35 @@ const BRIEF_MAX = 2200;
 const SOURCE_CAP = 8;
 
 /**
- * Models for Google Search grounding, ordered for current free-tier availability.
+ * Models for Google Search grounding, ordered for current availability.
  *
- * AI Studio free keys often split Search RPD by family:
- *   - Gemini 3 Search: frequently **0 / 0** (Flash/Flash-Lite agents work without Search)
- *   - Gemini 2.5 Search: RPD may show, but `gemini-2.5-flash*` can be blocked for new users
- *   - **Default Search** (~1.5K RPD): includes robotics ER / deep-research / Gemma, etc.
- *
- * Live probe on free new-user keys: `gemini-robotics-er-2-preview` successfully
- * returns `groundingMetadata` via `tools: [{ google_search: {} }]` against Default RPD.
- * Prefer that first so the web row works without paid Gemini 3 Search.
+ * Official Search-capable Flash models first (3.8 / 3.5 / 3.1, then 2.5).
+ * Robotics ER is last-ditch Default-pool — it often 429s slowly and used to
+ * abort the chain after two failures before Flash was tried.
  *
  * @see https://ai.google.dev/gemini-api/docs/google-search#supported-models
  */
 export const WEB_SEARCH_MODEL_CHAIN: readonly string[] = [
-  // Default Search grounding pool (free ~1.5K RPD on many free keys)
-  'gemini-robotics-er-2-preview',
-  'gemini-robotics-er-1.6-preview',
-  // Standard Flash (needs Gemini 3/2.5 Search entitlement — often 0 free for 3.x)
+  'gemini-3.8-flash',
   'gemini-3.5-flash-lite',
   'gemini-3.5-flash',
+  'gemini-3.1-flash-lite',
   'gemini-flash-lite-latest',
   'gemini-flash-latest',
   'gemini-3.6-flash',
-  'gemini-3.1-flash-lite',
-  // Legacy 2.x (blocked or free generate limit 0 for many new keys)
+  'gemini-2.5-flash-lite',
   'gemini-2.5-flash',
   'gemini-2.0-flash',
+  'gemini-robotics-er-2-preview',
+  'gemini-robotics-er-1.6-preview',
 ];
+
+/** Per-model wall clock so a slow 429 cannot burn the whole job. */
+const GROUNDED_FETCH_MS = 7000;
+/** Stop after this many Search-tool quota / 0-entitlement misses. */
+const MAX_GROUNDING_FAILS = 5;
+/** Hard cap for the whole web pass (orchestrator still continues without it). */
+const WEB_PASS_BUDGET_MS = 20000;
 
 export function isWebLookupEnabled(env: WebResearchEnv): boolean {
   const raw = String(env.WEB_LOOKUP ?? 'auto')
@@ -104,8 +106,7 @@ function buildResearchPrompt(opts: {
   ocrText?: string;
   locale: string;
 }): string {
-  const lang =
-    opts.locale.startsWith('zh') ? 'Traditional Chinese (繁體中文)' : 'English';
+  const lang = langLabel(opts.locale);
   return `You are a product-origin research assistant for OriginWise.
 Use Google Search to find CURRENT public facts about the product/brand/company below.
 Respond in ${lang}.
@@ -115,7 +116,8 @@ Collect and summarize (bullet points, dense, factual):
 2) Legal manufacturer / parent company HQ country (Taiwan is NOT China)
 3) Typical "Made in" / country of origin for this model or product line (note market variants)
 4) Mainland China links: ownership, manufacturing, assembly, major suppliers
-5) Any recent ownership changes
+5) Major parts, spare parts, or ingredients and where THEY are made (if known)
+6) Any recent ownership changes
 
 Rules:
 - Prefer official brand sites, retailer product pages, Wikipedia, company filings, reputable news.
@@ -213,6 +215,7 @@ async function callGeminiGrounded(
     res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(GROUNDED_FETCH_MS),
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         // Gemini Developer API: snake_case tool (Vertex uses googleSearch camelCase)
@@ -304,8 +307,10 @@ export async function runWebResearch(opts: {
 
   const models = webSearchModelChain(opts.env);
   let last = 'upstream_error';
-  let consecutiveHardFail = 0;
+  let groundingFails = 0;
+  let timeouts = 0;
   for (const model of models) {
+    if (Date.now() - t0 >= WEB_PASS_BUDGET_MS) break;
     const out = await callGeminiGrounded(apiKey, model, prompt);
     if (out.ok) {
       let brief = out.text.slice(0, BRIEF_MAX);
@@ -327,33 +332,26 @@ export async function runWebResearch(opts: {
     }
     last = out.code;
 
-    // Model id dead for this key — try next without counting as entitlement fail
+    // Dead model id — keep walking the chain
     if (out.code === 'model_unavailable' || out.code === 'upstream_error') {
-      consecutiveHardFail = 0;
       continue;
     }
 
-    // Search grounding not entitled / free 0/0 / 429 with Search tool:
-    // try one more model (older keys may still have 2.x Search RPD), then stop.
     if (
       out.code === 'search_grounding_unavailable' ||
       out.code === 'upstream_quota'
     ) {
-      consecutiveHardFail += 1;
-      if (consecutiveHardFail >= 2) {
-        last = 'search_grounding_unavailable';
-        break;
-      }
+      groundingFails += 1;
+      last = 'search_grounding_unavailable';
+      if (groundingFails >= MAX_GROUNDING_FAILS) break;
       continue;
     }
 
     if (out.code === 'upstream_unavailable') {
-      consecutiveHardFail += 1;
-      if (consecutiveHardFail >= 2) break;
+      timeouts += 1;
+      if (timeouts >= 3) break;
       continue;
     }
-
-    consecutiveHardFail = 0;
   }
 
   return {

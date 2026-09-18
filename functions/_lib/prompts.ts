@@ -3,12 +3,11 @@
  * User content is fenced as untrusted data.
  */
 
-import type { CheckDimension } from './schema';
+import { langLabel } from './locale';
 import type { GeoScope } from './regions';
+import type { CheckDimension } from './schema';
 
-export function langLabel(locale: string): string {
-  return locale.startsWith('zh') ? 'Traditional Chinese (繁體中文)' : 'English';
-}
+export { langLabel };
 
 function fence(tag: string, body: string): string {
   return `<${tag}>\n${body || '(none)'}\n</${tag}>`;
@@ -36,7 +35,13 @@ Products often have SEPARATE layers. Report each layer; never substitute one for
    - Do NOT put brand HQ or global Asia factory into madeIn when the unit is labeled elsewhere.
 4) componentsOrigin = where major parts / global line may be built (Thailand, China, etc.) when
    different from final madeIn. Use free text (e.g. "Thailand and/or China for global PE30 line").
-5) notes[] MUST explain multi-layer cases when layers differ, e.g.:
+5) parts[] = individual components, spare parts, or ingredients with THEIR own origin:
+   - kind: "part" | "spare" | "ingredient" | "component"
+   - If the user listed specific parts/spares/ingredients, include EACH named item.
+   - madeIn / originCountry per item; chinaRelated true ONLY for mainland China (never Taiwan).
+   - Unknown origin: omit chinaRelated or false; say unknown in note. Do not invent China.
+   - Max 8. Skip trivia; keep major BOM / recipe / service-part items.
+6) notes[] MUST explain multi-layer cases when layers differ, e.g.:
    "Brand Japan; compact PE30 line often Thailand/China globally; UK UA-PE30U-WB units frequently final-assembled/packaged in Poland for Europe/UK — use label if it says Made in Poland."
 
 SKU / MARKET RULES:
@@ -110,6 +115,7 @@ Return ONLY JSON:
     "manufacturerCountry": "string",
     "category": "string",
     "componentsOrigin": "string",
+    "parts": [{"name":"string","kind":"part|spare|ingredient|component","madeIn":"string","originCountry":"string","chinaRelated":false,"note":"string"}],
     "confidence": 0.0,
     "notes": ["string"]
   },
@@ -176,7 +182,7 @@ ${GEO_POLICY}
 ${PRODUCT_FACT_RULES}
 ${WEB_CONTEXT_RULE}
 Return ONLY JSON:
-{"name":"string","brand":"string","originCountry":"string","madeIn":"string","manufacturedIn":"string","manufacturer":"string","manufacturerCountry":"string","category":"string","componentsOrigin":"string","confidence":0.0,"notes":["string"]}
+{"name":"string","brand":"string","originCountry":"string","madeIn":"string","manufacturedIn":"string","manufacturer":"string","manufacturerCountry":"string","category":"string","componentsOrigin":"string","parts":[{"name":"string","kind":"part|spare|ingredient|component","madeIn":"string","originCountry":"string","chinaRelated":false,"note":"string"}],"confidence":0.0,"notes":["string"]}
 
 ${fence('entity', opts.entity)}
 ${fence('ocr', opts.ocrText || '')}
@@ -247,7 +253,7 @@ geoScope=${opts.geoScope} (TW is never China for tiers; greater_china may includ
 
 Return ONLY JSON:
 {
-  "product": {"name":"string","brand":"string","originCountry":"string","madeIn":"string","manufacturedIn":"string","manufacturer":"string","manufacturerCountry":"string","category":"string","componentsOrigin":"string","confidence":0.0},
+  "product": {"name":"string","brand":"string","originCountry":"string","madeIn":"string","manufacturedIn":"string","manufacturer":"string","manufacturerCountry":"string","category":"string","componentsOrigin":"string","parts":[{"name":"string","kind":"part|spare|ingredient|component","madeIn":"string","originCountry":"string","chinaRelated":false,"note":"string"}],"confidence":0.0},
   "company": {"name":"string","legalName":"string","hqCountry":"string","parents":[{"name":"string","country":"string","control":"majority|wholly|minority|unknown"}],"chinaRelations":[{"type":"string","country":"string","strength":"strong|moderate|weak","note":"string"}],"confidence":0.0},
   "verification": {"consistent":true,"conflicts":["string"],"confidence":0.0,"caveats":["string"]}
 }

@@ -40,8 +40,11 @@ function AgentsPoolCard({
   degraded?: boolean;
   t: TFunction;
 }) {
+  const isSkipped = (a: (typeof agents)[number]) =>
+    a.ok === false &&
+    (a.error === 'search_grounding_unavailable' || a.error === 'disabled');
   const okCount = agents.filter((a) => a.ok !== false).length;
-  const failCount = agents.length - okCount;
+  const failCount = agents.filter((a) => a.ok === false && !isSkipped(a)).length;
 
   return (
     <div className="agents-pool-card card-soft">
@@ -62,14 +65,24 @@ function AgentsPoolCard({
       </div>
       <ul className="agents-pool-list">
         {agents.map((a, i) => {
+          const skipped =
+            a.ok === false &&
+            (a.error === 'search_grounding_unavailable' ||
+              a.error === 'disabled');
           const ok = a.ok !== false;
           return (
             <li
               key={`${a.id}-${a.provider ?? i}`}
-              className={ok ? 'agent-row agent-row--ok' : 'agent-row agent-row--fail'}
+              className={
+                ok
+                  ? 'agent-row agent-row--ok'
+                  : skipped
+                    ? 'agent-row agent-row--skip'
+                    : 'agent-row agent-row--fail'
+              }
             >
               <span className="agent-row-status" aria-hidden>
-                {ok ? '✓' : '×'}
+                {ok ? '✓' : skipped ? '–' : '×'}
               </span>
               <div className="agent-row-body">
                 <div className="agent-row-title">
@@ -81,7 +94,7 @@ function AgentsPoolCard({
                 <p className="muted agent-row-meta">
                   {ok
                     ? t('check.agentOk')
-                    : t('check.agentFail', {
+                    : t(skipped ? 'check.agentSkipped' : 'check.agentFail', {
                         err: agentErrorLabel(a.error, t),
                       })}
                   {typeof a.ms === 'number' ? ` · ${a.ms}ms` : null}
@@ -199,6 +212,38 @@ export function ResultPanel({
                   </li>
                 ) : null}
               </ul>
+              {result.product.parts?.length ? (
+                <div className="parts-block">
+                  <h4 className="parts-block-title">{t('check.partsTitle')}</h4>
+                  <p className="muted parts-block-hint">{t('check.partsHint')}</p>
+                  <ul className="parts-list">
+                    {result.product.parts.map((part) => (
+                      <li
+                        key={part.name}
+                        className={
+                          part.chinaRelated
+                            ? 'parts-item parts-item--cn'
+                            : 'parts-item'
+                        }
+                      >
+                        <span className="parts-item-name">{part.name}</span>
+                        <span className="muted parts-item-meta">
+                          {t(`check.partKind.${part.kind || 'part'}`)}
+                          {part.madeIn || part.originCountry
+                            ? ` · ${part.madeIn || part.originCountry}`
+                            : ''}
+                          {part.chinaRelated
+                            ? ` · ${t('check.graphChinaLinked')}`
+                            : ''}
+                        </span>
+                        {part.note ? (
+                          <span className="muted parts-item-note">{part.note}</span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
           ) : null}
           {result.company ? (
@@ -260,7 +305,11 @@ export function ResultPanel({
       ) : null}
 
       <p className="muted" style={{ marginTop: '0.85rem', fontSize: '0.8rem' }}>
-        {result.knowledgeCutoffNote || t('check.disclaimer')}
+        {result.knowledgeBasis === 'web_enriched'
+          ? t('check.knowledgeWeb')
+          : result.knowledgeBasis === 'model_memory'
+            ? t('check.knowledgeModel')
+            : result.knowledgeCutoffNote || t('check.disclaimer')}
       </p>
     </div>
   );

@@ -61,6 +61,18 @@ export const en: MessageTree = {
       'Check API ships in a later PR. History and settings are ready.',
     photoTooLarge: 'Photo is too large after compress.',
     photoInvalid: 'Could not read that image.',
+    unnamedPhoto: '(photo)',
+    partsOptional: 'Also check parts / ingredients',
+    partsPlaceholder: 'e.g. battery, charger, wheat flour…',
+    partsTitle: 'Parts, spares & ingredients',
+    partsHint:
+      'Major components, spare parts, or ingredients and whether they look China-linked.',
+    partKind: {
+      part: 'Part',
+      spare: 'Spare',
+      ingredient: 'Ingredient',
+      component: 'Component',
+    },
     progressHint: 'Running origin & company analysis…',
     stepMonolith: 'Collecting product & company signals',
     answeredBy: 'Main answer via {name}',
@@ -68,9 +80,10 @@ export const en: MessageTree = {
     agentsTitle: 'AI pool used',
     agentsSummary: '{total} calls · {ok} ok · {fail} failed',
     agentsHint:
-      'Each row is one free-server AI call. Failed calls often mean quota, model access, or timeout; we still try others or a single fallback. Live web needs Gemini Search grounding entitlement (not the same as text RPM).',
+      'Each row is one free-server AI call. Failed calls often mean quota, model access, or timeout; we still try others or a single fallback. Live web needs Google Search on the Gemini key (separate from ordinary text quota).',
     agentOk: 'OK',
     agentFail: 'Failed ({err})',
+    agentSkipped: 'Skipped ({err})',
     agentFailUnknown: 'error',
     agentError: {
       upstream_quota: 'quota / rate limit',
@@ -79,7 +92,7 @@ export const en: MessageTree = {
       empty_response: 'empty response',
       model_unavailable: 'model not available on this API key',
       search_grounding_unavailable:
-        'Google Search grounding not available on this key (try Default-pool models / enable billing; Gemini 3 Search is often 0/0)',
+        'no Google Search on this API key — using model knowledge',
       disabled: 'disabled',
       gemini_not_configured: 'Gemini not configured',
       no_entity: 'no product name',
@@ -139,6 +152,10 @@ export const en: MessageTree = {
     caveats: 'Caveats',
     disclaimer:
       'Informational only — model knowledge and optional live web research, not legal or sanctions advice. AI can be wrong.',
+    knowledgeModel:
+      'Based on general model knowledge only (no live web lookup). Brand origin, component plants, and final assembly/COO can differ by SKU/market — prefer packaging labels. Not a corporate registry or customs database. Informational — not legal, trade, or sanctions advice.',
+    knowledgeWeb:
+      'Includes a live web research pass (Google Search via Gemini grounding) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.',
     providerNotConfigured:
       'AI check is not configured. Add a key in .dev.vars and run `npm run pages:dev` (see README).',
     rateLimited:
@@ -217,6 +234,10 @@ export const en: MessageTree = {
       ownership: 'ownership',
       affiliation: 'brand',
       manufacturing: 'made in',
+      part: 'part',
+      spare: 'spare',
+      ingredient: 'ingredient',
+      component: 'component',
     },
     regionsTitle: 'Regions',
     altBrands: 'Lower China-involvement brands (estimated)',

@@ -12,8 +12,8 @@ const ZOOM_MAX = 1.75;
 const ZOOM_STEP = 0.25;
 
 /**
- * Hierarchical SVG relation graph: product → company → parents / places.
- * Expand + zoom so labels/edges stay readable on small screens.
+ * Hierarchical SVG relation graph: product → parts → company → parents / places.
+ * Pill nodes, curved edges, expand + zoom for small screens.
  */
 export function RelationGraph({
   graph,
@@ -26,8 +26,8 @@ export function RelationGraph({
   const [expanded, setExpanded] = useState(false);
   const [zoom, setZoom] = useState(1);
 
-  const nodes = useMemo(() => graph.nodes.slice(0, 12), [graph.nodes]);
-  const edges = useMemo(() => graph.edges.slice(0, 20), [graph.edges]);
+  const nodes = useMemo(() => graph.nodes.slice(0, 24), [graph.nodes]);
+  const edges = useMemo(() => graph.edges.slice(0, 36), [graph.edges]);
 
   const { w, h } = useMemo(
     () => graphCanvasSize(nodes.length, expanded),
@@ -167,32 +167,31 @@ export function RelationGraph({
           {edgeRows.map(({ e, from, to }, i) => {
             const a = pos.get(from.id)!;
             const b = pos.get(to.id)!;
-            const { x1, y1, x2, y2 } = shortenLine(a.x, a.y, b.x, b.y, 24, 24);
-            const mx = (x1 + x2) / 2;
-            const my = (y1 + y2) / 2;
+            const fromBox = nodeBox(from, a, expanded);
+            const toBox = nodeBox(to, b, expanded);
+            const { x1, y1, x2, y2 } = boxConnect(fromBox, toBox);
+            const curve = curvedPath(x1, y1, x2, y2, i);
             const label = edgeLabel(e, t);
             const cn = Boolean(e.chinaRelated);
-            const labelW = Math.min(120, Math.max(36, label.length * 6.2));
+            const labelW = Math.min(130, Math.max(40, label.length * 6.4));
             return (
               <g key={`${e.from}-${e.to}-${i}`} className="graph-edge-group">
-                <line
-                  x1={x1}
-                  y1={y1}
-                  x2={x2}
-                  y2={y2}
+                <path
+                  d={curve.d}
+                  fill="none"
                   className={cn ? 'graph-edge graph-edge--cn' : 'graph-edge'}
                   markerEnd={
                     cn ? `url(#${markerCn})` : `url(#${markerNormal})`
                   }
                 />
                 {label ? (
-                  <g transform={`translate(${mx}, ${my})`}>
+                  <g transform={`translate(${curve.mx}, ${curve.my})`}>
                     <rect
                       x={-labelW / 2 - 4}
-                      y={-10}
+                      y={-9}
                       width={labelW + 8}
                       height={18}
-                      rx={4}
+                      rx={9}
                       className={
                         cn
                           ? 'graph-edge-label-bg graph-edge-label-bg--cn'
@@ -202,14 +201,14 @@ export function RelationGraph({
                     <text
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      y={0}
+                      y={0.5}
                       className={
                         cn
                           ? 'graph-edge-label graph-edge-label--cn'
                           : 'graph-edge-label'
                       }
                     >
-                      {label.slice(0, 24)}
+                      {label.slice(0, 22)}
                     </text>
                   </g>
                 ) : null}
@@ -219,28 +218,36 @@ export function RelationGraph({
 
           {nodes.map((n) => {
             const p = pos.get(n.id)!;
-            const label = (n.label || n.id).slice(0, expanded ? 28 : 20);
+            const box = nodeBox(n, p, expanded);
             const cn = Boolean(n.chinaRelated);
+            const kind = kindCaption(n.kind, t);
+            const label = (n.label || n.id).slice(0, expanded ? 32 : 22);
             return (
               <g key={n.id} className="graph-node-group">
-                <circle
-                  cx={p.x}
-                  cy={p.y}
-                  r={expanded ? 22 : 20}
-                  className={cn ? 'graph-node graph-node--cn' : 'graph-node'}
+                <title>{`${n.label || n.id}${kind ? ` (${kind})` : ''}`}</title>
+                <rect
+                  x={box.x}
+                  y={box.y}
+                  width={box.w}
+                  height={box.h}
+                  rx={10}
+                  className={
+                    cn
+                      ? `graph-node graph-node--cn graph-node--${nodeKindClass(n.kind)}`
+                      : `graph-node graph-node--${nodeKindClass(n.kind)}`
+                  }
                 />
                 <text
                   x={p.x}
-                  y={p.y + 1}
+                  y={p.y - 7}
                   textAnchor="middle"
-                  dominantBaseline="middle"
                   className="graph-node-kind"
                 >
-                  {kindGlyph(n.kind)}
+                  {kind}
                 </text>
                 <text
                   x={p.x}
-                  y={p.y + (expanded ? 38 : 36)}
+                  y={p.y + 9}
                   textAnchor="middle"
                   className="graph-label"
                 >
@@ -289,23 +296,62 @@ function graphCanvasSize(
   const n = Math.max(1, nodeCount);
   if (expanded) {
     return {
-      w: Math.max(420, 360 + n * 18),
-      h: Math.max(320, 120 + n * 52),
+      w: Math.max(520, 400 + n * 22),
+      h: Math.max(360, 140 + n * 56),
     };
   }
   return {
-    w: Math.max(380, 320 + n * 12),
-    h: Math.max(260, 100 + n * 44),
+    w: Math.max(440, 360 + n * 16),
+    h: Math.max(280, 120 + n * 48),
   };
 }
 
-function kindGlyph(kind?: string): string {
+function nodeKindClass(kind?: string): string {
   const k = (kind || '').toLowerCase();
-  if (k === 'product') return 'P';
-  if (k === 'company') return 'C';
-  if (k === 'parent') return '↑';
-  if (k === 'place' || k === 'region') return '◎';
-  return '·';
+  if (
+    k === 'product' ||
+    k === 'company' ||
+    k === 'parent' ||
+    k === 'place' ||
+    k === 'region' ||
+    k === 'part' ||
+    k === 'spare' ||
+    k === 'ingredient' ||
+    k === 'component'
+  ) {
+    return k === 'region' ? 'place' : k;
+  }
+  return 'other';
+}
+
+function kindCaption(kind: string | undefined, t: TFunction): string {
+  const k = (kind || '').toLowerCase();
+  if (k === 'product') return t('check.productFacts');
+  if (k === 'company') return t('check.companyFacts');
+  if (k === 'parent') return t('check.parents');
+  if (k === 'place' || k === 'region') return t('check.origin');
+  if (k === 'part' || k === 'spare' || k === 'ingredient' || k === 'component') {
+    return t(`check.partKind.${k}`);
+  }
+  return '';
+}
+
+type NodeBox = { x: number; y: number; w: number; h: number; cx: number; cy: number };
+
+function nodeWidth(label: string, expanded: boolean): number {
+  const cap = expanded ? 32 : 22;
+  const shown = (label || '').slice(0, cap);
+  return Math.min(expanded ? 168 : 148, Math.max(88, shown.length * 7.1 + 20));
+}
+
+function nodeBox(
+  n: GNode,
+  p: { x: number; y: number },
+  expanded: boolean
+): NodeBox {
+  const w = nodeWidth(n.label || n.id, expanded);
+  const h = expanded ? 44 : 40;
+  return { x: p.x - w / 2, y: p.y - h / 2, w, h, cx: p.x, cy: p.y };
 }
 
 function edgeLabel(e: GEdge, t: TFunction): string {
@@ -329,38 +375,37 @@ function layoutNodes(
   const products = byKind('product');
   const companies = byKind('company');
   const parents = byKind('parent');
-  const places = [
-    ...byKind('place'),
-    ...byKind('region'),
-    ...nodes.filter(
-      (n) =>
-        !['product', 'company', 'parent', 'place', 'region'].includes(
-          (n.kind || '').toLowerCase()
-        )
-    ),
-  ];
+  const parts = nodes.filter((n) =>
+    ['part', 'spare', 'ingredient', 'component'].includes(
+      (n.kind || '').toLowerCase()
+    )
+  );
+  const places = [...byKind('place'), ...byKind('region')];
+  const known = new Set(
+    [...products, ...companies, ...parents, ...parts, ...places].map((n) => n.id)
+  );
+  const other = nodes.filter((n) => !known.has(n.id));
 
   const layers: GNode[][] = [];
   if (products.length) layers.push(products);
+  if (parts.length) layers.push(parts);
   if (companies.length) layers.push(companies);
-  // Keep parents and places on separate rows when both exist (less crowding)
   if (parents.length) layers.push(parents);
   if (places.length) layers.push(places);
+  if (other.length) layers.push(other);
   if (!layers.length) layers.push(nodes);
 
-  const padX = 56;
-  const padY = 52;
+  const padX = 72;
+  const padY = 48;
   const used = new Set<string>();
   layers.forEach((layer, li) => {
     const y =
       layers.length === 1
         ? h / 2
         : padY + (li * (h - padY * 2)) / Math.max(layers.length - 1, 1);
+    const gap = layer.length === 1 ? 0 : (w - padX * 2) / Math.max(layer.length - 1, 1);
     layer.forEach((n, i) => {
-      const x =
-        layer.length === 1
-          ? w / 2
-          : padX + (i * (w - padX * 2)) / Math.max(layer.length - 1, 1);
+      const x = layer.length === 1 ? w / 2 : padX + i * gap;
       pos.set(n.id, { x, y });
       used.add(n.id);
     });
@@ -375,23 +420,38 @@ function layoutNodes(
   return pos;
 }
 
-function shortenLine(
+/** Connect box bottoms/tops (or sides) so arrows meet the node, not the center. */
+function boxConnect(
+  from: NodeBox,
+  to: NodeBox
+): { x1: number; y1: number; x2: number; y2: number } {
+  const down = to.cy >= from.cy;
+  return {
+    x1: from.cx,
+    y1: down ? from.y + from.h : from.y,
+    x2: to.cx,
+    y2: down ? to.y : to.y + to.h,
+  };
+}
+
+function curvedPath(
   x1: number,
   y1: number,
   x2: number,
   y2: number,
-  trimStart: number,
-  trimEnd: number
-): { x1: number; y1: number; x2: number; y2: number } {
+  index: number
+): { d: string; mx: number; my: number } {
   const dx = x2 - x1;
   const dy = y2 - y1;
   const len = Math.hypot(dx, dy) || 1;
-  const ux = dx / len;
-  const uy = dy / len;
+  const nx = -dy / len;
+  const ny = dx / len;
+  const bulge = ((index % 5) - 2) * 14;
+  const cx = (x1 + x2) / 2 + nx * bulge;
+  const cy = (y1 + y2) / 2 + ny * bulge;
   return {
-    x1: x1 + ux * trimStart,
-    y1: y1 + uy * trimStart,
-    x2: x2 - ux * trimEnd,
-    y2: y2 - uy * trimEnd,
+    d: `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`,
+    mx: (x1 + 2 * cx + x2) / 4,
+    my: (y1 + 2 * cy + y2) / 4,
   };
 }

@@ -1,9 +1,42 @@
-import type { Locale } from '../types';
+import { cs } from './cs';
+import { da } from './da';
+import { de } from './de';
+import { el } from './el';
 import { en, type MessageTree } from './en';
+import { es } from './es';
+import { fi } from './fi';
+import { fr } from './fr';
+import { hu } from './hu';
+import { it } from './it';
+import {
+  LOCALES,
+  type Locale,
+  localeTag,
+  normalizeLocale,
+} from './locales';
+import { nl } from './nl';
+import { pl } from './pl';
+import { pt } from './pt';
+import { ro } from './ro';
+import { sv } from './sv';
 import { zhHant } from './zh-Hant';
 
-const catalogs: Record<Locale, MessageTree> = {
+export const catalogs: Record<Locale, MessageTree> = {
   en,
+  cs,
+  da,
+  de,
+  el,
+  es,
+  fr,
+  it,
+  hu,
+  nl,
+  pl,
+  pt,
+  ro,
+  fi,
+  sv,
   'zh-Hant': zhHant,
 };
 
@@ -33,8 +66,5 @@ export function createT(locale: Locale) {
 
 export type TFunction = ReturnType<typeof createT>;
 
-export function localeTag(locale: Locale): string {
-  return locale === 'zh-Hant' ? 'zh-Hant' : 'en';
-}
-
-export { en, zhHant };
+export { en, zhHant, LOCALES, localeTag, normalizeLocale };
+export type { Locale };

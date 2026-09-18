@@ -5,6 +5,10 @@
 
 import { listConfiguredProviders } from '../_lib/aiPool';
 import {
+  normalizeLocale,
+  type AppLocale,
+} from '../_lib/locale';
+import {
   runCheckOrchestrator,
   type ProgressEvent,
 } from '../_lib/orchestrator';
@@ -102,10 +106,6 @@ function sanitizeText(raw: unknown, max: number): string {
     .slice(0, max);
 }
 
-function normalizeLocale(raw: unknown): 'en' | 'zh-Hant' {
-  return String(raw ?? '').startsWith('zh') ? 'zh-Hant' : 'en';
-}
-
 function normalizeGeoScope(raw: unknown): GeoScope {
   return raw === 'greater_china' ? 'greater_china' : 'prc';
 }
@@ -194,7 +194,7 @@ function sseEncode(event: string, data: unknown): string {
 }
 
 type ParsedOk = {
-  locale: 'en' | 'zh-Hant';
+  locale: AppLocale;
   text: string;
   image?: LlmImage;
   geoScope: GeoScope;

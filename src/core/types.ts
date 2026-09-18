@@ -1,6 +1,8 @@
 /** OriginWise client types — keep in sync with server schema (PR 4). */
 
-export type Locale = 'en' | 'zh-Hant';
+import type { Locale } from './i18n/locales';
+
+export type { Locale };
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -48,6 +50,17 @@ export type RelationTier = 'none' | 'indirect' | 'direct' | 'unknown';
 
 export type RegionCode = 'CN' | 'HK' | 'TW' | 'MO' | 'OTHER' | 'UNKNOWN';
 
+export type PartKind = 'part' | 'spare' | 'ingredient' | 'component';
+
+export type ProductPart = {
+  name: string;
+  kind?: PartKind;
+  originCountry?: string;
+  madeIn?: string;
+  chinaRelated?: boolean;
+  note?: string;
+};
+
 export type ChinaRelationType =
   | 'ownership'
   | 'subsidiary'
@@ -90,6 +103,7 @@ export type CheckResult = {
     manufacturerCountry?: string;
     category?: string;
     componentsOrigin?: string;
+    parts?: ProductPart[];
     notes?: string[];
   };
   company?: {

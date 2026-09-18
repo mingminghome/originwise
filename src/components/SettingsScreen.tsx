@@ -1,8 +1,8 @@
+import { LOCALES } from '../core/i18n';
 import {
   ALL_DIMENSIONS,
   type CheckDimension,
   type GeoScope,
-  type Locale,
   type ThemeMode,
 } from '../core/types';
 import type { AppState } from '../hooks/useAppState';
@@ -57,19 +57,16 @@ export function SettingsScreen({ state }: { state: AppState }) {
       <section className="card">
         <h2 className="section-title">{t('settings.language')}</h2>
         <div className="chip-row">
-          {(
-            [
-              ['en', 'English'],
-              ['zh-Hant', '繁體中文'],
-            ] as const
-          ).map(([id, label]) => (
+          {LOCALES.map(({ id, nativeName, tag }) => (
             <button
               key={id}
               type="button"
+              lang={tag}
+              aria-pressed={settings.locale === id}
               className={`chip ${settings.locale === id ? 'active' : ''}`}
-              onClick={() => patch({ locale: id as Locale })}
+              onClick={() => patch({ locale: id })}
             >
-              {label}
+              {nativeName}
             </button>
           ))}
         </div>

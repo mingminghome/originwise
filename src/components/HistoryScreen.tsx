@@ -1,14 +1,16 @@
 import { Image as ImageIcon, Trash2 } from 'lucide-react';
 import { trackEvent } from '../core/analytics/track';
+import { localeTag } from '../core/i18n';
+import type { Locale } from '../core/types';
 import type { AppState } from '../hooks/useAppState';
 import { InstallAppBanner } from './InstallAppBanner';
 import { TierBadge } from './TierBadge';
 
-function formatWhen(iso: string, locale: string): string {
+function formatWhen(iso: string, locale: Locale): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
   try {
-    return d.toLocaleString(locale === 'zh-Hant' ? 'zh-Hant' : 'en', {
+    return d.toLocaleString(localeTag(locale), {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',

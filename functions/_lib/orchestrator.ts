@@ -59,7 +59,7 @@ export type OrchestratorEnv = LlmEnv &
 
 export type OrchestratorInput = {
   jobId: string;
-  locale: 'en' | 'zh-Hant';
+  locale: string;
   text: string;
   image?: LlmImage;
   geoScope: GeoScope;
