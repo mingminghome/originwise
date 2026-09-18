@@ -92,16 +92,17 @@ export function selectDefaultSearchModels(listedIds: string[]): string[] {
     .filter((id) => id && searchGroundingPool(id) === 'default');
   const uniq = [...new Set(ids)];
   uniq.sort((a, b) => defaultPoolRank(a) - defaultPoolRank(b) || b.localeCompare(a));
-  return uniq;
+  return uniq.slice(0, DEFAULT_POOL_TRY_CAP);
 }
 
-/** Keep per-call short so a 0/0 Search 429 cannot stall the whole pass. */
-const INTERACTIONS_FETCH_MS = 8000;
-const GENERATE_CONTENT_FETCH_MS = 7000;
+/** Default-pool Search (robotics ER) often needs ~10–20s, not a 7s abort. */
+const INTERACTIONS_FETCH_MS = 20000;
+const GENERATE_CONTENT_FETCH_MS = 25000;
 /** Gemini 3 Search is often 0/0 — stop that family after this many 429s. */
-const MAX_GEMINI3_SEARCH_FAILS = 2;
-/** Hard cap for the whole web pass (orchestrator still continues without it). */
-const WEB_PASS_BUDGET_MS = 45000;
+const MAX_GEMINI3_SEARCH_FAILS = 1;
+/** One or two Default-pool attempts; Search itself is slow. */
+const WEB_PASS_BUDGET_MS = 40000;
+const DEFAULT_POOL_TRY_CAP = 2;
 
 export function isWebLookupEnabled(env: WebResearchEnv): boolean {
   const raw = String(env.WEB_LOOKUP ?? 'auto')
@@ -407,6 +408,7 @@ async function callInteractionsSearch(
     const posted = await postInteractions(url, apiKey, model, prompt);
     if ('code' in posted && posted.ok === false) {
       last = posted;
+      if (posted.code === 'upstream_unavailable') return last;
       continue;
     }
     const { res, raw } = posted as { res: Response; raw: string };
@@ -496,20 +498,12 @@ async function callGeminiGrounded(
   model: string,
   prompt: string
 ): Promise<GroundedCall> {
-  const gemini3 = isGemini3SearchFamily(model);
-  const first = gemini3 ? callInteractionsSearch : callGenerateContentSearch;
-  const second = gemini3 ? callGenerateContentSearch : callInteractionsSearch;
-  const a = await first(apiKey, model, prompt);
-  if (a.ok) return a;
-  const b = await second(apiKey, model, prompt);
-  if (b.ok) return b;
-  if (
-    a.code === 'search_grounding_unavailable' ||
-    b.code === 'search_grounding_unavailable'
-  ) {
-    return { ok: false, code: 'search_grounding_unavailable' };
+  // Default-pool Search (robotics / Gemma) is generateContent + google_search.
+  // Trying Interactions as well doubled timeouts (~40s) and aborted live searches.
+  if (isGemini3SearchFamily(model)) {
+    return callInteractionsSearch(apiKey, model, prompt);
   }
-  return b.code !== 'upstream_error' ? b : a;
+  return callGenerateContentSearch(apiKey, model, prompt);
 }
 
 /**

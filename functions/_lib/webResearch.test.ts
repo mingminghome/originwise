@@ -86,7 +86,6 @@ describe('searchGroundingPool / selectDefaultSearchModels', () => {
     assert.deepEqual(selected, [
       'gemini-robotics-er-2-preview',
       'gemini-robotics-er-1.6-preview',
-      'gemma-4-31b-it',
     ]);
     assert.ok(!selected.includes('gemini-3.8-flash'));
   });
@@ -366,9 +365,8 @@ describe('runWebResearch', () => {
     assert.equal(out.ok, false);
     assert.equal(out.error, 'search_grounding_unavailable');
     assert.equal(modelsTried[0], 'gemini-robotics-er-2-preview');
-    assert.ok(modelsTried.includes('gemma-4-31b-it'));
+    assert.ok(modelsTried.includes('gemini-robotics-er-1.6-preview'));
     assert.ok(!modelsTried.includes('gemini-3.8-flash'));
-    assert.ok(modelsTried.length >= 3);
   });
 
   it('uses pinned GEMINI_WEB_MODEL first', async () => {
