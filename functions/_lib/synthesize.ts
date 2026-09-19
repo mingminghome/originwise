@@ -154,12 +154,20 @@ function extractFactors(
       // ambiguous relation without geo — do not invent CN link
       continue;
     }
-    if (STRONG_REL.has(type) || strength === 'strong') {
+    // Ownership-class types only. strength "strong" on manufacturing/supply
+    // is still a component/supply link, not HQ/parent control.
+    if (STRONG_REL.has(type)) {
       if (inScope(rr, geoScope) || type === 'state_owned_cn') {
         F_OWNERSHIP_STRONG_CN = true;
       }
-    } else if (WEAK_REL.has(type) || strength === 'weak' || strength === 'moderate') {
-      if (inScope(rr, geoScope)) F_OWNERSHIP_WEAK_CN = true;
+    } else if (
+      inScope(rr, geoScope) &&
+      (WEAK_REL.has(type) ||
+        strength === 'weak' ||
+        strength === 'moderate' ||
+        strength === 'strong')
+    ) {
+      F_OWNERSHIP_WEAK_CN = true;
     }
   }
 

@@ -63,6 +63,59 @@ describe('synthesize decision table', () => {
     assert.ok(r.tierReasons.includes('hq_cn'));
   });
 
+  it('EU assembly + China textiles/parts → indirect, not direct', () => {
+    const r = synthesize({
+      jobId: 't-stokke-shape',
+      geoScope: 'prc',
+      partials: {
+        product: {
+          name: 'Stroller',
+          brand: 'Brand',
+          madeIn: 'Netherlands',
+          originCountry: 'Norway',
+          manufacturer: 'Brand AS',
+          manufacturerCountry: 'Norway',
+          componentsOrigin:
+            'Europe, China, Taiwan, India, Pakistan, and Turkey',
+          parts: [
+            {
+              name: 'Aluminum chassis',
+              kind: 'part',
+              madeIn: 'Europe',
+            },
+            {
+              name: 'Textiles',
+              kind: 'part',
+              madeIn: 'China, India, Pakistan, and Turkey',
+              chinaRelated: true,
+            },
+          ],
+        },
+        company: {
+          name: 'Brand AS',
+          hqCountry: 'Norway',
+          parents: [
+            { name: 'HoldCo EU', country: 'Belgium', control: 'majority' },
+            { name: 'HoldCo KR', country: 'South Korea', control: 'wholly' },
+          ],
+          chinaRelations: [
+            {
+              type: 'manufacturing',
+              country: 'China',
+              strength: 'strong',
+              note: 'Textiles and some plastics sourced in China',
+            },
+          ],
+        },
+      },
+    });
+    assert.equal(r.relationTier, 'indirect');
+    assert.ok(r.tierReasons.includes('component_cn'));
+    assert.equal(r.tierReasons.includes('ownership_strong_cn'), false);
+    assert.equal(r.tierReasons.includes('made_in_cn'), false);
+    assert.equal(r.tierReasons.includes('hq_cn'), false);
+  });
+
   it('CN ingredient with JP made-in → indirect (component)', () => {
     const r = synthesize({
       jobId: 't-parts',
