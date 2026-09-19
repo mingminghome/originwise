@@ -14,10 +14,12 @@ import {
   clampTier,
   type AgentPartials,
   type CheckResult,
+  type CompanyPartial,
   type GraphEdge,
   type GraphNode,
   type PartKind,
   type ProductPart,
+  type ProductPartial,
   type RelationTier,
 } from './schema';
 import {
@@ -478,6 +480,26 @@ function clampAltTier(raw: unknown): RelationTier | undefined {
 const CN_TEXT =
   /\b(china|prc|mainland\s*china|people'?s\s*republic|made\s*in\s*cn|manufactured\s*in\s*china|中國|中国|中國大陸|中国大陆)\b/i;
 
+/** Named plant / COO — not "designed in HQ". */
+const FACTORY_EVIDENCE =
+  /\b(factory|plant|assembled in|assembly plant|oem|odm|manufacturing (?:site|base|hub|plant)|final assembl|country of origin|coo label)\b|工廠|厂区|廠區|組裝廠|组装厂|生產基地|生产基地|最終組裝|最终组装|產線|产线/i;
+
+/** Stereotype: treat design country as the factory. */
+const DESIGN_AND_MFG_CLAIM =
+  /設計.{0,12}(與|和|及).{0,8}(製造|生產|制造|生产)|製造.{0,12}(與|和|及).{0,8}設計|制造.{0,12}(与|和|及).{0,8}设计|designed.{0,24}manufactur|design(?:ed)?.{0,16}(?:and|&).{0,12}(?:made|manufactur|produced)/i;
+
+const DENIES_CN_MFG =
+  /\b(?:not|never)\s+(?:made|produced|manufactured|assembled)\s+in\s+china\b|non[\s-]?china\s+(?:made|production|manufactur)|outside\s+(?:of\s+)?china|非中國(?:生產|製造|產製|产制)|非中国(?:生产|制造|产制)|不是中國(?:製|造|生產)|不是中国(?:制|造|生产)/i;
+
+const DISTRIBUTOR_NAME =
+  /總代理|独家代理|獨家代理|代理商|exclusive\s+(?:distributor|agent)|local\s+(?:distributor|agent|importer)|official\s+distributor|進口商|进口商|經銷商|经销商|授權代理|授权代理/i;
+
+const MARKET_DESK_SUFFIX =
+  /(?:^|[\s\-_/（(])(?:tw|twn|taiwan|台灣|台湾|hk|hong\s*kong)\)?\s*$/i;
+
+const HOLDING_NAME =
+  /\b(?:group|holdings?|nv|plc|se|inc|ltd|llc|corp(?:oration)?)\b|集團|集团|控股|實業|实业|工業|工业/i;
+
 /** Lower = better as a "lower China involvement" alternative. */
 const ALT_TIER_RANK: Record<RelationTier, number> = {
   none: 0,
@@ -494,6 +516,106 @@ type SanitizedAlt = {
   originCountry?: string;
   hqCountry?: string;
 };
+
+function labelsMatch(a?: string, b?: string): boolean {
+  if (!a || !b) return false;
+  const na = a.trim().toLowerCase();
+  const nb = b.trim().toLowerCase();
+  if (na === nb) return true;
+  const sa = na.replace(/[^a-z0-9\u4e00-\u9fff]+/g, '');
+  const sb = nb.replace(/[^a-z0-9\u4e00-\u9fff]+/g, '');
+  return sa.length >= 2 && sa === sb;
+}
+
+/** madeIn is only the brand/design country, not an independent factory COO. */
+function madeInCopiedFromBrandOrigin(raw: {
+  madeIn?: string;
+  originCountry?: string;
+  hqCountry?: string;
+  note?: string;
+}): boolean {
+  const madeIn = raw.madeIn?.trim();
+  if (!madeIn) return false;
+  const madeRegion = normalizeRegion(madeIn);
+  if (madeRegion === 'CN' || madeRegion === 'UNKNOWN') return false;
+  const note = raw.note || '';
+  const copied =
+    labelsMatch(madeIn, raw.originCountry) || labelsMatch(madeIn, raw.hqCountry);
+  if (FACTORY_EVIDENCE.test(note) && !DESIGN_AND_MFG_CLAIM.test(note)) {
+    return false;
+  }
+  return copied;
+}
+
+export function looksLikeDistributorParent(name: string): boolean {
+  const n = name.trim();
+  if (!n) return true;
+  if (DISTRIBUTOR_NAME.test(n)) return true;
+  if (MARKET_DESK_SUFFIX.test(n) && !HOLDING_NAME.test(n)) return true;
+  return false;
+}
+
+function sanitizeProduct(
+  p?: ProductPartial | null
+): ProductPartial | null | undefined {
+  if (!p) return p;
+  const noteBlob = (p.notes ?? []).join(' ');
+  const madeCopied = madeInCopiedFromBrandOrigin({
+    madeIn: p.madeIn,
+    originCountry: p.originCountry,
+    note: noteBlob,
+  });
+  const mfgCopied = madeInCopiedFromBrandOrigin({
+    madeIn: p.manufacturedIn,
+    originCountry: p.originCountry,
+    note: noteBlob,
+  });
+  if (!madeCopied && !mfgCopied) return p;
+  const notes = [...(p.notes ?? [])];
+  notes.push(
+    'Made-in omitted: it matched brand/design country without factory/COO evidence.'
+  );
+  return {
+    ...p,
+    madeIn: madeCopied ? undefined : p.madeIn,
+    manufacturedIn: mfgCopied ? undefined : p.manufacturedIn,
+    notes,
+  };
+}
+
+function sanitizeCompany(
+  c?: CompanyPartial | null
+): CompanyPartial | null | undefined {
+  if (!c) return c;
+  const rawParents = c.parents ?? [];
+  const parents = rawParents.filter(
+    (p) => p?.name && !looksLikeDistributorParent(p.name)
+  );
+  const dropped = rawParents.length - parents.length;
+  const chinaRelations = (c.chinaRelations ?? []).map((rel) => {
+    const blob = `${rel.type ?? ''} ${rel.note ?? ''}`;
+    const dist = DISTRIBUTOR_NAME.test(blob);
+    const ownership = /ownership|subsidiary|parent|owned_by|hq|controlling/.test(
+      String(rel.type ?? '').toLowerCase()
+    );
+    if (dist && ownership) {
+      return { ...rel, type: 'retail', strength: 'weak' };
+    }
+    return rel;
+  });
+  const notes = [...(c.notes ?? [])];
+  if (dropped > 0) {
+    notes.push(
+      'Local distributor / market agent omitted from parents (not a legal owner).'
+    );
+  }
+  return {
+    ...c,
+    parents: parents.length ? parents : undefined,
+    chinaRelations: chinaRelations.length ? chinaRelations : c.chinaRelations,
+    notes: notes.length ? notes : c.notes,
+  };
+}
 
 /**
  * Sanitize LLM alternative tiers so we don't claim "Unrelated" for items
@@ -524,6 +646,17 @@ function sanitizeAlternative(
     ? String(raw.hqCountry).trim().slice(0, 80)
     : undefined;
   const noteRaw = raw.note ? String(raw.note).trim().slice(0, 220) : '';
+  const hqCopied = madeInCopiedFromBrandOrigin({
+    madeIn,
+    originCountry,
+    hqCountry,
+    note: noteRaw,
+  });
+  // Design/HQ country is not a factory COO — do not recommend as lower-CN.
+  if (hqCopied) return null;
+  if (DENIES_CN_MFG.test(noteRaw) && !FACTORY_EVIDENCE.test(noteRaw)) {
+    return null;
+  }
   const blob = [madeIn, originCountry, hqCountry, noteRaw, raw.manufacturedIn]
     .filter(Boolean)
     .join(' ');
@@ -617,9 +750,24 @@ function finalizeAlternativesList(
  * Deterministic synthesize. Safe for Workers CPU budget.
  */
 export function synthesize(input: SynthesizeInput): CheckResult {
-  const { jobId, geoScope, partials } = input;
+  const { jobId, geoScope } = input;
+  const partials: AgentPartials = {
+    ...input.partials,
+    product: sanitizeProduct(input.partials.product) ?? input.partials.product,
+    company: sanitizeCompany(input.partials.company) ?? input.partials.company,
+  };
   const f = extractFactors(partials, geoScope);
   let { tier, tierReasons } = decideTier(f);
+  const madeInOmitted = (partials.product?.notes ?? []).some((n) =>
+    String(n).includes('Made-in omitted:')
+  );
+  if (madeInOmitted && tier === 'none') {
+    // Brand/design country is not factory evidence for "Unrelated".
+    tier = 'unknown';
+    if (!tierReasons.includes('insufficient')) {
+      tierReasons = [...tierReasons, 'insufficient'];
+    }
+  }
 
   const confCandidates = [
     partials.product?.confidence,
@@ -644,6 +792,12 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   // Surface multi-layer origin notes (users often only read caveats)
   if (partials.product?.notes?.length) {
     for (const n of partials.product.notes.slice(0, 3)) {
+      const s = String(n).trim();
+      if (s) caveats.push(s);
+    }
+  }
+  if (partials.company?.notes?.length) {
+    for (const n of partials.company.notes.slice(0, 2)) {
       const s = String(n).trim();
       if (s) caveats.push(s);
     }

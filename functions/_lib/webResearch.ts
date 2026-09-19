@@ -199,9 +199,13 @@ Use Google Search to find CURRENT public facts about the product/brand/company b
 Respond in ${lang}.
 
 Collect and summarize (bullet points, dense, factual):
-1) Brand home market / design origin
-2) Legal manufacturer / parent company HQ country (Taiwan is NOT China)
-3) Typical "Made in" / country of origin for this model or product line (note market variants)
+1) Brand home market / design origin (this is NOT the factory country)
+2) Legal parent / holding company HQ country (Taiwan is NOT China). Exclusive distributors,
+   importers, local agents, and "Brand TW" market desks are NOT parents — list them separately
+   if at all.
+3) Typical "Made in" / country of origin for this model or product line: factory, assembly
+   plant, or on-label COO. Note market variants. Do not copy "designed in" / brand nationality
+   into made-in.
 4) Mainland China links: ownership, manufacturing, assembly, major suppliers
 5) Isolate major parts, spare parts, or ingredients AND where THEY are typically made
    (not only the finished unit). Food/cosmetics: key ingredients. Devices: battery, board,
@@ -210,10 +214,11 @@ Collect and summarize (bullet points, dense, factual):
 
 Rules:
 - Prefer official brand sites, retailer product pages, Wikipedia, company filings, reputable news.
-- Distinguish brand HQ vs factory vs final assembly for a specific SKU.
+- Distinguish four layers: design HQ vs legal parent vs local distributor vs factory/COO.
+- Two brands sharing a local distributor does not mean one owns the other.
 - Taiwan (TW) companies (e.g. Foxconn/Hon Hai) are Taiwan — never call them China.
 - If sources conflict, list both and say which is more specific to the model.
-- If little is found, say so clearly — do not invent registry data.
+- If little is found, say so clearly — do not invent registry data or factory countries.
 - Keep under ~400 words. No markdown code fences.
 
 ENTITY: ${opts.entity.slice(0, 200)}

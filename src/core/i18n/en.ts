@@ -241,7 +241,7 @@ export const en: MessageTree = {
     altBrands: 'Lower China-involvement brands (estimated)',
     altProducts: 'Lower China-involvement products (estimated)',
     altDisclaimer:
-      'Only substitutes estimated as not Direct China-linked (no made-in China fillers). A US/EU HQ alone does not prove non-China manufacture. Unclear made-in is Unknown, not Unrelated.',
+      'Only substitutes estimated as not Direct China-linked (no made-in China fillers). A US/EU HQ or “designed in …” is not made-in. Unclear factory country is omitted or Unknown, not Unrelated.',
     estimated: 'est.',
     twNote: 'Taiwan is treated as a separate country and never as China-related for tiers.',
     region: {

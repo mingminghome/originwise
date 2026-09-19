@@ -14,6 +14,12 @@ type AltItem = {
 const CN_HINT =
   /\b(china|prc|mainland\s*china|people'?s\s*republic|made\s*in\s*cn|manufactured\s*in\s*china|中國|中国|中國大陸|中国大陆)\b/i;
 
+const DESIGN_MFG_STEREOTYPE =
+  /設計.{0,12}(與|和|及).{0,8}(製造|生產|制造|生产)|designed.{0,24}manufactur|design(?:ed)?.{0,16}(?:and|&).{0,12}(?:made|manufactur|produced)/i;
+
+const DENY_CN_MFG =
+  /非中國(?:生產|製造|產製)|非中国(?:生产|制造)|not made in china|not manufactured in china/i;
+
 /**
  * Client-side safety net: never show Direct / made-in-China items under
  * "lower China-involvement" (covers old cached history entries too).
@@ -23,6 +29,13 @@ export function isLowerChinaCandidate(b: AltItem): boolean {
   if (b.madeIn && CN_HINT.test(b.madeIn)) return false;
   if (b.originCountry && CN_HINT.test(b.originCountry) && !b.madeIn) return false;
   if (b.note && CN_HINT.test(b.note) && (!b.madeIn || CN_HINT.test(b.madeIn))) {
+    return false;
+  }
+  const note = b.note || '';
+  if (
+    b.relationTier === 'none' &&
+    (DESIGN_MFG_STEREOTYPE.test(note) || DENY_CN_MFG.test(note))
+  ) {
     return false;
   }
   return true;

@@ -174,3 +174,159 @@ describe('synthesize decision table', () => {
     assert.equal(r.relationTier, 'indirect');
   });
 });
+
+describe('product made-in vs design HQ', () => {
+  it('does not treat design-country madeIn as factory evidence', () => {
+    const r = synthesize({
+      jobId: 'mfg-copy',
+      geoScope: 'prc',
+      companySkipped: true,
+      partials: {
+        product: {
+          name: 'Stroller',
+          originCountry: 'Netherlands',
+          madeIn: 'Netherlands',
+          notes: ['Dutch design and manufacture.'],
+        },
+      },
+    });
+    assert.equal(r.product?.madeIn, undefined);
+    assert.notEqual(r.relationTier, 'none');
+    assert.ok(r.caveats.some((c) => /brand\/design country/i.test(c)));
+  });
+});
+
+describe('parent vs distributor sanitizer', () => {
+  it('omits market-desk / distributor names from parents and graph', () => {
+    const r = synthesize({
+      jobId: 'parent-dist',
+      geoScope: 'prc',
+      partials: {
+        product: { name: 'Stroller', brand: 'BrandA', madeIn: 'China' },
+        company: {
+          name: 'BrandA',
+          hqCountry: 'Netherlands',
+          parents: [
+            { name: 'OtherBrand TW', country: 'Taiwan', control: 'majority' },
+            { name: 'Holding Group', country: 'Taiwan', control: 'wholly' },
+          ],
+        },
+      },
+    });
+    const names = r.company?.parents?.map((p) => p.name) ?? [];
+    assert.deepEqual(names, ['Holding Group']);
+    assert.equal(
+      r.graph.nodes.some((n) => n.label === 'OtherBrand TW'),
+      false
+    );
+    assert.ok(
+      r.caveats.some((c) => /distributor/i.test(c)),
+      'explains omitted distributor'
+    );
+  });
+
+  it('keeps a real holding-company parent', () => {
+    const r = synthesize({
+      jobId: 'parent-keep',
+      geoScope: 'prc',
+      productSkipped: true,
+      partials: {
+        company: {
+          name: 'BrandA',
+          hqCountry: 'Taiwan',
+          parents: [
+            { name: 'Example Holding Group', country: 'Taiwan', control: 'wholly' },
+          ],
+        },
+      },
+    });
+    assert.equal(r.company?.parents?.[0]?.name, 'Example Holding Group');
+  });
+});
+
+describe('alternative sanitizer', () => {
+  it('drops peers that copy design HQ into madeIn and deny China', () => {
+    const r = synthesize({
+      jobId: 'alt-hq-copy',
+      geoScope: 'prc',
+      companySkipped: true,
+      partials: {
+        product: {
+          name: 'Stroller',
+          madeIn: 'China',
+          originCountry: 'Netherlands',
+        },
+        alternatives: {
+          products: [
+            {
+              name: 'Peer EU stroller',
+              madeIn: 'Netherlands',
+              originCountry: 'Netherlands',
+              relationTier: 'none',
+              note: 'Dutch design and manufacture, not China production.',
+            },
+            {
+              name: '同款歐系推車',
+              madeIn: '荷蘭',
+              originCountry: '荷蘭',
+              relationTier: 'none',
+              note: '荷蘭設計與製造，非中國生產。',
+            },
+          ],
+        },
+      },
+    });
+    assert.equal(r.alternatives?.products?.length ?? 0, 0);
+  });
+
+  it('keeps an alternative whose factory country differs from HQ', () => {
+    const r = synthesize({
+      jobId: 'alt-factory',
+      geoScope: 'prc',
+      companySkipped: true,
+      partials: {
+        product: { name: 'Purifier', madeIn: 'China', originCountry: 'Japan' },
+        alternatives: {
+          products: [
+            {
+              name: 'Other purifier',
+              madeIn: 'Poland',
+              originCountry: 'Japan',
+              hqCountry: 'Japan',
+              relationTier: 'none',
+              note: 'UK/EU units often final-assembled at the Ostaszewo plant in Poland.',
+            },
+          ],
+        },
+      },
+    });
+    assert.equal(r.alternatives?.products?.[0]?.name, 'Other purifier');
+    assert.equal(r.alternatives?.products?.[0]?.relationTier, 'none');
+    assert.equal(r.alternatives?.products?.[0]?.madeIn, 'Poland');
+  });
+
+  it('does not treat HQ-only (no madeIn) as Unrelated', () => {
+    const r = synthesize({
+      jobId: 'alt-hq-only',
+      geoScope: 'prc',
+      companySkipped: true,
+      partials: {
+        product: { name: 'Vac', madeIn: 'China' },
+        alternatives: {
+          brands: [
+            {
+              name: 'EU brand',
+              hqCountry: 'USA',
+              relationTier: 'none',
+              note: 'American brand.',
+            },
+          ],
+        },
+      },
+    });
+    const b = r.alternatives?.brands?.[0];
+    assert.ok(b);
+    assert.notEqual(b?.relationTier, 'none');
+  });
+});
+
