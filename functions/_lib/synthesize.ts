@@ -480,13 +480,9 @@ function clampAltTier(raw: unknown): RelationTier | undefined {
 const CN_TEXT =
   /\b(china|prc|mainland\s*china|people'?s\s*republic|made\s*in\s*cn|manufactured\s*in\s*china|中國|中国|中國大陸|中国大陆)\b/i;
 
-/** Named plant / COO — not "designed in HQ". */
+/** Named plant / COO — not the mere word "factory" / 工廠產地. */
 const FACTORY_EVIDENCE =
-  /\b(factory|plant|assembled in|assembly plant|oem|odm|manufacturing (?:site|base|hub|plant)|final assembl|country of origin|coo label)\b|工廠|厂区|廠區|組裝廠|组装厂|生產基地|生产基地|最終組裝|最终组装|產線|产线/i;
-
-/** Stereotype: treat design country as the factory. */
-const DESIGN_AND_MFG_CLAIM =
-  /設計.{0,12}(與|和|及).{0,8}(製造|生產|制造|生产)|製造.{0,12}(與|和|及).{0,8}設計|制造.{0,12}(与|和|及).{0,8}设计|designed.{0,24}manufactur|design(?:ed)?.{0,16}(?:and|&).{0,12}(?:made|manufactur|produced)/i;
+  /\b(assembled in|assembly plant|manufacturing (?:site|base|hub|plant)|final assembl)\b|[A-Z][A-Za-z]+(?:\s[A-Z][A-Za-z]+)*\s+plant\b|組裝廠|组装厂|生產基地|生产基地|最終組裝|最终组装|廠區|厂区|產線|产线/i;
 
 const DENIES_CN_MFG =
   /\b(?:not|never)\s+(?:made|produced|manufactured|assembled)\s+in\s+china\b|non[\s-]?china\s+(?:made|production|manufactur)|outside\s+(?:of\s+)?china|非中國(?:生產|製造|產製|产制)|非中国(?:生产|制造|产制)|不是中國(?:製|造|生產)|不是中国(?:制|造|生产)/i;
@@ -538,13 +534,9 @@ function madeInCopiedFromBrandOrigin(raw: {
   if (!madeIn) return false;
   const madeRegion = normalizeRegion(madeIn);
   if (madeRegion === 'CN' || madeRegion === 'UNKNOWN') return false;
-  const note = raw.note || '';
-  const copied =
-    labelsMatch(madeIn, raw.originCountry) || labelsMatch(madeIn, raw.hqCountry);
-  if (FACTORY_EVIDENCE.test(note) && !DESIGN_AND_MFG_CLAIM.test(note)) {
-    return false;
-  }
-  return copied;
+  return (
+    labelsMatch(madeIn, raw.originCountry) || labelsMatch(madeIn, raw.hqCountry)
+  );
 }
 
 export function looksLikeDistributorParent(name: string): boolean {

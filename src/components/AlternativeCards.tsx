@@ -18,7 +18,17 @@ const DESIGN_MFG_STEREOTYPE =
   /設計.{0,12}(與|和|及).{0,8}(製造|生產|制造|生产)|designed.{0,24}manufactur|design(?:ed)?.{0,16}(?:and|&).{0,12}(?:made|manufactur|produced)/i;
 
 const DENY_CN_MFG =
-  /非中國(?:生產|製造|產製)|非中国(?:生产|制造)|not made in china|not manufactured in china/i;
+  /非中國(?:生產|製造|產製|地區|地区)|非中国(?:生产|制造|地区)|not made in china|not manufactured in china/i;
+
+function sameGeoLabel(a?: string, b?: string): boolean {
+  if (!a || !b) return false;
+  const na = a.trim().toLowerCase();
+  const nb = b.trim().toLowerCase();
+  if (na === nb) return true;
+  const sa = na.replace(/[^a-z0-9\u4e00-\u9fff]+/g, '');
+  const sb = nb.replace(/[^a-z0-9\u4e00-\u9fff]+/g, '');
+  return sa.length >= 2 && sa === sb;
+}
 
 /**
  * Client-side safety net: never show Direct / made-in-China items under
@@ -35,6 +45,14 @@ export function isLowerChinaCandidate(b: AltItem): boolean {
   if (
     b.relationTier === 'none' &&
     (DESIGN_MFG_STEREOTYPE.test(note) || DENY_CN_MFG.test(note))
+  ) {
+    return false;
+  }
+  // Brand/design country copied into madeIn is not factory evidence.
+  if (
+    b.relationTier === 'none' &&
+    b.madeIn &&
+    (sameGeoLabel(b.madeIn, b.originCountry) || sameGeoLabel(b.madeIn, b.hqCountry))
   ) {
     return false;
   }

@@ -245,6 +245,33 @@ describe('parent vs distributor sanitizer', () => {
 });
 
 describe('alternative sanitizer', () => {
+  it('drops peers that copy design HQ into madeIn even if the note says 工廠產地', () => {
+    const r = synthesize({
+      jobId: 'alt-hq-copy-factory-word',
+      geoScope: 'prc',
+      companySkipped: true,
+      partials: {
+        product: {
+          name: 'Stroller',
+          madeIn: 'China',
+          originCountry: 'Netherlands',
+        },
+        alternatives: {
+          products: [
+            {
+              name: 'US-designed stroller',
+              madeIn: '美國',
+              originCountry: '美國',
+              relationTier: 'none',
+              note: '美國品牌與設計，工廠產地與供應鏈主要集中於北美及非中國地區，無中國大陸控股。',
+            },
+          ],
+        },
+      },
+    });
+    assert.equal(r.alternatives?.products?.length ?? 0, 0);
+  });
+
   it('drops peers that copy design HQ into madeIn and deny China', () => {
     const r = synthesize({
       jobId: 'alt-hq-copy',

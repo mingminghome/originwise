@@ -42,6 +42,19 @@ describe('isLowerChinaCandidate', () => {
     );
   });
 
+  it('hides Unrelated cards that copy brand country into madeIn', () => {
+    assert.equal(
+      isLowerChinaCandidate({
+        name: 'US-designed stroller',
+        relationTier: 'none',
+        madeIn: '美國',
+        originCountry: '美國',
+        note: '美國品牌與設計，工廠產地與供應鏈主要集中於北美及非中國地區，無中國大陸控股。',
+      }),
+      false
+    );
+  });
+
   it('keeps a factory-country alternative that is not China', () => {
     assert.equal(
       isLowerChinaCandidate({
