@@ -527,19 +527,19 @@ const ALT_NAME_STOP = new Set([
   'the',
   'and',
   'for',
-  'stroller',
-  'pushchair',
-  'buggy',
+  'with',
+  'from',
   'car',
   'seat',
   'baby',
   'next',
-  'mixx',
-  'vista',
   'system',
+  'brand',
+  'series',
+  'model',
 ]);
 
-/** First Latin brand token (ignore "Mixx", "stroller", parenthetical agents). */
+/** First Latin brand token (skip generic words and parenthetical agents). */
 function coreBrandKey(raw: string): string {
   const cut = raw.replace(/[（(].*$/, '').trim().toLowerCase();
   const m = cut.match(/[a-z][a-z0-9]{2,}/);

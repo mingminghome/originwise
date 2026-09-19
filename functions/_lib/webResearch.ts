@@ -208,16 +208,15 @@ Collect and summarize (bullet points, dense, factual):
    into made-in.
 4) Mainland China links: ownership, manufacturing, assembly, major suppliers
 5) Isolate major parts, spare parts, or ingredients AND where THEY are typically made
-   (not only the finished unit). Food/cosmetics: key ingredients. Devices: battery, board,
-   display, motor, optics, etc. when public. Flag mainland China vs other countries.
+   (not only the finished unit). Flag mainland China vs other countries.
 6) Any recent ownership changes
 
 Rules:
 - Prefer official brand sites, retailer product pages, Wikipedia, company filings, reputable news.
 - Distinguish four layers: design HQ vs legal parent vs local distributor vs factory/COO.
 - Two brands sharing a local distributor does not mean one owns the other.
-- Homonyms: if two companies share an English name, split them by category and parent (e.g. textiles/wipes vs strollers/car seats). Do not mix their factories.
-- China+1 / partial move of fabrics or parts to Vietnam/Taiwan is not the finished-unit "Made in" unless the label for THIS SKU says so.
+- Same spelling can be two companies: split by category and legal parent. Do not mix their factories.
+- Talk of moving some parts or assembly out of China is not the finished-unit "Made in" unless the label for THIS SKU says so.
 - Taiwan (TW) companies (e.g. Foxconn/Hon Hai) are Taiwan — never call them China.
 - If sources conflict, list both and say which is more specific to the model and category.
 - If little is found, say so clearly — do not invent registry data or factory countries.

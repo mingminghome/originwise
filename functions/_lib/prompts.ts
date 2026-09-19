@@ -26,49 +26,41 @@ const PRODUCT_FACT_RULES = `
 MULTI-LAYER ORIGIN (critical — do not collapse into one country):
 Products often have SEPARATE layers. Report each layer; never substitute one for another.
 
-1) originCountry = brand design / brand home market (e.g. Sharp → Japan). Not the factory.
+1) originCountry = brand design / brand home market. Not the factory.
 2) manufacturerCountry = legal manufacturer domicile (often same as brand HQ).
 3) madeIn / manufacturedIn = FINAL legal country of origin for THIS unit/SKU:
    - Prefer packaging "Made in …" / "Country of origin" / retailer COO for this exact model.
-   - Final assembly or EU/UK localization plant counts as madeIn when that is the official stamp
-     (e.g. Sharp Consumer Electronics Poland in Ostaszewo for some EU/UK SKUs → madeIn "Poland").
-   - Do NOT put brand HQ or global Asia factory into madeIn when the unit is labeled elsewhere.
-4) componentsOrigin = where major parts / global line may be built (Thailand, China, etc.) when
-   different from final madeIn. Use free text (e.g. "Thailand and/or China for global PE30 line").
+   - Final assembly or a regional localization plant counts as madeIn when that is the official stamp.
+   - Do NOT put brand HQ or a generic global factory into madeIn when the unit is labeled elsewhere.
+4) componentsOrigin = where major parts / the global line may be built when different from final madeIn.
 5) parts[] — ALWAYS isolate from THIS product (do not wait for the user to list them):
    - Infer typical major BOM / recipe / service items for this category and SKU from
      web research, packaging/OCR, and product knowledge.
-   - Food, drink, cosmetics, supplements → ingredients. Devices/tools → parts and common spares.
+   - Consumables (food, drink, cosmetics, supplements) → ingredients. Goods with a bill of materials → parts and common spares.
    - kind: "part" | "spare" | "ingredient" | "component"
    - madeIn / originCountry per item; chinaRelated true ONLY for mainland China (never Taiwan).
    - Unknown origin: omit chinaRelated or false; say unknown in note. Do not invent China.
    - Max 8. Skip trivia; keep items that can change a China-relation judgment.
-6) notes[] MUST explain multi-layer cases when layers differ, e.g.:
-   "Brand Japan; compact PE30 line often Thailand/China globally; UK UA-PE30U-WB units frequently final-assembled/packaged in Poland for Europe/UK — use label if it says Made in Poland."
+6) notes[] MUST explain multi-layer cases when layers differ (brand vs components vs final COO).
 
 SKU / MARKET RULES:
-- Full model strings matter (e.g. UA-PE30U-WB vs UA-PE30E-WB vs other Sharp purifiers).
-- Market suffixes (U = UK plug, E = EU, etc.) often mean localization at a regional hub — COO can be Poland even if the family is also made in Thailand/China elsewhere.
-- NEVER set madeIn=China only because "many appliances are made in China" or the brand is Japanese.
-- NEVER invent China when the user or label says Poland/Thailand/EU.
+- Full model strings and market suffixes matter; the same family can have different COO by region.
+- NEVER set madeIn=China only because "many goods in this category are made in China" or because of brand nationality.
+- NEVER invent China when the user or label names another country.
 - If exact SKU made-in is uncertain: madeIn "unknown", lower confidence, and put candidates in notes — do not guess China.
 - Photo/OCR "Made in" / "Country of origin" ALWAYS beats brand stereotypes and generic web guesses.
 
 DESIGN HQ ≠ FACTORY (critical):
 - originCountry = brand/design home. madeIn = factory / legal COO for this SKU. Never substitute one for the other.
 - NEVER copy HQ, "designed in …", or brand nationality into madeIn.
-- EU/US brand marketing is not evidence of EU/US manufacture. Durable goods (strollers, car seats, appliances, electronics, furniture, toys) are often designed in the HQ country and assembled in China or Southeast Asia.
+- Brand marketing from a non-PRC country is not evidence of manufacture there. Many goods are designed at HQ and assembled elsewhere (often mainland China).
 - A note like "designed and manufactured in {HQ country}" with no named plant, city, or COO label is a stereotype — set madeIn "unknown".
 - Named factory, assembly plant, or on-label COO for THIS SKU may set madeIn. "Designed in X" must never set madeIn.
 
-HOMONYMS AND CHINA+1 (critical):
-- The same English brand string can be two companies. Match on category + legal parent, never the Latin name alone.
-- Do not copy made-in from a same-named line in a different category (textiles, wipes, apparel vs strollers, car seats, hard goods).
-- "China+1", "some fabrics/parts in Vietnam/Taiwan", or forum rumors of a supply shift are componentsOrigin only. They do not set madeIn for the finished unit unless THIS SKU's label/COO says so.
-- A Vietnam/Taiwan factory for wipes or cloth of a look-alike name does not make a stroller/car seat "made in Vietnam/Taiwan".
-
-WORKED PATTERN (illustrative — still verify against label/model knowledge):
-- Query "Sharp UA-PE30U-WB": originCountry Japan; madeIn often Poland for UK-market units (European assembly/distribution hub); componentsOrigin may note Thailand (and sometimes China for other Sharp purifier lines, not necessarily this compact SKU); parts[] isolate HEPA/filter, fan motor, plastics when known; notes explain layers.
+SAME NAME / SUPPLY-SHIFT (critical):
+- The same brand spelling can be two unrelated companies. Match on category + legal parent, never the name string alone.
+- Do not copy made-in from a same-named product in a different category.
+- Rumors or policy talk of moving some parts/assembly out of China are componentsOrigin only. They do not set madeIn for the finished unit unless THIS SKU's label/COO says so.
 `.trim();
 
 const COMPANY_FACT_RULES = `
@@ -88,18 +80,18 @@ PARENT vs LOCAL DISTRIBUTOR (critical — never collapse):
 
 const ALTERNATIVES_FACT_RULES = `
 ALTERNATIVES PURPOSE (critical — this is the whole point of the list):
-- Suggest substitute brands/products the user could choose INSTEAD — ones with NO mainland China manufacture when possible, or CLEARLY LOWER China involvement than the checked item (e.g. made in JP/EU/US/TW/KR/VN with non-PRC HQ).
+- Suggest substitute brands/products the user could choose INSTEAD — ones with NO mainland China manufacture when possible, or CLEARLY LOWER China involvement than the checked item.
 - Do NOT list peers that are also typically made in China / PRC-owned just because they are "similar". Those are not useful alternatives here.
 - Prefer: non-CN made-in + non-PRC HQ/ownership. Next: mixed supply but lower CN share than the query item. Never pad with high-CN options.
 - If you cannot name credible lower-CN options, return empty arrays rather than China-heavy fillers.
 
 ALTERNATIVES ACCURACY:
-- Many appliances, strollers, car seats, electronics, and toys are MADE IN CHINA even if brand HQ is US/EU/NL/IT/DE — do not treat HQ or "designed in" as non-China.
+- Brand HQ or "designed in" is not non-China manufacture. Many goods are still made in mainland China.
 - NEVER set madeIn (or originCountry) to the brand HQ / design country unless you have factory or COO evidence for that SKU (named plant, city, label, or reputable spec). If factory is unknown, omit the item.
-- NEVER invent a non-China factory country (Vietnam, Taiwan, Thailand, Mexico, …) because of China+1 rumors, a homonymous textile/wipes brand, or "some parts moved". Finished-unit COO for THIS category only.
-- NEVER write notes that claim "not made in China" / "不依賴中國製造" / "designed and manufactured in {HQ}" without a named plant or on-label COO for this SKU/category.
+- NEVER invent a non-China factory country from supply-shift rumors, a same-spelling brand in another category, or "some parts moved". Finished-unit COO for THIS query's category only.
+- NEVER write notes that claim "not made in China" / "designed and manufactured in {HQ}" without a named plant or on-label COO for this SKU and category.
 - Do not suggest the same brand as the query, or a sibling brand from the same parent/factory group, as a lower-CN substitute.
-- Do not mix two companies that share an English name but differ in category (wipes/textiles vs strollers/car seats).
+- Do not mix two companies that share a name but differ in category or legal parent.
 - relationTier "none" ONLY if factory/COO (not design HQ) is clearly outside mainland China AND ownership is not PRC-controlled.
 - made-in China/PRC → "direct" (do not include such items as alternatives unless nothing else exists and you must mark them honestly — prefer empty).
 - Unclear factory country → omit the item (do not list it as "none" or fill madeIn from HQ or from a same-name other category).
@@ -251,15 +243,15 @@ export function buildVerifyPrompt(opts: {
   return `Cross-check product vs company partials for contradictions. Respond in ${lang}.
 ${GEO_POLICY}
 NOT automatic conflicts (use caveats instead):
-- Brand HQ Japan + madeIn Poland/Thailand/China (multi-layer origin is normal).
-- componentsOrigin Asia + madeIn Poland (final assembly vs components).
+- Brand HQ in one country + madeIn in another (multi-layer origin is normal).
+- componentsOrigin in one region + madeIn elsewhere (final assembly vs components).
 Real conflicts to flag:
 - Parent listed as China when it is Taiwan (Foxconn/Hon Hai is TW).
 - Parent is a local distributor / importer / "Brand TW" market desk rather than a legal owner.
 - madeIn is just the brand HQ / "designed in" country with no factory/COO evidence (stereotype).
 - madeIn contradicts explicit packaging OCR if both are present.
 - Invented China when notes/OCR say otherwise.
-- Invented non-China factory (copying HQ into madeIn) when notes only mention design.
+- Invented non-China factory (copying HQ into madeIn, or using another category/homonym) when notes only mention design or a supply-shift rumor.
 Return ONLY JSON:
 {"consistent":true,"conflicts":["string"],"confidence":0.0,"caveats":["string"]}
 
@@ -278,7 +270,7 @@ export function buildDualCorePrompt(opts: {
   const lang = langLabel(opts.locale);
   const imageRule = opts.hasImage
     ? '- Packaging photo attached: prioritize Made in / Country of origin / model on the label over brand stereotypes.'
-    : '- No photo; honor exact model/SKU. Multi-layer: brand Japan ≠ madeIn; final COO for this SKU goes in madeIn; Asia plants may be componentsOrigin only.';
+    : '- No photo; honor exact model/SKU. Multi-layer: brand HQ ≠ madeIn; final COO for this SKU goes in madeIn; other plants may be componentsOrigin only.';
   return `You are OriginWise. Extract product origin and company facts related to China (PRC). Respond in ${lang}.
 ${GEO_POLICY}
 ${PRODUCT_FACT_RULES}
@@ -318,19 +310,19 @@ GOAL (exact user intent):
 - This is NOT "similar products regardless of origin". Do not list China-made peers, PRC brands, or typical Made-in-China clones as alternatives.
 
 SELECTION PRIORITY (best → acceptable → never):
-1. Best: factory/COO outside mainland China (e.g. JP, KR, TW, EU, US, VN, TH, MX, etc.) AND non-PRC HQ/ownership → relationTier "none" when confident. Factory country must not be guessed from HQ.
+1. Best: factory/COO outside mainland China AND non-PRC HQ/ownership → relationTier "none" when confident. Factory country must not be guessed from HQ or from a same-name other category.
 2. Acceptable: mixed assembly/components but still materially less PRC-linked than the query item → "indirect", explain why lower involvement in note.
 3. Never: items typically made in mainland China, PRC HQ/controlled lines, or items whose factory country is unknown / only "designed in HQ". Prefer empty arrays over high-CN or HQ-copied fillers.
 
 ACCURACY (do not mislead):
-- US/EU/NL/IT brand HQ or "designed in …" does NOT mean non-China manufacture.
+- Brand HQ or "designed in …" does NOT mean non-China manufacture.
 - Always set madeIn to the factory/COO country when known — never copy originCountry/hqCountry into madeIn.
 - relationTier:
   - "none" = factory/COO clearly outside mainland China AND company not PRC-controlled
   - "indirect" = weaker/mixed PRC links, still lower than a typical CN-made product
   - "direct" = made in CN / strong PRC control — do not include these as alternatives
   - "unknown" when factory country is unclear — omit the item rather than invent "none"
-- Notes must state factory/COO country and why China involvement is lower (e.g. "Assembled in Poland; HQ JP" / "Made in Vietnam, non-PRC parent").
+- Notes must state factory/COO country and why China involvement is lower. Name a plant or label COO when claiming a country.
 
 Return ONLY JSON:
 {"brands":[{"name":"string","madeIn":"string","hqCountry":"string","relationTier":"none|indirect|direct|unknown","note":"string"}],"products":[{"name":"string","madeIn":"string","originCountry":"string","relationTier":"none|indirect|direct|unknown","note":"string"}]}
