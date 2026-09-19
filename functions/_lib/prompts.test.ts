@@ -36,6 +36,14 @@ describe('origin accuracy prompt contracts', () => {
     });
     assert.match(p, /designed in/i);
     assert.match(p, /never copy originCountry\/hqCountry into madeIn/i);
+    assert.match(p, /homonym/i);
+    assert.match(p, /China\+1/);
+  });
+
+  it('tells the product agent not to mix homonymous factories or China+1 rumors', () => {
+    const p = buildProductPrompt({ locale: 'en', entity: 'stroller' });
+    assert.match(p, /HOMONYMS AND CHINA\+1/);
+    assert.match(p, /different category/);
   });
 
   it('asks verify to flag distributor-as-parent and HQ-copied madeIn', () => {

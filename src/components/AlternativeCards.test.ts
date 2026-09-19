@@ -42,6 +42,29 @@ describe('isLowerChinaCandidate', () => {
     );
   });
 
+  it('hides cards that claim 不依賴中國製造 or 非中國廠區', () => {
+    assert.equal(
+      isLowerChinaCandidate({
+        name: 'Lookalike brand',
+        relationTier: 'none',
+        madeIn: '越南',
+        hqCountry: '荷蘭',
+        note: '總部設於荷蘭，嬰幼兒推車與汽座主要產地為越南，不依賴中國製造。',
+      }),
+      false
+    );
+    assert.equal(
+      isLowerChinaCandidate({
+        name: 'UK-market brand',
+        relationTier: 'indirect',
+        madeIn: '台灣',
+        hqCountry: '英國',
+        note: '部分產線轉移至台灣或非中國廠區。',
+      }),
+      false
+    );
+  });
+
   it('hides Unrelated cards that copy brand country into madeIn', () => {
     assert.equal(
       isLowerChinaCandidate({

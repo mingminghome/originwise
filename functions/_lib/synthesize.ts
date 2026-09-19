@@ -480,12 +480,12 @@ function clampAltTier(raw: unknown): RelationTier | undefined {
 const CN_TEXT =
   /\b(china|prc|mainland\s*china|people'?s\s*republic|made\s*in\s*cn|manufactured\s*in\s*china|中國|中国|中國大陸|中国大陆)\b/i;
 
-/** Named plant / COO — not the mere word "factory" / 工廠產地. */
+/** Named plant / COO — not 工廠產地, 廠區, 產線, or China+1 rumors. */
 const FACTORY_EVIDENCE =
-  /\b(assembled in|assembly plant|manufacturing (?:site|base|hub|plant)|final assembl)\b|[A-Z][A-Za-z]+(?:\s[A-Z][A-Za-z]+)*\s+plant\b|組裝廠|组装厂|生產基地|生产基地|最終組裝|最终组装|廠區|厂区|產線|产线/i;
+  /\b(assembled in|assembly plant|manufacturing (?:site|base|hub|plant)|final assembl)\b|[A-Z][A-Za-z]+(?:\s[A-Z][A-Za-z]+)*\s+plant\b|組裝廠|组装厂|生產基地|生产基地|最終組裝|最终组装/i;
 
 const DENIES_CN_MFG =
-  /\b(?:not|never)\s+(?:made|produced|manufactured|assembled)\s+in\s+china\b|non[\s-]?china\s+(?:made|production|manufactur)|outside\s+(?:of\s+)?china|非中國(?:生產|製造|產製|产制)|非中国(?:生产|制造|产制)|不是中國(?:製|造|生產)|不是中国(?:制|造|生产)/i;
+  /\b(?:not|never)\s+(?:made|produced|manufactured|assembled)\s+in\s+china\b|non[\s-]?china\s+(?:made|production|manufactur)|outside\s+(?:of\s+)?china|does\s+not\s+rely\s+on\s+china|不依賴中國|不依赖中国|非中國(?:生產|製造|產製|产制|廠區|厂区|地區|地区)|非中国(?:生产|制造|产制|厂区|地区)|不是中國(?:製|造|生產)|不是中国(?:制|造|生产)/i;
 
 const DISTRIBUTOR_NAME =
   /總代理|独家代理|獨家代理|代理商|exclusive\s+(?:distributor|agent)|local\s+(?:distributor|agent|importer)|official\s+distributor|進口商|进口商|經銷商|经销商|授權代理|授权代理/i;
@@ -521,6 +521,43 @@ function labelsMatch(a?: string, b?: string): boolean {
   const sa = na.replace(/[^a-z0-9\u4e00-\u9fff]+/g, '');
   const sb = nb.replace(/[^a-z0-9\u4e00-\u9fff]+/g, '');
   return sa.length >= 2 && sa === sb;
+}
+
+const ALT_NAME_STOP = new Set([
+  'the',
+  'and',
+  'for',
+  'stroller',
+  'pushchair',
+  'buggy',
+  'car',
+  'seat',
+  'baby',
+  'next',
+  'mixx',
+  'vista',
+  'system',
+]);
+
+/** First Latin brand token (ignore "Mixx", "stroller", parenthetical agents). */
+function coreBrandKey(raw: string): string {
+  const cut = raw.replace(/[（(].*$/, '').trim().toLowerCase();
+  const m = cut.match(/[a-z][a-z0-9]{2,}/);
+  if (!m) return '';
+  if (ALT_NAME_STOP.has(m[0])) return '';
+  return m[0];
+}
+
+function isSameBrandAlt(altName: string, seeds: string[]): boolean {
+  const a = coreBrandKey(altName);
+  if (!a) return false;
+  for (const seed of seeds) {
+    const k = coreBrandKey(seed);
+    if (k && a === k) return true;
+    const low = seed.toLowerCase();
+    if (low.includes(a) && a.length >= 4) return true;
+  }
+  return false;
 }
 
 /** madeIn is only the brand/design country, not an independent factory COO. */
@@ -623,10 +660,13 @@ function sanitizeAlternative(
     hqCountry?: string;
     manufacturedIn?: string;
   },
-  geoScope: GeoScope
+  geoScope: GeoScope,
+  querySeeds: string[] = []
 ): SanitizedAlt | null {
   const name = String(raw.name ?? '').trim().slice(0, 80);
   if (!name) return null;
+  if (isSameBrandAlt(name, querySeeds)) return null;
+  if (/代理|distributor|exclusive agent/i.test(name)) return null;
 
   const madeIn = raw.madeIn
     ? String(raw.madeIn).trim().slice(0, 80)
@@ -646,7 +686,13 @@ function sanitizeAlternative(
   });
   // Design/HQ country is not a factory COO — do not recommend as lower-CN.
   if (hqCopied) return null;
-  if (DENIES_CN_MFG.test(noteRaw) && !FACTORY_EVIDENCE.test(noteRaw)) {
+  const namedPlant = FACTORY_EVIDENCE.test(noteRaw);
+  if (DENIES_CN_MFG.test(noteRaw) && !namedPlant) {
+    return null;
+  }
+  // A country name without a named plant/COO is not factory evidence
+  // (homonyms, China+1 rumors, "主要產地為越南").
+  if (madeIn && !namedPlant) {
     return null;
   }
   const blob = [madeIn, originCountry, hqCountry, noteRaw, raw.manufacturedIn]
@@ -862,12 +908,20 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   }
 
   const alts = partials.alternatives;
+  const querySeeds = [
+    p?.brand,
+    p?.name,
+    id?.brand,
+    id?.name,
+    input.queryText,
+  ].filter((s): s is string => Boolean(s && String(s).trim()));
   const brandsSan = finalizeAlternativesList(
     (alts?.brands ?? [])
       .map((b) =>
         sanitizeAlternative(
           b as Parameters<typeof sanitizeAlternative>[0],
-          geoScope
+          geoScope,
+          querySeeds
         )
       )
       .filter((x): x is SanitizedAlt => Boolean(x)),
@@ -878,7 +932,8 @@ export function synthesize(input: SynthesizeInput): CheckResult {
       .map((b) =>
         sanitizeAlternative(
           b as Parameters<typeof sanitizeAlternative>[0],
-          geoScope
+          geoScope,
+          querySeeds
         )
       )
       .filter((x): x is SanitizedAlt => Boolean(x)),

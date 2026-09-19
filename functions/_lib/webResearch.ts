@@ -216,8 +216,10 @@ Rules:
 - Prefer official brand sites, retailer product pages, Wikipedia, company filings, reputable news.
 - Distinguish four layers: design HQ vs legal parent vs local distributor vs factory/COO.
 - Two brands sharing a local distributor does not mean one owns the other.
+- Homonyms: if two companies share an English name, split them by category and parent (e.g. textiles/wipes vs strollers/car seats). Do not mix their factories.
+- China+1 / partial move of fabrics or parts to Vietnam/Taiwan is not the finished-unit "Made in" unless the label for THIS SKU says so.
 - Taiwan (TW) companies (e.g. Foxconn/Hon Hai) are Taiwan — never call them China.
-- If sources conflict, list both and say which is more specific to the model.
+- If sources conflict, list both and say which is more specific to the model and category.
 - If little is found, say so clearly — do not invent registry data or factory countries.
 - Keep under ~400 words. No markdown code fences.
 

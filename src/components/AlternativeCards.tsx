@@ -18,7 +18,7 @@ const DESIGN_MFG_STEREOTYPE =
   /設計.{0,12}(與|和|及).{0,8}(製造|生產|制造|生产)|designed.{0,24}manufactur|design(?:ed)?.{0,16}(?:and|&).{0,12}(?:made|manufactur|produced)/i;
 
 const DENY_CN_MFG =
-  /非中國(?:生產|製造|產製|地區|地区)|非中国(?:生产|制造|地区)|not made in china|not manufactured in china/i;
+  /不依賴中國|不依赖中国|非中國(?:生產|製造|產製|廠區|厂区|地區|地区)|非中国(?:生产|制造|厂区|地区)|not made in china|not manufactured in china|does not rely on china/i;
 
 function sameGeoLabel(a?: string, b?: string): boolean {
   if (!a || !b) return false;
@@ -42,20 +42,22 @@ export function isLowerChinaCandidate(b: AltItem): boolean {
     return false;
   }
   const note = b.note || '';
+  const tier = b.relationTier;
   if (
-    b.relationTier === 'none' &&
+    (tier === 'none' || tier === 'indirect') &&
     (DESIGN_MFG_STEREOTYPE.test(note) || DENY_CN_MFG.test(note))
   ) {
     return false;
   }
   // Brand/design country copied into madeIn is not factory evidence.
   if (
-    b.relationTier === 'none' &&
+    (tier === 'none' || tier === 'indirect') &&
     b.madeIn &&
     (sameGeoLabel(b.madeIn, b.originCountry) || sameGeoLabel(b.madeIn, b.hqCountry))
   ) {
     return false;
   }
+  if (/代理|distributor/i.test(b.name)) return false;
   return true;
 }
 

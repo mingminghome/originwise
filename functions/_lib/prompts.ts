@@ -61,6 +61,12 @@ DESIGN HQ ≠ FACTORY (critical):
 - A note like "designed and manufactured in {HQ country}" with no named plant, city, or COO label is a stereotype — set madeIn "unknown".
 - Named factory, assembly plant, or on-label COO for THIS SKU may set madeIn. "Designed in X" must never set madeIn.
 
+HOMONYMS AND CHINA+1 (critical):
+- The same English brand string can be two companies. Match on category + legal parent, never the Latin name alone.
+- Do not copy made-in from a same-named line in a different category (textiles, wipes, apparel vs strollers, car seats, hard goods).
+- "China+1", "some fabrics/parts in Vietnam/Taiwan", or forum rumors of a supply shift are componentsOrigin only. They do not set madeIn for the finished unit unless THIS SKU's label/COO says so.
+- A Vietnam/Taiwan factory for wipes or cloth of a look-alike name does not make a stroller/car seat "made in Vietnam/Taiwan".
+
 WORKED PATTERN (illustrative — still verify against label/model knowledge):
 - Query "Sharp UA-PE30U-WB": originCountry Japan; madeIn often Poland for UK-market units (European assembly/distribution hub); componentsOrigin may note Thailand (and sometimes China for other Sharp purifier lines, not necessarily this compact SKU); parts[] isolate HEPA/filter, fan motor, plastics when known; notes explain layers.
 `.trim();
@@ -90,10 +96,13 @@ ALTERNATIVES PURPOSE (critical — this is the whole point of the list):
 ALTERNATIVES ACCURACY:
 - Many appliances, strollers, car seats, electronics, and toys are MADE IN CHINA even if brand HQ is US/EU/NL/IT/DE — do not treat HQ or "designed in" as non-China.
 - NEVER set madeIn (or originCountry) to the brand HQ / design country unless you have factory or COO evidence for that SKU (named plant, city, label, or reputable spec). If factory is unknown, omit the item.
-- NEVER write notes that claim "not made in China" / "designed and manufactured in {HQ}" without that factory/COO evidence.
+- NEVER invent a non-China factory country (Vietnam, Taiwan, Thailand, Mexico, …) because of China+1 rumors, a homonymous textile/wipes brand, or "some parts moved". Finished-unit COO for THIS category only.
+- NEVER write notes that claim "not made in China" / "不依賴中國製造" / "designed and manufactured in {HQ}" without a named plant or on-label COO for this SKU/category.
+- Do not suggest the same brand as the query, or a sibling brand from the same parent/factory group, as a lower-CN substitute.
+- Do not mix two companies that share an English name but differ in category (wipes/textiles vs strollers/car seats).
 - relationTier "none" ONLY if factory/COO (not design HQ) is clearly outside mainland China AND ownership is not PRC-controlled.
 - made-in China/PRC → "direct" (do not include such items as alternatives unless nothing else exists and you must mark them honestly — prefer empty).
-- Unclear factory country → omit the item (do not list it as "none" or fill madeIn from HQ).
+- Unclear factory country → omit the item (do not list it as "none" or fill madeIn from HQ or from a same-name other category).
 - Max 6 each; short notes must state factory/COO country and why China involvement is lower.
 `.trim();
 

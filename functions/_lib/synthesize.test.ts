@@ -245,6 +245,65 @@ describe('parent vs distributor sanitizer', () => {
 });
 
 describe('alternative sanitizer', () => {
+  it('drops a same-name brand alt that invents Vietnam / 不依賴中國製造', () => {
+    const r = synthesize({
+      jobId: 'alt-homonym-vn',
+      geoScope: 'prc',
+      queryText: 'nuna mixx',
+      companySkipped: true,
+      partials: {
+        product: {
+          name: 'Nuna Mixx',
+          brand: 'Nuna',
+          madeIn: 'China',
+          originCountry: 'Netherlands',
+        },
+        alternatives: {
+          brands: [
+            {
+              name: 'Nuna',
+              madeIn: '越南',
+              hqCountry: '荷蘭',
+              relationTier: 'none',
+              note: '總部設於荷蘭，嬰幼兒推車與汽座主要產地為越南，不依賴中國製造。',
+            },
+            {
+              name: 'Lookalike brand',
+              madeIn: '越南',
+              hqCountry: '荷蘭',
+              relationTier: 'none',
+              note: '總部設於荷蘭，嬰幼兒推車與汽座主要產地為越南，不依賴中國製造。',
+            },
+          ],
+        },
+      },
+    });
+    assert.equal(r.alternatives?.brands?.length ?? 0, 0);
+  });
+
+  it('drops a sibling-style alt that claims Taiwan / 非中國廠區 without a named plant', () => {
+    const r = synthesize({
+      jobId: 'alt-tw-rumor',
+      geoScope: 'prc',
+      companySkipped: true,
+      partials: {
+        product: { name: 'Stroller', madeIn: 'China', originCountry: 'Netherlands' },
+        alternatives: {
+          brands: [
+            {
+              name: 'UK-market stroller brand (local agent)',
+              madeIn: '台灣',
+              hqCountry: '英國',
+              relationTier: 'indirect',
+              note: '英國品牌，部分高階款式或特定零組件生產線轉移至台灣或非中國廠區，具備較低之中國供應鏈佔比。',
+            },
+          ],
+        },
+      },
+    });
+    assert.equal(r.alternatives?.brands?.length ?? 0, 0);
+  });
+
   it('drops peers that copy design HQ into madeIn even if the note says 工廠產地', () => {
     const r = synthesize({
       jobId: 'alt-hq-copy-factory-word',
