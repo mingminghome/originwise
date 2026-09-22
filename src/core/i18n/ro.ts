@@ -58,6 +58,7 @@ export const ro = {
       'API-ul de verificare vine într-un PR ulterior. Istoricul și setările sunt gata.',
     photoTooLarge: 'Fotografia este încă prea mare după comprimare.',
     photoInvalid: 'Nu s-a putut citi acea imagine.',
+    dropPhoto: 'Trage fotografia aici',
     unnamedPhoto: '(foto)',
     partsTitle: 'Piese, rezerve și ingrediente',
     partsHint:

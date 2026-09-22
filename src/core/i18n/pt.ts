@@ -58,6 +58,7 @@ export const pt = {
       'A API de verificação chega num PR posterior. Histórico e definições já estão prontos.',
     photoTooLarge: 'A foto continua demasiado grande após a compressão.',
     photoInvalid: 'Não foi possível ler essa imagem.',
+    dropPhoto: 'Largue a foto aqui',
     unnamedPhoto: '(foto)',
     partsTitle: 'Peças, reservas e ingredientes',
     partsHint:

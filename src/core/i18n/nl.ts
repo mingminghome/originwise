@@ -58,6 +58,7 @@ export const nl = {
       'De check-API komt in een latere PR. Geschiedenis en instellingen zijn klaar.',
     photoTooLarge: 'Foto is na comprimeren nog te groot.',
     photoInvalid: 'Die afbeelding kon niet worden gelezen.',
+    dropPhoto: 'Sleep de foto hierheen',
     unnamedPhoto: '(foto)',
     partsTitle: 'Onderdelen, reservedelen en ingrediënten',
     partsHint:

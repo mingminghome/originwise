@@ -58,6 +58,7 @@ export const fr = {
       'L’API de contrôle arrive dans une PR ultérieure. Historique et réglages sont prêts.',
     photoTooLarge: 'La photo reste trop volumineuse après compression.',
     photoInvalid: 'Impossible de lire cette image.',
+    dropPhoto: 'Déposez la photo ici',
     unnamedPhoto: '(photo)',
     partsTitle: 'Pièces, rechanges et ingrédients',
     partsHint:

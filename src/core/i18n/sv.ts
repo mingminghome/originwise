@@ -58,6 +58,7 @@ export const sv = {
       'Koll-API:t kommer i en senare PR. Historik och inställningar är redo.',
     photoTooLarge: 'Fotot är fortfarande för stort efter komprimering.',
     photoInvalid: 'Kunde inte läsa den bilden.',
+    dropPhoto: 'Släpp fotot här',
     unnamedPhoto: '(foto)',
     partsTitle: 'Delar, reservdelar och ingredienser',
     partsHint:

@@ -57,6 +57,7 @@ export const zhHant = {
     comingSoon: '查詢 API 將於後續版本提供。紀錄與設定已可用。',
     photoTooLarge: '壓縮後照片仍過大。',
     photoInvalid: '無法讀取此圖片。',
+    dropPhoto: '將照片拖放到這裡',
     unnamedPhoto: '（照片）',
     partsTitle: '零件、備件與食材',
     partsHint: '由本產品自動拆出：主要零件、備件或食材，以及是否看起來與中國相關。',

@@ -15,7 +15,13 @@ import {
   safeErrorCode,
   trackEvent,
 } from '../core/analytics/track';
-import { prepareCheckImage, type PreparedImage } from '../core/util/image';
+import {
+  imageFileFromTransfer,
+  imageFileFromTransferAsync,
+  prepareCheckImage,
+  transferMayContainImage,
+  type PreparedImage,
+} from '../core/util/image';
 import type { AppState } from '../hooks/useAppState';
 import type { CheckResult } from '../core/types';
 import { ProgressSteps } from './ProgressSteps';
@@ -64,8 +70,10 @@ export function CheckScreen({
   const [lastProvider, setLastProvider] = useState<string | null>(null);
   const [cached, setCached] = useState(false);
   const [progress, setProgress] = useState<ProgressStep[]>([]);
+  const [dropping, setDropping] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
+  const dropLeaveTimerRef = useRef(0);
   const runCheckRef = useRef<(opts?: { forceRefresh?: boolean }) => Promise<void>>(
     async () => undefined
   );
@@ -94,22 +102,25 @@ export function CheckScreen({
     [t]
   );
 
-  const onPickPhoto = async (file: File | null | undefined) => {
-    if (!file) return;
-    setError(null);
-    try {
-      const prepared = await prepareCheckImage(file);
-      setPhoto(prepared);
-    } catch (e) {
-      const code = e instanceof Error ? e.message : '';
-      if (code === 'image_too_large') setError(t('check.photoTooLarge'));
-      else setError(t('check.photoInvalid'));
-      setPhoto(null);
-    } finally {
-      if (cameraRef.current) cameraRef.current.value = '';
-      if (galleryRef.current) galleryRef.current.value = '';
-    }
-  };
+  const onPickPhoto = useCallback(
+    async (file: File | null | undefined) => {
+      if (!file) return;
+      setError(null);
+      try {
+        const prepared = await prepareCheckImage(file);
+        setPhoto(prepared);
+      } catch (e) {
+        const code = e instanceof Error ? e.message : '';
+        if (code === 'image_too_large') setError(t('check.photoTooLarge'));
+        else setError(t('check.photoInvalid'));
+        setPhoto(null);
+      } finally {
+        if (cameraRef.current) cameraRef.current.value = '';
+        if (galleryRef.current) galleryRef.current.value = '';
+      }
+    },
+    [t]
+  );
 
   const clearComposer = () => {
     setText('');
@@ -297,6 +308,77 @@ export function CheckScreen({
 
   runCheckRef.current = (opts) => runCheck(opts);
 
+  // Drop (Google-style) and paste (Gemini-style) attach a package photo.
+  useEffect(() => {
+    const clearLeaveTimer = () => {
+      if (dropLeaveTimerRef.current) {
+        window.clearTimeout(dropLeaveTimerRef.current);
+        dropLeaveTimerRef.current = 0;
+      }
+    };
+
+    const onDragOver = (e: DragEvent) => {
+      if (loading || autoRetrying) return;
+      if (!transferMayContainImage(e.dataTransfer)) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      clearLeaveTimer();
+      setDropping(true);
+    };
+
+    const onDragLeave = () => {
+      clearLeaveTimer();
+      dropLeaveTimerRef.current = window.setTimeout(() => {
+        setDropping(false);
+        dropLeaveTimerRef.current = 0;
+      }, 80);
+    };
+
+    const onDrop = (e: DragEvent) => {
+      const dt = e.dataTransfer;
+      const lookedLikeImage = transferMayContainImage(dt);
+      if (!lookedLikeImage) return;
+      e.preventDefault();
+      clearLeaveTimer();
+      setDropping(false);
+      if (loading || autoRetrying) return;
+      void imageFileFromTransferAsync(dt).then((file) => {
+        if (!file) setError(t('check.photoInvalid'));
+        else void onPickPhoto(file);
+      });
+    };
+
+    const onPaste = (e: ClipboardEvent) => {
+      if (loading || autoRetrying) return;
+      const target = e.target;
+      if (target instanceof HTMLElement) {
+        const field = target.closest(
+          'input, textarea, [contenteditable="true"]'
+        );
+        if (field && field.id !== 'check-input') return;
+      }
+      const file = imageFileFromTransfer(e.clipboardData);
+      if (!file) return;
+      e.preventDefault();
+      void onPickPhoto(file);
+    };
+
+    window.addEventListener('dragenter', onDragOver);
+    window.addEventListener('dragover', onDragOver);
+    window.addEventListener('dragleave', onDragLeave);
+    window.addEventListener('drop', onDrop);
+    window.addEventListener('paste', onPaste);
+    return () => {
+      clearLeaveTimer();
+      setDropping(false);
+      window.removeEventListener('dragenter', onDragOver);
+      window.removeEventListener('dragover', onDragOver);
+      window.removeEventListener('dragleave', onDragLeave);
+      window.removeEventListener('drop', onDrop);
+      window.removeEventListener('paste', onPaste);
+    };
+  }, [loading, autoRetrying, onPickPhoto, t]);
+
   // Countdown → auto-submit when free-server short/inflight limit clears
   useEffect(() => {
     if (autoRetryLeft == null) return;
@@ -405,7 +487,19 @@ export function CheckScreen({
             </div>
           ) : null}
 
-          <div className="check-search-row">
+          <div
+            className={
+              dropping
+                ? 'check-search-row check-search-row--drop'
+                : 'check-search-row'
+            }
+          >
+            {dropping ? (
+              <div className="check-drop-overlay" aria-hidden>
+                <ImagePlus size={18} strokeWidth={2} />
+                <span>{t('check.dropPhoto')}</span>
+              </div>
+            ) : null}
             <Sparkles
               size={18}
               className="check-search-icon"

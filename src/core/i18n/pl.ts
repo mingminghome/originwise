@@ -58,6 +58,7 @@ export const pl = {
       'API sprawdzania pojawi się w późniejszym PR. Historia i ustawienia są gotowe.',
     photoTooLarge: 'Zdjęcie jest nadal za duże po kompresji.',
     photoInvalid: 'Nie udało się odczytać tego obrazu.',
+    dropPhoto: 'Upuść zdjęcie tutaj',
     unnamedPhoto: '(zdjęcie)',
     partsTitle: 'Części, zamienniki i składniki',
     partsHint:

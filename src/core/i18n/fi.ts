@@ -58,6 +58,7 @@ export const fi = {
       'Tarkistus-API tulee myöhemmässä PR:ssä. Historia ja asetukset ovat valmiina.',
     photoTooLarge: 'Kuva on pakkauksen jälkeenkin liian suuri.',
     photoInvalid: 'Kuvaa ei voitu lukea.',
+    dropPhoto: 'Pudota kuva tähän',
     unnamedPhoto: '(kuva)',
     partsTitle: 'Osat, varaosat ja ainesosat',
     partsHint:

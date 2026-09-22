@@ -58,6 +58,7 @@ export const hu = {
       'Az ellenőrző API egy későbbi PR-ben jön. Az előzmények és a beállítások készen állnak.',
     photoTooLarge: 'A fotó tömörítés után is túl nagy.',
     photoInvalid: 'Ezt a képet nem sikerült beolvasni.',
+    dropPhoto: 'Húzza ide a fotót',
     unnamedPhoto: '(fotó)',
     partsTitle: 'Alkatrészek, pótalkatrészek és hozzávalók',
     partsHint:

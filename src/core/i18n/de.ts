@@ -58,6 +58,7 @@ export const de = {
       'Die Check-API kommt in einem späteren PR. Verlauf und Einstellungen sind bereit.',
     photoTooLarge: 'Foto ist nach der Kompression noch zu groß.',
     photoInvalid: 'Dieses Bild konnte nicht gelesen werden.',
+    dropPhoto: 'Foto hier ablegen',
     unnamedPhoto: '(Foto)',
     partsTitle: 'Teile, Ersatzteile & Zutaten',
     partsHint:

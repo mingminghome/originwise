@@ -58,6 +58,7 @@ export const da = {
       'Tjek-API’et kommer i en senere PR. Historik og indstillinger er klar.',
     photoTooLarge: 'Fotoet er stadig for stort efter komprimering.',
     photoInvalid: 'Kunne ikke læse det billede.',
+    dropPhoto: 'Slip foto her',
     unnamedPhoto: '(foto)',
     partsTitle: 'Dele, reservedele og ingredienser',
     partsHint:

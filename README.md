@@ -27,7 +27,7 @@ Useful for:
 
 | Area | What you get |
 |------|----------------|
-| **Text or photo check** | Product / brand name and optional packaging image (client compress) |
+| **Text or photo check** | Product / brand name and optional packaging image (camera, gallery, drop, or paste) |
 | **Relation tiers** | Origin, manufacturer, and company-link style badges (pure-TS synthesize) |
 | **Multi-agent AI** | Provider pool (Gemini / OpenAI / Grok / Claude) with SSE progress |
 | **Graph & alternatives** | Visual links plus optional alternative suggestions |
@@ -40,7 +40,7 @@ Taiwan is always treated as a **separate country** for relation tiers. AI result
 
 ## Features
 
-- **Text and/or packaging photo** — client-side compress before upload
+- **Text and/or packaging photo** — camera, gallery, drag-and-drop, or paste; client-side compress before upload
 - **Multi-agent pipeline** — AI pool (Gemini / OpenAI / Grok / Claude)
 - **SSE progress UI** — relation tier badges, region chips, graph, alternatives
 - **History + settings** — delete local data anytime

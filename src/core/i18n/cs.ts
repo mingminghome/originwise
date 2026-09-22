@@ -58,6 +58,7 @@ export const cs = {
       'API kontroly přijde v pozdějším PR. Historie a nastavení jsou připravené.',
     photoTooLarge: 'Fotka je po kompresi stále příliš velká.',
     photoInvalid: 'Tento obrázek se nepodařilo přečíst.',
+    dropPhoto: 'Přetáhněte fotku sem',
     unnamedPhoto: '(fotka)',
     partsTitle: 'Díly, náhradní díly a složky',
     partsHint:

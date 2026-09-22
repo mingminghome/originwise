@@ -61,6 +61,7 @@ export const en: MessageTree = {
       'Check API ships in a later PR. History and settings are ready.',
     photoTooLarge: 'Photo is too large after compress.',
     photoInvalid: 'Could not read that image.',
+    dropPhoto: 'Drop photo here',
     unnamedPhoto: '(photo)',
     partsTitle: 'Parts, spares & ingredients',
     partsHint:

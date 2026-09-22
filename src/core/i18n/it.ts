@@ -58,6 +58,7 @@ export const it = {
       'L’API di verifica arriverà in una PR successiva. Cronologia e impostazioni sono pronte.',
     photoTooLarge: 'La foto è ancora troppo grande dopo la compressione.',
     photoInvalid: 'Impossibile leggere questa immagine.',
+    dropPhoto: 'Rilascia la foto qui',
     unnamedPhoto: '(foto)',
     partsTitle: 'Parti, ricambi e ingredienti',
     partsHint:
