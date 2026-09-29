@@ -82,11 +82,11 @@ export const zhHant = {
     agentError: {
       upstream_quota: '配額／速率限制',
       upstream_error: '上游錯誤',
-      upstream_unavailable: '服務暫時不可用',
-      empty_response: '空回應',
+      upstream_unavailable: '逾時／服務暫時不可用',
+      empty_response: '網頁研究空回應',
       model_unavailable: '此 API 金鑰無法使用該模型',
       search_grounding_unavailable:
-        '此金鑰沒有 Google 搜尋 — 改用模型知識',
+        'Google 搜尋 grounding 不可用 — 改用模型知識',
       disabled: '已關閉',
       gemini_not_configured: '未設定 Gemini',
       no_entity: '無產品名稱',

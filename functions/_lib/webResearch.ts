@@ -12,9 +12,10 @@
  *   GEMINI_WEB_MODEL=…      optional pin for grounded search only
  *
  * Free-tier Search is a SEPARATE quota from text RPM/RPD (AI Studio → Tools):
- *   - Gemini 3 Search: often **0 / 0** — do not try these first
- *   - Gemini 2.5 Search / Gemini 2 Search: typically **1.5K RPD**
+ *   - Gemini 3 Search: often **0 / 0** — skipped in auto chain
+ *   - Gemini 2.5 Search / Gemini 2 Search: typically **1.5K RPD** (preferred)
  *   - Default Search: typically **1.5K RPD** (robotics ER, Gemma, …)
+ *   - WEB_SEARCH_MAX_ATTEMPTS caps cross-model retries (default 4)
  *
  * Docs:
  *   https://ai.google.dev/gemini-api/docs/google-search
@@ -28,6 +29,8 @@ export type WebResearchEnv = LlmEnv & {
   WEB_LOOKUP?: string;
   /** Override model for Google Search grounding only (not product/company agents). */
   GEMINI_WEB_MODEL?: string;
+  /** Max Search model attempts per job (default 4, hard cap 8). */
+  WEB_SEARCH_MAX_ATTEMPTS?: string;
 };
 
 export type WebResearchResult = {
@@ -95,6 +98,53 @@ export function selectDefaultSearchModels(listedIds: string[]): string[] {
   return uniq.slice(0, DEFAULT_POOL_TRY_CAP);
 }
 
+/** Prefer lite / flash within a Gemini 2.x Search family. */
+function flashFamilyRank(id: string): number {
+  const n = id.toLowerCase();
+  if (n.includes('flash-lite')) return 0;
+  if (n.includes('flash')) return 1;
+  if (n.includes('pro')) return 3;
+  return 2;
+}
+
+function pickPoolModels(
+  listedIds: string[],
+  pool: SearchGroundingPool,
+  cap: number
+): string[] {
+  const ids = listedIds
+    .map(stripModelPrefix)
+    .filter((id) => id && searchGroundingPool(id) === pool);
+  const uniq = [...new Set(ids)];
+  uniq.sort(
+    (a, b) => flashFamilyRank(a) - flashFamilyRank(b) || b.localeCompare(a)
+  );
+  return uniq.slice(0, cap);
+}
+
+/**
+ * Auto Search chain: Gemini 2.5 → Default → Gemini 2.
+ * Skips Gemini 3 (Search free tier often 0/0). Pin via GEMINI_WEB_MODEL to force.
+ */
+export function selectSearchModelChain(listedIds: string[]): string[] {
+  const gemini25 = pickPoolModels(listedIds, 'gemini25', GEMINI25_POOL_TRY_CAP);
+  const defaults = selectDefaultSearchModels(listedIds);
+  const gemini2 = pickPoolModels(listedIds, 'gemini2', GEMINI2_POOL_TRY_CAP);
+  const out: string[] = [];
+  for (const id of [...gemini25, ...defaults, ...gemini2]) {
+    if (!out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
+export function parseWebSearchMaxAttempts(env: WebResearchEnv): number {
+  const raw = String(env.WEB_SEARCH_MAX_ATTEMPTS ?? '').trim();
+  if (!raw) return DEFAULT_WEB_SEARCH_MAX_ATTEMPTS;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1) return DEFAULT_WEB_SEARCH_MAX_ATTEMPTS;
+  return Math.min(n, HARD_WEB_SEARCH_MAX_ATTEMPTS);
+}
+
 /** Default-pool Search (robotics ER) often needs ~10–20s, not a 7s abort. */
 const INTERACTIONS_FETCH_MS = 20000;
 const GENERATE_CONTENT_FETCH_MS = 25000;
@@ -103,6 +153,11 @@ const MAX_GEMINI3_SEARCH_FAILS = 1;
 /** One or two Default-pool attempts; Search itself is slow. */
 const WEB_PASS_BUDGET_MS = 40000;
 const DEFAULT_POOL_TRY_CAP = 2;
+const GEMINI25_POOL_TRY_CAP = 2;
+const GEMINI2_POOL_TRY_CAP = 1;
+/** Cap how many Search models we try per job (env WEB_SEARCH_MAX_ATTEMPTS). */
+const DEFAULT_WEB_SEARCH_MAX_ATTEMPTS = 4;
+const HARD_WEB_SEARCH_MAX_ATTEMPTS = 8;
 
 export function isWebLookupEnabled(env: WebResearchEnv): boolean {
   const raw = String(env.WEB_LOOKUP ?? 'auto')
@@ -185,7 +240,7 @@ export async function resolveWebSearchModels(
   const pin = pinnedWebModel(env);
   if (pin) return [pin];
   const listed = await listGenerateContentModelIds(apiKey);
-  return selectDefaultSearchModels(listed);
+  return selectSearchModelChain(listed);
 }
 
 function buildResearchPrompt(opts: {
@@ -563,11 +618,23 @@ export async function runWebResearch(opts: {
       error: 'search_grounding_unavailable',
     };
   }
+  const maxAttempts = parseWebSearchMaxAttempts(opts.env);
   let last = 'upstream_error';
   let gemini3Fails = 0;
   let timeouts = 0;
+  let attempts = 0;
   for (const model of models) {
-    if (Date.now() - t0 >= WEB_PASS_BUDGET_MS) break;
+    if (attempts >= maxAttempts) break;
+    if (Date.now() - t0 >= WEB_PASS_BUDGET_MS) {
+      if (last === 'upstream_error') last = 'upstream_unavailable';
+      break;
+    }
+    // Auto chain already skips Gemini 3; pinned Gemini 3 may still appear —
+    // after one Search 0/0 fail, skip further Gemini 3 ids but keep walking.
+    if (isGemini3SearchFamily(model) && gemini3Fails >= MAX_GEMINI3_SEARCH_FAILS) {
+      continue;
+    }
+    attempts += 1;
     const out = await callGeminiGrounded(apiKey, model, prompt);
     if (out.ok) {
       let brief = out.text.slice(0, BRIEF_MAX);
@@ -600,11 +667,8 @@ export async function runWebResearch(opts: {
       out.code === 'upstream_quota'
     ) {
       last = 'search_grounding_unavailable';
-      // Gemini 3 Search is often 0/0 — don't spend the rest of the budget there.
-      // Default / 2.x pools must still be tried even after several 429s.
       if (isGemini3SearchFamily(model)) {
         gemini3Fails += 1;
-        if (gemini3Fails >= MAX_GEMINI3_SEARCH_FAILS) break;
       }
       continue;
     }
@@ -612,6 +676,10 @@ export async function runWebResearch(opts: {
     if (out.code === 'upstream_unavailable') {
       timeouts += 1;
       if (timeouts >= 3) break;
+      continue;
+    }
+
+    if (out.code === 'empty_response') {
       continue;
     }
   }

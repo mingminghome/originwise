@@ -87,11 +87,11 @@ export const en: MessageTree = {
     agentError: {
       upstream_quota: 'quota / rate limit',
       upstream_error: 'upstream error',
-      upstream_unavailable: 'service unavailable',
-      empty_response: 'empty response',
+      upstream_unavailable: 'timed out / service unavailable',
+      empty_response: 'empty web reply',
       model_unavailable: 'model not available on this API key',
       search_grounding_unavailable:
-        'no Google Search on this API key — using model knowledge',
+        'Google Search grounding unavailable — using model knowledge',
       disabled: 'disabled',
       gemini_not_configured: 'Gemini not configured',
       no_entity: 'no product name',
