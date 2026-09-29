@@ -108,11 +108,18 @@ async function maybeWebResearch(
     agents: AgentMeta[];
   },
   emit: ProgressEmit
-): Promise<{ brief: string; used: boolean }> {
+): Promise<{ brief: string; used: boolean; error?: string }> {
   const { jobId, locale, entity, ocrText, env, agents } = opts;
   if (!isWebLookupEnabled(env)) {
     emit({ type: 'progress', jobId, step: 'web', status: 'skipped' });
-    return { brief: '', used: false };
+    agents.push({
+      id: 'web',
+      provider: 'gemini',
+      ok: false,
+      error: 'disabled',
+      ms: 0,
+    });
+    return { brief: '', used: false, error: 'disabled' };
   }
   emit({ type: 'progress', jobId, step: 'web', status: 'running' });
   const wr = await runWebResearch({ entity, ocrText, locale, env });
@@ -133,14 +140,15 @@ async function maybeWebResearch(
     });
     return { brief: wr.brief, used: true };
   }
+  const failCode = wr.error || 'empty_response';
   emit({
     type: 'progress',
     jobId,
     step: 'web',
     status: 'error',
-    detail: wr.error || 'empty',
+    detail: failCode,
   });
-  return { brief: '', used: false };
+  return { brief: '', used: false, error: failCode };
 }
 
 type JsonCallResult =
@@ -548,6 +556,7 @@ async function runMulti(
     companySkipped: !shouldRunCompany(dimensions),
     productSkipped: !shouldRunProduct(dimensions),
     webEnriched: web.used,
+    webFailCode: web.used ? undefined : web.error,
     partials: {
       identify,
       product,
@@ -647,6 +656,7 @@ async function runMonolith(
     companySkipped: !shouldRunCompany(dimensions),
     productSkipped: !shouldRunProduct(dimensions),
     webEnriched: web.used,
+    webFailCode: web.used ? undefined : web.error,
     partials: {
       product: shouldRunProduct(dimensions) ? product : null,
       company: shouldRunCompany(dimensions) ? company : null,
@@ -775,6 +785,7 @@ async function runDual(
     companySkipped: !shouldRunCompany(dimensions),
     productSkipped: !shouldRunProduct(dimensions),
     webEnriched: web.used,
+    webFailCode: web.used ? undefined : web.error,
     partials: {
       product: shouldRunProduct(dimensions) ? product : null,
       company: shouldRunCompany(dimensions) ? company : null,

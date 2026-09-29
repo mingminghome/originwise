@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { normalizeRegion, scopeSet } from './regions';
-import { synthesize } from './synthesize';
+import { synthesize, webFailCaveat } from './synthesize';
 
 describe('normalizeRegion / scopeSet', () => {
   it('maps Taiwan variants to TW', () => {
@@ -552,5 +552,14 @@ describe('madeIn unknown sanitize', () => {
     assert.ok(
       (r.caveats ?? []).some((c) => /No live web research/i.test(c))
     );
+  });
+});
+
+describe('webFailCaveat', () => {
+  it('classifies timeout vs grounding vs empty', () => {
+    assert.match(webFailCaveat('upstream_unavailable'), /timed out/i);
+    assert.match(webFailCaveat('search_grounding_unavailable'), /Search grounding/i);
+    assert.match(webFailCaveat('empty_response'), /empty reply/i);
+    assert.match(webFailCaveat(undefined), /No live web research/i);
   });
 });

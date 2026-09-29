@@ -44,6 +44,8 @@ export type SynthesizeInput = {
   productSkipped?: boolean;
   /** Live web research brief was successfully retrieved this job */
   webEnriched?: boolean;
+  /** Soft-fail reason when web research did not enrich (timeout vs grounding vs empty). */
+  webFailCode?: string;
 };
 
 type Factors = {
@@ -1068,6 +1070,27 @@ function finalizeAlternativesList(
   return ranked.slice(0, ALT_CAP);
 }
 
+/** Classify web soft-fail for notes (not a single “no web” bucket). */
+export function webFailCaveat(code?: string): string {
+  switch (code) {
+    case 'search_grounding_unavailable':
+    case 'upstream_quota':
+      return 'Live Google Search grounding unavailable on this API key — made-in is more conservative (model knowledge only).';
+    case 'upstream_unavailable':
+      return 'Live web research timed out or upstream was busy — made-in is more conservative (model knowledge only).';
+    case 'empty_response':
+      return 'Live web research returned an empty reply — made-in is more conservative (model knowledge only).';
+    case 'disabled':
+      return 'Live web research was disabled for this check — made-in is more conservative (model knowledge only).';
+    case 'gemini_not_configured':
+      return 'Gemini not configured for live web — made-in is more conservative (model knowledge only).';
+    case 'no_entity':
+      return 'No product name for live web research — made-in is more conservative (model knowledge only).';
+    default:
+      return 'No live web research for this check — made-in is more conservative (model knowledge only).';
+  }
+}
+
 /**
  * Deterministic synthesize. Safe for Workers CPU budget.
  */
@@ -1150,9 +1173,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   }
 
   if (!input.webEnriched) {
-    caveats.push(
-      'No live web research for this check — made-in is more conservative (model knowledge only).'
-    );
+    caveats.push(webFailCaveat(input.webFailCode));
   }
 
   const p = partials.product;

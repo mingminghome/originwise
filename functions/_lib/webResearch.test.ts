@@ -9,9 +9,11 @@ import {
   isWebLookupEnabled,
   mapWebResearchHttpError,
   parseInteractionSearch,
+  parseWebSearchMaxAttempts,
   runWebResearch,
   searchGroundingPool,
   selectDefaultSearchModels,
+  selectSearchModelChain,
   webSearchModelChain,
 } from './webResearch';
 
@@ -19,6 +21,8 @@ const LISTED_MODELS = {
   models: [
     { name: 'models/gemini-3.8-flash', supportedGenerationMethods: ['generateContent'] },
     { name: 'models/gemini-2.5-flash-lite', supportedGenerationMethods: ['generateContent'] },
+    { name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] },
+    { name: 'models/gemini-2.0-flash', supportedGenerationMethods: ['generateContent'] },
     { name: 'models/gemini-robotics-er-1.6-preview', supportedGenerationMethods: ['generateContent'] },
     { name: 'models/gemini-robotics-er-2-preview', supportedGenerationMethods: ['generateContent'] },
     { name: 'models/gemma-4-31b-it', supportedGenerationMethods: ['generateContent'] },
@@ -88,6 +92,31 @@ describe('searchGroundingPool / selectDefaultSearchModels', () => {
       'gemini-robotics-er-1.6-preview',
     ]);
     assert.ok(!selected.includes('gemini-3.8-flash'));
+  });
+
+  it('auto Search chain prefers 2.5 then Default then 2; skips Gemini 3', () => {
+    const chain = selectSearchModelChain([
+      'gemini-3.8-flash',
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-2.0-flash',
+      'gemini-robotics-er-2-preview',
+      'gemini-robotics-er-1.6-preview',
+      'gemma-4-31b-it',
+    ]);
+    assert.equal(chain[0], 'gemini-2.5-flash-lite');
+    assert.ok(chain.includes('gemini-robotics-er-2-preview'));
+    assert.ok(chain.includes('gemini-2.0-flash'));
+    assert.ok(!chain.includes('gemini-3.8-flash'));
+  });
+});
+
+describe('parseWebSearchMaxAttempts', () => {
+  it('defaults to 4 and caps at 8', () => {
+    assert.equal(parseWebSearchMaxAttempts({}), 4);
+    assert.equal(parseWebSearchMaxAttempts({ WEB_SEARCH_MAX_ATTEMPTS: '2' }), 2);
+    assert.equal(parseWebSearchMaxAttempts({ WEB_SEARCH_MAX_ATTEMPTS: '99' }), 8);
+    assert.equal(parseWebSearchMaxAttempts({ WEB_SEARCH_MAX_ATTEMPTS: '0' }), 4);
   });
 });
 
@@ -290,7 +319,7 @@ describe('runWebResearch', () => {
         const model = modelFromFetch(input, init);
         modelsTried.push(model);
 
-        if (model === 'gemini-robotics-er-2-preview') {
+        if (model === 'gemini-2.5-flash-lite') {
           return new Response(
             JSON.stringify({
               error: {
@@ -301,7 +330,7 @@ describe('runWebResearch', () => {
             { status: 404, headers: { 'Content-Type': 'application/json' } }
           );
         }
-        if (model === 'gemini-robotics-er-1.6-preview') {
+        if (model === 'gemini-2.5-flash') {
           return new Response(
             JSON.stringify({
               candidates: [
@@ -331,9 +360,9 @@ describe('runWebResearch', () => {
     });
 
     assert.equal(out.ok, true);
-    assert.equal(out.model, 'gemini-robotics-er-1.6-preview');
+    assert.equal(out.model, 'gemini-2.5-flash');
     assert.ok(out.brief.includes('Poland'));
-    assert.equal(modelsTried[0], 'gemini-robotics-er-2-preview');
+    assert.equal(modelsTried[0], 'gemini-2.5-flash-lite');
   });
 
   it('tries several Search models before giving up on grounding quota', async () => {
@@ -364,9 +393,126 @@ describe('runWebResearch', () => {
 
     assert.equal(out.ok, false);
     assert.equal(out.error, 'search_grounding_unavailable');
-    assert.equal(modelsTried[0], 'gemini-robotics-er-2-preview');
-    assert.ok(modelsTried.includes('gemini-robotics-er-1.6-preview'));
+    assert.equal(modelsTried[0], 'gemini-2.5-flash-lite');
+    assert.ok(modelsTried.includes('gemini-robotics-er-2-preview'));
     assert.ok(!modelsTried.includes('gemini-3.8-flash'));
+    assert.ok(modelsTried.length <= 4);
+  });
+
+  it('falls back across pools after empty / grounding fails', async () => {
+    const modelsTried: string[] = [];
+    mock.method(
+      globalThis,
+      'fetch',
+      withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const model = modelFromFetch(input, init);
+        modelsTried.push(model);
+        if (model.startsWith('gemini-2.5')) {
+          return new Response(
+            JSON.stringify({
+              candidates: [{ content: { parts: [{ text: '' }] } }],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (model === 'gemini-robotics-er-2-preview') {
+          return new Response(
+            JSON.stringify({
+              candidates: [
+                {
+                  content: {
+                    parts: [{ text: 'Toshiba DW factory notes from web.' }],
+                  },
+                },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            error: { message: 'You exceeded your current quota' },
+          }),
+          { status: 429, headers: { 'Content-Type': 'application/json' } }
+        );
+      })
+    );
+
+    const out = await runWebResearch({
+      entity: 'Toshiba DW-05T2-HK',
+      locale: 'en',
+      env: { GEMINI_API_KEY: 'test-key' },
+    });
+
+    assert.equal(out.ok, true);
+    assert.equal(out.model, 'gemini-robotics-er-2-preview');
+    assert.ok(out.brief.includes('Toshiba'));
+    assert.ok(modelsTried[0].startsWith('gemini-2.5'));
+    assert.ok(!modelsTried.includes('gemini-3.8-flash'));
+  });
+
+  it('respects WEB_SEARCH_MAX_ATTEMPTS', async () => {
+    const modelsTried: string[] = [];
+    mock.method(
+      globalThis,
+      'fetch',
+      withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
+        modelsTried.push(modelFromFetch(input, init));
+        return new Response(
+          JSON.stringify({
+            error: { message: 'You exceeded your current quota' },
+          }),
+          { status: 429, headers: { 'Content-Type': 'application/json' } }
+        );
+      })
+    );
+
+    const out = await runWebResearch({
+      entity: 'Test Product',
+      locale: 'en',
+      env: {
+        GEMINI_API_KEY: 'test-key',
+        WEB_SEARCH_MAX_ATTEMPTS: '2',
+      },
+    });
+
+    assert.equal(out.ok, false);
+    assert.equal(out.error, 'search_grounding_unavailable');
+    assert.equal(modelsTried.length, 2);
+  });
+
+  it('pinned Gemini 3 Search fail still walks non-3 models when chain has them', async () => {
+    // Pin forces only that model — document pin behavior stays single-model.
+    const modelsTried: string[] = [];
+    mock.method(
+      globalThis,
+      'fetch',
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        modelsTried.push(modelFromFetch(input, init));
+        return new Response(
+          JSON.stringify({
+            error: {
+              message:
+                'Quota exceeded for metric: free_tier, limit: 0, model: gemini-3.8-flash',
+            },
+          }),
+          { status: 429, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    );
+
+    const out = await runWebResearch({
+      entity: 'Widget',
+      locale: 'en',
+      env: {
+        GEMINI_API_KEY: 'k',
+        GEMINI_WEB_MODEL: 'gemini-3.8-flash',
+      },
+    });
+
+    assert.equal(out.ok, false);
+    assert.equal(out.error, 'search_grounding_unavailable');
+    assert.deepEqual(modelsTried, ['gemini-3.8-flash']);
   });
 
   it('uses pinned GEMINI_WEB_MODEL first', async () => {
