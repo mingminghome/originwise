@@ -61,6 +61,30 @@ export type ProductPart = {
   note?: string;
 };
 
+
+export type OriginCandidateSource =
+  | 'confirmed_coo'
+  | 'parts'
+  | 'components_line'
+  | 'notes'
+  | 'manufacturer'
+  | 'filings'
+  | 'model_memory';
+
+export type OriginCandidateRating =
+  | 'confirmed'
+  | 'likely'
+  | 'possible'
+  | 'mentioned';
+
+/** Queried origin places with confidence — not a confirmed final COO unless rating=confirmed. */
+export type OriginCandidate = {
+  label: string;
+  confidence: number;
+  source: OriginCandidateSource;
+  rating: OriginCandidateRating;
+};
+
 export type AlternativeItem = {
   name: string;
   /** Advisory — sanitized server-side; prefer unknown over false "none" */
@@ -100,6 +124,8 @@ export type CheckResult = {
     parts?: ProductPart[];
     /** Multi-layer origin explanations (brand vs factory vs final COO) */
     notes?: string[];
+    /** All queried origin candidates (confirmed COO is rating=confirmed only) */
+    originCandidates?: OriginCandidate[];
   };
   company?: {
     name?: string;

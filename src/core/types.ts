@@ -105,6 +105,19 @@ export type CheckResult = {
     componentsOrigin?: string;
     parts?: ProductPart[];
     notes?: string[];
+    originCandidates?: Array<{
+      label: string;
+      confidence: number;
+      source:
+        | 'confirmed_coo'
+        | 'parts'
+        | 'components_line'
+        | 'notes'
+        | 'manufacturer'
+        | 'filings'
+        | 'model_memory';
+      rating: 'confirmed' | 'likely' | 'possible' | 'mentioned';
+    }>;
   };
   company?: {
     name?: string;
