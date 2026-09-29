@@ -469,3 +469,88 @@ describe('alternative sanitizer', () => {
   });
 });
 
+
+describe('madeIn unknown sanitize', () => {
+  it('clears madeIn=unknown and summarizes Final COO unconfirmed', () => {
+    const r = synthesize({
+      jobId: 'unk-1',
+      geoScope: 'prc',
+      companySkipped: true,
+      partials: {
+        product: {
+          name: 'Washer',
+          brand: 'Toshiba Lifestyle',
+          madeIn: 'unknown',
+          originCountry: 'Japan',
+          componentsOrigin: 'Often CN / TH / VN (unconfirmed)',
+          confidence: 0.5,
+        },
+      },
+    });
+    assert.equal(r.product?.madeIn, undefined);
+    assert.match(r.summary, /Final COO unconfirmed/);
+    assert.doesNotMatch(r.summary, /Made in: unknown/i);
+    assert.match(String(r.product?.componentsOrigin), /CN/);
+    assert.ok(
+      (r.caveats ?? []).some((c) => /Final COO unconfirmed/i.test(c))
+    );
+    const labels = (r.product?.originCandidates ?? []).map((c) => c.label);
+    assert.ok(labels.includes('China'), labels.join(','));
+    assert.ok(labels.includes('Thailand'), labels.join(','));
+    assert.ok(labels.includes('Vietnam'), labels.join(','));
+    assert.ok(
+      (r.product?.originCandidates ?? []).every((c) => c.rating !== 'confirmed')
+    );
+    assert.match(r.summary, /Candidates:/);
+  });
+
+  it('clears 未知 / n\/a placeholders', () => {
+    for (const label of ['未知', 'n/a', 'N/A', '不明']) {
+      const r = synthesize({
+        jobId: `unk-${label}`,
+        geoScope: 'prc',
+        companySkipped: true,
+        partials: {
+          product: { name: 'Item', madeIn: label, confidence: 0.4 },
+        },
+      });
+      assert.equal(r.product?.madeIn, undefined, label);
+      assert.doesNotMatch(r.summary, /Made in:/i);
+    }
+  });
+
+  it('keeps confirmed China made-in', () => {
+    const r = synthesize({
+      jobId: 'unk-cn',
+      geoScope: 'prc',
+      companySkipped: true,
+      partials: {
+        product: {
+          name: 'DJI Mini 4 Pro',
+          madeIn: 'China',
+          confidence: 0.9,
+        },
+      },
+    });
+    assert.equal(r.product?.madeIn, 'China');
+    assert.match(r.summary, /Made in: China/);
+    const conf = r.product?.originCandidates?.find((c) => c.label === 'China');
+    assert.equal(conf?.rating, 'confirmed');
+    assert.equal(conf?.source, 'confirmed_coo');
+  });
+
+  it('adds model-memory made-in caveat when web not enriched', () => {
+    const r = synthesize({
+      jobId: 'unk-web',
+      geoScope: 'prc',
+      companySkipped: true,
+      webEnriched: false,
+      partials: {
+        product: { name: 'X', madeIn: 'Vietnam', confidence: 0.7 },
+      },
+    });
+    assert.ok(
+      (r.caveats ?? []).some((c) => /No live web research/i.test(c))
+    );
+  });
+});

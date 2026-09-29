@@ -181,9 +181,34 @@ export function ResultPanel({
                     {t('check.brand')}: {result.product.brand}
                   </li>
                 ) : null}
-                {result.product.madeIn ? (
+                {result.product.madeIn &&
+                !/^(unknown|n\/?a|未知|不明|不詳)$/i.test(
+                  String(result.product.madeIn).trim()
+                ) ? (
                   <li>
                     {t('check.madeIn')}: {result.product.madeIn}
+                  </li>
+                ) : (
+                  <li className="fact-madein-unconfirmed">
+                    {t('check.madeInUnconfirmed')}
+                  </li>
+                )}
+                {result.product.originCandidates?.length ? (
+                  <li className="fact-origin-candidates">
+                    {t('check.originCandidates')}:
+                    <ul className="origin-candidate-list">
+                      {result.product.originCandidates.map((c) => (
+                        <li key={`${c.label}-${c.source}-${c.rating}`}>
+                          {c.label}
+                          {' · '}
+                          {t(`check.candidateRating.${c.rating}`)}
+                          {' · '}
+                          {Math.round(c.confidence * 100)}%
+                          {' · '}
+                          {t(`check.candidateSource.${c.source}`)}
+                        </li>
+                      ))}
+                    </ul>
                   </li>
                 ) : null}
                 {result.product.originCountry ? (

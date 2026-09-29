@@ -19,6 +19,9 @@ import {
   type GraphNode,
   type PartKind,
   type ProductPart,
+  type OriginCandidate,
+  type OriginCandidateRating,
+  type OriginCandidateSource,
   type ProductPartial,
   type RelationTier,
 } from './schema';
@@ -273,6 +276,253 @@ const PART_KINDS = new Set<PartKind>([
   'component',
 ]);
 
+/** Treat placeholder COO strings as empty — never show "Made in: unknown". */
+function isVagueOriginLabel(raw?: string | null): boolean {
+  if (raw == null) return true;
+  const s = String(raw).trim();
+  if (!s) return true;
+  return /^(unknown|n\/?a|n\.a\.|na|null|none|unclear|various|varies|multiple|asia|未知|不明|不詳|不清|無法確認|未確認|不清楚)$/i.test(
+    s
+  );
+}
+
+function confirmedOriginLabel(raw?: string | null): string | undefined {
+  if (isVagueOriginLabel(raw)) return undefined;
+  return String(raw).trim().slice(0, 80);
+}
+
+
+/** Name/CJK patterns for whole-string scan (avoid short codes that match English words). */
+const COUNTRY_NAME_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
+  { label: 'China', pattern: /\bchina\b|\bprc\b|中國大陸|中国大陆|中國|中国/i },
+  { label: 'Hong Kong', pattern: /hong\s*kong|香港/i },
+  { label: 'Taiwan', pattern: /\btaiwan\b|台灣|台湾|臺灣/i },
+  { label: 'Macau', pattern: /\bmacau\b|\bmacao\b|澳門|澳门/i },
+  { label: 'Japan', pattern: /\bjapan\b|日本/i },
+  { label: 'South Korea', pattern: /south\s*korea|\bkorea\b|韓國|韩国/i },
+  { label: 'Vietnam', pattern: /\bvietnam\b|越南/i },
+  { label: 'Thailand', pattern: /\bthailand\b|泰國|泰国/i },
+  { label: 'Indonesia', pattern: /\bindonesia\b|印尼|印度尼西亞/i },
+  { label: 'Malaysia', pattern: /\bmalaysia\b|馬來西亞|马来西亚/i },
+  { label: 'India', pattern: /\bindia\b|印度/i },
+  { label: 'Philippines', pattern: /\bphilippines\b|菲律賓|菲律宾/i },
+  { label: 'United States', pattern: /united\s*states|\busa\b|u\.s\.a\.|美國|美国/i },
+  { label: 'Germany', pattern: /\bgermany\b|德國|德国/i },
+  { label: 'France', pattern: /\bfrance\b|法國|法国/i },
+  { label: 'Italy', pattern: /\bitaly\b|意大利|義大利/i },
+  { label: 'United Kingdom', pattern: /united\s*kingdom|\bbritain\b|英國|英国/i },
+  { label: 'Netherlands', pattern: /\bnetherlands\b|\bholland\b|荷蘭|荷兰/i },
+  { label: 'Switzerland', pattern: /\bswitzerland\b|瑞士/i },
+  { label: 'Mexico', pattern: /\bmexico\b|墨西哥/i },
+  { label: 'Brazil', pattern: /\bbrazil\b|巴西/i },
+  { label: 'Turkey', pattern: /\bturkey\b|türkiye|土耳其/i },
+  { label: 'Poland', pattern: /\bpoland\b|波蘭|波兰/i },
+  { label: 'Australia', pattern: /\baustralia\b|澳洲|澳大利亞/i },
+  { label: 'Canada', pattern: /\bcanada\b|加拿大/i },
+];
+
+/** ISO / short tokens — only when the token itself is short (after split). */
+const COUNTRY_CODE_TO_LABEL: Record<string, string> = {
+  cn: 'China',
+  chn: 'China',
+  prc: 'China',
+  hk: 'Hong Kong',
+  hkg: 'Hong Kong',
+  tw: 'Taiwan',
+  twn: 'Taiwan',
+  mo: 'Macau',
+  mac: 'Macau',
+  jp: 'Japan',
+  jpn: 'Japan',
+  kr: 'South Korea',
+  kor: 'South Korea',
+  vn: 'Vietnam',
+  vnm: 'Vietnam',
+  th: 'Thailand',
+  tha: 'Thailand',
+  id: 'Indonesia',
+  idn: 'Indonesia',
+  my: 'Malaysia',
+  mys: 'Malaysia',
+  ind: 'India',
+  ph: 'Philippines',
+  phl: 'Philippines',
+  us: 'United States',
+  usa: 'United States',
+  de: 'Germany',
+  deu: 'Germany',
+  fr: 'France',
+  fra: 'France',
+  it: 'Italy',
+  ita: 'Italy',
+  uk: 'United Kingdom',
+  gbr: 'United Kingdom',
+  nl: 'Netherlands',
+  ch: 'Switzerland',
+  che: 'Switzerland',
+  mx: 'Mexico',
+  mex: 'Mexico',
+  br: 'Brazil',
+  bra: 'Brazil',
+  tr: 'Turkey',
+  pl: 'Poland',
+  pol: 'Poland',
+  au: 'Australia',
+  aus: 'Australia',
+  ca: 'Canada',
+  can: 'Canada',
+};
+
+function matchCountryLabel(token: string): string | undefined {
+  const s = token.trim();
+  if (!s || isVagueOriginLabel(s)) return undefined;
+  const code = COUNTRY_CODE_TO_LABEL[s.toLowerCase()];
+  if (code) return code;
+  for (const row of COUNTRY_NAME_PATTERNS) {
+    if (row.pattern.test(s)) return row.label;
+  }
+  return undefined;
+}
+
+function extractCountryLabelsFromText(blob: string): string[] {
+  if (!blob || !blob.trim()) return [];
+  const found: string[] = [];
+  const seen = new Set<string>();
+  const add = (label: string) => {
+    if (!seen.has(label)) {
+      seen.add(label);
+      found.push(label);
+    }
+  };
+  for (const row of COUNTRY_NAME_PATTERNS) {
+    if (row.pattern.test(blob)) add(row.label);
+  }
+  // Slash / comma lists: "CN / TH / VN" or "China, Thailand"
+  for (const raw of blob.split(/[/|,;、＋+與和]|\band\b/i)) {
+    const cleaned = raw.replace(/[()（）]/g, ' ').trim();
+    const label = matchCountryLabel(cleaned);
+    if (label) add(label);
+    // "Often CN" / "mainly VN" — pick trailing ISO token
+    const m = cleaned.match(/\b([A-Za-z]{2,3})\b\s*$/);
+    if (m) {
+      const fromCode = COUNTRY_CODE_TO_LABEL[m[1].toLowerCase()];
+      if (fromCode) add(fromCode);
+    }
+  }
+  // Bare ISO codes anywhere: "... CN / TH / VN ..."
+  for (const m of blob.matchAll(/(?:^|[^A-Za-z])([A-Za-z]{2,3})(?=[^A-Za-z]|$)/g)) {
+    const fromCode = COUNTRY_CODE_TO_LABEL[m[1].toLowerCase()];
+    if (fromCode) add(fromCode);
+  }
+  return found;
+}
+
+function candidateRank(r: OriginCandidateRating): number {
+  return { confirmed: 4, likely: 3, possible: 2, mentioned: 1 }[r];
+}
+
+function pushCandidate(
+  map: Map<string, OriginCandidate>,
+  label: string,
+  confidence: number,
+  source: OriginCandidateSource,
+  rating: OriginCandidateRating
+): void {
+  const conf = Math.max(0, Math.min(1, confidence));
+  const prev = map.get(label);
+  if (!prev) {
+    map.set(label, { label, confidence: conf, source, rating });
+    return;
+  }
+  const keepRating =
+    candidateRank(prev.rating) >= candidateRank(rating) ? prev.rating : rating;
+  const keepSource =
+    candidateRank(prev.rating) >= candidateRank(rating) ? prev.source : source;
+  map.set(label, {
+    label,
+    confidence: Math.max(prev.confidence, conf),
+    source: keepSource,
+    rating: keepRating,
+  });
+}
+
+/**
+ * Collect all queried origin candidates from product layers.
+ * Never invents a place that is not already present in notes/parts/line/COO.
+ */
+function collectOriginCandidates(
+  p: ProductPartial | null | undefined,
+  opts: { webEnriched?: boolean; productConfidence?: number }
+): OriginCandidate[] {
+  if (!p) return [];
+  const out = new Map<string, OriginCandidate>();
+  const base = typeof opts.productConfidence === 'number' ? opts.productConfidence : 0.45;
+  const webBoost = opts.webEnriched ? 0.1 : 0;
+
+  const confirmed = confirmedOriginLabel(p.madeIn) || confirmedOriginLabel(p.manufacturedIn);
+  if (confirmed) {
+    const label = matchCountryLabel(confirmed) || confirmed;
+    pushCandidate(out, label, Math.min(0.95, base + 0.25 + webBoost), 'confirmed_coo', 'confirmed');
+  }
+
+  for (const part of p.parts ?? []) {
+    for (const raw of [part.madeIn, part.originCountry]) {
+      const lab = confirmedOriginLabel(raw);
+      if (!lab) continue;
+      const label = matchCountryLabel(lab) || lab;
+      const rating: OriginCandidateRating = part.chinaRelated ? 'likely' : 'possible';
+      pushCandidate(
+        out,
+        label,
+        Math.min(0.85, (part.chinaRelated ? 0.55 : 0.4) + webBoost),
+        'parts',
+        rating
+      );
+    }
+  }
+
+  if (p.componentsOrigin) {
+    for (const label of extractCountryLabelsFromText(String(p.componentsOrigin))) {
+      // Do not promote to confirmed — components line is candidate only
+      if (out.get(label)?.rating === 'confirmed') continue;
+      pushCandidate(
+        out,
+        label,
+        Math.min(0.7, 0.35 + webBoost),
+        'components_line',
+        'possible'
+      );
+    }
+  }
+
+  for (const n of p.notes ?? []) {
+    for (const label of extractCountryLabelsFromText(String(n))) {
+      if (out.get(label)?.rating === 'confirmed') continue;
+      pushCandidate(out, label, Math.min(0.55, 0.28 + webBoost), 'notes', 'mentioned');
+    }
+  }
+
+  const mfg = confirmedOriginLabel(p.manufacturerCountry);
+  if (mfg) {
+    const label = matchCountryLabel(mfg) || mfg;
+    if (out.get(label)?.rating !== 'confirmed') {
+      pushCandidate(out, label, Math.min(0.65, 0.4 + webBoost), 'manufacturer', 'possible');
+    }
+  }
+
+  return [...out.values()]
+    .sort((a, b) => {
+      const rank: Record<OriginCandidateRating, number> = {
+        confirmed: 4,
+        likely: 3,
+        possible: 2,
+        mentioned: 1,
+      };
+      return rank[b.rating] - rank[a.rating] || b.confidence - a.confidence;
+    })
+    .slice(0, 8);
+}
+
 function sanitizeParts(raw: unknown): ProductPart[] {
   if (!Array.isArray(raw)) return [];
   const out: ProductPart[] = [];
@@ -294,10 +544,12 @@ function sanitizeParts(raw: unknown): ProductPart[] {
     out.push({
       name,
       kind,
-      originCountry: rec.originCountry
-        ? String(rec.originCountry).trim().slice(0, 80)
-        : undefined,
-      madeIn: rec.madeIn ? String(rec.madeIn).trim().slice(0, 80) : undefined,
+      originCountry: confirmedOriginLabel(
+        rec.originCountry ? String(rec.originCountry) : undefined
+      ),
+      madeIn: confirmedOriginLabel(
+        rec.madeIn ? String(rec.madeIn) : undefined
+      ),
       chinaRelated:
         typeof rec.chinaRelated === 'boolean' ? rec.chinaRelated : undefined,
       note: rec.note ? String(rec.note).trim().slice(0, 160) : undefined,
@@ -592,6 +844,7 @@ export function looksLikeDistributorParent(name: string): boolean {
   return false;
 }
 
+
 function sanitizeProduct(
   p?: ProductPartial | null
 ): ProductPartial | null | undefined {
@@ -607,16 +860,41 @@ function sanitizeProduct(
     originCountry: p.originCountry,
     note: noteBlob,
   });
-  if (!madeCopied && !mfgCopied) return p;
+  const hadVagueMade =
+    (Boolean(p.madeIn && String(p.madeIn).trim()) &&
+      isVagueOriginLabel(p.madeIn)) ||
+    (Boolean(p.manufacturedIn && String(p.manufacturedIn).trim()) &&
+      isVagueOriginLabel(p.manufacturedIn));
+  const madeIn = madeCopied ? undefined : confirmedOriginLabel(p.madeIn);
+  const manufacturedIn = mfgCopied
+    ? undefined
+    : confirmedOriginLabel(p.manufacturedIn);
   const notes = [...(p.notes ?? [])];
-  notes.push(
-    'Made-in omitted: it matched brand/design country without factory/COO evidence.'
-  );
+  if (madeCopied || mfgCopied) {
+    notes.push(
+      'Made-in omitted: it matched brand/design country without factory/COO evidence.'
+    );
+  } else if (hadVagueMade && (p.componentsOrigin || (p.parts && p.parts.length))) {
+    notes.push(
+      'Final COO unconfirmed — see components/global line or parts for candidates (not confirmed made-in).'
+    );
+  } else if (hadVagueMade) {
+    notes.push(
+      'Final COO unconfirmed — no SKU/label country of origin; do not invent made-in.'
+    );
+  }
+  if (
+    madeIn === p.madeIn &&
+    manufacturedIn === p.manufacturedIn &&
+    notes.length === (p.notes ?? []).length
+  ) {
+    return p;
+  }
   return {
     ...p,
-    madeIn: madeCopied ? undefined : p.madeIn,
-    manufacturedIn: mfgCopied ? undefined : p.manufacturedIn,
-    notes,
+    madeIn,
+    manufacturedIn,
+    notes: notes.length ? notes.slice(0, 8) : p.notes,
   };
 }
 
@@ -676,9 +954,7 @@ function sanitizeAlternative(
   if (isSameBrandAlt(name, querySeeds)) return null;
   if (/代理|distributor|exclusive agent/i.test(name)) return null;
 
-  const madeIn = raw.madeIn
-    ? String(raw.madeIn).trim().slice(0, 80)
-    : undefined;
+  const madeIn = confirmedOriginLabel(raw.madeIn);
   const originCountry = raw.originCountry
     ? String(raw.originCountry).trim().slice(0, 80)
     : undefined;
@@ -873,6 +1149,12 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     caveats.push('Taiwan is treated as a separate country for relation tiers');
   }
 
+  if (!input.webEnriched) {
+    caveats.push(
+      'No live web research for this check — made-in is more conservative (model knowledge only).'
+    );
+  }
+
   const p = partials.product;
   const c = partials.company;
   const id = partials.identify;
@@ -886,8 +1168,35 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     input.queryText?.trim().slice(0, 80) ||
     'Result';
 
+  const originCandidates = collectOriginCandidates(p, {
+    webEnriched: input.webEnriched,
+    productConfidence: p?.confidence,
+  });
+
+  if (p && !p.madeIn) {
+    caveats.push(
+      'Final COO unconfirmed — candidates below are queried signals, not a stamped made-in label.'
+    );
+  }
+
   const summaryParts: string[] = [];
-  if (p?.madeIn) summaryParts.push(`Made in: ${p.madeIn}`);
+  if (p?.madeIn) {
+    summaryParts.push(`Made in: ${p.madeIn}`);
+  } else if (p) {
+    summaryParts.push('Final COO unconfirmed');
+  }
+  if (originCandidates.length) {
+    const candBits = originCandidates
+      .filter((c) => c.rating !== 'confirmed')
+      .slice(0, 5)
+      .map(
+        (c) =>
+          `${c.label} (${c.rating} ${Math.round(c.confidence * 100)}% · ${c.source})`
+      );
+    if (candBits.length) {
+      summaryParts.push(`Candidates: ${candBits.join('; ')}`);
+    }
+  }
   if (p?.originCountry) summaryParts.push(`Brand origin: ${p.originCountry}`);
   if (p?.componentsOrigin) {
     summaryParts.push(`Components/global line: ${String(p.componentsOrigin).slice(0, 80)}`);
@@ -998,6 +1307,14 @@ export function synthesize(input: SynthesizeInput): CheckResult {
           parts: resultParts.length ? resultParts : undefined,
           notes: Array.isArray(p.notes)
             ? p.notes.map((n) => String(n).slice(0, 220)).filter(Boolean).slice(0, 5)
+            : undefined,
+          originCandidates: originCandidates.length
+            ? originCandidates.map((c) => ({
+                label: c.label.slice(0, 80),
+                confidence: Math.round(c.confidence * 100) / 100,
+                source: c.source,
+                rating: c.rating,
+              }))
             : undefined,
         }
       : id
