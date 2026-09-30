@@ -9,7 +9,7 @@
  * Env:
  *   WEB_LOOKUP=auto|on|off  (default auto = on when Gemini key present)
  *   GEMINI_API_KEY=…        required for this path
- *   GEMINI_WEB_MODEL=…      optional pin for grounded search only
+ *   GEMINI_WEB_MODEL=…      optional preferred Search model (still walks fallbacks)
  *
  * Free-tier Search is a SEPARATE quota from text RPM/RPD (AI Studio → Tools):
  *   - Gemini 3 Search: often **0 / 0** — skipped in auto chain
@@ -241,15 +241,41 @@ async function listGenerateContentModelIds(apiKey: string): Promise<string[]> {
   return ids;
 }
 
-/** Default Search pool for this API key (discovered, not a hardcoded Flash id). */
+/**
+ * Last-resort Search models when the Models list is empty (Workers timeout /
+ * transient API miss). Family-level ids only — not a "Default" Flash invent.
+ * Prefer discovery via selectSearchModelChain whenever listing works.
+ */
+const STATIC_SEARCH_FALLBACK = [
+  'gemini-2.5-flash-lite',
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+] as const;
+
+/**
+ * Search model chain for this key.
+ * - Pin (GEMINI_WEB_MODEL) is preferred first, never sole — dead pins must
+ *   still walk Default → Gemini 2.5 → Gemini 2.
+ * - Auto chain from Models API; if listing is empty, append static fallbacks
+ *   so the pass does not die as model_unavailable with zero retries.
+ */
 export async function resolveWebSearchModels(
   apiKey: string,
   env: WebResearchEnv
 ): Promise<string[]> {
   const pin = pinnedWebModel(env);
-  if (pin) return [pin];
   const listed = await listGenerateContentModelIds(apiKey);
-  return selectSearchModelChain(listed);
+  const auto = selectSearchModelChain(listed);
+  const chain: string[] = [...auto];
+  if (!listed.length) {
+    for (const id of STATIC_SEARCH_FALLBACK) {
+      if (!chain.includes(id)) chain.push(id);
+    }
+  }
+  if (pin) {
+    return [pin, ...chain.filter((id) => id !== pin)];
+  }
+  return chain;
 }
 
 function buildResearchPrompt(opts: {
