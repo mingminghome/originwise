@@ -916,6 +916,124 @@ describe('runWebResearch', () => {
     assert.equal(out.error, 'upstream_unavailable');
   });
 
+  it('keeps upstream_unavailable when 404 model_unavailable then Gemini 3 429 follow capacity', async () => {
+    // Tip path after #8: robotics 503 → deep-research/2.5 404 → suggested 3.x 429
+    // overwrote last to search_grounding_unavailable (API-key caveat). Sticky
+    // capacity miss must survive dead-id walks.
+    mock.method(
+      globalThis,
+      'fetch',
+      withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const model = modelFromFetch(input, init);
+        if (model.startsWith('gemini-robotics')) {
+          if (url.includes('/interactions')) {
+            return new Response(
+              JSON.stringify({
+                error: {
+                  message:
+                    'gemini-robotics-er-2-preview is currently experiencing high demand. Please try again later.',
+                },
+              }),
+              { status: 503, headers: { 'Content-Type': 'application/json' } }
+            );
+          }
+          return new Response(
+            JSON.stringify({ error: { message: 'high demand' } }),
+            { status: 503, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (model === 'gemini-2.5-flash-lite') {
+          return new Response(
+            JSON.stringify({
+              error: {
+                message:
+                  'This model models/gemini-2.5-flash-lite is no longer available to new users. Please update your code to use models/gemini-3.5-flash-lite.',
+              },
+            }),
+            { status: 404, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (url.includes('/interactions') || url.includes('generateContent')) {
+          return new Response(
+            JSON.stringify({
+              error: {
+                message:
+                  'You exceeded your current quota, please check your plan and billing details.',
+              },
+            }),
+            { status: 429, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response('{}', { status: 500 });
+      })
+    );
+
+    const out = await runWebResearch({
+      entity: 'D3000A',
+      locale: 'en',
+      env: { GEMINI_API_KEY: 'test-key', WEB_SEARCH_MAX_ATTEMPTS: '5' },
+    });
+
+    assert.equal(out.ok, false);
+    assert.equal(out.error, 'upstream_unavailable');
+  });
+
+  it('keeps upstream_unavailable when Ix capacity then GC memory-only then later 429', async () => {
+    // pickGroundedOrMiss used to prefer GC memory / 429 over Ix upstream_unavailable.
+    mock.method(
+      globalThis,
+      'fetch',
+      withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const model = modelFromFetch(input, init);
+        if (model.startsWith('gemini-robotics')) {
+          if (url.includes('/interactions')) {
+            return new Response(
+              JSON.stringify({
+                error: {
+                  message:
+                    'gemini-robotics-er-2-preview is currently experiencing high demand. Please try again later.',
+                },
+              }),
+              { status: 503, headers: { 'Content-Type': 'application/json' } }
+            );
+          }
+          // Memory-only GC (no groundingChunks) — not a Search hit
+          return new Response(
+            JSON.stringify({
+              candidates: [
+                { content: { parts: [{ text: 'Memory-only Thailand guess.' }] } },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (url.includes('/interactions') || url.includes('generateContent')) {
+          return new Response(
+            JSON.stringify({
+              error: {
+                message:
+                  'You exceeded your current quota, please check your plan and billing details.',
+              },
+            }),
+            { status: 429, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response('{}', { status: 500 });
+      })
+    );
+
+    const out = await runWebResearch({
+      entity: 'D3000A',
+      locale: 'en',
+      env: { GEMINI_API_KEY: 'test-key', WEB_SEARCH_MAX_ATTEMPTS: '4' },
+    });
+
+    assert.equal(out.ok, false);
+    assert.equal(out.error, 'upstream_unavailable');
+  });
+
   it('queues Google suggested replacement after model_unavailable', async () => {
     const modelsTried: string[] = [];
     mock.method(
