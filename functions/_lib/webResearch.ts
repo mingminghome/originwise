@@ -19,7 +19,8 @@
  *   - Gemini 2.5 / Gemini 2 Search: typically **1.5K RPD** — fallbacks
  *   - WEB_SEARCH_MAX_ATTEMPTS caps cross-model retries (default 4)
  *   - Per-attempt caps so hang/slow models skip before burning the job budget
- *   - Interactions 503 "high demand" is retried (not treated as key entitlement)
+ *   - Interactions 503 "high demand" is retried; capacity miss stays upstream_unavailable
+ *     (404/429 fallbacks must not become API-key Search caveat)
  *
  * Docs:
  *   https://ai.google.dev/gemini-api/docs/google-search
@@ -516,11 +517,15 @@ function readJsonError(raw: string): string {
 
 let rememberedInteractionsUrl: string | null = null;
 
-/** Fast 503 / "high demand" retries — not for full fetch timeouts. */
-const INTERACTIONS_CAPACITY_TRIES = 3;
-const INTERACTIONS_RETRY_MS = 700;
-/** After a 503, use a tighter fetch cap so one hang does not burn the pass. */
-const INTERACTIONS_RETRY_FETCH_MS = 10000;
+/** 503 / "high demand" retries — keep full fetch budget (tight caps abort recovery). */
+const INTERACTIONS_CAPACITY_TRIES = 4;
+const INTERACTIONS_RETRY_MS = 900;
+/**
+ * Retries keep the normal Interactions fetch budget. A shorter post-503 cap
+ * (10s) was aborting recovering requests under load and forcing false
+ * search_grounding_unavailable after dead fallback 404/429.
+ */
+const INTERACTIONS_RETRY_FETCH_MS = INTERACTIONS_FETCH_MS;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -704,21 +709,24 @@ async function callGenerateContentSearch(
   return { ok: true, text: text.trim(), sources };
 }
 
+/**
+ * Prefer a grounded Search hit. Capacity miss beats memory-only and beats
+ * entitlement/404 labels from the other path (GC 429 must not overwrite Ix 503).
+ */
 function pickGroundedOrMiss(
   primary: GroundedCall,
   secondary: GroundedCall
 ): GroundedCall {
   if (primary.ok && isGroundedSearchHit(primary)) return primary;
   if (secondary.ok && isGroundedSearchHit(secondary)) return secondary;
+  // Capacity / transient busy — keep this label so soft-fail is not "API key".
+  if (!primary.ok && primary.code === 'upstream_unavailable') return primary;
+  if (!secondary.ok && secondary.code === 'upstream_unavailable') {
+    return secondary;
+  }
   // Memory-only text is not a Search hit — keep walking the model chain.
   if (primary.ok || secondary.ok) {
     return { ok: false, code: 'empty_response' };
-  }
-  if (
-    primary.code === 'upstream_unavailable' &&
-    secondary.code !== 'upstream_error'
-  ) {
-    return secondary;
   }
   return primary.code !== 'upstream_error' ? primary : secondary;
 }
@@ -800,6 +808,8 @@ export async function runWebResearch(opts: {
   }
   const maxAttempts = parseWebSearchMaxAttempts(opts.env);
   let last = 'upstream_error';
+  /** Sticky: Default-pool capacity miss must not become API-key caveat later. */
+  let sawCapacityMiss = false;
   let gemini3Fails = 0;
   let timeouts = 0;
   let attempts = 0;
@@ -811,7 +821,9 @@ export async function runWebResearch(opts: {
     seen.add(model);
     if (attempts >= maxAttempts) break;
     if (Date.now() - t0 >= WEB_PASS_BUDGET_MS) {
-      if (last === 'upstream_error') last = 'upstream_unavailable';
+      if (sawCapacityMiss || last === 'upstream_error') {
+        last = 'upstream_unavailable';
+      }
       break;
     }
     // After one Gemini 3 Search 0/0 fail, skip further Gemini 3 ids but keep walking.
@@ -839,11 +851,13 @@ export async function runWebResearch(opts: {
         provider: 'gemini',
       };
     }
-    const prevLast = last;
     last = out.code;
 
-    // Dead model id — keep walking; queue Google's suggested replacement if any
+    // Dead model id — keep walking; queue Google's suggested replacement if any.
+    // Do NOT let 404/retired ids erase a prior capacity miss (that became the
+    // false "unavailable on this API key" caveat after #8).
     if (out.code === 'model_unavailable' || out.code === 'upstream_error') {
+      if (sawCapacityMiss) last = 'upstream_unavailable';
       const suggest = !out.ok ? out.suggestModel : undefined;
       if (
         suggest &&
@@ -859,10 +873,9 @@ export async function runWebResearch(opts: {
       out.code === 'search_grounding_unavailable' ||
       out.code === 'upstream_quota'
     ) {
-      // Do not let later-pool Search 429 (often Gemini 3 0/0) overwrite a
-      // Default-pool capacity miss (Interactions 503 high demand) as
-      // "API key has no Search".
-      if (prevLast === 'upstream_unavailable') {
+      // Later-pool Search 429 (often Gemini 3 0/0) must not overwrite a
+      // Default-pool capacity miss as "API key has no Search".
+      if (sawCapacityMiss) {
         last = 'upstream_unavailable';
       } else {
         last = 'search_grounding_unavailable';
@@ -874,12 +887,15 @@ export async function runWebResearch(opts: {
     }
 
     if (out.code === 'upstream_unavailable') {
+      sawCapacityMiss = true;
+      last = 'upstream_unavailable';
       timeouts += 1;
       if (timeouts >= 3) break;
       continue;
     }
 
     if (out.code === 'empty_response') {
+      if (sawCapacityMiss) last = 'upstream_unavailable';
       continue;
     }
   }
@@ -889,6 +905,6 @@ export async function runWebResearch(opts: {
     brief: '',
     sources: [],
     ms: Date.now() - t0,
-    error: last,
+    error: sawCapacityMiss ? 'upstream_unavailable' : last,
   };
 }
