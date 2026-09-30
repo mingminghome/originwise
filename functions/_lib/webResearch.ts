@@ -267,13 +267,16 @@ Collect and summarize (bullet points, dense, factual):
 2) Legal parent / holding company HQ country (Taiwan is NOT China). Exclusive distributors,
    importers, local agents, and "Brand TW" market desks are NOT parents — list them separately
    if at all.
-3) Typical "Made in" / country of origin for this model or product line: factory, assembly
-   plant, or on-label COO. Note market variants. Do not copy "designed in" / brand nationality
-   into made-in.
+3) STRUCTURED FINISHED-UNIT COO (required section — quote fields when found):
+   - List every "Made in …" / "Country of origin" / "Country of Publication" / 製造国 / 原産国 /
+     產地 claim for THIS model/SKU from retailer product pages, official specs, or packaging.
+   - Format each as: COO: <country> | source: retailer|manufacturer|label | via: <site or field name>
+   - Ownership / parent HQ is NOT a COO line — put that only under (2) or (4).
 4) Mainland China links: ownership, manufacturing, assembly, major suppliers
 5) Isolate major parts, spare parts, or ingredients AND where THEY are typically made
    (not only the finished unit). Flag mainland China vs other countries.
 6) Any recent ownership changes
+7) Grounding sources: keep the most relevant retailer / official URLs in the Sources list.
 
 Rules:
 - Prefer official brand sites, retailer product pages, Wikipedia, company filings, reputable news.
@@ -282,7 +285,7 @@ Rules:
 - Same spelling can be two companies: split by category and legal parent. Do not mix their factories.
 - Talk of moving some parts or assembly out of China is not the finished-unit "Made in" unless the label for THIS SKU says so.
 - Taiwan (TW) companies (e.g. Foxconn/Hon Hai) are Taiwan — never call them China.
-- If sources conflict, list both and say which is more specific to the model and category.
+- If sources conflict, list BOTH COO lines with source tags — do not pick China from ownership alone.
 - If little is found, say so clearly — do not invent registry data or factory countries.
 - Keep under ~400 words. No markdown code fences.
 
