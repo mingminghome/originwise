@@ -255,7 +255,7 @@ describe('runWebResearch', () => {
     mock.method(
       globalThis,
       'fetch',
-      async (input: RequestInfo | URL, init?: RequestInit) => {
+      withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
         urls.push(url);
         const body = JSON.parse(String(init?.body || '{}')) as {
@@ -287,7 +287,7 @@ describe('runWebResearch', () => {
           }),
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         );
-      }
+      })
     );
 
     const out = await runWebResearch({
@@ -304,8 +304,10 @@ describe('runWebResearch', () => {
     assert.ok(out.brief.includes('Poland'));
     assert.ok(out.brief.includes('Sharp'));
     assert.ok(
-      urls[0]?.includes('/v1beta2/interactions') ||
-        urls[0]?.includes('/v1beta/interactions')
+      urls.some(
+        (u) =>
+          u.includes('/v1beta2/interactions') || u.includes('/v1beta/interactions')
+      )
     );
     assert.equal(toolType, 'google_search');
   });
@@ -481,24 +483,45 @@ describe('runWebResearch', () => {
     assert.equal(modelsTried.length, 2);
   });
 
-  it('pinned Gemini 3 Search fail still walks non-3 models when chain has them', async () => {
-    // Pin forces only that model — document pin behavior stays single-model.
+  it('pinned Gemini 3 Search fail still walks Default/2.5 fallback', async () => {
+    // Pin is preferred first, then auto chain — tip must not die on dead pin alone.
     const modelsTried: string[] = [];
     mock.method(
       globalThis,
       'fetch',
-      async (input: RequestInfo | URL, init?: RequestInit) => {
-        modelsTried.push(modelFromFetch(input, init));
+      withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const model = modelFromFetch(input, init);
+        modelsTried.push(model);
+        if (model === 'gemini-3.8-flash') {
+          return new Response(
+            JSON.stringify({
+              error: {
+                message:
+                  'Quota exceeded for metric: free_tier, limit: 0, model: gemini-3.8-flash',
+              },
+            }),
+            { status: 429, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (model === 'gemini-robotics-er-2-preview') {
+          return new Response(
+            JSON.stringify({
+              candidates: [
+                {
+                  content: {
+                    parts: [{ text: 'Recovered via Default Search pool.' }],
+                  },
+                },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
         return new Response(
-          JSON.stringify({
-            error: {
-              message:
-                'Quota exceeded for metric: free_tier, limit: 0, model: gemini-3.8-flash',
-            },
-          }),
-          { status: 429, headers: { 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: { message: 'fail' } }),
+          { status: 500, headers: { 'Content-Type': 'application/json' } }
         );
-      }
+      })
     );
 
     const out = await runWebResearch({
@@ -510,9 +533,10 @@ describe('runWebResearch', () => {
       },
     });
 
-    assert.equal(out.ok, false);
-    assert.equal(out.error, 'search_grounding_unavailable');
-    assert.deepEqual(modelsTried, ['gemini-3.8-flash']);
+    assert.equal(out.ok, true);
+    assert.equal(out.model, 'gemini-robotics-er-2-preview');
+    assert.equal(modelsTried[0], 'gemini-3.8-flash');
+    assert.ok(modelsTried.includes('gemini-robotics-er-2-preview'));
   });
 
   it('uses pinned GEMINI_WEB_MODEL first', async () => {
@@ -520,13 +544,13 @@ describe('runWebResearch', () => {
     mock.method(
       globalThis,
       'fetch',
-      async (input: RequestInfo | URL, init?: RequestInit) => {
+      withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
         modelsTried.push(modelFromFetch(input, init));
         return new Response(
           JSON.stringify({ output_text: 'brief from pin' }),
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         );
-      }
+      })
     );
 
     const out = await runWebResearch({
@@ -541,5 +565,110 @@ describe('runWebResearch', () => {
     assert.equal(out.ok, true);
     assert.equal(modelsTried[0], 'gemini-3.6-flash');
     assert.equal(out.model, 'gemini-3.6-flash');
+  });
+
+  it('pinned model_unavailable falls back to Default pool', async () => {
+    const modelsTried: string[] = [];
+    mock.method(
+      globalThis,
+      'fetch',
+      withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const model = modelFromFetch(input, init);
+        modelsTried.push(model);
+        if (model === 'gemini-robotics-er-2-preview') {
+          return new Response(
+            JSON.stringify({
+              error: {
+                message:
+                  'This model models/gemini-robotics-er-2-preview is no longer available to new users.',
+                status: 'NOT_FOUND',
+              },
+            }),
+            { status: 404, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (model === 'gemini-2.5-flash-lite') {
+          return new Response(
+            JSON.stringify({
+              candidates: [
+                {
+                  content: {
+                    parts: [{ text: 'COO: Thailand | source: retailer' }],
+                  },
+                },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            error: {
+              message: `This model models/${model} is no longer available to new users.`,
+            },
+          }),
+          { status: 404, headers: { 'Content-Type': 'application/json' } }
+        );
+      })
+    );
+
+    const out = await runWebResearch({
+      entity: 'Toshiba ER-D3000A',
+      locale: 'zh-Hant',
+      env: {
+        GEMINI_API_KEY: 'k',
+        GEMINI_WEB_MODEL: 'gemini-robotics-er-2-preview',
+      },
+    });
+
+    assert.equal(out.ok, true);
+    assert.equal(out.model, 'gemini-2.5-flash-lite');
+    assert.equal(modelsTried[0], 'gemini-robotics-er-2-preview');
+    assert.ok(out.brief.includes('Thailand'));
+  });
+
+  it('empty Models list still tries static Search fallback', async () => {
+    const modelsTried: string[] = [];
+    mock.method(
+      globalThis,
+      'fetch',
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (isModelsListUrl(url)) {
+          return new Response('{}', {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        const model = modelFromFetch(input, init);
+        modelsTried.push(model);
+        if (model === 'gemini-2.5-flash-lite') {
+          return new Response(
+            JSON.stringify({
+              candidates: [
+                { content: { parts: [{ text: 'Static fallback brief.' }] } },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            error: { message: `models/${model} is not found for API version` },
+          }),
+          { status: 404, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    );
+
+    const out = await runWebResearch({
+      entity: 'Generic SKU',
+      locale: 'en',
+      env: { GEMINI_API_KEY: 'k' },
+    });
+
+    assert.equal(out.ok, true);
+    assert.equal(out.model, 'gemini-2.5-flash-lite');
+    assert.ok(modelsTried.includes('gemini-2.5-flash-lite'));
   });
 });
