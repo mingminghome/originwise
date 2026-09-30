@@ -13,9 +13,10 @@
  *
  * Free-tier Search is a SEPARATE quota from text RPM/RPD (AI Studio → Tools):
  *   - Gemini 3 Search: often **0 / 0** — skipped in auto chain
- *   - Gemini 2.5 Search / Gemini 2 Search: typically **1.5K RPD** (preferred)
- *   - Default Search: typically **1.5K RPD** (robotics ER, Gemma, …)
+ *   - Default Search: typically **1.5K RPD** (robotics ER, Gemma) — tried first
+ *   - Gemini 2.5 / Gemini 2 Search: typically **1.5K RPD** — fallbacks
  *   - WEB_SEARCH_MAX_ATTEMPTS caps cross-model retries (default 4)
+ *   - Per-attempt ~14s so hang/slow models skip before burning the job budget
  *
  * Docs:
  *   https://ai.google.dev/gemini-api/docs/google-search
@@ -123,15 +124,17 @@ function pickPoolModels(
 }
 
 /**
- * Auto Search chain: Gemini 2.5 → Default → Gemini 2.
- * Skips Gemini 3 (Search free tier often 0/0). Pin via GEMINI_WEB_MODEL to force.
+ * Auto Search chain: Default → Gemini 2.5 → Gemini 2.
+ * Default (robotics ER / Gemma) historically has Search headroom; 2.5 can be
+ * slow and burn the budget before fallback. Skips Gemini 3 (often 0/0).
+ * Pin via GEMINI_WEB_MODEL to force a single model.
  */
 export function selectSearchModelChain(listedIds: string[]): string[] {
-  const gemini25 = pickPoolModels(listedIds, 'gemini25', GEMINI25_POOL_TRY_CAP);
   const defaults = selectDefaultSearchModels(listedIds);
+  const gemini25 = pickPoolModels(listedIds, 'gemini25', GEMINI25_POOL_TRY_CAP);
   const gemini2 = pickPoolModels(listedIds, 'gemini2', GEMINI2_POOL_TRY_CAP);
   const out: string[] = [];
-  for (const id of [...gemini25, ...defaults, ...gemini2]) {
+  for (const id of [...defaults, ...gemini25, ...gemini2]) {
     if (!out.includes(id)) out.push(id);
   }
   return out;
@@ -145,13 +148,19 @@ export function parseWebSearchMaxAttempts(env: WebResearchEnv): number {
   return Math.min(n, HARD_WEB_SEARCH_MAX_ATTEMPTS);
 }
 
-/** Default-pool Search (robotics ER) often needs ~10–20s, not a 7s abort. */
-const INTERACTIONS_FETCH_MS = 20000;
-const GENERATE_CONTENT_FETCH_MS = 25000;
+/**
+ * Per-attempt caps: short enough that hang/slow models skip to the next
+ * before burning the whole job budget (was 20–25s × few tries → miss Default).
+ */
+const INTERACTIONS_FETCH_MS = 15000;
+const GENERATE_CONTENT_FETCH_MS = 14000;
 /** Gemini 3 Search is often 0/0 — stop that family after this many 429s. */
 const MAX_GEMINI3_SEARCH_FAILS = 1;
-/** One or two Default-pool attempts; Search itself is slow. */
-const WEB_PASS_BUDGET_MS = 40000;
+/**
+ * Wall budget for the whole Search pass. Must fit maxAttempts × per-attempt
+ * (default 4 × ~14s) with headroom for Models list.
+ */
+const WEB_PASS_BUDGET_MS = 60000;
 const DEFAULT_POOL_TRY_CAP = 2;
 const GEMINI25_POOL_TRY_CAP = 2;
 const GEMINI2_POOL_TRY_CAP = 1;
