@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it, mock } from 'node:test';
 import {
+  isRoboticsSearchModel,
   isWebLookupEnabled,
   mapWebResearchHttpError,
   parseInteractionSearch,
@@ -66,6 +67,52 @@ function modelFromFetch(input: RequestInfo | URL, init?: RequestInit): string {
   }
   return 'unknown';
 }
+
+function groundedGcResponse(text: string, title = 'Retailer', uri = 'https://example.com/p'): Response {
+  return new Response(
+    JSON.stringify({
+      candidates: [
+        {
+          content: { parts: [{ text }] },
+          groundingMetadata: {
+            webSearchQueries: ['origin query'],
+            groundingChunks: [{ web: { title, uri } }],
+          },
+        },
+      ],
+    }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } }
+  );
+}
+
+function groundedIxResponse(text: string, title = 'Retailer', url = 'https://example.com/p'): Response {
+  return new Response(
+    JSON.stringify({
+      output_text: text,
+      steps: [
+        {
+          type: 'model_output',
+          content: [
+            {
+              type: 'text',
+              text,
+              annotations: [{ type: 'url_citation', title, url }],
+            },
+          ],
+        },
+      ],
+    }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } }
+  );
+}
+
+describe('isRoboticsSearchModel', () => {
+  it('detects robotics ER Search models', () => {
+    assert.equal(isRoboticsSearchModel('gemini-robotics-er-2-preview'), true);
+    assert.equal(isRoboticsSearchModel('models/gemini-robotics-er-1.6-preview'), true);
+    assert.equal(isRoboticsSearchModel('gemini-3.8-flash'), false);
+  });
+});
 
 describe('searchGroundingPool / selectDefaultSearchModels', () => {
   it('classifies Gemini families vs Default pool', () => {
@@ -316,6 +363,7 @@ describe('runWebResearch', () => {
     assert.equal(out.model, 'gemini-3.8-flash');
     assert.ok(out.brief.includes('Poland'));
     assert.ok(out.brief.includes('Sharp'));
+    assert.ok(out.sources.some((s) => s.includes('Sharp')));
     assert.ok(
       urls.some(
         (u) =>
@@ -346,19 +394,19 @@ describe('runWebResearch', () => {
           );
         }
         if (model === 'gemini-robotics-er-1.6-preview') {
-          return new Response(
-            JSON.stringify({
-              candidates: [
-                {
-                  content: {
-                    parts: [
-                      { text: 'Made in Poland; brand Japan; Foxconn parent.' },
-                    ],
-                  },
-                },
-              ],
-            }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          // Robotics prefers Interactions; serve grounded IX on /interactions,
+          // and grounded GC if the test hits generateContent.
+          if (String(input).includes('/interactions')) {
+            return groundedIxResponse(
+              'Made in Poland; brand Japan; Foxconn parent.',
+              'Sharp',
+              'https://example.com/sharp'
+            );
+          }
+          return groundedGcResponse(
+            'Made in Poland; brand Japan; Foxconn parent.',
+            'Sharp',
+            'https://example.com/sharp'
           );
         }
         return new Response(
@@ -410,7 +458,8 @@ describe('runWebResearch', () => {
     assert.equal(out.error, 'search_grounding_unavailable');
     assert.equal(modelsTried[0], 'gemini-robotics-er-2-preview');
     assert.ok(modelsTried.includes('gemini-2.5-flash-lite'));
-    assert.ok(modelsTried.length <= 5);
+    // Robotics may hit Interactions + generateContent per attempt
+    assert.ok(new Set(modelsTried).size <= 5);
   });
 
   it('falls back across pools after empty / grounding fails', async () => {
@@ -430,18 +479,7 @@ describe('runWebResearch', () => {
           );
         }
         if (model === 'gemini-2.5-flash-lite') {
-          return new Response(
-            JSON.stringify({
-              candidates: [
-                {
-                  content: {
-                    parts: [{ text: 'Toshiba DW factory notes from web.' }],
-                  },
-                },
-              ],
-            }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } }
-          );
+          return groundedGcResponse('Toshiba DW factory notes from web.');
         }
         return new Response(
           JSON.stringify({
@@ -492,7 +530,7 @@ describe('runWebResearch', () => {
 
     assert.equal(out.ok, false);
     assert.equal(out.error, 'search_grounding_unavailable');
-    assert.equal(modelsTried.length, 2);
+    assert.equal(new Set(modelsTried).size, 2);
   });
 
   it('pinned Gemini 3 Search fail still walks Default/2.5 fallback', async () => {
@@ -516,18 +554,10 @@ describe('runWebResearch', () => {
           );
         }
         if (model === 'gemini-robotics-er-2-preview') {
-          return new Response(
-            JSON.stringify({
-              candidates: [
-                {
-                  content: {
-                    parts: [{ text: 'Recovered via Default Search pool.' }],
-                  },
-                },
-              ],
-            }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } }
-          );
+          if (String(input).includes('/interactions')) {
+            return groundedIxResponse('Recovered via Default Search pool.');
+          }
+          return groundedGcResponse('Recovered via Default Search pool.');
         }
         return new Response(
           JSON.stringify({ error: { message: 'fail' } }),
@@ -558,10 +588,7 @@ describe('runWebResearch', () => {
       'fetch',
       withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
         modelsTried.push(modelFromFetch(input, init));
-        return new Response(
-          JSON.stringify({ output_text: 'brief from pin' }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        );
+        return groundedIxResponse('brief from pin');
       })
     );
 
@@ -600,18 +627,7 @@ describe('runWebResearch', () => {
           );
         }
         if (model === 'gemini-2.5-flash-lite') {
-          return new Response(
-            JSON.stringify({
-              candidates: [
-                {
-                  content: {
-                    parts: [{ text: 'COO: Thailand | source: retailer' }],
-                  },
-                },
-              ],
-            }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } }
-          );
+          return groundedGcResponse('COO: Thailand | source: retailer');
         }
         return new Response(
           JSON.stringify({
@@ -655,14 +671,10 @@ describe('runWebResearch', () => {
         const model = modelFromFetch(input, init);
         modelsTried.push(model);
         if (model === 'gemini-robotics-er-2-preview') {
-          return new Response(
-            JSON.stringify({
-              candidates: [
-                { content: { parts: [{ text: 'Static robotics brief.' }] } },
-              ],
-            }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } }
-          );
+          if (String(input).includes('/interactions')) {
+            return groundedIxResponse('Static robotics brief.');
+          }
+          return groundedGcResponse('Static robotics brief.');
         }
         return new Response(
           JSON.stringify({
@@ -682,6 +694,101 @@ describe('runWebResearch', () => {
     assert.equal(out.ok, true);
     assert.equal(out.model, 'gemini-robotics-er-2-preview');
     assert.equal(modelsTried[0], 'gemini-robotics-er-2-preview');
+  });
+
+
+  it('robotics Search uses Interactions first and populates Sources', async () => {
+    const urls: string[] = [];
+    mock.method(
+      globalThis,
+      'fetch',
+      withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        urls.push(url);
+        if (url.includes('/interactions')) {
+          return groundedIxResponse(
+            'COO: Thailand | source: retailer | via: ubuy',
+            'ubuy',
+            'https://www.u-buy.co.uk/product'
+          );
+        }
+        // Ungrounded GC must not win over Interactions
+        return new Response(
+          JSON.stringify({
+            candidates: [
+              { content: { parts: [{ text: 'Memory-only COO guess.' }] } },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      })
+    );
+
+    const out = await runWebResearch({
+      entity: 'Generic Appliance SKU-100',
+      locale: 'en',
+      env: { GEMINI_API_KEY: 'test-key' },
+    });
+
+    assert.equal(out.ok, true);
+    assert.equal(out.model, 'gemini-robotics-er-2-preview');
+    assert.ok(out.brief.includes('Thailand'));
+    assert.ok(out.sources.some((s) => s.includes('ubuy')));
+    assert.ok(out.brief.includes('Sources:'));
+    assert.ok(urls.some((u) => u.includes('/v1beta/interactions')));
+    // Interactions tried before generateContent for robotics
+    const ix = urls.findIndex((u) => u.includes('/interactions'));
+    const gc = urls.findIndex((u) => u.includes('generateContent'));
+    assert.ok(ix >= 0);
+    assert.ok(gc < 0 || ix < gc);
+  });
+
+  it('rejects ungrounded generateContent as Search miss and keeps walking', async () => {
+    const modelsTried: string[] = [];
+    mock.method(
+      globalThis,
+      'fetch',
+      withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const model = modelFromFetch(input, init);
+        modelsTried.push(model);
+        const url = String(input);
+        if (model.startsWith('gemini-robotics')) {
+          if (url.includes('/interactions')) {
+            return new Response(
+              JSON.stringify({ error: { message: 'interactions down' } }),
+              { status: 503, headers: { 'Content-Type': 'application/json' } }
+            );
+          }
+          // Memory-only GC — must not count as Search success
+          return new Response(
+            JSON.stringify({
+              candidates: [
+                { content: { parts: [{ text: 'Ungrounded memory brief.' }] } },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (model === 'gemini-2.5-flash-lite') {
+          return groundedGcResponse('Grounded retailer COO notes.');
+        }
+        return new Response(
+          JSON.stringify({ error: { message: 'fail' } }),
+          { status: 500, headers: { 'Content-Type': 'application/json' } }
+        );
+      })
+    );
+
+    const out = await runWebResearch({
+      entity: 'Generic Appliance SKU-100',
+      locale: 'en',
+      env: { GEMINI_API_KEY: 'test-key' },
+    });
+
+    assert.equal(out.ok, true);
+    assert.equal(out.model, 'gemini-2.5-flash-lite');
+    assert.ok(out.sources.length > 0);
+    assert.ok(modelsTried.includes('gemini-robotics-er-2-preview'));
   });
 
   it('queues Google suggested replacement after model_unavailable', async () => {
@@ -704,14 +811,10 @@ describe('runWebResearch', () => {
           );
         }
         if (model === 'gemini-3.5-flash-lite') {
-          return new Response(
-            JSON.stringify({
-              candidates: [
-                { content: { parts: [{ text: 'Recovered via suggested replacement.' }] } },
-              ],
-            }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } }
-          );
+          if (String(input).includes('/interactions')) {
+            return groundedIxResponse('Recovered via suggested replacement.');
+          }
+          return groundedGcResponse('Recovered via suggested replacement.');
         }
         // Force early 404 on defaults so we reach 2.5 then suggestion
         return new Response(

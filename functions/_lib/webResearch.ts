@@ -2,8 +2,10 @@
  * Live web research for check jobs (v1.1).
  *
  * Uses Gemini Grounding with Google Search when GEMINI_API_KEY is set and
- * WEB_LOOKUP is not off. Gemini 3.x uses the Interactions API
- * (`tools: [{ type: "google_search" }]`); generateContent is the fallback.
+ * WEB_LOOKUP is not off. Robotics ER / Gemini 3 prefer the Interactions API
+ * (`tools: [{ type: "google_search" }]`) so Sources populate; generateContent
+ * is used for other pools and as fallback. Memory-only replies (no grounding
+ * chunks / citations) are not treated as Search hits.
  * Failures are soft — orchestrator continues on model memory only.
  *
  * Env:
@@ -373,12 +375,31 @@ type InteractionResp = {
 };
 
 const INTERACTIONS_URLS = [
-  'https://generativelanguage.googleapis.com/v1beta2/interactions',
+  // v1beta is the live Interactions Search endpoint; v1beta2 404s for many keys.
   'https://generativelanguage.googleapis.com/v1beta/interactions',
+  'https://generativelanguage.googleapis.com/v1beta2/interactions',
 ] as const;
 
 function isGemini3SearchFamily(model: string): boolean {
   return /gemini-3/i.test(model) || /flash-latest|flash-lite-latest/i.test(model);
+}
+
+/** Default-pool robotics ER — free Search path; needs Interactions for real grounding. */
+export function isRoboticsSearchModel(model: string): boolean {
+  return /robotics-er/i.test(stripModelPrefix(model));
+}
+
+/**
+ * True when generateContent often answers from memory with empty groundingMetadata.
+ * Interactions + google_search is the path that returns citations / Sources.
+ */
+function prefersInteractionsSearch(model: string): boolean {
+  return isRoboticsSearchModel(model) || isGemini3SearchFamily(model);
+}
+
+/** Search success requires grounding evidence (Sources), not memory-only text. */
+function isGroundedSearchHit(out: { sources: string[] }): boolean {
+  return out.sources.length > 0;
 }
 
 function pushSource(sources: string[], title?: string, uri?: string): void {
@@ -628,33 +649,47 @@ async function callGenerateContentSearch(
   return { ok: true, text: text.trim(), sources };
 }
 
+function pickGroundedOrMiss(
+  primary: GroundedCall,
+  secondary: GroundedCall
+): GroundedCall {
+  if (primary.ok && isGroundedSearchHit(primary)) return primary;
+  if (secondary.ok && isGroundedSearchHit(secondary)) return secondary;
+  // Memory-only text is not a Search hit — keep walking the model chain.
+  if (primary.ok || secondary.ok) {
+    return { ok: false, code: 'empty_response' };
+  }
+  if (
+    primary.code === 'upstream_unavailable' &&
+    secondary.code !== 'upstream_error'
+  ) {
+    return secondary;
+  }
+  return primary.code !== 'upstream_error' ? primary : secondary;
+}
+
 async function callGeminiGrounded(
   apiKey: string,
   model: string,
   prompt: string
 ): Promise<GroundedCall> {
-  // Prefer generateContent + google_search for every family (including Gemini 3
-  // replacements named in 404 bodies). Interactions is a secondary path for
-  // Gemini 3 only — it used to be primary and skipped generateContent entirely.
+  // Robotics ER (and Gemini 3): Interactions + google_search is the path that
+  // actually runs Search and returns url_citation Sources. generateContent on
+  // robotics often returns memory text with empty groundingMetadata — which
+  // looked like "Search ok" while Sources stayed none, or burned the pass when
+  // GC 429'd and Interactions was never tried (Gemini 3-only fallback).
+  if (prefersInteractionsSearch(model)) {
+    const viaIx = await callInteractionsSearch(apiKey, model, prompt);
+    if (viaIx.ok && isGroundedSearchHit(viaIx)) return viaIx;
+    const viaGc = await callGenerateContentSearch(apiKey, model, prompt);
+    return pickGroundedOrMiss(viaIx, viaGc);
+  }
+
   const viaGc = await callGenerateContentSearch(apiKey, model, prompt);
-  if (viaGc.ok) return viaGc;
-  if (!isGemini3SearchFamily(model)) return viaGc;
-  if (
-    viaGc.code === 'model_unavailable' ||
-    viaGc.code === 'search_grounding_unavailable'
-  ) {
-    return viaGc;
-  }
-  const viaIx = await callInteractionsSearch(apiKey, model, prompt);
-  if (viaIx.ok) return viaIx;
-  // Keep the more specific of the two soft-fail codes
-  if (
-    viaGc.code === 'upstream_unavailable' &&
-    viaIx.code !== 'upstream_error'
-  ) {
-    return viaIx;
-  }
-  return viaGc.code !== 'upstream_error' ? viaGc : viaIx;
+  if (viaGc.ok && isGroundedSearchHit(viaGc)) return viaGc;
+  // Ungrounded GC text is not a Search hit for COO / Sources.
+  if (viaGc.ok) return { ok: false, code: 'empty_response' };
+  return viaGc;
 }
 
 /**
