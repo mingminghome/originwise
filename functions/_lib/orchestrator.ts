@@ -557,6 +557,8 @@ async function runMulti(
     productSkipped: !shouldRunProduct(dimensions),
     webEnriched: web.used,
     webFailCode: web.used ? undefined : web.error,
+    webBrief: web.brief,
+    ocrText: identify?.ocrText,
     partials: {
       identify,
       product,
@@ -647,6 +649,7 @@ async function runMonolith(
     null) as VerifyPartial | null;
   const alternatives = (out.obj.alternatives ??
     null) as AlternativesPartial | null;
+  const monolithIdentify = (out.obj.identify ?? null) as IdentifyPartial | null;
 
   const result = synthesize({
     jobId,
@@ -657,6 +660,8 @@ async function runMonolith(
     productSkipped: !shouldRunProduct(dimensions),
     webEnriched: web.used,
     webFailCode: web.used ? undefined : web.error,
+    webBrief: web.brief,
+    ocrText: monolithIdentify?.ocrText,
     partials: {
       product: shouldRunProduct(dimensions) ? product : null,
       company: shouldRunCompany(dimensions) ? company : null,
@@ -786,6 +791,8 @@ async function runDual(
     productSkipped: !shouldRunProduct(dimensions),
     webEnriched: web.used,
     webFailCode: web.used ? undefined : web.error,
+    webBrief: web.brief,
+    ocrText: undefined,
     partials: {
       product: shouldRunProduct(dimensions) ? product : null,
       company: shouldRunCompany(dimensions) ? company : null,

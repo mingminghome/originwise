@@ -250,6 +250,8 @@ Real conflicts to flag:
 - Parent is a local distributor / importer / "Brand TW" market desk rather than a legal owner.
 - madeIn is just the brand HQ / "designed in" country with no factory/COO evidence (stereotype).
 - madeIn contradicts explicit packaging OCR if both are present.
+- madeIn=China contradicts an explicit retailer/product-page COO for another country (Country of origin / Country of Publication / 製造国) for this SKU.
+- madeIn stamped only from parent/holding ownership with no OCR/retailer/manufacturer COO.
 - Invented China when notes/OCR say otherwise.
 - Invented non-China factory (copying HQ into madeIn, or using another category/homonym) when notes only mention design or a supply-shift rumor.
 Return ONLY JSON:

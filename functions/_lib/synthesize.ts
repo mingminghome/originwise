@@ -32,6 +32,7 @@ import {
   type GeoScope,
   type RegionCode,
 } from './regions';
+import { applyCooPriority } from './cooPriority';
 
 export type SynthesizeInput = {
   jobId: string;
@@ -46,6 +47,10 @@ export type SynthesizeInput = {
   webEnriched?: boolean;
   /** Soft-fail reason when web research did not enrich (timeout vs grounding vs empty). */
   webFailCode?: string;
+  /** Live web research brief text (for COO priority ranking). */
+  webBrief?: string;
+  /** Packaging / label OCR text (highest COO priority). */
+  ocrText?: string;
 };
 
 type Factors = {
@@ -848,7 +853,8 @@ export function looksLikeDistributorParent(name: string): boolean {
 
 
 function sanitizeProduct(
-  p?: ProductPartial | null
+  p?: ProductPartial | null,
+  ctx?: { webBrief?: string; ocrText?: string }
 ): ProductPartial | null | undefined {
   if (!p) return p;
   const noteBlob = (p.notes ?? []).join(' ');
@@ -867,8 +873,8 @@ function sanitizeProduct(
       isVagueOriginLabel(p.madeIn)) ||
     (Boolean(p.manufacturedIn && String(p.manufacturedIn).trim()) &&
       isVagueOriginLabel(p.manufacturedIn));
-  const madeIn = madeCopied ? undefined : confirmedOriginLabel(p.madeIn);
-  const manufacturedIn = mfgCopied
+  let madeIn = madeCopied ? undefined : confirmedOriginLabel(p.madeIn);
+  let manufacturedIn = mfgCopied
     ? undefined
     : confirmedOriginLabel(p.manufacturedIn);
   const notes = [...(p.notes ?? [])];
@@ -885,10 +891,32 @@ function sanitizeProduct(
       'Final COO unconfirmed — no SKU/label country of origin; do not invent made-in.'
     );
   }
+
+  // Generic COO priority: OCR → retailer/product page → manufacturer → ownership never stamps
+  const coo = applyCooPriority({
+    ocrText: ctx?.ocrText,
+    webBrief: ctx?.webBrief,
+    notes,
+    madeIn,
+    manufacturedIn,
+  });
+  madeIn = coo.madeIn;
+  manufacturedIn = coo.manufacturedIn;
+  notes.length = 0;
+  notes.push(...coo.notes);
+  let confidence = p.confidence;
+  if (
+    typeof coo.confidenceCap === 'number' &&
+    (typeof confidence !== 'number' || confidence > coo.confidenceCap)
+  ) {
+    confidence = coo.confidenceCap;
+  }
+
   if (
     madeIn === p.madeIn &&
     manufacturedIn === p.manufacturedIn &&
-    notes.length === (p.notes ?? []).length
+    notes.length === (p.notes ?? []).length &&
+    confidence === p.confidence
   ) {
     return p;
   }
@@ -896,6 +924,7 @@ function sanitizeProduct(
     ...p,
     madeIn,
     manufacturedIn,
+    confidence,
     notes: notes.length ? notes.slice(0, 8) : p.notes,
   };
 }
@@ -1098,7 +1127,11 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   const { jobId, geoScope } = input;
   const partials: AgentPartials = {
     ...input.partials,
-    product: sanitizeProduct(input.partials.product) ?? input.partials.product,
+    product:
+      sanitizeProduct(input.partials.product, {
+        webBrief: input.webBrief,
+        ocrText: input.ocrText,
+      }) ?? input.partials.product,
     company: sanitizeCompany(input.partials.company) ?? input.partials.company,
   };
   const f = extractFactors(partials, geoScope);
