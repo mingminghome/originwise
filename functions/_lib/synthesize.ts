@@ -1102,6 +1102,8 @@ function finalizeAlternativesList(
 /** Classify web soft-fail for notes (not a single “no web” bucket). */
 export function webFailCaveat(code?: string): string {
   switch (code) {
+    case 'model_unavailable':
+      return 'Live web Search models were unavailable on this API key — made-in is more conservative (model knowledge only).';
     case 'search_grounding_unavailable':
     case 'upstream_quota':
       return 'Live Google Search grounding unavailable on this API key — made-in is more conservative (model knowledge only).';

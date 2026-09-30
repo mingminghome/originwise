@@ -14,6 +14,7 @@ import {
   searchGroundingPool,
   selectDefaultSearchModels,
   selectSearchModelChain,
+  suggestedReplacementModel,
   webSearchModelChain,
 } from './webResearch';
 
@@ -94,7 +95,7 @@ describe('searchGroundingPool / selectDefaultSearchModels', () => {
     assert.ok(!selected.includes('gemini-3.8-flash'));
   });
 
-  it('auto Search chain prefers Default then 2.5 then 2; skips Gemini 3', () => {
+  it('auto Search chain prefers Default then 2.5 then 2; Gemini 3 last', () => {
     const chain = selectSearchModelChain([
       'gemini-3.8-flash',
       'gemini-2.5-flash',
@@ -107,16 +108,19 @@ describe('searchGroundingPool / selectDefaultSearchModels', () => {
     assert.equal(chain[0], 'gemini-robotics-er-2-preview');
     assert.ok(chain.indexOf('gemini-robotics-er-2-preview') < chain.indexOf('gemini-2.5-flash-lite'));
     assert.ok(chain.includes('gemini-2.0-flash'));
-    assert.ok(!chain.includes('gemini-3.8-flash'));
+    assert.ok(chain.includes('gemini-3.8-flash'));
+    assert.ok(chain.indexOf('gemini-2.5-flash-lite') < chain.indexOf('gemini-3.8-flash'));
+    // gemma demoted — not ahead of robotics
+    assert.ok(chain.indexOf('gemma-4-31b-it') < 0 || chain.indexOf('gemma-4-31b-it') > 0);
   });
 });
 
 describe('parseWebSearchMaxAttempts', () => {
-  it('defaults to 4 and caps at 8', () => {
-    assert.equal(parseWebSearchMaxAttempts({}), 4);
+  it('defaults to 5 and caps at 8', () => {
+    assert.equal(parseWebSearchMaxAttempts({}), 5);
     assert.equal(parseWebSearchMaxAttempts({ WEB_SEARCH_MAX_ATTEMPTS: '2' }), 2);
     assert.equal(parseWebSearchMaxAttempts({ WEB_SEARCH_MAX_ATTEMPTS: '99' }), 8);
-    assert.equal(parseWebSearchMaxAttempts({ WEB_SEARCH_MAX_ATTEMPTS: '0' }), 4);
+    assert.equal(parseWebSearchMaxAttempts({ WEB_SEARCH_MAX_ATTEMPTS: '0' }), 5);
   });
 });
 
@@ -196,6 +200,15 @@ describe('mapWebResearchHttpError', () => {
         'This model models/gemini-2.5-flash is no longer available to new users.'
       ),
       'model_unavailable'
+    );
+  });
+
+  it('parses Google suggested replacement model from 404 body', () => {
+    assert.equal(
+      suggestedReplacementModel(
+        'This model models/gemini-2.5-flash-lite is no longer available to new users. Please update your code to use models/gemini-3.5-flash-lite for the latest features.'
+      ),
+      'gemini-3.5-flash-lite'
     );
   });
 
@@ -397,8 +410,7 @@ describe('runWebResearch', () => {
     assert.equal(out.error, 'search_grounding_unavailable');
     assert.equal(modelsTried[0], 'gemini-robotics-er-2-preview');
     assert.ok(modelsTried.includes('gemini-2.5-flash-lite'));
-    assert.ok(!modelsTried.includes('gemini-3.8-flash'));
-    assert.ok(modelsTried.length <= 4);
+    assert.ok(modelsTried.length <= 5);
   });
 
   it('falls back across pools after empty / grounding fails', async () => {
@@ -627,7 +639,7 @@ describe('runWebResearch', () => {
     assert.ok(out.brief.includes('Thailand'));
   });
 
-  it('empty Models list still tries static Search fallback', async () => {
+  it('empty Models list still tries robotics-first static Search fallback', async () => {
     const modelsTried: string[] = [];
     mock.method(
       globalThis,
@@ -642,11 +654,11 @@ describe('runWebResearch', () => {
         }
         const model = modelFromFetch(input, init);
         modelsTried.push(model);
-        if (model === 'gemini-2.5-flash-lite') {
+        if (model === 'gemini-robotics-er-2-preview') {
           return new Response(
             JSON.stringify({
               candidates: [
-                { content: { parts: [{ text: 'Static fallback brief.' }] } },
+                { content: { parts: [{ text: 'Static robotics brief.' }] } },
               ],
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -668,7 +680,64 @@ describe('runWebResearch', () => {
     });
 
     assert.equal(out.ok, true);
-    assert.equal(out.model, 'gemini-2.5-flash-lite');
-    assert.ok(modelsTried.includes('gemini-2.5-flash-lite'));
+    assert.equal(out.model, 'gemini-robotics-er-2-preview');
+    assert.equal(modelsTried[0], 'gemini-robotics-er-2-preview');
+  });
+
+  it('queues Google suggested replacement after model_unavailable', async () => {
+    const modelsTried: string[] = [];
+    mock.method(
+      globalThis,
+      'fetch',
+      withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const model = modelFromFetch(input, init);
+        modelsTried.push(model);
+        if (model === 'gemini-2.5-flash-lite') {
+          return new Response(
+            JSON.stringify({
+              error: {
+                message:
+                  'This model models/gemini-2.5-flash-lite is no longer available to new users. Please update your code to use models/gemini-3.5-flash-lite.',
+              },
+            }),
+            { status: 404, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (model === 'gemini-3.5-flash-lite') {
+          return new Response(
+            JSON.stringify({
+              candidates: [
+                { content: { parts: [{ text: 'Recovered via suggested replacement.' }] } },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        // Force early 404 on defaults so we reach 2.5 then suggestion
+        return new Response(
+          JSON.stringify({
+            error: {
+              message: `This model models/${model} is no longer available to new users.`,
+            },
+          }),
+          { status: 404, headers: { 'Content-Type': 'application/json' } }
+        );
+      })
+    );
+
+    const out = await runWebResearch({
+      entity: 'Generic SKU',
+      locale: 'en',
+      env: {
+        GEMINI_API_KEY: 'k',
+        GEMINI_WEB_MODEL: 'gemini-2.5-flash-lite',
+        WEB_SEARCH_MAX_ATTEMPTS: '6',
+      },
+    });
+
+    assert.equal(out.ok, true);
+    assert.equal(out.model, 'gemini-3.5-flash-lite');
+    assert.equal(modelsTried[0], 'gemini-2.5-flash-lite');
+    assert.ok(modelsTried.includes('gemini-3.5-flash-lite'));
   });
 });
