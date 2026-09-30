@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it, mock } from 'node:test';
 import {
+  isInteractionsCapacityError,
   isRoboticsSearchModel,
   isWebLookupEnabled,
   mapWebResearchHttpError,
@@ -285,6 +286,25 @@ describe('mapWebResearchHttpError', () => {
 
   it('maps unavailable', () => {
     assert.equal(mapWebResearchHttpError(503, 'busy'), 'upstream_unavailable');
+  });
+
+  it('detects Interactions capacity / high-demand errors', () => {
+    assert.equal(
+      isInteractionsCapacityError(
+        503,
+        'gemini-robotics-er-2-preview is currently experiencing high demand, spikes in demand are usually temporary. Please try again later.'
+      ),
+      true
+    );
+    assert.equal(isInteractionsCapacityError(504, 'gateway'), true);
+    assert.equal(
+      isInteractionsCapacityError(
+        429,
+        'You exceeded your current quota, please check your plan and billing details.'
+      ),
+      false
+    );
+    assert.equal(isInteractionsCapacityError(404, 'not found'), false);
   });
 });
 
@@ -789,6 +809,111 @@ describe('runWebResearch', () => {
     assert.equal(out.model, 'gemini-2.5-flash-lite');
     assert.ok(out.sources.length > 0);
     assert.ok(modelsTried.includes('gemini-robotics-er-2-preview'));
+  });
+
+  it('retries Interactions 503 high demand then populates Sources', async () => {
+    let ixHits = 0;
+    const urls: string[] = [];
+    mock.method(
+      globalThis,
+      'fetch',
+      withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        urls.push(url);
+        const model = modelFromFetch(input, init);
+        if (url.includes('/interactions') && model.startsWith('gemini-robotics')) {
+          ixHits += 1;
+          if (ixHits < 3) {
+            return new Response(
+              JSON.stringify({
+                error: {
+                  message:
+                    'gemini-robotics-er-2-preview is currently experiencing high demand, spikes in demand are usually temporary. Please try again later.',
+                  code: 'service_unavailable',
+                },
+              }),
+              { status: 503, headers: { 'Content-Type': 'application/json' } }
+            );
+          }
+          return groundedIxResponse(
+            'COO: Thailand | source: retailer | via: example',
+            'example',
+            'https://example.com/d3000a'
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            candidates: [
+              { content: { parts: [{ text: 'Memory-only.' }] } },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      })
+    );
+
+    const out = await runWebResearch({
+      entity: 'D3000A',
+      locale: 'en',
+      env: { GEMINI_API_KEY: 'test-key' },
+    });
+
+    assert.equal(out.ok, true);
+    assert.equal(out.model, 'gemini-robotics-er-2-preview');
+    assert.ok(out.sources.some((s) => s.includes('example.com')));
+    assert.ok(ixHits >= 3, `expected capacity retries, got ixHits=${ixHits}`);
+  });
+
+  it('keeps upstream_unavailable when Gemini 3 Search 429 follows robotics capacity miss', async () => {
+    mock.method(
+      globalThis,
+      'fetch',
+      withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const model = modelFromFetch(input, init);
+        if (model.startsWith('gemini-robotics')) {
+          if (url.includes('/interactions')) {
+            return new Response(
+              JSON.stringify({
+                error: {
+                  message:
+                    'gemini-robotics-er-2-preview is currently experiencing high demand. Please try again later.',
+                  code: 'service_unavailable',
+                },
+              }),
+              { status: 503, headers: { 'Content-Type': 'application/json' } }
+            );
+          }
+          // GC also unavailable under load
+          return new Response(
+            JSON.stringify({ error: { message: 'high demand' } }),
+            { status: 503, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        if (url.includes('/interactions') || url.includes('generateContent')) {
+          return new Response(
+            JSON.stringify({
+              error: {
+                message:
+                  'You exceeded your current quota, please check your plan and billing details.',
+              },
+            }),
+            { status: 429, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response('{}', { status: 500 });
+      })
+    );
+
+    const out = await runWebResearch({
+      entity: 'D3000A',
+      locale: 'en',
+      env: { GEMINI_API_KEY: 'test-key', WEB_SEARCH_MAX_ATTEMPTS: '4' },
+    });
+
+    assert.equal(out.ok, false);
+    // Must NOT claim Search entitlement gap when Default pool only hit capacity.
+    assert.equal(out.error, 'upstream_unavailable');
   });
 
   it('queues Google suggested replacement after model_unavailable', async () => {

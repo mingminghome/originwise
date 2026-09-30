@@ -18,7 +18,8 @@
  *   - Default Search: typically **1.5K RPD** (robotics ER, Gemma) — tried first
  *   - Gemini 2.5 / Gemini 2 Search: typically **1.5K RPD** — fallbacks
  *   - WEB_SEARCH_MAX_ATTEMPTS caps cross-model retries (default 4)
- *   - Per-attempt ~14s so hang/slow models skip before burning the job budget
+ *   - Per-attempt caps so hang/slow models skip before burning the job budget
+ *   - Interactions 503 "high demand" is retried (not treated as key entitlement)
  *
  * Docs:
  *   https://ai.google.dev/gemini-api/docs/google-search
@@ -515,11 +516,34 @@ function readJsonError(raw: string): string {
 
 let rememberedInteractionsUrl: string | null = null;
 
+/** Fast 503 / "high demand" retries — not for full fetch timeouts. */
+const INTERACTIONS_CAPACITY_TRIES = 3;
+const INTERACTIONS_RETRY_MS = 700;
+/** After a 503, use a tighter fetch cap so one hang does not burn the pass. */
+const INTERACTIONS_RETRY_FETCH_MS = 10000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** True when Google asks us to retry (capacity), not entitlement/404. */
+export function isInteractionsCapacityError(
+  status: number,
+  body: string
+): boolean {
+  if (status === 503 || status === 504) return true;
+  const msg = String(body || '').toLowerCase();
+  return /high demand|try again later|currently unavailable|spikes in demand/.test(
+    msg
+  );
+}
+
 async function postInteractions(
   url: string,
   apiKey: string,
   model: string,
-  prompt: string
+  prompt: string,
+  timeoutMs: number = INTERACTIONS_FETCH_MS
 ): Promise<{ res: Response; raw: string } | { ok: false; code: string }> {
   try {
     const res = await fetch(url, {
@@ -528,7 +552,7 @@ async function postInteractions(
         'Content-Type': 'application/json',
         'x-goog-api-key': apiKey,
       },
-      signal: AbortSignal.timeout(INTERACTIONS_FETCH_MS),
+      signal: AbortSignal.timeout(timeoutMs),
       body: JSON.stringify({
         model,
         input: prompt,
@@ -549,44 +573,75 @@ async function callInteractionsSearch(
   model: string,
   prompt: string
 ): Promise<GroundedCall> {
+  // Prefer last good URL, but keep fallbacks (remembered-only hid v1beta recovery).
   const urls = rememberedInteractionsUrl
-    ? [rememberedInteractionsUrl]
+    ? [
+        rememberedInteractionsUrl,
+        ...INTERACTIONS_URLS.filter((u) => u !== rememberedInteractionsUrl),
+      ]
     : [...INTERACTIONS_URLS];
   let last: GroundedCall = { ok: false, code: 'upstream_error' };
 
   for (const url of urls) {
-    const posted = await postInteractions(url, apiKey, model, prompt);
-    if ('code' in posted && posted.ok === false) {
-      last = posted;
-      if (posted.code === 'upstream_unavailable') return last;
-      continue;
+    let sawCapacity = false;
+    for (let attempt = 0; attempt < INTERACTIONS_CAPACITY_TRIES; attempt += 1) {
+      const posted = await postInteractions(
+        url,
+        apiKey,
+        model,
+        prompt,
+        sawCapacity ? INTERACTIONS_RETRY_FETCH_MS : INTERACTIONS_FETCH_MS
+      );
+      if ('code' in posted && posted.ok === false) {
+        last = posted;
+        // Timeout after a 503 on this host → still a capacity miss, not a dead model.
+        if (sawCapacity) {
+          return { ok: false, code: 'upstream_unavailable' };
+        }
+        // Full AbortSignal timeout with no prior 503 — try next URL / GC.
+        break;
+      }
+      const { res, raw } = posted as { res: Response; raw: string };
+      if (!res.ok) {
+        const errMsg = readJsonError(raw);
+        const code = mapWebResearchHttpError(res.status, errMsg);
+        last = { ok: false, code };
+        if (code === 'search_grounding_unavailable') return last;
+        if (isInteractionsCapacityError(res.status, errMsg)) {
+          sawCapacity = true;
+          if (attempt < INTERACTIONS_CAPACITY_TRIES - 1) {
+            await sleep(INTERACTIONS_RETRY_MS * (attempt + 1));
+            continue;
+          }
+          // Exhausted fast 503 retries. Do not probe dead fallback hosts (v1beta2
+          // 404 would mislabel this as model_unavailable).
+          return { ok: false, code: 'upstream_unavailable' };
+        }
+        break;
+      }
+      let data: InteractionResp;
+      try {
+        data = JSON.parse(raw) as InteractionResp;
+      } catch {
+        last = { ok: false, code: 'empty_response' };
+        break;
+      }
+      const parsed = parseInteractionSearch(data);
+      if (!parsed.text) {
+        last = { ok: false, code: 'empty_response' };
+        break;
+      }
+      rememberedInteractionsUrl = url;
+      return { ok: true, text: parsed.text, sources: parsed.sources };
     }
-    const { res, raw } = posted as { res: Response; raw: string };
-    if (!res.ok) {
-      last = {
-        ok: false,
-        code: mapWebResearchHttpError(res.status, readJsonError(raw)),
-      };
-      if (last.code === 'search_grounding_unavailable') return last;
-      continue;
+    // If this host only capacity-failed, stop — fallbacks are usually 404.
+    if (sawCapacity) {
+      return { ok: false, code: 'upstream_unavailable' };
     }
-    let data: InteractionResp;
-    try {
-      data = JSON.parse(raw) as InteractionResp;
-    } catch {
-      last = { ok: false, code: 'empty_response' };
-      continue;
-    }
-    const parsed = parseInteractionSearch(data);
-    if (!parsed.text) {
-      last = { ok: false, code: 'empty_response' };
-      continue;
-    }
-    rememberedInteractionsUrl = url;
-    return { ok: true, text: parsed.text, sources: parsed.sources };
   }
   return last;
 }
+
 
 /** Legacy Search path: generateContent + tools: [{ google_search: {} }]. */
 async function callGenerateContentSearch(
@@ -784,6 +839,7 @@ export async function runWebResearch(opts: {
         provider: 'gemini',
       };
     }
+    const prevLast = last;
     last = out.code;
 
     // Dead model id — keep walking; queue Google's suggested replacement if any
@@ -803,7 +859,14 @@ export async function runWebResearch(opts: {
       out.code === 'search_grounding_unavailable' ||
       out.code === 'upstream_quota'
     ) {
-      last = 'search_grounding_unavailable';
+      // Do not let later-pool Search 429 (often Gemini 3 0/0) overwrite a
+      // Default-pool capacity miss (Interactions 503 high demand) as
+      // "API key has no Search".
+      if (prevLast === 'upstream_unavailable') {
+        last = 'upstream_unavailable';
+      } else {
+        last = 'search_grounding_unavailable';
+      }
       if (isGemini3SearchFamily(model)) {
         gemini3Fails += 1;
       }
