@@ -200,6 +200,15 @@ export const pl = {
     brand: 'Marka',
     madeIn: 'Wyprodukowano w (ta sztuka / końcowy kraj pochodzenia)',
     madeInUnconfirmed: 'Ostateczny kraj pochodzenia niepotwierdzony — zobacz komponenty / linię globalną',
+    originLayersTitle: 'Warstwy pochodzenia',
+    originLayersIntro:
+      'Oddziela markę/ops, własność, końcowe COO i części — własność to nie made-in.',
+    layerBrandOps: 'Marka / ops',
+    layerOwnership: 'Własność / spółki matki',
+    layerOwnershipHint: 'To nie końcowe COO / made-in',
+    layerOwnershipEmpty: 'Brak sygnału własności/spółki matki w tym wyniku',
+    layerFinalCoo: 'Końcowe COO',
+    layerParts: 'Kandydaci części',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',
@@ -215,6 +224,7 @@ export const pl = {
       manufacturer: 'manufacturer',
       filings: 'filings',
       model_memory: 'model knowledge',
+      ownership: 'własność / matka',
     },
     origin: 'Pochodzenie',
     brandOrigin: 'Pochodzenie marki',

@@ -2,6 +2,7 @@ import type { CheckResult } from '../core/types';
 import type { TFunction } from '../core/i18n';
 import { formatTierReason } from '../core/i18n/tierReasons';
 import { AlternativeCards } from './AlternativeCards';
+import { OriginLayers } from './OriginLayers';
 import { OriginMap } from './OriginMap';
 import { RelationGraph } from './RelationGraph';
 import { TierBadge } from './TierBadge';
@@ -156,6 +157,10 @@ export function ResultPanel({
 
       <p className="ask-result-summary">{result.summary}</p>
 
+      <div style={{ marginTop: '0.85rem' }}>
+        <OriginLayers result={result} t={t} />
+      </div>
+
       {agents.length > 0 ? (
         <div style={{ marginTop: '0.85rem' }}>
           <AgentsPoolCard
@@ -181,45 +186,9 @@ export function ResultPanel({
                     {t('check.brand')}: {result.product.brand}
                   </li>
                 ) : null}
-                {result.product.madeIn &&
-                !/^(unknown|n\/?a|未知|不明|不詳)$/i.test(
-                  String(result.product.madeIn).trim()
-                ) ? (
-                  <li>
-                    {t('check.madeIn')}: {result.product.madeIn}
-                  </li>
-                ) : (
-                  <li className="fact-madein-unconfirmed">
-                    {t('check.madeInUnconfirmed')}
-                  </li>
-                )}
-                {result.product.originCandidates?.length ? (
-                  <li className="fact-origin-candidates">
-                    {t('check.originCandidates')}:
-                    <ul className="origin-candidate-list">
-                      {result.product.originCandidates.map((c) => (
-                        <li key={`${c.label}-${c.source}-${c.rating}`}>
-                          {c.label}
-                          {' · '}
-                          {t(`check.candidateRating.${c.rating}`)}
-                          {' · '}
-                          {Math.round(c.confidence * 100)}%
-                          {' · '}
-                          {t(`check.candidateSource.${c.source}`)}
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
-                ) : null}
                 {result.product.originCountry ? (
                   <li>
                     {t('check.brandOrigin')}: {result.product.originCountry}
-                  </li>
-                ) : null}
-                {result.product.componentsOrigin ? (
-                  <li>
-                    {t('check.componentsOrigin')}:{' '}
-                    {result.product.componentsOrigin}
                   </li>
                 ) : null}
                 {result.product.manufacturer ? (
@@ -237,38 +206,6 @@ export function ResultPanel({
                   </li>
                 ) : null}
               </ul>
-              {result.product.parts?.length ? (
-                <div className="parts-block">
-                  <h4 className="parts-block-title">{t('check.partsTitle')}</h4>
-                  <p className="muted parts-block-hint">{t('check.partsHint')}</p>
-                  <ul className="parts-list">
-                    {result.product.parts.map((part) => (
-                      <li
-                        key={part.name}
-                        className={
-                          part.chinaRelated
-                            ? 'parts-item parts-item--cn'
-                            : 'parts-item'
-                        }
-                      >
-                        <span className="parts-item-name">{part.name}</span>
-                        <span className="muted parts-item-meta">
-                          {t(`check.partKind.${part.kind || 'part'}`)}
-                          {part.madeIn || part.originCountry
-                            ? ` · ${part.madeIn || part.originCountry}`
-                            : ''}
-                          {part.chinaRelated
-                            ? ` · ${t('check.graphChinaLinked')}`
-                            : ''}
-                        </span>
-                        {part.note ? (
-                          <span className="muted parts-item-note">{part.note}</span>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
             </div>
           ) : null}
           {result.company ? (
@@ -283,12 +220,6 @@ export function ResultPanel({
                 {result.company.hqCountry ? (
                   <li>
                     {t('check.hq')}: {result.company.hqCountry}
-                  </li>
-                ) : null}
-                {result.company.parents?.length ? (
-                  <li>
-                    {t('check.parents')}:{' '}
-                    {result.company.parents.map((p) => p.name).join(', ')}
                   </li>
                 ) : null}
               </ul>

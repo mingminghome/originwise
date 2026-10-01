@@ -200,6 +200,15 @@ export const da = {
     brand: 'Mærke',
     madeIn: 'Fremstillet i (denne enhed / endeligt oprindelsesland)',
     madeInUnconfirmed: 'Endeligt oprindelsesland ikke bekræftet — se komponenter / global linje',
+    originLayersTitle: 'Oprindelseslag',
+    originLayersIntro:
+      'Adskil brand/drift, ejerskab, endelig COO og dele — ejerskab er ikke made-in.',
+    layerBrandOps: 'Brand / drift',
+    layerOwnership: 'Ejerskab / moderselskaber',
+    layerOwnershipHint: 'Ikke endelig COO / made-in',
+    layerOwnershipEmpty: 'Intet ejerskabs-/moderselskabssignal i dette resultat',
+    layerFinalCoo: 'Endelig COO',
+    layerParts: 'Delekandidater',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',
@@ -215,6 +224,7 @@ export const da = {
       manufacturer: 'manufacturer',
       filings: 'filings',
       model_memory: 'model knowledge',
+      ownership: 'ejerskab / moder',
     },
     origin: 'Oprindelse',
     brandOrigin: 'Mærkeoprindelse',

@@ -200,6 +200,15 @@ export const el = {
     brand: 'Μάρκα',
     madeIn: 'Κατασκευή σε (αυτή η μονάδα / τελική χώρα προέλευσης)',
     madeInUnconfirmed: 'Τελική χώρα προέλευσης μη επιβεβαιωμένη — δείτε εξαρτήματα / παγκόσμια γραμμή',
+    originLayersTitle: 'Στρώματα προέλευσης',
+    originLayersIntro:
+      'Ξεχωριστά μάρκα/λειτουργία, ιδιοκτησία, τελικό COO και εξαρτήματα — η ιδιοκτησία δεν είναι made-in.',
+    layerBrandOps: 'Μάρκα / λειτουργία',
+    layerOwnership: 'Ιδιοκτησία / μητρικές',
+    layerOwnershipHint: 'Όχι τελικό COO / made-in',
+    layerOwnershipEmpty: 'Δεν υπάρχει σήμα ιδιοκτησίας/μητρικής σε αυτό το αποτέλεσμα',
+    layerFinalCoo: 'Τελικό COO',
+    layerParts: 'Υποψήφια εξαρτήματα',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',
@@ -215,6 +224,7 @@ export const el = {
       manufacturer: 'manufacturer',
       filings: 'filings',
       model_memory: 'model knowledge',
+      ownership: 'ιδιοκτησία / μητρική',
     },
     origin: 'Προέλευση',
     brandOrigin: 'Προέλευση μάρκας',

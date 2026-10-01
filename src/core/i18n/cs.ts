@@ -200,6 +200,15 @@ export const cs = {
     brand: 'Značka',
     madeIn: 'Vyrobeno v (tato jednotka / konečná země původu)',
     madeInUnconfirmed: 'Konečná země původu nepotvrzena — viz komponenty / globální linka',
+    originLayersTitle: 'Vrstvy původu',
+    originLayersIntro:
+      'Odděleně značka/provoz, vlastnictví, finální COO a díly — vlastnictví není made-in.',
+    layerBrandOps: 'Značka / provoz',
+    layerOwnership: 'Vlastnictví / mateřské společnosti',
+    layerOwnershipHint: 'Není finální COO / made-in',
+    layerOwnershipEmpty: 'V tomto výsledku není signál vlastnictví/mateřské společnosti',
+    layerFinalCoo: 'Finální COO',
+    layerParts: 'Kandidáti dílů',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',
@@ -215,6 +224,7 @@ export const cs = {
       manufacturer: 'manufacturer',
       filings: 'filings',
       model_memory: 'model knowledge',
+      ownership: 'vlastnictví / mateřská',
     },
     origin: 'Původ',
     brandOrigin: 'Původ značky',

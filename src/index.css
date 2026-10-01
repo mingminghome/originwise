@@ -1680,6 +1680,61 @@ p {
   margin: 0;
   padding-left: 1.1rem;
 }
+
+.origin-layers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.origin-layers-intro {
+  margin: -0.15rem 0 0.15rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+.origin-layer {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.45rem 0.6rem;
+  background: var(--bg-subtle);
+}
+.origin-layer--ownership {
+  border-color: #7c3aed;
+  background: rgba(124, 58, 237, 0.07);
+}
+.origin-layer--coo {
+  border-color: #0f766e;
+  background: rgba(15, 118, 110, 0.08);
+}
+.origin-layer-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.65rem;
+  margin-bottom: 0.2rem;
+}
+.origin-layer-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.origin-layer--ownership .origin-layer-label {
+  color: #6d28d9;
+}
+.origin-layer--coo .origin-layer-label {
+  color: #0f766e;
+}
+.origin-layer-hint {
+  font-size: 0.72rem;
+}
+.origin-layer-list {
+  margin: 0;
+  padding-left: 1.05rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.origin-layer-empty {
+  margin: 0;
+  font-size: 0.8rem;
+}
 .parts-block {
   margin-top: 0.75rem;
   padding-top: 0.65rem;
