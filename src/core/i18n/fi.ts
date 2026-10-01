@@ -200,6 +200,15 @@ export const fi = {
     brand: 'Merkki',
     madeIn: 'Valmistettu (tämä yksikkö / lopullinen alkuperämaa)',
     madeInUnconfirmed: 'Lopullista alkuperämaata ei vahvistettu — katso komponentit / globaali linja',
+    originLayersTitle: 'Alkuperäkerrokset',
+    originLayersIntro:
+      'Erota brändi/toiminta, omistus, lopullinen COO ja osat — omistus ei ole made-in.',
+    layerBrandOps: 'Brändi / toiminta',
+    layerOwnership: 'Omistus / emoyhtiöt',
+    layerOwnershipHint: 'Ei lopullinen COO / made-in',
+    layerOwnershipEmpty: 'Ei omistus-/emoyhtiösignaalia tässä tuloksessa',
+    layerFinalCoo: 'Lopullinen COO',
+    layerParts: 'Osakandidaatit',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',
@@ -215,6 +224,7 @@ export const fi = {
       manufacturer: 'manufacturer',
       filings: 'filings',
       model_memory: 'model knowledge',
+      ownership: 'omistus / emo',
     },
     origin: 'Alkuperä',
     brandOrigin: 'Merkin alkuperä',

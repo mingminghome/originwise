@@ -200,6 +200,15 @@ export const sv = {
     brand: 'Varumärke',
     madeIn: 'Tillverkad i (denna enhet / slutligt ursprungsland)',
     madeInUnconfirmed: 'Slutligt ursprungsland obekräftat — se komponenter / global linje',
+    originLayersTitle: 'Ursprungsskikt',
+    originLayersIntro:
+      'Separera varumärke/drift, ägarskap, slutlig COO och delar — ägarskap är inte made-in.',
+    layerBrandOps: 'Varumärke / drift',
+    layerOwnership: 'Ägarskap / moderbolag',
+    layerOwnershipHint: 'Inte slutlig COO / made-in',
+    layerOwnershipEmpty: 'Ingen ägarskaps-/moderbolagssignal i detta resultat',
+    layerFinalCoo: 'Slutlig COO',
+    layerParts: 'Delkandidater',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',
@@ -215,6 +224,7 @@ export const sv = {
       manufacturer: 'manufacturer',
       filings: 'filings',
       model_memory: 'model knowledge',
+      ownership: 'ägarskap / moder',
     },
     origin: 'Ursprung',
     brandOrigin: 'Varumärkesursprung',

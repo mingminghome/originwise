@@ -200,6 +200,15 @@ export const en: MessageTree = {
     brand: 'Brand',
     madeIn: 'Made in (this unit / final COO)',
     madeInUnconfirmed: 'Final COO unconfirmed — see components/global line or parts for candidates',
+    originLayersTitle: 'Origin layers',
+    originLayersIntro:
+      'Separate brand/ops, ownership, final COO, and parts — ownership is not made-in.',
+    layerBrandOps: 'Brand / ops',
+    layerOwnership: 'Ownership / parents',
+    layerOwnershipHint: 'Not final COO / made-in',
+    layerOwnershipEmpty: 'No ownership/parent signal in this result',
+    layerFinalCoo: 'Final COO',
+    layerParts: 'Parts candidates',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',
@@ -215,6 +224,7 @@ export const en: MessageTree = {
       manufacturer: 'manufacturer',
       filings: 'filings',
       model_memory: 'model knowledge',
+      ownership: 'ownership / parent',
     },
     origin: 'Origin',
     brandOrigin: 'Brand origin',

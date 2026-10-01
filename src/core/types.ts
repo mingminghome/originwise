@@ -115,7 +115,8 @@ export type CheckResult = {
         | 'notes'
         | 'manufacturer'
         | 'filings'
-        | 'model_memory';
+        | 'model_memory'
+        | 'ownership';
       rating: 'confirmed' | 'likely' | 'possible' | 'mentioned';
     }>;
   };

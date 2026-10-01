@@ -188,6 +188,15 @@ export const zhHant = {
     brand: '品牌',
     madeIn: '產地（本機／最終原產地）',
     madeInUnconfirmed: '未確認最終產地——請睇零件／全球產線候選（唔係確認 made-in）',
+    originLayersTitle: '產地分層',
+    originLayersIntro:
+      '分開顯示品牌／營運、所有權、最終產地同零件——所有權唔等於中國製／最終 COO。',
+    layerBrandOps: '品牌／營運',
+    layerOwnership: '所有權／母公司',
+    layerOwnershipHint: '唔係最終產地／中國製',
+    layerOwnershipEmpty: '此結果未有所有權／母公司訊號',
+    layerFinalCoo: '最終原產地（COO）',
+    layerParts: '零件候選',
     originCandidates: '查到嘅產地候選',
     candidateRating: {
       confirmed: '確認最終產地',
@@ -203,6 +212,7 @@ export const zhHant = {
       manufacturer: '製造商',
       filings: '公開披露',
       model_memory: '模型知識',
+      ownership: '所有權／母公司',
     },
     origin: '來源',
     brandOrigin: '品牌來源地',

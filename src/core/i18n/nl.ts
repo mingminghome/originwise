@@ -200,6 +200,15 @@ export const nl = {
     brand: 'Merk',
     madeIn: 'Gemaakt in (deze eenheid / definitief oorsprongsland)',
     madeInUnconfirmed: 'Definitief land van herkomst niet bevestigd — zie onderdelen / wereldwijde lijn',
+    originLayersTitle: 'Herkomstlagen',
+    originLayersIntro:
+      'Scheidt merk/ops, eigendom, definitieve COO en onderdelen — eigendom is geen made-in.',
+    layerBrandOps: 'Merk / ops',
+    layerOwnership: 'Eigendom / moederbedrijven',
+    layerOwnershipHint: 'Geen definitieve COO / made-in',
+    layerOwnershipEmpty: 'Geen eigendoms-/moederbedrijfssignaal in dit resultaat',
+    layerFinalCoo: 'Definitieve COO',
+    layerParts: 'Onderdeel-kandidaten',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',
@@ -215,6 +224,7 @@ export const nl = {
       manufacturer: 'manufacturer',
       filings: 'filings',
       model_memory: 'model knowledge',
+      ownership: 'eigendom / moeder',
     },
     origin: 'Herkomst',
     brandOrigin: 'Merkherkomst',

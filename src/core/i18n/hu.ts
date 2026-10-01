@@ -200,6 +200,15 @@ export const hu = {
     brand: 'Márka',
     madeIn: 'Gyártás helye (ez az egység / végső származási ország)',
     madeInUnconfirmed: 'Végső származási ország nem megerősített — lásd alkatrészek / globális vonal',
+    originLayersTitle: 'Származási rétegek',
+    originLayersIntro:
+      'Külön márka/üzemeltetés, tulajdon, végső COO és alkatrészek — a tulajdon nem made-in.',
+    layerBrandOps: 'Márka / üzemeltetés',
+    layerOwnership: 'Tulajdon / anyavállalatok',
+    layerOwnershipHint: 'Nem végső COO / made-in',
+    layerOwnershipEmpty: 'Nincs tulajdon/anyavállalat jel ebben az eredményben',
+    layerFinalCoo: 'Végső COO',
+    layerParts: 'Alkatrészjelöltek',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',
@@ -215,6 +224,7 @@ export const hu = {
       manufacturer: 'manufacturer',
       filings: 'filings',
       model_memory: 'model knowledge',
+      ownership: 'tulajdon / anya',
     },
     origin: 'Származás',
     brandOrigin: 'Márka származása',

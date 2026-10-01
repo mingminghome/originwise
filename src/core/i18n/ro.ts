@@ -200,6 +200,15 @@ export const ro = {
     brand: 'Brand',
     madeIn: 'Fabricat în (această unitate / țara de origine finală)',
     madeInUnconfirmed: 'Țara de origine finală neconfirmată — vezi componente / linie globală',
+    originLayersTitle: 'Straturi de origine',
+    originLayersIntro:
+      'Separă brand/ops, proprietate, COO final și piese — proprietatea nu este made-in.',
+    layerBrandOps: 'Brand / ops',
+    layerOwnership: 'Proprietate / societăți-mamă',
+    layerOwnershipHint: 'Nu este COO final / made-in',
+    layerOwnershipEmpty: 'Niciun semnal de proprietate/societate-mamă în acest rezultat',
+    layerFinalCoo: 'COO final',
+    layerParts: 'Candidați piese',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',
@@ -215,6 +224,7 @@ export const ro = {
       manufacturer: 'manufacturer',
       filings: 'filings',
       model_memory: 'model knowledge',
+      ownership: 'proprietate / mamă',
     },
     origin: 'Origine',
     brandOrigin: 'Originea brandului',

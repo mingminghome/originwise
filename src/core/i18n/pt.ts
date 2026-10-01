@@ -200,6 +200,15 @@ export const pt = {
     brand: 'Marca',
     madeIn: 'Fabricado em (esta unidade / país de origem final)',
     madeInUnconfirmed: 'País de origem final não confirmado — ver componentes / linha global',
+    originLayersTitle: 'Camadas de origem',
+    originLayersIntro:
+      'Separa marca/ops, propriedade, COO final e peças — propriedade não é made-in.',
+    layerBrandOps: 'Marca / ops',
+    layerOwnership: 'Propriedade / empresas-mãe',
+    layerOwnershipHint: 'Não é COO final / made-in',
+    layerOwnershipEmpty: 'Sem sinal de propriedade/empresa-mãe neste resultado',
+    layerFinalCoo: 'COO final',
+    layerParts: 'Candidatos de peças',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',
@@ -215,6 +224,7 @@ export const pt = {
       manufacturer: 'manufacturer',
       filings: 'filings',
       model_memory: 'model knowledge',
+      ownership: 'propriedade / mãe',
     },
     origin: 'Origem',
     brandOrigin: 'Origem da marca',
