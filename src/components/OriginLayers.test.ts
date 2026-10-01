@@ -94,4 +94,57 @@ describe('buildOriginLayers', () => {
     assert.equal(model.finalCoo, null);
     assert.ok(model.ownership.length >= 1);
   });
+
+  it('does not show product display name as Company (OW-UI-BRAND-LABEL)', () => {
+    const model = buildOriginLayers(
+      base({
+        title: 'Toshiba ER-D3000A',
+        product: {
+          name: 'Toshiba ER-D3000A',
+          brand: 'Toshiba',
+          originCountry: 'Japan',
+          manufacturer: 'Toshiba Lifestyle Products & Services Corporation',
+          manufacturerCountry: 'Japan',
+          madeIn: 'Thailand',
+        },
+        company: {
+          // Upstream sometimes copies SKU / product title into company.name
+          name: 'Toshiba ER-D3000A',
+          hqCountry: 'Japan',
+        },
+      })
+    );
+
+    const companyLines = model.brandOps.filter((l) => l.kind === 'company');
+    assert.ok(
+      !companyLines.some((l) => /Toshiba ER-D3000A/i.test(l.value)),
+      'product display name must not appear as Company'
+    );
+    // Prefer manufacturer when company.name is the product title
+    assert.ok(
+      companyLines.some(
+        (l) => l.value === 'Toshiba Lifestyle Products & Services Corporation'
+      )
+    );
+    assert.ok(model.brandOps.some((l) => l.kind === 'brand' && l.value === 'Toshiba'));
+  });
+
+  it('omits Company when only product-title and brand-duplicate candidates exist', () => {
+    const model = buildOriginLayers(
+      base({
+        title: 'Acme Widget X1',
+        product: {
+          name: 'Acme Widget X1',
+          brand: 'Acme',
+        },
+        company: {
+          name: 'Acme Widget X1',
+        },
+      })
+    );
+    // brand already shown; product title rejected → no separate Company line
+    assert.ok(!model.brandOps.some((l) => l.kind === 'company'));
+    assert.ok(model.brandOps.some((l) => l.kind === 'brand' && l.value === 'Acme'));
+  });
+
 });

@@ -88,6 +88,42 @@ function isOwnershipCandidate(c: OriginCandidateRow): boolean {
   return String(c.source) === 'ownership';
 }
 
+function normLabel(s: string): string {
+  return s.trim().toLowerCase();
+}
+
+/** True when a label is the product display name / SKU title, not a company. */
+function isProductDisplayName(
+  candidate: string,
+  result: CheckResult,
+  product: CheckResult['product']
+): boolean {
+  const key = normLabel(candidate);
+  if (!key) return true;
+  const productName = product?.name?.trim();
+  if (productName && normLabel(productName) === key) return true;
+  const title = result.title?.trim();
+  if (title && normLabel(title) === key) return true;
+  return false;
+}
+
+/**
+ * Company line: real company / manufacturer / brand only.
+ * Never use product.name or check title (model-as-company fallbacks).
+ */
+function pickCompanyLabel(result: CheckResult): string | null {
+  const p = result.product;
+  const c = result.company;
+  const candidates = [c?.name, c?.legalName, p?.manufacturer, p?.brand];
+  for (const raw of candidates) {
+    const value = raw?.trim();
+    if (!value) continue;
+    if (isProductDisplayName(value, result, p)) continue;
+    return value;
+  }
+  return null;
+}
+
 /**
  * Partition existing result fields into labeled origin layers.
  * Does not invent COO — Final COO is madeIn only (or unconfirmed).
@@ -98,14 +134,15 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
 
   const brandOps: BrandOpsLine[] = [];
   if (p?.brand?.trim()) brandOps.push({ kind: 'brand', value: p.brand.trim() });
-  if (c?.name?.trim()) {
-    const name = c.name.trim();
+  const companyLabel = pickCompanyLabel(result);
+  if (companyLabel) {
     if (
       !brandOps.some(
-        (b) => b.kind === 'brand' && b.value.toLowerCase() === name.toLowerCase()
+        (b) =>
+          b.kind === 'brand' && b.value.toLowerCase() === companyLabel.toLowerCase()
       )
     ) {
-      brandOps.push({ kind: 'company', value: name });
+      brandOps.push({ kind: 'company', value: companyLabel });
     }
   }
   if (c?.hqCountry?.trim()) {
