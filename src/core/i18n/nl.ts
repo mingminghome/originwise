@@ -209,6 +209,11 @@ export const nl = {
     layerOwnershipEmpty: 'Geen eigendoms-/moederbedrijfssignaal in dit resultaat',
     layerFinalCoo: 'Definitieve COO',
     layerParts: 'Onderdeel-kandidaten',
+    sectionShareSave: 'Afbeelding opslaan',
+    sectionShareShare: 'Delen',
+    sectionShareSaved: 'Opgeslagen',
+    sectionShareFailed: 'Afbeelding opslaan mislukt',
+    sectionShareHint: 'Hover een laag om op te slaan of te delen',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',

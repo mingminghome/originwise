@@ -209,6 +209,11 @@ export const pl = {
     layerOwnershipEmpty: 'Brak sygnału własności/spółki matki w tym wyniku',
     layerFinalCoo: 'Końcowe COO',
     layerParts: 'Kandydaci części',
+    sectionShareSave: 'Zapisz obraz',
+    sectionShareShare: 'Udostępnij',
+    sectionShareSaved: 'Zapisano',
+    sectionShareFailed: 'Nie udało się zapisać obrazu',
+    sectionShareHint: 'Najedź na warstwę, by zapisać lub udostępnić',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',

@@ -209,6 +209,11 @@ export const ro = {
     layerOwnershipEmpty: 'Niciun semnal de proprietate/societate-mamă în acest rezultat',
     layerFinalCoo: 'COO final',
     layerParts: 'Candidați piese',
+    sectionShareSave: 'Salvează imaginea',
+    sectionShareShare: 'Distribuie',
+    sectionShareSaved: 'Salvat',
+    sectionShareFailed: 'Nu s-a putut salva imaginea',
+    sectionShareHint: 'Treci cu mouse-ul pe un strat pentru salvare/distribuire',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',

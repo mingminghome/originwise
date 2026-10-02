@@ -209,6 +209,11 @@ export const sv = {
     layerOwnershipEmpty: 'Ingen ägarskaps-/moderbolagssignal i detta resultat',
     layerFinalCoo: 'Slutlig COO',
     layerParts: 'Delkandidater',
+    sectionShareSave: 'Spara bild',
+    sectionShareShare: 'Dela',
+    sectionShareSaved: 'Sparad',
+    sectionShareFailed: 'Kunde inte spara bilden',
+    sectionShareHint: 'Hovra över ett lager för att spara eller dela',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',

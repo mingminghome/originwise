@@ -197,6 +197,11 @@ export const zhHant = {
     layerOwnershipEmpty: '此結果未有所有權／母公司訊號',
     layerFinalCoo: '最終原產地（COO）',
     layerParts: '零件候選',
+    sectionShareSave: '儲存圖片',
+    sectionShareShare: '分享',
+    sectionShareSaved: '已儲存',
+    sectionShareFailed: '無法儲存圖片',
+    sectionShareHint: '將游標移到分層即可儲存或分享圖片',
     originCandidates: '查到嘅產地候選',
     candidateRating: {
       confirmed: '確認最終產地',

@@ -209,6 +209,11 @@ export const el = {
     layerOwnershipEmpty: 'Δεν υπάρχει σήμα ιδιοκτησίας/μητρικής σε αυτό το αποτέλεσμα',
     layerFinalCoo: 'Τελικό COO',
     layerParts: 'Υποψήφια εξαρτήματα',
+    sectionShareSave: 'Αποθήκευση εικόνας',
+    sectionShareShare: 'Κοινοποίηση',
+    sectionShareSaved: 'Αποθηκεύτηκε',
+    sectionShareFailed: 'Αδυναμία αποθήκευσης εικόνας',
+    sectionShareHint: 'Κάντε hover σε ένα επίπεδο για αποθήκευση ή κοινοποίηση',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',
