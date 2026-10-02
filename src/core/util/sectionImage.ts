@@ -31,15 +31,27 @@ export function sectionCaptureSize(input: {
   return { width, height };
 }
 
+/** Paint a translucent layer color onto white so the PNG is not a see-through strip. */
+export function flattenCssColor(color: string): string {
+  const m = color
+    .trim()
+    .match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i);
+  if (!m) return color;
+  const a = m[4] === undefined ? 1 : Number(m[4]);
+  const blend = (channel: string) =>
+    Math.round(Number(channel) * a + 255 * (1 - a));
+  return `rgb(${blend(m[1])}, ${blend(m[2])}, ${blend(m[3])})`;
+}
+
 function pickBackground(el: HTMLElement): string {
   const fromEl = getComputedStyle(el).backgroundColor;
   if (fromEl && fromEl !== 'rgba(0, 0, 0, 0)' && fromEl !== 'transparent') {
-    return fromEl;
+    return flattenCssColor(fromEl);
   }
   const root = getComputedStyle(document.documentElement);
   const card = root.getPropertyValue('--bg-card').trim();
   const subtle = root.getPropertyValue('--bg-subtle').trim();
-  return card || subtle || '#ffffff';
+  return flattenCssColor(card || subtle || '#ffffff');
 }
 
 export async function captureElementPng(
