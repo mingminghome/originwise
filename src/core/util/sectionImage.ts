@@ -19,6 +19,18 @@ export function sectionImageFilename(label: string, when = new Date()): string {
   return `originwise-${sanitizeShareStem(label)}-${day}.png`;
 }
 
+/** Full card box. Flex can shrink clientHeight below the content; scrollHeight still has it. */
+export function sectionCaptureSize(input: {
+  scrollWidth: number;
+  scrollHeight: number;
+  rectWidth: number;
+  rectHeight: number;
+}): { width: number; height: number } {
+  const width = Math.ceil(Math.max(input.scrollWidth, input.rectWidth, 1));
+  const height = Math.ceil(Math.max(input.scrollHeight, input.rectHeight, 1));
+  return { width, height };
+}
+
 function pickBackground(el: HTMLElement): string {
   const fromEl = getComputedStyle(el).backgroundColor;
   if (fromEl && fromEl !== 'rgba(0, 0, 0, 0)' && fromEl !== 'transparent') {
@@ -35,10 +47,20 @@ export async function captureElementPng(
   opts?: { pixelRatio?: number }
 ): Promise<Blob> {
   const ratio = opts?.pixelRatio ?? Math.min(2.5, window.devicePixelRatio || 2);
+  const rect = el.getBoundingClientRect();
+  const { width, height } = sectionCaptureSize({
+    scrollWidth: el.scrollWidth,
+    scrollHeight: el.scrollHeight,
+    rectWidth: rect.width,
+    rectHeight: rect.height,
+  });
   const blob = await toBlob(el, {
     pixelRatio: ratio,
+    width,
+    height,
     cacheBust: true,
     backgroundColor: pickBackground(el),
+    style: { margin: '0', outline: 'none' },
     filter: (node) => {
       if (!(node instanceof HTMLElement)) return true;
       return node.dataset.sectionShare !== 'ui';

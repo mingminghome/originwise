@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { sanitizeShareStem, sectionImageFilename } from './sectionImage';
+import { sanitizeShareStem, sectionCaptureSize, sectionImageFilename } from './sectionImage';
 
 describe('sectionImage helpers', () => {
   it('sanitizes stems for filenames', () => {
@@ -12,5 +12,17 @@ describe('sectionImage helpers', () => {
   it('builds a dated originwise filename', () => {
     const name = sectionImageFilename('Final COO', new Date('2026-10-02T12:00:00Z'));
     assert.equal(name, 'originwise-final-coo-2026-10-02.png');
+  });
+
+  it('uses scroll height when the flex box is squashed', () => {
+    assert.deepEqual(
+      sectionCaptureSize({
+        scrollWidth: 378,
+        scrollHeight: 76,
+        rectWidth: 378,
+        rectHeight: 30,
+      }),
+      { width: 378, height: 76 }
+    );
   });
 });
