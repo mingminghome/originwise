@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { sanitizeShareStem, sectionCaptureSize, sectionImageFilename } from './sectionImage';
+import { flattenCssColor, sanitizeShareStem, sectionCaptureSize, sectionImageFilename } from './sectionImage';
 
 describe('sectionImage helpers', () => {
   it('sanitizes stems for filenames', () => {
@@ -12,6 +12,13 @@ describe('sectionImage helpers', () => {
   it('builds a dated originwise filename', () => {
     const name = sectionImageFilename('Final COO', new Date('2026-10-02T12:00:00Z'));
     assert.equal(name, 'originwise-final-coo-2026-10-02.png');
+  });
+
+  it('flattens a translucent layer color onto white', () => {
+    assert.equal(
+      flattenCssColor('rgba(15, 118, 110, 0.08)'),
+      'rgb(236, 244, 243)'
+    );
   });
 
   it('uses scroll height when the flex box is squashed', () => {
