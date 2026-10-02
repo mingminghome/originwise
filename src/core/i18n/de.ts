@@ -209,6 +209,11 @@ export const de = {
     layerOwnershipEmpty: 'Kein Eigentums-/Muttergesellschaftssignal in diesem Ergebnis',
     layerFinalCoo: 'Endgültiger COO',
     layerParts: 'Teile-Kandidaten',
+    sectionShareSave: 'Bild speichern',
+    sectionShareShare: 'Teilen',
+    sectionShareSaved: 'Gespeichert',
+    sectionShareFailed: 'Bild konnte nicht gespeichert werden',
+    sectionShareHint: 'Layer antippen/hover: Bild speichern oder teilen',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',

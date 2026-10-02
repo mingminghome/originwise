@@ -209,6 +209,11 @@ export const hu = {
     layerOwnershipEmpty: 'Nincs tulajdon/anyavállalat jel ebben az eredményben',
     layerFinalCoo: 'Végső COO',
     layerParts: 'Alkatrészjelöltek',
+    sectionShareSave: 'Kép mentése',
+    sectionShareShare: 'Megosztás',
+    sectionShareSaved: 'Mentve',
+    sectionShareFailed: 'A kép mentése nem sikerült',
+    sectionShareHint: 'Vidd a kurzort egy rétegre a mentéshez vagy megosztáshoz',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',

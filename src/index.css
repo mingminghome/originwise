@@ -1735,6 +1735,72 @@ p {
   margin: 0;
   font-size: 0.8rem;
 }
+
+.section-share {
+  position: relative;
+}
+.section-share-toolbar {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.35rem;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  max-width: calc(100% - 0.5rem);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+.section-share:hover .section-share-toolbar,
+.section-share:focus-within .section-share-toolbar {
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (hover: none) {
+  .section-share-toolbar {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+.section-share:hover,
+.section-share:focus-within {
+  outline: 2px solid var(--primary-border, #3b82f6);
+  outline-offset: 1px;
+}
+.section-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 28px;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-card, #fff) 92%, transparent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+.section-share-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.section-share-btn:focus-visible {
+  outline: 2px solid var(--primary-border, #3b82f6);
+  outline-offset: 1px;
+}
+.section-share-toast {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--green, #15803d);
+}
+.section-share-toast.is-err {
+  color: var(--danger, #b91c1c);
+}
 .parts-block {
   margin-top: 0.75rem;
   padding-top: 0.65rem;

@@ -209,6 +209,11 @@ export const fi = {
     layerOwnershipEmpty: 'Ei omistus-/emoyhtiösignaalia tässä tuloksessa',
     layerFinalCoo: 'Lopullinen COO',
     layerParts: 'Osakandidaatit',
+    sectionShareSave: 'Tallenna kuva',
+    sectionShareShare: 'Jaa',
+    sectionShareSaved: 'Tallennettu',
+    sectionShareFailed: 'Kuvan tallennus epäonnistui',
+    sectionShareHint: 'Vie hiiri kerroksen päälle tallentaaksesi tai jakaaksesi',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',

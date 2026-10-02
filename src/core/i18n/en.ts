@@ -209,6 +209,11 @@ export const en: MessageTree = {
     layerOwnershipEmpty: 'No ownership/parent signal in this result',
     layerFinalCoo: 'Final COO',
     layerParts: 'Parts candidates',
+    sectionShareSave: 'Save image',
+    sectionShareShare: 'Share',
+    sectionShareSaved: 'Saved',
+    sectionShareFailed: 'Could not save image',
+    sectionShareHint: 'Hover a layer to save or share it as an image',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',

@@ -209,6 +209,11 @@ export const es = {
     layerOwnershipEmpty: 'Sin señal de propiedad/matriz en este resultado',
     layerFinalCoo: 'COO final',
     layerParts: 'Candidatos de piezas',
+    sectionShareSave: 'Guardar imagen',
+    sectionShareShare: 'Compartir',
+    sectionShareSaved: 'Guardado',
+    sectionShareFailed: 'No se pudo guardar la imagen',
+    sectionShareHint: 'Pasa el cursor por una capa para guardar o compartir',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',

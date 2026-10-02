@@ -209,6 +209,11 @@ export const cs = {
     layerOwnershipEmpty: 'V tomto výsledku není signál vlastnictví/mateřské společnosti',
     layerFinalCoo: 'Finální COO',
     layerParts: 'Kandidáti dílů',
+    sectionShareSave: 'Uložit obrázek',
+    sectionShareShare: 'Sdílet',
+    sectionShareSaved: 'Uloženo',
+    sectionShareFailed: 'Obrázek se nepodařilo uložit',
+    sectionShareHint: 'Najetím na vrstvu uložíte nebo sdílíte obrázek',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',

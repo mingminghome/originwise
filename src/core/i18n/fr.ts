@@ -209,6 +209,11 @@ export const fr = {
     layerOwnershipEmpty: 'Aucun signal de propriété/société mère dans ce résultat',
     layerFinalCoo: 'COO final',
     layerParts: 'Candidats pièces',
+    sectionShareSave: "Enregistrer l'image",
+    sectionShareShare: 'Partager',
+    sectionShareSaved: 'Enregistré',
+    sectionShareFailed: "Impossible d'enregistrer l'image",
+    sectionShareHint: "Survolez une couche pour l'enregistrer ou la partager",
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',

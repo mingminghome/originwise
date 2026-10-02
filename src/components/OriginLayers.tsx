@@ -4,6 +4,7 @@
  */
 import type { CheckResult } from '../core/types';
 import type { TFunction } from '../core/i18n';
+import { SectionShare } from './SectionShare';
 
 /** Ownership-class chinaRelations types (aligned with server STRONG_REL + minority). */
 const OWNERSHIP_REL_TYPES = new Set([
@@ -301,15 +302,17 @@ function LayerRow({
   items,
   empty,
   variant,
+  t,
 }: {
   label: string;
   hint?: string;
   items: string[];
   empty?: string;
   variant: 'brand' | 'ownership' | 'coo' | 'parts';
+  t: TFunction;
 }) {
   return (
-    <div className={`origin-layer origin-layer--${variant}`}>
+    <SectionShare label={label} t={t} className={`origin-layer origin-layer--${variant}`}>
       <div className="origin-layer-head">
         <span className="origin-layer-label">{label}</span>
         {hint ? <span className="muted origin-layer-hint">{hint}</span> : null}
@@ -323,7 +326,7 @@ function LayerRow({
       ) : empty ? (
         <p className="muted origin-layer-empty">{empty}</p>
       ) : null}
-    </div>
+    </SectionShare>
   );
 }
 
@@ -346,12 +349,14 @@ export function OriginLayers({
     <div className="origin-layers card-soft" data-testid="origin-layers">
       <h3 className="result-section-title">{t('check.originLayersTitle')}</h3>
       <p className="muted origin-layers-intro">{t('check.originLayersIntro')}</p>
+      <p className="muted origin-layers-intro">{t('check.sectionShareHint')}</p>
 
       {brandItems.length ? (
         <LayerRow
           label={t('check.layerBrandOps')}
           items={brandItems}
           variant="brand"
+          t={t}
         />
       ) : null}
 
@@ -361,6 +366,7 @@ export function OriginLayers({
         items={ownershipItems}
         empty={t('check.layerOwnershipEmpty')}
         variant="ownership"
+        t={t}
       />
 
       <LayerRow
@@ -368,6 +374,7 @@ export function OriginLayers({
         items={model.finalCoo ? [model.finalCoo] : []}
         empty={t('check.madeInUnconfirmed')}
         variant="coo"
+        t={t}
       />
 
       {partsItems.length ? (
@@ -375,6 +382,7 @@ export function OriginLayers({
           label={t('check.layerParts')}
           items={partsItems}
           variant="parts"
+          t={t}
         />
       ) : null}
     </div>

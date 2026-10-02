@@ -209,6 +209,11 @@ export const it = {
     layerOwnershipEmpty: 'Nessun segnale di proprietà/società madre in questo risultato',
     layerFinalCoo: 'COO finale',
     layerParts: 'Candidati parti',
+    sectionShareSave: 'Salva immagine',
+    sectionShareShare: 'Condividi',
+    sectionShareSaved: 'Salvato',
+    sectionShareFailed: "Impossibile salvare l'immagine",
+    sectionShareHint: 'Passa su un livello per salvare o condividere',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',

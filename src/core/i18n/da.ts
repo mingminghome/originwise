@@ -209,6 +209,11 @@ export const da = {
     layerOwnershipEmpty: 'Intet ejerskabs-/moderselskabssignal i dette resultat',
     layerFinalCoo: 'Endelig COO',
     layerParts: 'Delekandidater',
+    sectionShareSave: 'Gem billede',
+    sectionShareShare: 'Del',
+    sectionShareSaved: 'Gemt',
+    sectionShareFailed: 'Kunne ikke gemme billedet',
+    sectionShareHint: 'Hold musen over et lag for at gemme eller dele',
     originCandidates: 'Queried origin candidates',
     candidateRating: {
       confirmed: 'confirmed COO',
