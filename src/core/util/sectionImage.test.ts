@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { flattenCssColor, sanitizeShareStem, sectionCaptureSize, sectionImageFilename } from './sectionImage';
+import { flattenCssColor, sanitizeShareStem, sectionCaptureSize, sectionImageFilename, sectionShareCapture } from './sectionImage';
 
 describe('sectionImage helpers', () => {
   it('sanitizes stems for filenames', () => {
@@ -31,5 +31,14 @@ describe('sectionImage helpers', () => {
       }),
       { width: 378, height: 76 }
     );
+  });
+
+  it('captures at 2x inside the phone CSS band', () => {
+    assert.equal(sectionShareCapture.pixelRatio, 2);
+    assert.equal(sectionShareCapture.phoneCssPx, 390);
+    // Above the 380px small-phone sheet tweak, below the 420px large-phone tweaks.
+    // 520px is the two-column ask grid; 720px is the tablet/desktop sheet breakpoint.
+    assert.ok(sectionShareCapture.phoneCssPx > 380);
+    assert.ok(sectionShareCapture.phoneCssPx < 420);
   });
 });
