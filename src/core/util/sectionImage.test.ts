@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { flattenCssColor, sanitizeShareStem, sectionCaptureSize, sectionImageFilename, sectionShareCapture } from './sectionImage';
+import { flattenCssColor, sanitizeShareStem, sectionCaptureSize, sectionImageFilename, sectionShareCapture, FLATTEN_ONTO_DARK } from './sectionImage';
 
 describe('sectionImage helpers', () => {
   it('sanitizes stems for filenames', () => {
@@ -40,5 +40,13 @@ describe('sectionImage helpers', () => {
     // 520px is the two-column ask grid; 720px is the tablet/desktop sheet breakpoint.
     assert.ok(sectionShareCapture.phoneCssPx > 380);
     assert.ok(sectionShareCapture.phoneCssPx < 420);
+  });
+
+  it('forces dark theme on the capture PNG only', () => {
+    assert.equal(sectionShareCapture.theme, 'dark');
+    assert.equal(
+      flattenCssColor('rgba(15, 118, 110, 0.08)', FLATTEN_ONTO_DARK),
+      'rgb(21, 30, 29)'
+    );
   });
 });

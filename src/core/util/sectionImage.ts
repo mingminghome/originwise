@@ -45,21 +45,51 @@ export function sectionCaptureSize(input: {
 export const sectionShareCapture = {
   pixelRatio: 2,
   phoneCssPx: 390,
+  /** PNG only. Live page theme is not changed. */
+  theme: 'dark',
 } as const;
 
 /** Initial iframe height only. The frame grows to the section after layout. */
 const PHONE_VIEWPORT_CSS_HEIGHT = 844;
 
-/** Paint a translucent layer color onto white so the PNG is not a see-through strip. */
-export function flattenCssColor(color: string): string {
+export type RgbTuple = readonly [number, number, number];
+
+/** Default opaque backdrop (light). Dark capture passes the dark card color. */
+export const FLATTEN_ONTO_LIGHT: RgbTuple = [255, 255, 255];
+export const FLATTEN_ONTO_DARK: RgbTuple = [22, 22, 22]; // --bg-card dark #161616
+
+/** Paint a translucent layer color onto an opaque backdrop so the PNG is not see-through. */
+export function flattenCssColor(
+  color: string,
+  onto: RgbTuple = FLATTEN_ONTO_LIGHT
+): string {
   const m = color
     .trim()
     .match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i);
   if (!m) return color;
   const a = m[4] === undefined ? 1 : Number(m[4]);
-  const blend = (channel: string) =>
-    Math.round(Number(channel) * a + 255 * (1 - a));
-  return `rgb(${blend(m[1])}, ${blend(m[2])}, ${blend(m[3])})`;
+  const blend = (channel: string, i: number) =>
+    Math.round(Number(channel) * a + onto[i] * (1 - a));
+  return `rgb(${blend(m[1], 0)}, ${blend(m[2], 1)}, ${blend(m[3], 2)})`;
+}
+
+function parseHexRgb(hex: string): RgbTuple | null {
+  const h = hex.trim().replace(/^#/, '');
+  if (h.length === 3) {
+    const r = parseInt(h[0] + h[0], 16);
+    const g = parseInt(h[1] + h[1], 16);
+    const b = parseInt(h[2] + h[2], 16);
+    if ([r, g, b].some((n) => Number.isNaN(n))) return null;
+    return [r, g, b];
+  }
+  if (h.length === 6) {
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    if ([r, g, b].some((n) => Number.isNaN(n))) return null;
+    return [r, g, b];
+  }
+  return null;
 }
 
 function cssVar(el: HTMLElement, name: string): string {
@@ -71,13 +101,25 @@ function cssVar(el: HTMLElement, name: string): string {
 }
 
 function pickBackground(el: HTMLElement): string {
+  const theme =
+    el.ownerDocument.documentElement.getAttribute('data-theme') ||
+    sectionShareCapture.theme;
+  const onto =
+    theme === 'dark'
+      ? parseHexRgb(cssVar(el, '--bg-card')) || FLATTEN_ONTO_DARK
+      : FLATTEN_ONTO_LIGHT;
   const fromEl = getComputedStyle(el).backgroundColor;
   if (fromEl && fromEl !== 'rgba(0, 0, 0, 0)' && fromEl !== 'transparent') {
-    return flattenCssColor(fromEl);
+    return flattenCssColor(fromEl, onto);
   }
   const card = cssVar(el, '--bg-card');
   const subtle = cssVar(el, '--bg-subtle');
-  return flattenCssColor(card || subtle || '#ffffff');
+  const raw = card || subtle || (theme === 'dark' ? '#161616' : '#ffffff');
+  if (raw.startsWith('#')) {
+    const rgb = parseHexRgb(raw);
+    if (rgb) return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+  }
+  return flattenCssColor(raw, onto);
 }
 
 function settle(p: Promise<unknown>, ms: number): Promise<void> {
@@ -206,8 +248,8 @@ async function mountPhoneCapture(
     if (!doc?.body || !win) throw new Error('phone_frame');
 
     const root = source.ownerDocument.documentElement;
-    const theme = root.getAttribute('data-theme');
-    if (theme) doc.documentElement.setAttribute('data-theme', theme);
+    // Threads shots are always dark. Do not copy the live page theme.
+    doc.documentElement.setAttribute('data-theme', sectionShareCapture.theme);
     doc.documentElement.lang = root.lang;
     doc.documentElement.className = root.className;
 
