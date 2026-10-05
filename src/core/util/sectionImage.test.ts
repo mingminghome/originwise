@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { flattenCssColor, sanitizeShareStem, sectionCaptureSize, sectionImageFilename, sectionShareCapture, FLATTEN_ONTO_DARK } from './sectionImage';
+import { flattenCssColor, sanitizeShareStem, sectionCaptureSize, sectionImageFilename, sectionShareCapture, sectionSharePaddedSize, sectionSharePadBackground, SECTION_SHARE_MIN_CSS_HEIGHT, FLATTEN_ONTO_DARK, FLATTEN_ONTO_LIGHT } from './sectionImage';
 
 describe('sectionImage helpers', () => {
   it('sanitizes stems for filenames', () => {
@@ -48,5 +48,45 @@ describe('sectionImage helpers', () => {
       flattenCssColor('rgba(15, 118, 110, 0.08)', FLATTEN_ONTO_DARK),
       'rgb(21, 30, 29)'
     );
+  });
+
+  it('pads short captures to Threads-friendly min height without stretching', () => {
+    assert.equal(SECTION_SHARE_MIN_CSS_HEIGHT, 290);
+    assert.equal(sectionShareCapture.minCssHeight, 290);
+    // 390×2 → 780 wide; 290×2 → 580 tall (Tester hand-pad target).
+    assert.equal(sectionShareCapture.phoneCssPx * sectionShareCapture.pixelRatio, 780);
+    assert.equal(SECTION_SHARE_MIN_CSS_HEIGHT * sectionShareCapture.pixelRatio, 580);
+
+    const short = sectionSharePaddedSize({ width: 390, height: 118 });
+    assert.deepEqual(short, {
+      width: 390,
+      height: 290,
+      padTop: 86,
+      padBottom: 86,
+    });
+
+    const tall = sectionSharePaddedSize({ width: 390, height: 358 });
+    assert.deepEqual(tall, {
+      width: 390,
+      height: 358,
+      padTop: 0,
+      padBottom: 0,
+    });
+
+    // Odd leftover goes to bottom so content stays vertically centered.
+    const odd = sectionSharePaddedSize({ width: 390, height: 117 });
+    assert.equal(odd.height, 290);
+    assert.equal(odd.padTop + odd.padBottom + 117, 290);
+    assert.equal(odd.padTop, Math.floor((290 - 117) / 2));
+    assert.equal(odd.padBottom, 290 - 117 - odd.padTop);
+  });
+
+  it('pads with neutral page flatten, not card tint', () => {
+    assert.equal(sectionSharePadBackground('dark'), 'rgb(22, 22, 22)');
+    assert.equal(sectionSharePadBackground('light'), 'rgb(255, 255, 255)');
+    assert.equal(sectionSharePadBackground(), 'rgb(22, 22, 22)'); // capture theme dark
+    // Same tuples used by opaque flatten helpers.
+    assert.deepEqual(FLATTEN_ONTO_DARK, [22, 22, 22]);
+    assert.deepEqual(FLATTEN_ONTO_LIGHT, [255, 255, 255]);
   });
 });

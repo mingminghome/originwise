@@ -45,9 +45,40 @@ export function sectionCaptureSize(input: {
 export const sectionShareCapture = {
   pixelRatio: 2,
   phoneCssPx: 390,
+  /**
+   * Min CSS height for share PNGs. Threads carousel feed tiles crop short
+   * images tall (~empty dark strip for a ~118px Final COO card). At
+   * phoneCssPx 390 × pixelRatio 2 this is ~780×580 — same pad Tester used.
+   */
+  minCssHeight: 290,
   /** PNG only. Live page theme is not changed. */
   theme: 'dark',
 } as const;
+
+/** Alias kept next to phoneCssPx for call sites / tests. */
+export const SECTION_SHARE_MIN_CSS_HEIGHT = sectionShareCapture.minCssHeight;
+
+/**
+ * Pad short section captures for Threads feed tiles.
+ * Centers the card with equal top/bottom pad on the flatten background;
+ * does not stretch or distort the section.
+ */
+export function sectionSharePaddedSize(input: {
+  width: number;
+  height: number;
+  minHeight?: number;
+}): { width: number; height: number; padTop: number; padBottom: number } {
+  const minH = input.minHeight ?? SECTION_SHARE_MIN_CSS_HEIGHT;
+  const width = Math.ceil(Math.max(input.width, 1));
+  const contentH = Math.ceil(Math.max(input.height, 1));
+  if (contentH >= minH) {
+    return { width, height: contentH, padTop: 0, padBottom: 0 };
+  }
+  const height = minH;
+  const padTop = Math.floor((height - contentH) / 2);
+  const padBottom = height - contentH - padTop;
+  return { width, height, padTop, padBottom };
+}
 
 /** Initial iframe height only. The frame grows to the section after layout. */
 const PHONE_VIEWPORT_CSS_HEIGHT = 844;
@@ -57,6 +88,18 @@ export type RgbTuple = readonly [number, number, number];
 /** Default opaque backdrop (light). Dark capture passes the dark card color. */
 export const FLATTEN_ONTO_LIGHT: RgbTuple = [255, 255, 255];
 export const FLATTEN_ONTO_DARK: RgbTuple = [22, 22, 22]; // --bg-card dark #161616
+
+/**
+ * Neutral page backdrop for Threads pad margins.
+ * Not the section card tint from pickBackground (e.g. COO teal wash rgb(21,30,29)).
+ * Dark = #161616; light = white — matches hand pads / opaque flatten.
+ */
+export function sectionSharePadBackground(
+  theme: 'dark' | 'light' = sectionShareCapture.theme
+): string {
+  const onto = theme === 'dark' ? FLATTEN_ONTO_DARK : FLATTEN_ONTO_LIGHT;
+  return `rgb(${onto[0]}, ${onto[1]}, ${onto[2]})`;
+}
 
 /** Paint a translucent layer color onto an opaque backdrop so the PNG is not see-through. */
 export function flattenCssColor(
@@ -302,18 +345,42 @@ export async function captureElementPng(
   const frame = await mountPhoneCapture(el, sectionShareCapture.phoneCssPx);
   try {
     const rect = frame.clone.getBoundingClientRect();
-    const { width, height } = sectionCaptureSize({
+    const measured = sectionCaptureSize({
       scrollWidth: frame.clone.scrollWidth,
       scrollHeight: frame.clone.scrollHeight,
       rectWidth: rect.width,
       rectHeight: rect.height,
     });
-    const blob = await toBlob(frame.clone, {
+    const padded = sectionSharePaddedSize(measured);
+    const needsPad = padded.padTop > 0 || padded.padBottom > 0;
+    // Pad margins use neutral page flatten, not the card's tinted fill.
+    const backgroundColor = needsPad
+      ? sectionSharePadBackground(sectionShareCapture.theme)
+      : pickBackground(frame.clone);
+    let target: HTMLElement = frame.clone;
+    if (needsPad) {
+      const doc = frame.clone.ownerDocument;
+      const wrap = doc.createElement('div');
+      wrap.dataset.sectionShare = 'pad';
+      wrap.style.cssText = [
+        `width:${padded.width}px`,
+        `height:${padded.height}px`,
+        'box-sizing:border-box',
+        `padding:${padded.padTop}px 0 ${padded.padBottom}px`,
+        `background-color:${backgroundColor}`,
+        'margin:0',
+      ].join(';');
+      frame.clone.parentElement?.insertBefore(wrap, frame.clone);
+      wrap.appendChild(frame.clone);
+      target = wrap;
+      frame.iframe.style.height = `${padded.height}px`;
+    }
+    const blob = await toBlob(target, {
       pixelRatio: ratio,
-      width,
-      height,
+      width: padded.width,
+      height: padded.height,
       cacheBust: true,
-      backgroundColor: pickBackground(frame.clone),
+      backgroundColor,
       style: { margin: '0', outline: 'none' },
       filter: (node) => {
         // Iframe nodes fail `instanceof HTMLElement` from the parent window.
