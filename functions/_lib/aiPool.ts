@@ -52,21 +52,14 @@ export function listConfiguredProviders(env: LlmEnv): AskProviderId[] {
   return ASK_PROVIDERS.filter((p) => providerConfigured(p, env));
 }
 
+/**
+ * Checks use one composed query. CHECK_MODE is kept so older configs still load;
+ * it no longer splits product, company, and alternatives into separate calls.
+ */
 export function resolveCheckMode(
-  env: LlmEnv & { CHECK_MODE?: string },
-  configured: AskProviderId[] = listConfiguredProviders(env)
+  _env: LlmEnv & { CHECK_MODE?: string },
+  _configured: AskProviderId[] = []
 ): CheckMode {
-  const forced = String(env.CHECK_MODE ?? '')
-    .toLowerCase()
-    .trim();
-  if (forced === 'monolith' || forced === 'dual' || forced === 'multi') {
-    return forced;
-  }
-  // Auto:
-  // - ≥2 keys → multi (sub-agents + cross-provider pool / parallel wave)
-  // - 1 key → multi sequential (same agents, one provider, no parallel)
-  // Override anytime with CHECK_MODE=monolith|dual|multi
-  if (configured.length >= 1) return 'multi';
   return 'monolith';
 }
 

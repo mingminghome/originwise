@@ -42,10 +42,7 @@ GEMINI_API_KEY=
 # XAI_MODEL=grok-4.5
 # ANTHROPIC_MODEL=claude-haiku-4-5
 
-# CHECK_MODE=multi|dual|monolith
-#   multi   = sub-agents (identify/product/company/verify/alts) + AI pool (default when keys exist)
-#   dual    = 1–2 calls
-#   monolith = single LLM call
+# CHECK_MODE is ignored. One JSON query per check; dimensions choose the sections.
 #
 # Live web research (Gemini Google Search grounding) before product/company agents:
 #   WEB_LOOKUP=auto  (default) — on when GEMINI_API_KEY is set

@@ -161,7 +161,7 @@ In GA4, mark `check_complete` as a conversion if you want a primary success metr
 
 | Variable | Notes |
 |----------|--------|
-| `CHECK_MODE` | `multi` (default when keys exist) \| `dual` \| `monolith` |
+| `CHECK_MODE` | Ignored. Every check is one JSON query; dimensions choose the sections. |
 | `WEB_LOOKUP` | `auto` (default) / `on` / `off`. Live web research via Gemini Google Search when `GEMINI_API_KEY` is set. |
 | `GEMINI_WEB_MODEL` | Optional. Model for **grounded web search only** (default chain starts with `gemini-2.5-flash`). Independent of `GEMINI_MODEL` / flash-lite agent chain. |
 | `CHECK_ALLOWED_ORIGINS` | Comma-separated extra origins for custom domains |
@@ -199,7 +199,7 @@ To run **Gemini-only** in production (recommended when free OpenAI/Claude/Grok a
 POOL_DISABLE_PROVIDERS=openai,grok,claude
 
 # Option B — delete unused secrets from Pages so they are not assigned
-# Option C — CHECK_MODE=monolith  (single Gemini full check)
+# Option C — one check is already a single JSON query (CHECK_MODE is ignored)
 ```
 
 ---
