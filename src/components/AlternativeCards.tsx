@@ -108,15 +108,15 @@ export function AlternativeCards({
       {brands.length ? (
         <div>
           <h3 className="result-section-title">{t('check.altBrands')}</h3>
-          <ul className="alt-list">
+          <ul className="alt-list alt-list--grid">
             {brands.map((b) => renderItem(b, `b-${b.name}`))}
           </ul>
         </div>
       ) : null}
       {products.length ? (
-        <div style={{ marginTop: brands.length ? 12 : 0 }}>
+        <div className={brands.length ? 'alt-products' : undefined}>
           <h3 className="result-section-title">{t('check.altProducts')}</h3>
-          <ul className="alt-list">
+          <ul className="alt-list alt-list--grid">
             {products.map((b) => renderItem(b, `p-${b.name}`))}
           </ul>
         </div>

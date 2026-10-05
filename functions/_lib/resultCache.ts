@@ -26,8 +26,8 @@ function sortedDims(dims: CheckDimension[]): string {
 export async function cacheKeyHash(parts: CacheLookupKey): Promise<string> {
   const material = [
     // Bump when product/company prompts, web research, synthesize, or COO rules change
-    // v6: invalidate pre–COO-priority / weak web-fail caches that showed 未確認 as 快取
-    'check:v6',
+    // v7: alternatives JSON repair + shorter alt prompt (stale parse_error hits)
+    'check:v7',
     normalizeQuery(parts.text),
     parts.locale,
     parts.geoScope,

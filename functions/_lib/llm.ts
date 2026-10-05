@@ -90,8 +90,11 @@ export const DEFAULT_MODELS: Record<Exclude<AskProviderId, 'gemini'>, string> = 
   claude: FREE_TIER_MODEL_CHAINS.claude[0]!,
 };
 
-/** Higher when multi-item label breakdown is needed. */
-const MAX_OUTPUT_TOKENS = 1400;
+/**
+ * Visible JSON plus Gemini thinking share this budget.
+ * 1400 was enough to cut product/COO and alternatives JSON mid-object (parse_error).
+ */
+const MAX_OUTPUT_TOKENS = 8192;
 
 export function normalizeProvider(raw: unknown): AskProviderId {
   const s = String(raw ?? '')
@@ -206,13 +209,50 @@ function geminiParts(prompt: string, image?: LlmImage) {
   return parts;
 }
 
+type GeminiPart = { text?: string; thought?: boolean };
+
+/** Skip thought parts so reasoning text is not concatenated into the JSON. */
+export function geminiVisibleText(parts: GeminiPart[] | undefined): string {
+  return (parts ?? [])
+    .filter((p) => p && p.thought !== true && typeof p.text === 'string')
+    .map((p) => p.text)
+    .join('');
+}
+
+/**
+ * Keep structured JSON from being eaten by thinking tokens.
+ * Gemini 3.x: thinkingLevel minimal. Gemini 2.5: thinkingBudget 0 turns thinking off.
+ * Older models omit the field (a rejected config is retried once without it).
+ */
+function geminiThinkingConfig(
+  model: string
+): Record<string, unknown> | undefined {
+  const id = model.toLowerCase();
+  if (/gemini-3|gemini-flash-lite-latest|gemini-flash-latest/.test(id)) {
+    return { thinkingLevel: 'minimal', includeThoughts: false };
+  }
+  if (/gemini-2\.5/.test(id)) {
+    return { thinkingBudget: 0 };
+  }
+  return undefined;
+}
+
 async function callGeminiOnce(
   apiKey: string,
   model: string,
   prompt: string,
-  image?: LlmImage
+  image?: LlmImage,
+  withThinking = true
 ): Promise<CallOnce> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const generationConfig: Record<string, unknown> = {
+    temperature: 0.15,
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
+    responseMimeType: 'application/json',
+  };
+  const thinking = withThinking ? geminiThinkingConfig(model) : undefined;
+  if (thinking) generationConfig.thinkingConfig = thinking;
+
   let res: Response;
   try {
     res = await fetch(url, {
@@ -220,11 +260,7 @@ async function callGeminiOnce(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ role: 'user', parts: geminiParts(prompt, image) }],
-        generationConfig: {
-          temperature: 0.15,
-          maxOutputTokens: MAX_OUTPUT_TOKENS,
-          responseMimeType: 'application/json',
-        },
+        generationConfig,
       }),
     });
   } catch {
@@ -233,7 +269,7 @@ async function callGeminiOnce(
 
   let data: {
     error?: { message?: string };
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
   };
   try {
     data = (await res.json()) as typeof data;
@@ -242,14 +278,19 @@ async function callGeminiOnce(
   }
 
   if (!res.ok) {
-    return {
-      ok: false,
-      kind: mapHttpError(res.status, data.error?.message || ''),
-    };
+    const message = data.error?.message || '';
+    if (
+      withThinking &&
+      thinking &&
+      res.status === 400 &&
+      /thinking/i.test(message)
+    ) {
+      return callGeminiOnce(apiKey, model, prompt, image, false);
+    }
+    return { ok: false, kind: mapHttpError(res.status, message) };
   }
 
-  const text =
-    data.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') ?? '';
+  const text = geminiVisibleText(data.candidates?.[0]?.content?.parts);
   if (!text.trim()) return { ok: false, kind: 'empty_response' };
   return { ok: true, text };
 }

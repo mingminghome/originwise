@@ -18,9 +18,12 @@ const ZOOM_STEP = 0.25;
 export function RelationGraph({
   graph,
   t,
+  embedded = false,
 }: {
   graph: Graph;
   t: TFunction;
+  /** Title is already the surrounding disclosure summary. */
+  embedded?: boolean;
 }) {
   const uid = useId().replace(/:/g, '');
   const [expanded, setExpanded] = useState(false);
@@ -80,7 +83,9 @@ export function RelationGraph({
     >
       <div className="relation-graph-head">
         <div>
-          <h3 className="result-section-title">{t('check.graphTitle')}</h3>
+          {embedded ? null : (
+            <h3 className="result-section-title">{t('check.graphTitle')}</h3>
+          )}
           <p className="muted relation-graph-hint">{t('check.graphHint')}</p>
         </div>
         <div className="relation-graph-toolbar" role="toolbar" aria-label={t('check.graphControls')}>

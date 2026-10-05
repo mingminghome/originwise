@@ -95,7 +95,7 @@ ALTERNATIVES ACCURACY:
 - relationTier "none" ONLY if factory/COO (not design HQ) is clearly outside mainland China AND ownership is not PRC-controlled.
 - made-in China/PRC → "direct" (do not include such items as alternatives unless nothing else exists and you must mark them honestly — prefer empty).
 - Unclear factory country → omit the item (do not list it as "none" or fill madeIn from HQ or from a same-name other category).
-- Max 6 each; short notes must state factory/COO country and why China involvement is lower.
+- Max 4 each. Each note is one short sentence naming the factory/COO country and why China involvement is lower.
 `.trim();
 
 const WEB_CONTEXT_RULE = `
@@ -324,12 +324,12 @@ ACCURACY (do not mislead):
   - "indirect" = weaker/mixed PRC links, still lower than a typical CN-made product
   - "direct" = made in CN / strong PRC control — do not include these as alternatives
   - "unknown" when factory country is unclear — omit the item rather than invent "none"
-- Notes must state factory/COO country and why China involvement is lower. Name a plant or label COO when claiming a country.
+- Each note is ONE short sentence: factory/COO country and why China involvement is lower. Do not write a paragraph.
 
-Return ONLY JSON:
+Return ONLY a compact JSON object. No markdown.
 {"brands":[{"name":"string","madeIn":"string","hqCountry":"string","relationTier":"none|indirect|direct|unknown","note":"string"}],"products":[{"name":"string","madeIn":"string","originCountry":"string","relationTier":"none|indirect|direct|unknown","note":"string"}]}
 Include brands: ${opts.wantBrands}. Include products: ${opts.wantProducts}.
-Max 4 each. Quality over quantity — empty list is better than China-heavy "similar" items.
+Max 4 each. Quality over quantity — empty list is better than China-heavy "similar" items. Keep the whole JSON short so it is not cut off.
 
 ${fence('entity', opts.entity)}
 ${fence('context', opts.contextJson)}

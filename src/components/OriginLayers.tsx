@@ -349,42 +349,43 @@ export function OriginLayers({
     <div className="origin-layers card-soft" data-testid="origin-layers">
       <h3 className="result-section-title">{t('check.originLayersTitle')}</h3>
       <p className="muted origin-layers-intro">{t('check.originLayersIntro')}</p>
-      <p className="muted origin-layers-intro">{t('check.sectionShareHint')}</p>
-
-      {brandItems.length ? (
+      <div className="origin-layers-grid">
         <LayerRow
-          label={t('check.layerBrandOps')}
-          items={brandItems}
-          variant="brand"
+          label={t('check.layerFinalCoo')}
+          items={model.finalCoo ? [model.finalCoo] : []}
+          empty={t('check.madeInUnconfirmed')}
+          variant="coo"
           t={t}
         />
-      ) : null}
 
-      <LayerRow
-        label={t('check.layerOwnership')}
-        hint={t('check.layerOwnershipHint')}
-        items={ownershipItems}
-        empty={t('check.layerOwnershipEmpty')}
-        variant="ownership"
-        t={t}
-      />
+        {brandItems.length ? (
+          <LayerRow
+            label={t('check.layerBrandOps')}
+            items={brandItems}
+            variant="brand"
+            t={t}
+          />
+        ) : null}
 
-      <LayerRow
-        label={t('check.layerFinalCoo')}
-        items={model.finalCoo ? [model.finalCoo] : []}
-        empty={t('check.madeInUnconfirmed')}
-        variant="coo"
-        t={t}
-      />
-
-      {partsItems.length ? (
         <LayerRow
-          label={t('check.layerParts')}
-          items={partsItems}
-          variant="parts"
+          label={t('check.layerOwnership')}
+          hint={t('check.layerOwnershipHint')}
+          items={ownershipItems}
+          empty={t('check.layerOwnershipEmpty')}
+          variant="ownership"
           t={t}
         />
-      ) : null}
+
+        {partsItems.length ? (
+          <LayerRow
+            label={t('check.layerParts')}
+            items={partsItems}
+            variant="parts"
+            t={t}
+          />
+        ) : null}
+      </div>
+      <p className="muted origin-layers-share">{t('check.sectionShareHint')}</p>
     </div>
   );
 }

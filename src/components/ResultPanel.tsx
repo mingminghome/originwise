@@ -23,6 +23,7 @@ function providerLabel(p: string | undefined, t: TFunction): string {
 /** Map raw agent error codes to short UI labels. */
 function agentErrorLabel(code: string | undefined, t: TFunction): string {
   if (!code) return t('check.agentFailUnknown');
+  if (code === 'parse_error') return t('check.parseError');
   const key = `check.agentError.${code}`;
   const label = t(key);
   return label === key ? code : label;
@@ -30,40 +31,13 @@ function agentErrorLabel(code: string | undefined, t: TFunction): string {
 
 function AgentsPoolCard({
   agents,
-  provider,
-  cached,
-  degraded,
   t,
 }: {
   agents: NonNullable<NonNullable<CheckResult['meta']>['agents']>;
-  provider?: string | null;
-  cached?: boolean;
-  degraded?: boolean;
   t: TFunction;
 }) {
-  const isSkipped = (a: (typeof agents)[number]) =>
-    a.ok === false &&
-    (a.error === 'search_grounding_unavailable' || a.error === 'disabled');
-  const okCount = agents.filter((a) => a.ok !== false).length;
-  const failCount = agents.filter((a) => a.ok === false && !isSkipped(a)).length;
-
   return (
-    <div className="agents-pool-card card-soft">
-      <div className="agents-pool-head">
-        <h3 className="result-section-title">{t('check.agentsTitle')}</h3>
-        <p className="muted agents-pool-summary">
-          {t('check.agentsSummary', {
-            total: agents.length,
-            ok: okCount,
-            fail: failCount,
-          })}
-          {provider
-            ? ` · ${t('check.answeredBy', { name: providerLabel(provider, t) })}`
-            : null}
-          {cached ? ` · ${t('check.cached')}` : null}
-          {degraded ? ` · ${t('check.degraded')}` : null}
-        </p>
-      </div>
+    <div className="agents-pool-card">
       <ul className="agents-pool-list">
         {agents.map((a, i) => {
           const skipped =
@@ -122,135 +96,104 @@ export function ResultPanel({
   t: TFunction;
 }) {
   const agents = result.meta?.agents ?? [];
+  const skippedAgent = (a: (typeof agents)[number]) =>
+    a.ok === false &&
+    (a.error === 'search_grounding_unavailable' || a.error === 'disabled');
+  const failCount = agents.filter((a) => a.ok === false && !skippedAgent(a)).length;
+  const okCount = agents.filter((a) => a.ok !== false).length;
+  const notes = result.product?.notes?.filter((n) => n.trim()) ?? [];
 
   return (
     <div className="ask-result" role="status">
-      <div className="ask-result-head">
-        <h2 className="ask-result-title">{result.title}</h2>
-        <div className="ask-result-meta muted">
-          {provider
-            ? t('check.answeredBy', {
-                name: providerLabel(provider, t),
-              })
-            : null}
-          {cached ? ` · ${t('check.cached')}` : null}
-          {result.meta?.degraded ? ` · ${t('check.degraded')}` : null}
+      <header className="result-verdict">
+        <div className="ask-result-head">
+          <h2 className="ask-result-title">{result.title}</h2>
+          <p className="ask-result-meta muted">
+            {[
+              provider
+                ? t('check.answeredBy', { name: providerLabel(provider, t) })
+                : null,
+              cached ? t('check.cached') : null,
+              result.meta?.degraded ? t('check.degraded') : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
         </div>
-      </div>
-
-      {/* Hero: colored tier is the only chromatic accent on results */}
-      <div className="result-tier-hero">
-        <p className="result-tier-label muted">{t('check.relationLabel')}</p>
-        <TierBadge
-          tier={result.relationTier}
-          label={t(`tier.${result.relationTier}`)}
-          size="lg"
-        />
-        {typeof result.confidence === 'number' ? (
-          <span className="muted result-tier-conf">
-            {t('check.confidence', {
-              n: Math.round(result.confidence * 100),
-            })}
-          </span>
-        ) : null}
-      </div>
-
-      <p className="ask-result-summary">{result.summary}</p>
-
-      <div style={{ marginTop: '0.85rem' }}>
-        <OriginLayers result={result} t={t} />
-      </div>
-
-      {agents.length > 0 ? (
-        <div style={{ marginTop: '0.85rem' }}>
-          <AgentsPoolCard
-            agents={agents}
-            provider={provider}
-            cached={cached}
-            degraded={result.meta?.degraded}
-            t={t}
+        <div className="result-tier-hero">
+          <p className="result-tier-label muted">{t('check.relationLabel')}</p>
+          <TierBadge
+            tier={result.relationTier}
+            label={t(`tier.${result.relationTier}`)}
+            size="lg"
           />
-        </div>
-      ) : null}
-
-      <OriginMap regions={result.regions} t={t} />
-
-      {(result.product || result.company) && (
-        <div className="result-facts" style={{ marginTop: '0.85rem' }}>
-          {result.product ? (
-            <div className="card-soft">
-              <h3 className="result-section-title">{t('check.productFacts')}</h3>
-              <ul className="muted fact-list">
-                {result.product.brand ? (
-                  <li>
-                    {t('check.brand')}: {result.product.brand}
-                  </li>
-                ) : null}
-                {result.product.originCountry ? (
-                  <li>
-                    {t('check.brandOrigin')}: {result.product.originCountry}
-                  </li>
-                ) : null}
-                {result.product.manufacturer ? (
-                  <li>
-                    {t('check.manufacturer')}: {result.product.manufacturer}
-                    {result.product.manufacturerCountry
-                      ? ` (${result.product.manufacturerCountry})`
-                      : ''}
-                  </li>
-                ) : null}
-                {result.product.notes?.length ? (
-                  <li className="fact-notes">
-                    {t('check.productNotes')}:{' '}
-                    {result.product.notes.join(' · ')}
-                  </li>
-                ) : null}
-              </ul>
-            </div>
-          ) : null}
-          {result.company ? (
-            <div className="card-soft" style={{ marginTop: 8 }}>
-              <h3 className="result-section-title">{t('check.companyFacts')}</h3>
-              <ul className="muted fact-list">
-                {result.company.name ? (
-                  <li>
-                    {t('check.company')}: {result.company.name}
-                  </li>
-                ) : null}
-                {result.company.hqCountry ? (
-                  <li>
-                    {t('check.hq')}: {result.company.hqCountry}
-                  </li>
-                ) : null}
-              </ul>
-            </div>
+          {typeof result.confidence === 'number' ? (
+            <span className="muted result-tier-conf">
+              {t('check.confidence', {
+                n: Math.round(result.confidence * 100),
+              })}
+            </span>
           ) : null}
         </div>
-      )}
+      </header>
 
-      {result.graph?.nodes?.length ? (
-        <div style={{ marginTop: '0.85rem' }}>
-          <RelationGraph graph={result.graph} t={t} />
-        </div>
+      {result.summary ? (
+        <p className="ask-result-summary">{result.summary}</p>
       ) : null}
+
+      <OriginLayers result={result} t={t} />
 
       {result.tierReasons?.length ? (
-        <div style={{ marginTop: '0.75rem' }}>
+        <section className="result-why">
           <h3 className="result-section-title">{t('check.reasons')}</h3>
           <ul className="tier-reasons-list">
             {result.tierReasons.map((r) => (
               <li key={r}>{formatTierReason(r, t, result)}</li>
             ))}
           </ul>
-        </div>
+        </section>
       ) : null}
 
-      <div style={{ marginTop: '0.85rem' }}>
-        <AlternativeCards alternatives={result.alternatives} t={t} />
-      </div>
+      <AlternativeCards alternatives={result.alternatives} t={t} />
+
+      {notes.length ? (
+        <section className="result-notes">
+          <h3 className="result-section-title">{t('check.productNotes')}</h3>
+          <ul className="tier-reasons-list">
+            {notes.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <OriginMap regions={result.regions} t={t} />
+
+      {result.graph?.nodes?.length ? (
+        <details className="result-fold">
+          <summary>{t('check.graphTitle')}</summary>
+          <RelationGraph graph={result.graph} t={t} embedded />
+        </details>
+      ) : null}
+
+      {agents.length > 0 ? (
+        <details className="result-fold" open={failCount > 0}>
+          <summary>
+            {t('check.agentsTitle')}
+            <span className="muted result-fold-meta">
+              {t('check.agentsSummary', {
+                total: agents.length,
+                ok: okCount,
+                fail: failCount,
+              })}
+            </span>
+          </summary>
+          <AgentsPoolCard agents={agents} t={t} />
+        </details>
+      ) : null}
 
       {result.caveats?.length ? (
-        <div className="ask-result-caveats" style={{ marginTop: '0.75rem' }}>
+        <div className="ask-result-caveats">
           <h3 className="ask-result-caveats-title">{t('check.caveats')}</h3>
           <ul>
             {result.caveats.map((c) => (
@@ -260,7 +203,7 @@ export function ResultPanel({
         </div>
       ) : null}
 
-      <p className="muted" style={{ marginTop: '0.85rem', fontSize: '0.8rem' }}>
+      <p className="muted result-disclaimer">
         {result.knowledgeBasis === 'web_enriched'
           ? t('check.knowledgeWeb')
           : result.knowledgeBasis === 'model_memory'
