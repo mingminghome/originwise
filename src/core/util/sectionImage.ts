@@ -89,6 +89,18 @@ export type RgbTuple = readonly [number, number, number];
 export const FLATTEN_ONTO_LIGHT: RgbTuple = [255, 255, 255];
 export const FLATTEN_ONTO_DARK: RgbTuple = [22, 22, 22]; // --bg-card dark #161616
 
+/**
+ * Neutral page backdrop for Threads pad margins.
+ * Not the section card tint from pickBackground (e.g. COO teal wash rgb(21,30,29)).
+ * Dark = #161616; light = white — matches hand pads / opaque flatten.
+ */
+export function sectionSharePadBackground(
+  theme: 'dark' | 'light' = sectionShareCapture.theme
+): string {
+  const onto = theme === 'dark' ? FLATTEN_ONTO_DARK : FLATTEN_ONTO_LIGHT;
+  return `rgb(${onto[0]}, ${onto[1]}, ${onto[2]})`;
+}
+
 /** Paint a translucent layer color onto an opaque backdrop so the PNG is not see-through. */
 export function flattenCssColor(
   color: string,
@@ -340,9 +352,13 @@ export async function captureElementPng(
       rectHeight: rect.height,
     });
     const padded = sectionSharePaddedSize(measured);
-    const backgroundColor = pickBackground(frame.clone);
+    const needsPad = padded.padTop > 0 || padded.padBottom > 0;
+    // Pad margins use neutral page flatten, not the card's tinted fill.
+    const backgroundColor = needsPad
+      ? sectionSharePadBackground(sectionShareCapture.theme)
+      : pickBackground(frame.clone);
     let target: HTMLElement = frame.clone;
-    if (padded.padTop > 0 || padded.padBottom > 0) {
+    if (needsPad) {
       const doc = frame.clone.ownerDocument;
       const wrap = doc.createElement('div');
       wrap.dataset.sectionShare = 'pad';

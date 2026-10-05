@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { flattenCssColor, sanitizeShareStem, sectionCaptureSize, sectionImageFilename, sectionShareCapture, sectionSharePaddedSize, SECTION_SHARE_MIN_CSS_HEIGHT, FLATTEN_ONTO_DARK } from './sectionImage';
+import { flattenCssColor, sanitizeShareStem, sectionCaptureSize, sectionImageFilename, sectionShareCapture, sectionSharePaddedSize, sectionSharePadBackground, SECTION_SHARE_MIN_CSS_HEIGHT, FLATTEN_ONTO_DARK, FLATTEN_ONTO_LIGHT } from './sectionImage';
 
 describe('sectionImage helpers', () => {
   it('sanitizes stems for filenames', () => {
@@ -79,5 +79,14 @@ describe('sectionImage helpers', () => {
     assert.equal(odd.padTop + odd.padBottom + 117, 290);
     assert.equal(odd.padTop, Math.floor((290 - 117) / 2));
     assert.equal(odd.padBottom, 290 - 117 - odd.padTop);
+  });
+
+  it('pads with neutral page flatten, not card tint', () => {
+    assert.equal(sectionSharePadBackground('dark'), 'rgb(22, 22, 22)');
+    assert.equal(sectionSharePadBackground('light'), 'rgb(255, 255, 255)');
+    assert.equal(sectionSharePadBackground(), 'rgb(22, 22, 22)'); // capture theme dark
+    // Same tuples used by opaque flatten helpers.
+    assert.deepEqual(FLATTEN_ONTO_DARK, [22, 22, 22]);
+    assert.deepEqual(FLATTEN_ONTO_LIGHT, [255, 255, 255]);
   });
 });
