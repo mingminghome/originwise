@@ -49,10 +49,11 @@
     <h2>Live web search</h2>
     <p>
       When live web search is on, the product name and any barcode (JAN/EAN),
-      including one read from your label photo, are sent to the search services
-      the deployment uses, so we can find pages that state where the product is
-      made. These can be Google Search (through Gemini), Firecrawl and Brave
-      Search. Our server then fetches a few of the result pages directly to
+      including one read from your label photo, are sent to a search service so
+      we can find pages that state where the product is made. The services are
+      Google Search (through Gemini), Brave Search and Firecrawl, tried in that
+      order: the next one is used only if the previous one fails or finds
+      nothing, so a check may reach one or more of them. Our server then fetches a few of the result pages directly to
       check the made-in line and barcode. Each search service handles queries
       under its own privacy policy and may keep its own records of them. Your
       photo is not sent to search services.
