@@ -26,7 +26,12 @@ import {
 import { runCheckOrchestrator, type ProgressEvent } from './orchestrator';
 import { extractCooClaimsFromText } from './cooPriority';
 import { applyWebCooGate, synthesize } from './synthesize';
-import { pageListsMultipleVariants } from './search/extract';
+import {
+  barcodeTiedToCoo,
+  htmlBlocks,
+  pageListsMultipleVariants,
+  textBlocks,
+} from './search/extract';
 
 const JAN = '4902508012348'; // checksum-valid GTIN-13 test code
 const ENTITY = `Pigeon Sheer PPSU 240ml ${JAN}`;
@@ -653,27 +658,6 @@ describe('barcode vs name matching rule (Tester / Chief bar)', () => {
     assert.ok(!extractCooClaimsFromText(out.brief).some((c) => c.region === 'CN'));
   });
 
-  it('barcode match on a multi-variant page still confirms (barcode is specific)', async () => {
-    mockFetch({
-      brave: () =>
-        json({ web: { results: [{ url: 'https://shop.example.jp/multi', title: 'Sheer' }] } }),
-      pages: {
-        'https://shop.example.jp/multi': `<p>Pigeon Sheer 160ml / 240ml</p><p>JAN ${JAN}</p><p>原産国：日本</p>`,
-      },
-      extraction: {
-        coo: [{ country: '日本', quote: '原産国：日本', page: 1, sourceType: 'retailer' }],
-        notes: [],
-      },
-    });
-    const out = await runSearchChain({
-      entity: ENTITY,
-      locale: 'ja',
-      env: { BRAVE_SEARCH_API_KEY: 'b', GEMINI_API_KEY: 'g', SEARCH_PROVIDERS: 'brave' },
-    });
-    assert.equal(out.coo?.[0]?.basis, 'barcode');
-    assert.equal(out.coo?.[0]?.status, 'confirmed');
-  });
-
   it('synthesize gate: barcode claim → confirmed made-in with madeInBasis=barcode', () => {
     const r = synthesize({
       jobId: 's1',
@@ -766,5 +750,180 @@ describe('barcode vs name matching rule (Tester / Chief bar)', () => {
         (c) => c.source === 'web_name' && c.rating === 'likely'
       )
     );
+  });
+});
+
+describe('variant-scoped barcode on multi-variant pages', () => {
+  afterEach(() => {
+    mock.restoreAll();
+  });
+
+  const SKU = '4902508277471'; // 240ml
+  const SKU160 = '4902508277464';
+  const SKU330 = '4902508277488';
+  const ENTITY_240 = `Pigeon Sheer PPSU 240ml ${SKU}`;
+
+  /** Fake Amazon JP listing: 3 variant rows in one table. */
+  function amazonPage(rows: { size: string; jan?: string; coo?: string }[]): string {
+    const tr = rows
+      .map(
+        (r) =>
+          `<tr><td>${r.size}</td><td>${r.jan ? `JAN ${r.jan}` : ''}</td><td>${r.coo ?? ''}</td></tr>`
+      )
+      .join('');
+    return `<div id="title">ピジョン Pigeon Sheer PPSU 240ml</div>
+      <div id="variation_size_name"><span>サイズ名:</span></div>
+      <table id="variants"><tbody>${tr}</tbody></table>`;
+  }
+
+  async function runBrave(pageHtml: string, coo = '中国', quote = '生産国：中国') {
+    mockFetch({
+      brave: () =>
+        json({ web: { results: [{ url: 'https://www.amazon.co.jp/dp/B0SHEER', title: 'Amazon' }] } }),
+      pages: { 'https://www.amazon.co.jp/dp/B0SHEER': pageHtml },
+      extraction: {
+        coo: [{ country: coo, quote, page: 1, sourceType: 'retailer' }],
+        notes: [],
+      },
+    });
+    return runSearchChain({
+      entity: ENTITY_240,
+      locale: 'ja',
+      env: { BRAVE_SEARCH_API_KEY: 'b', GEMINI_API_KEY: 'g', SEARCH_PROVIDERS: 'brave' },
+    });
+  }
+
+  async function runFirecrawl(markdown: string) {
+    mockFetch({
+      firecrawl: () =>
+        json({
+          success: true,
+          data: [{ url: 'https://www.amazon.co.jp/dp/B0SHEER', title: 'Amazon', markdown }],
+        }),
+      extraction: {
+        coo: [{ country: '中国', quote: '生産国：中国', page: 1, sourceType: 'retailer' }],
+        notes: [],
+      },
+    });
+    return runSearchChain({
+      entity: ENTITY_240,
+      locale: 'ja',
+      env: { FIRECRAWL_API_KEY: 'f', GEMINI_API_KEY: 'g', SEARCH_PROVIDERS: 'firecrawl' },
+    });
+  }
+
+  it('HTML: barcode on the 240ml row, 生産国 中国 on the 160ml row → 未確認', async () => {
+    const out = await runBrave(
+      amazonPage([
+        { size: '160ml', coo: '生産国：中国' },
+        { size: '240ml', jan: SKU },
+        { size: '330ml', jan: SKU330 },
+      ])
+    );
+    assert.equal(out.ok, true);
+    assert.deepEqual(out.coo, []);
+    assert.ok(out.brief.includes('未確認'));
+    assert.ok(!/COO: 中国/.test(out.brief));
+    assert.ok(!extractCooClaimsFromText(out.brief).some((c) => c.region === 'CN'));
+  });
+
+  it('HTML: barcode and 生産国 中国 on the same 240ml row → confirmed', async () => {
+    const out = await runBrave(
+      amazonPage([
+        { size: '160ml', jan: SKU160, coo: '生産国：日本' },
+        { size: '240ml', jan: SKU, coo: '生産国：中国' },
+        { size: '330ml', jan: SKU330 },
+      ])
+    );
+    assert.deepEqual(out.coo, [
+      { country: '中国', basis: 'barcode', status: 'confirmed', url: 'https://www.amazon.co.jp/dp/B0SHEER' },
+    ]);
+    assert.match(out.brief, /COO: 中国 \| source: retailer/);
+  });
+
+  it('HTML: same <li> variant block ties; a different <li> does not', () => {
+    const blocks = htmlBlocks(
+      `<ul><li>160ml 生産国：中国</li><li>240ml JAN ${SKU}</li></ul><ul><li>240ml JAN ${SKU} 生産国：タイ</li></ul>`
+    );
+    assert.equal(barcodeTiedToCoo(blocks, [SKU], '生産国：中国'), false);
+    assert.equal(barcodeTiedToCoo(blocks, [SKU], '生産国：タイ'), true);
+  });
+
+  it('single-variant page: barcode anywhere still confirms', async () => {
+    const out = await runBrave(
+      `<h1>Pigeon Sheer PPSU 240ml</h1><div class="spec">JAN ${SKU}</div><p>説明…</p><table><tr><th>生産国</th><td>生産国：中国</td></tr></table>`
+    );
+    assert.equal(out.coo?.[0]?.basis, 'barcode');
+    assert.equal(out.coo?.[0]?.status, 'confirmed');
+  });
+
+  it('markdown (Firecrawl): untied table rows → 未確認', async () => {
+    const out = await runFirecrawl(
+      [
+        '# ピジョン Pigeon Sheer PPSU 240ml',
+        '',
+        '| サイズ | JAN | 生産国 |',
+        '|---|---|---|',
+        '| 160ml | | 生産国：中国 |',
+        `| 240ml | ${SKU} | |`,
+        `| 330ml | ${SKU330} | |`,
+      ].join('\n')
+    );
+    assert.deepEqual(out.coo, []);
+    assert.ok(out.brief.includes('未確認'));
+  });
+
+  it('markdown (Firecrawl): barcode and 生産国 on the same row → confirmed', async () => {
+    const out = await runFirecrawl(
+      [
+        '# ピジョン Pigeon Sheer PPSU 240ml',
+        '',
+        '| サイズ | JAN | 生産国 |',
+        '|---|---|---|',
+        `| 160ml | ${SKU160} | 生産国：日本 |`,
+        `| 240ml | ${SKU} | 生産国：中国 |`,
+        `| 330ml | ${SKU330} | |`,
+      ].join('\n')
+    );
+    assert.equal(out.coo?.[0]?.basis, 'barcode');
+    assert.equal(out.coo?.[0]?.status, 'confirmed');
+  });
+
+  it('markdown (Firecrawl): heading-bounded variant section ties; neighbour section does not', async () => {
+    const tied = await runFirecrawl(
+      [
+        '# Pigeon Sheer PPSU',
+        '### 160ml',
+        `JAN: ${SKU160}`,
+        '生産国：日本',
+        '',
+        '### 240ml',
+        `JAN: ${SKU}`,
+        '生産国：中国',
+      ].join('\n')
+    );
+    assert.equal(tied.coo?.[0]?.status, 'confirmed');
+
+    mock.restoreAll();
+    const untied = await runFirecrawl(
+      [
+        '# Pigeon Sheer PPSU',
+        '### 160ml',
+        '生産国：中国',
+        '',
+        '### 240ml',
+        `JAN: ${SKU}`,
+      ].join('\n')
+    );
+    assert.deepEqual(untied.coo, []);
+  });
+
+  it('text blocks: window and "no other barcode/size in between" are enforced', () => {
+    const far = textBlocks(`JAN ${SKU} ${'説明'.repeat(150)} 生産国：中国`);
+    assert.equal(barcodeTiedToCoo(far, [SKU], '生産国：中国'), false);
+    const mixed = textBlocks(`240ml JAN ${SKU} / 160ml 生産国：中国`);
+    assert.equal(barcodeTiedToCoo(mixed, [SKU], '生産国：中国'), false);
+    const ok = textBlocks(`240ml JAN ${SKU} 生産国：中国`);
+    assert.equal(barcodeTiedToCoo(ok, [SKU], '生産国：中国'), true);
   });
 });

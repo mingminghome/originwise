@@ -52,7 +52,7 @@ export const zhHant = {
     webStepVia: '網路搜尋：查詢已傳送至 {name}',
     searchUsage: '網路搜尋：{provider}・共 {n} 次搜尋請求',
     knowledgeWebVia:
-      '結果結合即時網路搜尋（{provider}）與模型知識，並非公司登記或關務資料庫；實際包裝標示及官方文件可能與網頁內容不同。僅供參考，不構成法律、貿易或制裁方面的建議。',
+      '結果結合經 {provider} 取得的即時網路資料與模型知識，並非公司登記或關務資料庫；實際包裝標示及官方文件可能與網頁內容不同。僅供參考，不構成法律、貿易或制裁方面的建議。',
     title: '快速查',
     subtitle: '這項商品是否與中國相關？輸入名稱，或拍包裝。',
     placeholder: '例如：零食品牌、手機、玩具…',
@@ -87,7 +87,7 @@ export const zhHant = {
     agentsTitle: '使用的 AI 池',
     agentsSummary: '共 {total} 次呼叫 · 成功 {ok} · 失敗 {fail}',
     agentsHint:
-      '每一列是一次免費伺服器 AI 呼叫。失敗多半是配額、模型權限或逾時；我們會再試其他模型。即時網頁查詢需要 Gemini Search grounding（與一般文字 RPM 不同）。',
+      '每一列是一次免費伺服器 AI 呼叫。失敗多半是配額、模型權限或逾時；我們會再試其他模型。即時網路搜尋需使用 Google 搜尋（Gemini）的額度，與一般文字額度分開計算。',
     agentOk: '成功',
     agentFail: '失敗（{err}）',
     agentSkipped: '略過（{err}）',
@@ -99,7 +99,7 @@ export const zhHant = {
       empty_response: '網路搜尋空回應',
       model_unavailable: '此 API 金鑰無法使用該模型',
       search_grounding_unavailable:
-        'Google 搜尋 grounding 不可用 — 改用模型知識',
+        'Google 搜尋（Gemini）暫時無法使用，改用模型知識',
       disabled: '已關閉',
       gemini_not_configured: '未設定 Gemini',
       no_entity: '無產品名稱',
@@ -159,7 +159,7 @@ export const zhHant = {
     knowledgeModel:
       '僅依一般模型知識（未做即時網頁查詢）。品牌來源、零件工廠與最終組裝／原產地可能因型號／市場而異——請以包裝標示為準。不是公司登記或關務資料庫。僅供參考——非法律、貿易或制裁建議。',
     knowledgeWeb:
-      '含即時網路搜尋（經 Gemini grounding 的 Google 搜尋）以及模型知識。仍不是公司登記或關務資料庫——標示與官方文件可能與網頁不符。僅供參考——非法律、貿易或制裁建議。',
+      '結果結合經 Google 搜尋（Gemini）取得的即時網路資料與模型知識，並非公司登記或關務資料庫；實際包裝標示及官方文件可能與網頁內容不同。僅供參考，不構成法律、貿易或制裁方面的建議。',
     providerNotConfigured:
       '尚未設定 AI。請在 .dev.vars 加入金鑰，並執行 `npm run pages:dev`（見 README）。',
     rateLimited: '已達免費伺服器限制：每 30 秒 1 次。請稍候。',

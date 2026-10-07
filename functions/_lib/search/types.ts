@@ -63,4 +63,13 @@ export type FetchedPage = {
   url: string;
   title: string;
   text: string;
+  /**
+   * Structural blocks used to tie a barcode to a made-in line on multi-variant
+   * pages. 'html' = text of one <tr>/<li>/<dl>/<p>/<section>/variant element;
+   * 'text' = one markdown/plain line or a small blank-line/heading-bounded block.
+   * Derived from `text` (as 'text' blocks) when absent.
+   */
+  blocks?: PageBlock[];
 };
+
+export type PageBlock = { kind: 'html' | 'text'; text: string };

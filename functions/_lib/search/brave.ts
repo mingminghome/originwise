@@ -12,10 +12,12 @@ import {
   extractBriefFromPages,
   fetchWithTimeout,
   findJans,
+  htmlBlocks,
   mapSearchHttpError,
   stripHtml,
+  textBlocks,
 } from './extract';
-import type { FetchedPage, SearchProvider } from './types';
+import type { FetchedPage, PageBlock, SearchProvider } from './types';
 
 export const BRAVE_ENDPOINT = 'https://api.search.brave.com/res/v1/web/search';
 const BRAVE_SEARCH_MS = 10000;
@@ -49,21 +51,23 @@ async function fetchPageText(r: BraveResult): Promise<FetchedPage> {
     PAGE_FETCH_MS
   );
   let body = '';
+  let blocks: PageBlock[] | undefined;
   if (res && res.ok) {
     const ct = res.headers.get('content-type') || '';
     if (!ct || /text\/html|text\/plain|xhtml/i.test(ct)) {
       try {
         const raw = await res.text();
-        body = /html/i.test(ct) || /<html|<body|<div/i.test(raw.slice(0, 2000))
-          ? stripHtml(raw)
-          : raw.slice(0, 200_000);
+        const isHtml = /html/i.test(ct) || /<html|<body|<div/i.test(raw.slice(0, 2000));
+        body = isHtml ? stripHtml(raw) : raw.slice(0, 200_000);
+        blocks = isHtml ? htmlBlocks(raw) : textBlocks(body);
       } catch {
         body = '';
       }
     }
   }
   // Brave's own snippets for this URL stay as fallback text when fetch fails.
-  return { url, title, text: [title, snippet, body].filter(Boolean).join('\n') };
+  const text = [title, snippet, body].filter(Boolean).join('\n');
+  return { url, title, text, blocks: blocks ?? textBlocks(text) };
 }
 
 export const braveSearchProvider: SearchProvider = {

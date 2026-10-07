@@ -13,6 +13,7 @@ import {
   fetchWithTimeout,
   findJans,
   mapSearchHttpError,
+  textBlocks,
 } from './extract';
 import type { FetchedPage, SearchProvider } from './types';
 
@@ -96,7 +97,8 @@ export const firecrawlSearchProvider: SearchProvider = {
         .filter(Boolean)
         .join('\n')
         .slice(0, 200_000);
-      pages.push({ url, title, text });
+      // Markdown keeps rows / lines / headings → text blocks for variant tying.
+      pages.push({ url, title, text, blocks: textBlocks(text) });
       if (pages.length >= MAX_RESULT_PAGES) break;
     }
     if (!pages.length) {

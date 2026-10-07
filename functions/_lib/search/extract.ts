@@ -13,7 +13,7 @@
 
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
-import type { FetchedPage, SearchEnv, SearchOutput } from './types';
+import type { FetchedPage, PageBlock, SearchEnv, SearchOutput } from './types';
 
 /** Analysis model for extraction (plain call, no grounding). */
 export const EXTRACT_MODEL = 'gemini-3.5-flash-lite';
@@ -152,6 +152,146 @@ function distinctAmounts(text: string, re: RegExp, toBase: (n: number, unit: str
 /** Variant-selector UI (Amazon / Rakuten / Shopify style). */
 const VARIANT_SELECTOR_RE =
   /(サイズ|容量|カラー|色|スタイル|種類|タイプ|パターン|規格)\s*を\s*選(択|ぶ)|バリエーション|商品を選択|規格を選|選擇(尺寸|容量|款式|規格)|select\s+(a\s+)?(size|capacity|colou?r|style|variant|option)|choose\s+(a\s+)?(size|capacity|colou?r|style|variant|option)|size\s*name\s*:|style\s*name\s*:|data-variant|variant-?selector|swatch/i;
+
+function sizeFamilies(t: string): number[] {
+  const vol = distinctAmounts(t, VOLUME_RE, (n, u) =>
+    u === 'l' || u === 'ℓ' || u === 'リットル' ? n * 1000 : /oz/.test(u) ? n * 29.5735 : n
+  );
+  const wt = distinctAmounts(t, WEIGHT_RE, (n, u) =>
+    u === 'kg' ? n * 1000 : u === 'mg' ? n / 1000 : n
+  );
+  const cnt = distinctAmounts(t, COUNT_RE, (n) => n);
+  return [vol.size, wt.size, cnt.size];
+}
+
+/** Max characters for one structural block to count as a variant block. */
+const BLOCK_MAX = 600;
+/** Markdown / plain text: barcode and made-in quote within this many (compact) chars. */
+const TEXT_TIE_WINDOW = 200;
+const MAX_BLOCKS = 4000;
+
+const TRACKED_TAGS = new Set(['tr', 'li', 'dl', 'p', 'section', 'article']);
+const VARIANT_ATTR_RE =
+  /\b(?:class|id|data-[\w-]+)\s*=\s*["'][^"']*(?:variant|variation|sku|swatch)[^"']*["']/i;
+const VOID_TAGS = new Set([
+  'br', 'img', 'input', 'meta', 'hr', 'link', 'source', 'wbr', 'area', 'base', 'col', 'embed', 'param', 'track',
+]);
+/** Opening one of these implicitly closes an open element of the same tag. */
+const SELF_CLOSING_SIBLINGS = new Set(['tr', 'li', 'p', 'dt', 'dd', 'td', 'th']);
+
+/**
+ * Text of each variant-scoped HTML element: <tr>, <li>, <dl>, <p>, <section>,
+ * <article>, and any element whose class/id/data-* names a variant / sku /
+ * swatch. Small tag-stack walk; tolerant of unclosed <li>/<p>/<tr>.
+ */
+export function htmlBlocks(html: string): PageBlock[] {
+  const src = (html || '')
+    .slice(0, 600_000)
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<(script|style|noscript|svg|template|iframe)\b[\s\S]*?<\/\1>/gi, ' ');
+  type Open = { tag: string; start: number; tracked: boolean };
+  const stack: Open[] = [];
+  const out: PageBlock[] = [];
+  const emit = (o: Open, end: number) => {
+    if (!o.tracked || out.length >= MAX_BLOCKS) return;
+    const text = stripHtml(src.slice(o.start, end));
+    if (text && text.length <= BLOCK_MAX) out.push({ kind: 'html', text });
+  };
+  const re = /<(\/?)([a-zA-Z][\w-]*)\b([^>]*)>/g;
+  for (const m of src.matchAll(re)) {
+    const closing = m[1] === '/';
+    const tag = m[2]!.toLowerCase();
+    const idx = m.index ?? 0;
+    if (!closing) {
+      if (VOID_TAGS.has(tag) || /\/\s*$/.test(m[3] || '')) continue;
+      if (SELF_CLOSING_SIBLINGS.has(tag) && stack.length && stack[stack.length - 1]!.tag === tag) {
+        emit(stack.pop()!, idx);
+      }
+      stack.push({
+        tag,
+        start: idx + m[0].length,
+        tracked: TRACKED_TAGS.has(tag) || VARIANT_ATTR_RE.test(m[3] || ''),
+      });
+      continue;
+    }
+    // Close: pop up to the matching open tag (implicitly closing children).
+    let at = -1;
+    for (let i = stack.length - 1; i >= 0; i--) {
+      if (stack[i]!.tag === tag) {
+        at = i;
+        break;
+      }
+    }
+    if (at < 0) continue;
+    while (stack.length > at) emit(stack.pop()!, idx);
+  }
+  while (stack.length) emit(stack.pop()!, src.length);
+  return out;
+}
+
+/**
+ * Markdown / plain-text blocks: every non-empty line (table rows, list items),
+ * plus small groups of lines bounded by blank lines or headings (a heading
+ * line starts a new group, so "### 240ml" stays with its spec lines).
+ */
+export function textBlocks(text: string): PageBlock[] {
+  const out: PageBlock[] = [];
+  let group: string[] = [];
+  const flush = () => {
+    const g = group.join('\n').trim();
+    if (g && g.length <= BLOCK_MAX && group.length > 1) out.push({ kind: 'text', text: g });
+    group = [];
+  };
+  for (const raw of nfkc(text || '').slice(0, 400_000).split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) {
+      flush();
+      continue;
+    }
+    if (/^#{1,6}\s/.test(line) || /^-{3,}$|^={3,}$/.test(line)) flush();
+    if (line.length <= BLOCK_MAX && out.length < MAX_BLOCKS) out.push({ kind: 'text', text: line });
+    group.push(line);
+  }
+  flush();
+  return out;
+}
+
+/** A block describes at most one variant: ≤1 barcode (ours) and ≤1 size per family. */
+function blockIsSingleVariant(text: string, jans: string[]): boolean {
+  if (pageBarcodes(text).some((b) => !jans.includes(b))) return false;
+  return sizeFamilies(nfkc(text)).every((n) => n <= 1);
+}
+
+/**
+ * Variant-scoped barcode (exported for tests): true when one structural block
+ * contains the queried barcode AND the made-in quote, describes a single
+ * variant (no other barcode, no second size), and — for markdown / plain-text
+ * blocks — the barcode and quote sit within TEXT_TIE_WINDOW characters.
+ */
+export function barcodeTiedToCoo(
+  blocks: PageBlock[],
+  jans: string[],
+  quote: string
+): boolean {
+  const q = compact(quote);
+  if (!q || !jans.length) return false;
+  for (const b of blocks) {
+    if (b.text.length > BLOCK_MAX) continue;
+    const c = compact(b.text);
+    const iq = c.indexOf(q);
+    if (iq < 0) continue;
+    const jan = jans.find((j) => c.includes(j));
+    if (!jan) continue;
+    if (!blockIsSingleVariant(b.text, jans)) continue;
+    if (b.kind === 'text') {
+      const ij = c.indexOf(jan);
+      const gap = ij < iq ? iq - (ij + jan.length) : ij - (iq + q.length);
+      if (gap > TEXT_TIE_WINDOW) continue;
+    }
+    return true;
+  }
+  return false;
+}
 
 /**
  * Heuristic: does this page list more than one variant of the product?
@@ -330,7 +470,9 @@ export type KeptCooClaim = CooClaim & { basis: MatchBasis; status: CooStatus };
 /**
  * Made-in gate (exported for tests). A claim must quote text that is really on
  * its page and looks like a COO statement, and its page must match the product:
- *   - barcode/JAN on the page          → status 'confirmed' (basis 'barcode')
+ *   - barcode/JAN on a single-variant page → status 'confirmed' (basis 'barcode')
+ *   - barcode on a multi-variant page → confirmed only if the barcode and the
+ *     made-in quote share one variant block (barcodeTiedToCoo); else dropped
  *   - name only, page lists one variant → status 'likely'   (basis 'name'), never confirmed
  *   - name only, page lists several variants (sizes / JANs / selector) → dropped
  *   - no match                          → dropped
@@ -338,7 +480,8 @@ export type KeptCooClaim = CooClaim & { basis: MatchBasis; status: CooStatus };
 export function enforceCooClaims(
   claims: CooClaim[],
   pages: FetchedPage[],
-  matches: PageMatch[]
+  matches: PageMatch[],
+  jans: string[] = []
 ): { kept: KeptCooClaim[]; dropped: number; droppedMultiVariant: number } {
   const kept: KeptCooClaim[] = [];
   let dropped = 0;
@@ -356,13 +499,23 @@ export function enforceCooClaims(
       dropped += 1;
       continue;
     }
-    if (match === 'name') {
-      if (!multi.has(c.page)) multi.set(c.page, pageListsMultipleVariants(page.text));
-      if (multi.get(c.page)) {
-        dropped += 1;
-        droppedMultiVariant += 1;
-        continue;
-      }
+    if (!multi.has(c.page)) multi.set(c.page, pageListsMultipleVariants(page.text));
+    const multiVariant = multi.get(c.page) === true;
+    if (match === 'name' && multiVariant) {
+      dropped += 1;
+      droppedMultiVariant += 1;
+      continue;
+    }
+    // Multi-variant page: the barcode only confirms when it shares a variant
+    // block with this made-in line; otherwise it is name-only → 未確認.
+    if (
+      match === 'barcode' &&
+      multiVariant &&
+      !barcodeTiedToCoo(page.blocks ?? textBlocks(page.text), jans, quote)
+    ) {
+      dropped += 1;
+      droppedMultiVariant += 1;
+      continue;
     }
     if (kept.some((k) => compact(k.country) === compact(country) && k.page === c.page)) {
       continue;
@@ -489,7 +642,7 @@ export async function extractBriefFromPages(opts: {
     claims = regexCooClaims(pages);
   }
 
-  const { kept, dropped, droppedMultiVariant } = enforceCooClaims(claims, pages, matches);
+  const { kept, dropped, droppedMultiVariant } = enforceCooClaims(claims, pages, matches, jans);
   const confirmed = kept.filter((k) => k.status === 'confirmed');
   const likely = kept.filter((k) => k.status === 'likely');
   // Notes must never smuggle a made-in claim past the barcode/name gate.
@@ -526,7 +679,7 @@ export async function extractBriefFromPages(opts: {
   }
   if (droppedMultiVariant > 0) {
     lines.push(
-      `- Dropped ${droppedMultiVariant} made-in mention(s) from name-only pages that list several variants (sizes / barcodes / selector) — stays 未確認.`
+      `- Dropped ${droppedMultiVariant} made-in mention(s) from pages that list several variants (sizes / barcodes / selector) where the made-in line is not tied to this barcode's variant — stays 未確認.`
     );
   }
   if (dropped - droppedMultiVariant > 0) {
