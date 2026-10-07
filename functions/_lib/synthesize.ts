@@ -1523,7 +1523,10 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   } else if (p) {
     summaryParts.push('Final COO unconfirmed');
   }
-  if (originCandidates.length) {
+  const labelPartsEvidence = hasOcrPartEvidence(input.ocrText);
+  // A stamped made-in or label-read parts already answer the question; the
+  // queried candidates line is noise there (e.g. "Japan (likely 55% · parts)").
+  if (originCandidates.length && !p?.madeIn && !labelPartsEvidence) {
     const candBits = originCandidates
       .filter((c) => c.rating !== 'confirmed')
       .slice(0, 5)
@@ -1645,6 +1648,14 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     geoScope,
     disclaimerKey: DEFAULT_DISCLAIMER_KEY,
     knowledgeBasis: input.webEnriched ? 'web_enriched' : 'model_memory',
+    partsEvidence: resultParts.length
+      ? labelPartsEvidence &&
+        resultParts.some((x) => Boolean(x.madeIn || x.originCountry))
+        ? 'label'
+        : input.webEnriched && groundingSources.length
+          ? 'web'
+          : 'model'
+      : undefined,
     knowledgeCutoffNote: input.webEnriched ? WEB_KNOWLEDGE_NOTE : KNOWLEDGE_NOTE,
     sources: groundingSources.length ? groundingSources : undefined,
     product: p

@@ -225,8 +225,11 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
     });
   }
 
+  // Label-photo (OCR) parts are packaging evidence, not a model guess.
   const partsModelOnly =
-    result.knowledgeBasis === 'model_memory' && parts.length > 0;
+    result.knowledgeBasis === 'model_memory' &&
+    parts.length > 0 &&
+    result.partsEvidence !== 'label';
   const partsSources =
     result.knowledgeBasis === 'web_enriched' && Array.isArray(result.sources)
       ? result.sources.map((s) => String(s).trim()).filter(Boolean).slice(0, 8)
