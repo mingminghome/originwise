@@ -553,9 +553,17 @@ export const hu = {
     twTitle: 'Tajvan',
     twBody:
       'Tajvan itt mindig saját országnak számít. Önmagában nem számít „Kínához kapcsolódónak”.',
+    evidenceTitle:
+      'Mikor számít megerősítettnek a gyártási ország',
+    evidenceBody:
+      'A gyártási ország csak akkor jelenik meg megerősítettként (vonalkód-egyezés), ha a csomagolás címkéjéről készült fotóból származik, vagy ha egy weboldal ugyanazt a vonalkódot (JAN/EAN) mutatja a származási adat mellett. A csak terméknév szerinti egyezés legfeljebb „valószínű” (névegyezés), a több méretet vagy változatot felsoroló oldal pedig megerősítetlen marad. Ha az élő webes keresés nem érhető el, az eredmény csak a modell tudására épül, és ezt jelzi.',
+    flowWeb:
+      'Webes keresés',
+    flowWebDetail:
+      'Weboldalak keresése terméknév vagy vonalkód alapján, és a származási adat ellenőrzése.',
     privacyTitle: 'Az adataid',
     privacyBody:
-      'Az előzmények ezen az eszközön maradnak. A fotókat nem őrizzük szervernaplóként. Az MI tévedhet — a fontos döntéseket mindig ellenőrizd újra.',
+      'Az előzmények ezen az eszközön maradnak, a fotókat nem tároljuk a szerveren. Ha az élő webes keresés be van kapcsolva, a termék neve vagy vonalkódja keresőszolgáltatásokhoz kerül. Az MI tévedhet – a fontos döntéseket mindig ellenőrizd.',
     tryBtn: 'Próbálj egy ellenőrzést',
   },
   tier: {

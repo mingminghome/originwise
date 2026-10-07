@@ -553,9 +553,17 @@ export const sv = {
     twTitle: 'Taiwan',
     twBody:
       'Taiwan räknas här alltid som ett eget land. Det räknas inte i sig som ”Kina-relaterat”.',
+    evidenceTitle:
+      'När ett tillverkningsland räknas som bekräftat',
+    evidenceBody:
+      'Ett tillverkningsland visas som bekräftat (streckkodsmatchning) bara om det kommer från ett foto av förpackningsetiketten, eller om en webbsida visar samma streckkod (JAN/EAN) bredvid ursprungsuppgiften. En matchning bara på produktnamn är som mest ”troligt” (namnmatchning), och en sida med flera storlekar eller varianter förblir obekräftad. Om live-webbsökning inte är tillgänglig bygger resultatet bara på modellkunskap och anger det.',
+    flowWeb:
+      'Webbsökning',
+    flowWebDetail:
+      'Söka webbsidor på produktnamn eller streckkod och kontrollera ursprungsuppgiften.',
     privacyTitle: 'Din data',
     privacyBody:
-      'Historiken stannar på den här enheten. Foton sparas inte som en serverdagbok. AI kan ha fel — dubbelkolla alltid viktiga beslut.',
+      'Historiken stannar på den här enheten och foton sparas inte på servern. Med live-webbsökning på skickas produktnamnet eller streckkoden till söktjänster. AI kan ha fel – dubbelkolla alltid viktiga beslut.',
     tryBtn: 'Prova en koll',
   },
   tier: {

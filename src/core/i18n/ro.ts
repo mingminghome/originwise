@@ -553,9 +553,17 @@ export const ro = {
     twTitle: 'Taiwan',
     twBody:
       'Taiwanul contează întotdeauna aici ca o țară proprie. Nu contează de la sine ca „legat de China”.',
+    evidenceTitle:
+      'Când o țară de fabricație contează ca fiind confirmată',
+    evidenceBody:
+      'O țară de fabricație apare ca fiind confirmată (potrivire după codul de bare) doar dacă provine dintr-o fotografie a etichetei ambalajului sau dacă o pagină web arată același cod de bare (JAN/EAN) lângă mențiunea de origine. O potrivire doar după numele produsului este cel mult „probabilă” (potrivire după nume), iar o pagină cu mai multe mărimi sau variante rămâne neconfirmată. Dacă căutarea web live nu este disponibilă, rezultatul se bazează doar pe cunoștințele modelului și o spune.',
+    flowWeb:
+      'Căutare web',
+    flowWebDetail:
+      'Căutarea paginilor web după numele produsului sau codul de bare și verificarea mențiunii de origine.',
     privacyTitle: 'Datele tale',
     privacyBody:
-      'Istoricul rămâne pe acest dispozitiv. Fotografiile nu sunt păstrate ca un jurnal pe server. IA poate greși — verifică întotdeauna deciziile importante.',
+      'Istoricul rămâne pe acest dispozitiv, iar fotografiile nu sunt stocate pe server. Cu căutarea web live activată, numele produsului sau codul de bare este trimis serviciilor de căutare. AI poate greși — verifică mereu deciziile importante.',
     tryBtn: 'Încearcă o verificare',
   },
   tier: {

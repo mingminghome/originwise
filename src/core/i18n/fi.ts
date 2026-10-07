@@ -553,9 +553,17 @@ export const fi = {
     twTitle: 'Taiwan',
     twBody:
       'Taiwan lasketaan täällä aina omaksi maaksi. Se ei yksinään laske ”Kiina-liittyväksi”.',
+    evidenceTitle:
+      'Milloin valmistusmaa lasketaan vahvistetuksi',
+    evidenceBody:
+      'Valmistusmaa näkyy vahvistettuna (viivakoodivastaavuus) vain, jos se on peräisin pakkausetiketin kuvasta tai jos verkkosivulla on sama viivakoodi (JAN/EAN) alkuperämerkinnän vieressä. Pelkän tuotenimen vastaavuus on enintään ”todennäköinen” (nimivastaavuus), ja sivu, jolla on useita kokoja tai versioita, jää vahvistamattomaksi. Jos reaaliaikainen verkkohaku ei ole käytettävissä, tulos perustuu vain mallin tietoihin ja kertoo sen.',
+    flowWeb:
+      'Verkkohaku',
+    flowWebDetail:
+      'Haetaan verkkosivuja tuotenimellä tai viivakoodilla ja tarkistetaan alkuperämerkintä.',
     privacyTitle: 'Tietosi',
     privacyBody:
-      'Historia pysyy tällä laitteella. Kuvia ei pidetä palvelinpäiväkirjana. Tekoäly voi erehtyä — tarkista tärkeät päätökset aina uudelleen.',
+      'Historia pysyy tällä laitteella, eikä kuvia tallenneta palvelimelle. Kun reaaliaikainen verkkohaku on päällä, tuotteen nimi tai viivakoodi lähetetään hakupalveluille. Tekoäly voi erehtyä – tarkista tärkeät päätökset aina itse.',
     tryBtn: 'Kokeile tarkistusta',
   },
   tier: {

@@ -553,9 +553,17 @@ export const nl = {
     twTitle: 'Taiwan',
     twBody:
       'Taiwan telt hier altijd als een eigen land. Het telt niet vanzelf als “China-gerelateerd”.',
+    evidenceTitle:
+      'Wanneer een land van productie als bevestigd telt',
+    evidenceBody:
+      'Een land van productie geldt alleen als bevestigd (streepjescode-match) als het van een foto van het verpakkingsetiket komt, of als een webpagina dezelfde streepjescode (JAN/EAN) naast de herkomstvermelding toont. Een match op alleen de productnaam is hooguit ‘waarschijnlijk’ (naam-match), en een pagina met meerdere maten of varianten blijft onbevestigd. Is live zoeken op het web niet beschikbaar, dan steunt het resultaat alleen op modelkennis en staat dat erbij.',
+    flowWeb:
+      'Zoeken op het web',
+    flowWebDetail:
+      'Webpagina’s zoeken op productnaam of streepjescode en de herkomstvermelding controleren.',
     privacyTitle: 'Jouw gegevens',
     privacyBody:
-      'Geschiedenis blijft op dit apparaat. Foto’s worden niet als serverdagboek bewaard. AI kan ernaast zitten — dubbelcheck belangrijke beslissingen altijd.',
+      'De geschiedenis blijft op dit apparaat en foto’s worden niet op de server opgeslagen. Met live zoeken op het web aan worden de productnaam of streepjescode naar zoekdiensten gestuurd. AI kan zich vergissen — controleer belangrijke beslissingen altijd zelf.',
     tryBtn: 'Probeer een check',
   },
   tier: {

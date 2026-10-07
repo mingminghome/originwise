@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
-Local-first **product origin checker**: place of origin, manufacturer, company relations, and optional alternatives.
+**Product origin checker**: place of origin, manufacturer, company relations, and optional alternatives.
 
 **Live demo:** [https://originwise.pages.dev](https://originwise.pages.dev)  
 **License:** [MIT](./LICENSE) · **Security:** [SECURITY.md](./SECURITY.md)
@@ -30,6 +30,8 @@ Useful for:
 | **Text or photo check** | Product / brand name and optional packaging image (camera, gallery, drop, or paste) |
 | **Relation tiers** | Origin, manufacturer, and company-link style badges (pure-TS synthesize) |
 | **Multi-agent AI** | Provider pool (Gemini / OpenAI / Grok / Claude) with SSE progress |
+| **Live web search** | Google Search via Gemini, with Brave and Firecrawl as fallbacks; reads made-in lines and barcodes from result pages |
+| **Evidence labels** | Each made-in says how it was matched: barcode, product name, or unconfirmed |
 | **Graph & alternatives** | Visual links plus optional alternative suggestions |
 | **History** | Local history + settings; wipe on device anytime |
 | **Privacy** | No account; check history stays on-device |
@@ -42,6 +44,9 @@ Taiwan is always treated as a **separate country** for relation tiers. AI result
 
 - **Text and/or packaging photo** — camera, gallery, drag-and-drop, or paste; client-side compress before upload
 - **Multi-agent pipeline** — AI pool (Gemini / OpenAI / Grok / Claude)
+- **Live web search** — Gemini Google Search first; Brave Search and Firecrawl run only if the previous provider fails or finds nothing (`SEARCH_PROVIDERS`). The server fetches up to 4 result pages to read the made-in line and barcode.
+- **Evidence rules** — see [How a made-in is confirmed](#how-a-made-in-is-confirmed)
+- **Clear service notices** — if search or AI quota (429) or prepaid credits (402) run out, the result says so and falls back to model knowledge instead of guessing
 - **SSE progress UI** — relation tier badges, region chips, graph, alternatives
 - **History + settings** — delete local data anytime
 - **Taiwan policy** — always a separate country for tiering
@@ -54,6 +59,18 @@ Taiwan is always treated as a **separate country** for relation tiers. AI result
 
 ---
 
+## How a made-in is confirmed
+
+| Result | When |
+|--------|------|
+| **Confirmed** (barcode match) | From a package label photo, or a web page showing the same barcode (JAN/EAN) next to the made-in line |
+| **Likely** (name match) | A page matches the product name only, not the barcode |
+| **Unconfirmed** | A page lists several sizes or variants, sources disagree, or only model knowledge is available; candidate countries are noted |
+
+Model knowledge alone never counts as confirmed, and results without live search are labelled as model-only.
+
+---
+
 ## Quick start
 
 ```bash
@@ -61,6 +78,7 @@ npm install
 cp .env.example .env                 # optional e.g. VITE_GTM_ID, VITE_BUY_ME_A_PINT_URL
 cp .dev.vars.example .dev.vars
 # put at least one of: GEMINI_API_KEY / OPENAI_API_KEY / XAI_API_KEY / ANTHROPIC_API_KEY
+# optional search fallbacks: BRAVE_SEARCH_API_KEY / FIRECRAWL_API_KEY
 
 npm run pages:dev                    # full SPA + /api/check (recommended)
 # open http://localhost:8788
@@ -79,7 +97,7 @@ npm run pages:dev                    # full SPA + /api/check (recommended)
 
 | File | Commit? |
 |------|---------|
-| `.dev.vars` | **Never** — AI keys for local `pages:dev` |
+| `.dev.vars` | **Never** — AI and search keys for local `pages:dev` |
 | `.env` / `.env.local` | **Never** — e.g. `VITE_GTM_ID`, `VITE_GOOGLE_SITE_VERIFICATION`, `VITE_BUY_ME_A_PINT_URL` |
 | `*.example` | Yes — empty placeholders only |
 
@@ -91,6 +109,8 @@ For self-hosting (Cloudflare Pages, env keys, CI), see [docs/DEPLOY.md](./docs/D
 
 - No accounts, no server-side product catalogue of user checks.
 - `/api/check` proxies analysis to the AI provider; rate-limit / origin checks apply where configured.
+- With live web search on, the product name and barcode go to the search service (Google via Gemini, then Brave / Firecrawl if needed). Photos are never sent to search.
+- Text-only results may be cached at the edge for up to 7 days under a hash of the query (not tied to a person); photo checks are not cached. Logs keep a job ID, a daily-salted IP hash and the tier or error code, not the product name or photo.
 - Photos are compressed client-side; not stored as server records.
 - **Never commit** `.env` or `.dev.vars` (gitignored). Rotate keys if they leak.
 - Details: [SECURITY.md](./SECURITY.md) · [privacy.html](./public/privacy.html)

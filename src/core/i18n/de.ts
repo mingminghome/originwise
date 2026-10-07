@@ -553,9 +553,17 @@ export const de = {
     twTitle: 'Taiwan',
     twBody:
       'Taiwan zählt hier immer als eigenes Land. Es zählt nicht von selbst als „China-bezogen“.',
+    evidenceTitle:
+      'Wann ein Herstellungsland als bestätigt gilt',
+    evidenceBody:
+      'Ein Herstellungsland gilt nur dann als bestätigt (Barcode-Abgleich), wenn es von einem Foto des Verpackungsetiketts stammt oder eine Webseite denselben Barcode (JAN/EAN) neben der Herkunftsangabe zeigt. Ein Treffer nur über den Produktnamen ist höchstens „wahrscheinlich“ (Namensabgleich), und eine Seite mit mehreren Größen oder Varianten bleibt unbestätigt. Ist die Live-Websuche nicht verfügbar, beruht das Ergebnis nur auf Modellwissen und wird so gekennzeichnet.',
+    flowWeb:
+      'Websuche',
+    flowWebDetail:
+      'Webseiten nach Produktname oder Barcode durchsuchen und die Herkunftsangabe prüfen.',
     privacyTitle: 'Deine Daten',
     privacyBody:
-      'Der Verlauf bleibt auf diesem Gerät. Fotos werden nicht als Servertagebuch behalten. KI kann irren — wichtige Entscheidungen immer selbst gegenprüfen.',
+      'Der Verlauf bleibt auf diesem Gerät, Fotos werden nicht auf dem Server gespeichert. Ist die Live-Websuche an, werden Produktname oder Barcode an Suchdienste gesendet. KI kann sich irren – prüfe wichtige Entscheidungen immer nach.',
     tryBtn: 'Check ausprobieren',
   },
   tier: {

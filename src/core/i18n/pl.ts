@@ -553,9 +553,17 @@ export const pl = {
     twTitle: 'Tajwan',
     twBody:
       'Tajwan zawsze liczy się tu jako własne państwo. Sam w sobie nie liczy się jako „związany z Chinami”.',
+    evidenceTitle:
+      'Kiedy kraj produkcji uznaje się za potwierdzony',
+    evidenceBody:
+      'Kraj produkcji jest pokazany jako potwierdzony (zgodność kodu kreskowego) tylko wtedy, gdy pochodzi ze zdjęcia etykiety opakowania albo gdy strona internetowa pokazuje ten sam kod kreskowy (JAN/EAN) obok informacji o pochodzeniu. Dopasowanie tylko po nazwie produktu to co najwyżej „prawdopodobne” (zgodność nazwy), a strona z kilkoma rozmiarami lub wariantami pozostaje niepotwierdzona. Gdy wyszukiwanie w sieci na żywo jest niedostępne, wynik opiera się wyłącznie na wiedzy modelu i jest tak oznaczony.',
+    flowWeb:
+      'Wyszukiwanie w sieci',
+    flowWebDetail:
+      'Wyszukiwanie stron po nazwie produktu lub kodzie kreskowym i sprawdzenie informacji o pochodzeniu.',
     privacyTitle: 'Twoje dane',
     privacyBody:
-      'Historia zostaje na tym urządzeniu. Zdjęcia nie są trzymane jako dziennik serwera. AI może się mylić — ważne decyzje zawsze sprawdzaj ponownie.',
+      'Historia zostaje na tym urządzeniu, a zdjęcia nie są przechowywane na serwerze. Gdy wyszukiwanie w sieci na żywo jest włączone, nazwa produktu lub kod kreskowy trafia do usług wyszukiwania. AI może się mylić — ważne decyzje zawsze sprawdzaj.',
     tryBtn: 'Wypróbuj sprawdzenie',
   },
   tier: {

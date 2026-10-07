@@ -67,14 +67,19 @@ function FlowGraph({
 
       <path d="M90 128 V140" className="how-flow-arrow" markerEnd="url(#how-arrow)" />
       <path d="M230 128 V140" className="how-flow-arrow" markerEnd="url(#how-arrow)" />
-      <path d="M90 148 H230" className="how-flow-arrow" />
 
-      <rect x="100" y="140" width="120" height="28" rx="8" className="how-flow-box" />
-      <text x="160" y="158" textAnchor="middle" className="how-flow-caption">
+      {/* web search -> double-check */}
+      <rect x="40" y="140" width="100" height="28" rx="8" className="how-flow-box" />
+      <text x="90" y="158" textAnchor="middle" className="how-flow-caption">
+        {t('how.flowWeb')}
+      </text>
+      <path d="M140 154 H176" className="how-flow-arrow" markerEnd="url(#how-arrow)" />
+      <rect x="180" y="140" width="100" height="28" rx="8" className="how-flow-box" />
+      <text x="230" y="158" textAnchor="middle" className="how-flow-caption">
         {t('how.flowVerify')}
       </text>
 
-      <path d="M160 180 V192" className="how-flow-arrow" markerEnd="url(#how-arrow)" />
+      <path d="M230 180 V186 H160 V192" className="how-flow-arrow" markerEnd="url(#how-arrow)" />
 
       {/* 3. Score */}
       <rect x="100" y="196" width="120" height="32" rx="10" className="how-flow-box" />
@@ -136,10 +141,13 @@ export function HowItWorksScreen({ state }: { state: AppState }) {
             <strong>2.</strong> {t('how.flowAiDetail')}
           </li>
           <li>
-            <strong>3.</strong> {t('how.flowScoreDetail')}
+            <strong>3.</strong> {t('how.flowWebDetail')}
           </li>
           <li>
-            <strong>4.</strong> {t('how.step3Body')}
+            <strong>4.</strong> {t('how.flowScoreDetail')}
+          </li>
+          <li>
+            <strong>5.</strong> {t('how.step3Body')}
           </li>
         </ul>
       </section>
@@ -197,6 +205,11 @@ export function HowItWorksScreen({ state }: { state: AppState }) {
             <span>{t('how.badgeUnknown')}</span>
           </li>
         </ul>
+      </section>
+
+      <section className="card stack span-2">
+        <h2 className="result-section-title">{t('how.evidenceTitle')}</h2>
+        <p className="muted">{t('how.evidenceBody')}</p>
       </section>
 
       <section className="card stack span-2">

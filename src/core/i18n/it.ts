@@ -553,9 +553,17 @@ export const it = {
     twTitle: 'Taiwan',
     twBody:
       'Taiwan conta sempre qui come un paese a sé. Non conta da solo come «legato alla Cina».',
+    evidenceTitle:
+      'Quando un paese di fabbricazione è confermato',
+    evidenceBody:
+      'Un paese di fabbricazione risulta confermato (corrispondenza del codice a barre) solo se proviene da una foto dell’etichetta della confezione, o se una pagina web mostra lo stesso codice a barre (JAN/EAN) accanto all’indicazione di origine. Una corrispondenza solo sul nome del prodotto è al massimo «probabile» (corrispondenza del nome), e una pagina con più taglie o varianti resta non confermata. Se la ricerca web in tempo reale non è disponibile, il risultato si basa solo sulle conoscenze del modello e lo indica.',
+    flowWeb:
+      'Ricerca web',
+    flowWebDetail:
+      'Cercare pagine web per nome del prodotto o codice a barre e controllare l’indicazione di origine.',
     privacyTitle: 'I tuoi dati',
     privacyBody:
-      'La cronologia resta su questo dispositivo. Le foto non sono conservate come diario del server. L’IA può sbagliare — ricontrolla sempre le decisioni importanti.',
+      'La cronologia resta su questo dispositivo e le foto non vengono salvate sul server. Con la ricerca web in tempo reale attiva, il nome del prodotto o il codice a barre viene inviato ai servizi di ricerca. L’IA può sbagliare: verifica sempre le decisioni importanti.',
     tryBtn: 'Prova una verifica',
   },
   tier: {
