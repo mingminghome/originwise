@@ -16,13 +16,16 @@ import {
 } from './search';
 import {
   buildSearchQuery,
+  cooClaimsFromSourcePages,
   enforceCooClaims,
+  parseSourceLine,
   findJans,
   isValidGtin,
   matchPage,
   stripHtml,
   variantTokens,
 } from './search/extract';
+import type { FetchedPage } from './search/types';
 import { runCheckOrchestrator, type ProgressEvent } from './orchestrator';
 import { extractCooClaimsFromText } from './cooPriority';
 import { applyWebCooGate, synthesize } from './synthesize';
@@ -925,5 +928,125 @@ describe('variant-scoped barcode on multi-variant pages', () => {
     assert.equal(barcodeTiedToCoo(mixed, [SKU], '生産国：中国'), false);
     const ok = textBlocks(`240ml JAN ${SKU} 生産国：中国`);
     assert.equal(barcodeTiedToCoo(ok, [SKU], '生産国：中国'), true);
+  });
+});
+
+describe('Gemini answers use the same made-in gate (#24)', () => {
+  afterEach(() => {
+    mock.restoreAll();
+  });
+
+  const JAN = '4902508277471';
+  const SINGLE_BARCODE_PAGE: FetchedPage = {
+    url: 'https://shop.example.jp/sheer',
+    title: 'Pigeon 母乳実感 哺乳びん',
+    text: `Pigeon 母乳実感 哺乳びん 160ml\nJAN: ${JAN}\n生産国：タイ`,
+  };
+  const SINGLE_NAME_PAGE: FetchedPage = {
+    url: 'https://shop.example.jp/sheer-name',
+    title: 'Pigeon 母乳実感 哺乳びん',
+    text: 'Pigeon 母乳実感 哺乳びん 160ml\n生産国：タイ',
+  };
+  const MULTI_NAME_PAGE: FetchedPage = {
+    url: 'https://shop.example.jp/sheer-all',
+    title: 'Pigeon 母乳実感 哺乳びん',
+    text: 'Pigeon 母乳実感 哺乳びん\n160ml\n240ml\nサイズを選択\n生産国：中国',
+  };
+
+  it('no sources → no claims, so a Gemini made-in is stripped (未確認)', () => {
+    const coo = cooClaimsFromSourcePages('Pigeon 母乳実感 哺乳びん 160ml', undefined, []);
+    assert.deepEqual(coo, []);
+    const g = applyWebCooGate({ name: 'x', madeIn: 'China' }, coo);
+    assert.equal(g.product?.madeIn, undefined);
+  });
+
+  it('barcode on a single-variant source page → confirmed', () => {
+    const coo = cooClaimsFromSourcePages(`Pigeon 母乳実感 ${JAN}`, undefined, [SINGLE_BARCODE_PAGE]);
+    assert.equal(coo.length, 1);
+    assert.equal(coo[0]!.status, 'confirmed');
+    assert.equal(coo[0]!.basis, 'barcode');
+    const g = applyWebCooGate({ name: 'x', madeIn: 'タイ' }, coo);
+    assert.equal(g.product?.madeIn, 'タイ');
+    assert.equal(g.madeInBasis, 'barcode');
+  });
+
+  it('name-only on a single-variant source page → likely, never confirmed', () => {
+    const coo = cooClaimsFromSourcePages('Pigeon 母乳実感 哺乳びん 160ml', undefined, [SINGLE_NAME_PAGE]);
+    assert.equal(coo.length, 1);
+    assert.equal(coo[0]!.status, 'likely');
+    const g = applyWebCooGate({ name: 'x', madeIn: 'Thailand' }, coo);
+    assert.equal(g.product?.madeIn, undefined);
+  });
+
+  it('name-only on a multi-variant source page → dropped, stays 未確認', () => {
+    const coo = cooClaimsFromSourcePages('Pigeon 母乳実感 哺乳びん 160ml', undefined, [MULTI_NAME_PAGE]);
+    assert.deepEqual(coo, []);
+    const g = applyWebCooGate({ name: 'x', madeIn: 'China' }, coo);
+    assert.equal(g.product?.madeIn, undefined);
+    assert.deepEqual(g.likely, []);
+  });
+
+  it('parses "title — url" and bare-url source lines', () => {
+    assert.deepEqual(parseSourceLine('Shop — https://a.example/p?x=1'), {
+      url: 'https://a.example/p?x=1',
+      title: 'Shop',
+    });
+    assert.deepEqual(parseSourceLine('https://b.example/q'), { url: 'https://b.example/q', title: '' });
+    assert.equal(parseSourceLine('no url here'), null);
+  });
+
+  it('gemini provider fetches its grounding sources and returns gated claims', async () => {
+    const PAGE = 'https://shop.example.jp/sheer';
+    mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('generativelanguage.googleapis.com')) {
+        if (/\/v1beta\/models(\?|$)/.test(url)) {
+          return json({
+            models: [
+              { name: 'models/gemini-robotics-er-2-preview', supportedGenerationMethods: ['generateContent'] },
+            ],
+          });
+        }
+        const text = '生産国 中国 (Gemini answer)';
+        if (url.includes('/interactions')) {
+          return json({
+            output_text: text,
+            steps: [
+              {
+                type: 'model_output',
+                content: [{ type: 'text', text, annotations: [{ type: 'url_citation', title: 'Shop', url: PAGE }] }],
+              },
+            ],
+          });
+        }
+        return json({
+          candidates: [
+            {
+              content: { parts: [{ text }] },
+              groundingMetadata: { groundingChunks: [{ web: { title: 'Shop', uri: PAGE } }] },
+            },
+          ],
+        });
+      }
+      if (url === PAGE) {
+        return new Response(
+          `<html><body><h1>Pigeon 母乳実感 哺乳びん 160ml</h1><p>JAN ${JAN}</p><p>生産国：タイ</p></body></html>`,
+          { status: 200, headers: { 'Content-Type': 'text/html' } }
+        );
+      }
+      return new Response('', { status: 404 });
+    });
+    const out = await SEARCH_PROVIDERS_BY_ID.gemini.search({
+      entity: `Pigeon 母乳実感 160ml ${JAN}`,
+      locale: 'ja',
+      env: { GEMINI_API_KEY: 'g' },
+    });
+    assert.equal(out.ok, true);
+    assert.ok(Array.isArray(out.coo), 'gemini returns a coo array for the gate');
+    // Gemini's own answer text (中国) never counts; the source page's barcode-tied line does.
+    assert.equal(out.coo!.length, 1);
+    assert.equal(out.coo![0]!.status, 'confirmed');
+    assert.equal(out.coo![0]!.url, PAGE);
+    assert.ok(/タイ/.test(out.coo![0]!.country));
   });
 });

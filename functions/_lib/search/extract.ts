@@ -14,6 +14,7 @@
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
 import type { FetchedPage, PageBlock, SearchEnv, SearchOutput } from './types';
+import type { WebCooClaim } from '../schema';
 
 /** Analysis model for extraction (plain call, no grounding). */
 export const EXTRACT_MODEL = 'gemini-3.5-flash-lite';
@@ -378,6 +379,82 @@ export async function fetchWithTimeout(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Fetch one result / source page (short timeout, HTML stripped, variant blocks
+ * kept). Search snippets stay as fallback text when the fetch fails.
+ */
+export async function fetchSourcePage(
+  url: string,
+  rawTitle = '',
+  rawSnippet = ''
+): Promise<FetchedPage> {
+  const title = stripHtml(rawTitle);
+  const snippet = stripHtml(rawSnippet);
+  const res = await fetchWithTimeout(
+    url,
+    {
+      headers: {
+        Accept: 'text/html,application/xhtml+xml,text/plain;q=0.8',
+        'User-Agent': 'OriginWise/1.0 (+https://originwise.pages.dev)',
+      },
+      redirect: 'follow',
+    },
+    PAGE_FETCH_MS
+  );
+  let body = '';
+  let blocks: PageBlock[] | undefined;
+  if (res && res.ok) {
+    const ct = res.headers.get('content-type') || '';
+    if (!ct || /text\/html|text\/plain|xhtml/i.test(ct)) {
+      try {
+        const raw = await res.text();
+        const isHtml = /html/i.test(ct) || /<html|<body|<div/i.test(raw.slice(0, 2000));
+        body = isHtml ? stripHtml(raw) : raw.slice(0, 200_000);
+        blocks = isHtml ? htmlBlocks(raw) : textBlocks(body);
+      } catch {
+        body = '';
+      }
+    }
+  }
+  const text = [title, snippet, body].filter(Boolean).join('\n');
+  return { url, title, text, blocks: blocks ?? textBlocks(text) };
+}
+
+/** "title — https://…" or bare URL source lines → { url, title }. */
+export function parseSourceLine(line: string): { url: string; title: string } | null {
+  const m = String(line || '').match(/https?:\/\/\S+/);
+  if (!m) return null;
+  const url = m[0].replace(/[)\]>,.]+$/, '');
+  const title = line.slice(0, m.index).replace(/\s*[—-]\s*$/, '').trim();
+  return { url, title };
+}
+
+/**
+ * Gemini answers: the same made-in gate as Brave / Firecrawl, run on Gemini's
+ * own grounding Sources (deterministic label regex; no extra model call).
+ * Barcode on page (tied to the made-in block on multi-variant pages) → confirmed;
+ * name-only on a single-variant page → likely; anything else → dropped.
+ * No sources / no fetchable page → [] so the answer's made-in stays 未確認.
+ */
+export function cooClaimsFromSourcePages(
+  entity: string,
+  ocrText: string | undefined,
+  pages: FetchedPage[]
+): WebCooClaim[] {
+  const usable = pages.filter((p) => p.url && p.text.trim());
+  if (!usable.length) return [];
+  const jans = findJans(entity, ocrText);
+  const tokens = variantTokens(entity);
+  const matches = usable.map((p) => matchPage(p.text, jans, tokens));
+  const { kept } = enforceCooClaims(regexCooClaims(usable), usable, matches, jans);
+  return kept.map((k) => ({
+    country: k.country,
+    basis: k.basis,
+    status: k.status,
+    url: usable[k.page - 1]!.url,
+  }));
 }
 
 /** Map a search API HTTP failure to the shared web error codes. */

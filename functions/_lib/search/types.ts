@@ -46,8 +46,8 @@ export type SearchOutput = {
   /** Model id used (Gemini grounding model, or extraction model). */
   model?: string;
   /**
-   * Gated made-in claims (Brave / Firecrawl only): basis 'barcode' → confirmed,
-   * 'name' → likely. Undefined for Gemini grounding.
+   * Gated made-in claims from fetched pages (every provider; for Gemini the
+   * grounding Sources): basis 'barcode' → confirmed, 'name' → likely.
    */
   coo?: WebCooClaim[];
 };
