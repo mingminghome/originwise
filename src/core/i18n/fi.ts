@@ -211,6 +211,8 @@ export const fi = {
     layerParts: 'Osakandidaatit',
     partsModelOnlyBanner:
       'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'Tekoälyhaun kiintiö on käytetty — tarkempaa tietoa ei ole nyt saatavilla. Tarkista uudelleen päivittäisen nollauksen jälkeen.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Tallenna kuva',
     sectionShareShare: 'Jaa',

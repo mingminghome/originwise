@@ -211,6 +211,8 @@ export const cs = {
     layerParts: 'Kandidáti dílů',
     partsModelOnlyBanner:
       'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'Kvóta AI vyhledávání je vyčerpána — přesnější informace teď nejsou k dispozici. Zkuste to znovu po denním obnovení.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Uložit obrázek',
     sectionShareShare: 'Sdílet',

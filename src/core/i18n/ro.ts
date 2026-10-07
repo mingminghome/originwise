@@ -211,6 +211,8 @@ export const ro = {
     layerParts: 'Candidați piese',
     partsModelOnlyBanner:
       'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'Cota de căutare AI a fost epuizată — informații mai precise nu sunt disponibile acum. Verificați din nou după resetarea zilnică.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Salvează imaginea',
     sectionShareShare: 'Distribuie',

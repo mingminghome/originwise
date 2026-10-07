@@ -211,6 +211,8 @@ export const da = {
     layerParts: 'Delekandidater',
     partsModelOnlyBanner:
       'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'AI-søgekvoten er brugt op — mere præcise oplysninger er ikke tilgængelige lige nu. Prøv igen efter den daglige nulstilling.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Gem billede',
     sectionShareShare: 'Del',

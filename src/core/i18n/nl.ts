@@ -211,6 +211,8 @@ export const nl = {
     layerParts: 'Onderdeel-kandidaten',
     partsModelOnlyBanner:
       'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'AI-zoekquotum verbruikt — preciezere informatie is nu niet beschikbaar. Probeer het opnieuw na de dagelijkse reset.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Afbeelding opslaan',
     sectionShareShare: 'Delen',

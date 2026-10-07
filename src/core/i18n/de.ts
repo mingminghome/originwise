@@ -211,6 +211,8 @@ export const de = {
     layerParts: 'Teile-Kandidaten',
     partsModelOnlyBanner:
       'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'KI-Suchkontingent aufgebraucht — genauere Informationen sind gerade nicht verfügbar. Bitte nach dem täglichen Reset erneut prüfen.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Bild speichern',
     sectionShareShare: 'Teilen',

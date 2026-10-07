@@ -211,6 +211,8 @@ export const el = {
     layerParts: 'Υποψήφια εξαρτήματα',
     partsModelOnlyBanner:
       'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'Το όριο αναζήτησης AI εξαντλήθηκε — δεν υπάρχουν πιο ακριβείς πληροφορίες αυτή τη στιγμή. Δοκιμάστε ξανά μετά την ημερήσια επαναφορά.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Αποθήκευση εικόνας',
     sectionShareShare: 'Κοινοποίηση',

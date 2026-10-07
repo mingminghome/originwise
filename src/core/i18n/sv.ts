@@ -211,6 +211,8 @@ export const sv = {
     layerParts: 'Delkandidater',
     partsModelOnlyBanner:
       'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'AI-sökkvoten är slut — mer exakt information finns inte just nu. Försök igen efter den dagliga återställningen.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Spara bild',
     sectionShareShare: 'Dela',
