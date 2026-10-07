@@ -23,7 +23,7 @@
   </head>
   <body>
     <h1>OriginWise Privacy Policy</h1>
-    <p><em>Last updated: 2026-08-02</em></p>
+    <p><em>Last updated: 2026-10-08</em></p>
     <p>
       OriginWise is a local-first web app. We design the product so personal
       check history stays on your device whenever possible.
@@ -40,10 +40,42 @@
     <h2>Data sent to our servers</h2>
     <p>
       When you run a check, the product name/text and optional compressed photo
-      are sent to our Cloudflare Pages Function, which proxies to AI providers
-      (e.g. Google Gemini, OpenAI, xAI, Anthropic) using our server keys.
-      Requests are rate-limited. We do not create user accounts or keep a
-      server-side diary of your history.
+      are sent to our Cloudflare Pages Function, which calls an AI provider
+      (e.g. Google Gemini, OpenAI, xAI, Anthropic) using our server keys. The
+      provider processes the request under its own terms. Requests are
+      rate-limited. We do not create user accounts or keep a server-side
+      history of your checks.
+    </p>
+    <h2>Live web search</h2>
+    <p>
+      When live web search is on, the product name and any barcode (JAN/EAN),
+      including one read from your label photo, are sent to the search services
+      the deployment uses, so we can find pages that state where the product is
+      made. These can be Google Search (through Gemini), Firecrawl and Brave
+      Search. Our server then fetches a few of the result pages directly to
+      check the made-in line and barcode. Each search service handles queries
+      under its own privacy policy and may keep its own records of them. Your
+      photo is not sent to search services.
+    </p>
+    <h2>Result cache and server logs</h2>
+    <p>
+      To save quota, the result of a text-only check may be kept in
+      Cloudflare’s edge cache for up to 7 days, stored under a hash of the
+      query, language and settings, and not linked to you or your IP address.
+      Anyone who runs the same query may get that cached result. Checks with a
+      photo are not cached.
+    </p>
+    <p>
+      Our server logs record a job ID, an IP hash that uses a salt changing
+      daily, and the outcome (result tier or error code). They do not record
+      the product name, the photo or the result text.
+    </p>
+    <h2>Hosting</h2>
+    <p>
+      The app is hosted on Cloudflare Pages. Like most websites, the host may
+      log standard request metadata (for example IP address, URL and user
+      agent) for security and operations. That is separate from your check
+      history, which stays on your device.
     </p>
     <h2>Analytics</h2>
     <p>
