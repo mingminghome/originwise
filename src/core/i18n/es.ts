@@ -211,6 +211,8 @@ export const es = {
     layerParts: 'Candidatos de piezas',
     partsModelOnlyBanner:
       'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'Cuota de búsqueda de IA agotada — no hay información más precisa por ahora. Vuelve a consultar tras el reinicio diario.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Guardar imagen',
     sectionShareShare: 'Compartir',

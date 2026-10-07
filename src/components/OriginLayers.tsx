@@ -361,11 +361,19 @@ export function OriginLayers({
   const brandItems = model.brandOps.map((l) => formatBrandOps(l, t));
   const ownershipItems = model.ownership.map((l) => formatOwnership(l, t));
   const partsItems = model.parts.map((l) => formatParts(l, t));
+  const searchQuotaUsedUp = result.meta?.agents?.some(
+    (a) => a.id === 'web' && a.error === 'upstream_quota'
+  );
 
   return (
     <div className="origin-layers card-soft" data-testid="origin-layers">
       <h3 className="result-section-title">{t('check.originLayersTitle')}</h3>
       <p className="muted origin-layers-intro">{t('check.originLayersIntro')}</p>
+      {searchQuotaUsedUp ? (
+        <p className="origin-layers-quota" role="status" data-testid="search-quota-used-up">
+          {t('check.searchQuotaUsedUp')}
+        </p>
+      ) : null}
       <div className="origin-layers-grid">
         <LayerRow
           label={t('check.layerFinalCoo')}

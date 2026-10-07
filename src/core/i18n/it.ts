@@ -211,6 +211,8 @@ export const it = {
     layerParts: 'Candidati parti',
     partsModelOnlyBanner:
       'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'Quota di ricerca IA esaurita — al momento non sono disponibili informazioni più precise. Riprova dopo il reset giornaliero.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Salva immagine',
     sectionShareShare: 'Condividi',

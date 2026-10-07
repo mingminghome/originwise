@@ -211,6 +211,8 @@ export const hu = {
     layerParts: 'Alkatrészjelöltek',
     partsModelOnlyBanner:
       'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'Elfogyott a napi AI-keresési keret — pontosabb információ most nem érhető el. Próbálja újra a napi visszaállítás után.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Kép mentése',
     sectionShareShare: 'Megosztás',

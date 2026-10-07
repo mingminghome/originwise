@@ -211,6 +211,8 @@ export const pl = {
     layerParts: 'Kandydaci części',
     partsModelOnlyBanner:
       'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'Limit wyszukiwania AI wyczerpany — dokładniejsze informacje są teraz niedostępne. Sprawdź ponownie po dziennym resecie.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Zapisz obraz',
     sectionShareShare: 'Udostępnij',

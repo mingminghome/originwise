@@ -211,6 +211,8 @@ export const en: MessageTree = {
     layerParts: 'Parts candidates',
     partsModelOnlyBanner:
       'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'AI search quota used up — more precise information isn\'t available right now. Please check again after the daily reset.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Save image',
     sectionShareShare: 'Share',
