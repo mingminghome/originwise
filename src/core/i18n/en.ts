@@ -525,14 +525,16 @@ export const en: MessageTree = {
     stepsTitle: 'In simple words',
     step1Title: 'You send something',
     step1Body: 'A product name, brand, or a photo of the package.',
-    step2Title: 'We look it up with AI',
+    step2Title:
+      'We look it up and cross-check',
     step2Body:
-      'Small checks run: product place and company (together), then a quick double-check. Optional: lower China-involvement brand/product alternatives if you turn those on.',
+      'AI checks where the product is made and its company links. With live web search on, it also looks for made-in details on web pages, then cross-checks. Optional: lower China-involvement brand/product alternatives if you turn those on.',
     step3Title: 'You get a simple result',
     step3Body:
       'A color badge: Unrelated, Indirect, Direct, or Unknown — plus a short why.',
     graphTitle: 'Full flow',
-    graphHint: 'From your input to the color badge.',
+    graphHint:
+      'From your input to the result.',
     flowYou: 'You (name / photo)',
     flowAi: 'AI checks',
     flowProduct: 'Product place',
@@ -541,7 +543,7 @@ export const en: MessageTree = {
     flowScore: 'Simple score',
     flowResult: 'Color result',
     flowAiDetail:
-      'Product place + company run first, then a quick double-check.',
+      'Product place + company first, then a cross-check.',
     flowScoreDetail: 'We combine the answers into one simple score.',
     badgeTitle: 'What the colors mean',
     badgeNone: 'Unrelated — no clear China link found',
@@ -551,9 +553,17 @@ export const en: MessageTree = {
     twTitle: 'Taiwan',
     twBody:
       'Taiwan is always counted as its own country here. It does not count as “China-related” by itself.',
+    evidenceTitle:
+      'When a made-in counts as confirmed',
+    evidenceBody:
+      'A made-in shows as confirmed (barcode match) only from a package label photo, or when a web page shows the same barcode (JAN/EAN) next to the made-in line. A product-name match shows as “likely” at most (name match), and a page listing several sizes or variants stays unconfirmed. If live web search is unavailable, the result relies on model knowledge only and says so.',
+    flowWeb:
+      'Web search',
+    flowWebDetail:
+      'Search web pages by product name or barcode and check the made-in line.',
     privacyTitle: 'Your data',
     privacyBody:
-      'History stays on this device. Photos are not kept as a server diary. AI can be wrong — always double-check important decisions.',
+      'History stays on this device, and photos aren’t stored on the server. With live web search on, the product name or barcode is sent to search services. AI can be wrong — always double-check important decisions.',
     tryBtn: 'Try a check',
   },
   tier: {

@@ -86,6 +86,9 @@ npx wrangler pages secret put GEMINI_API_KEY --project-name=originwise
 # npx wrangler pages secret put OPENAI_API_KEY --project-name=originwise
 # npx wrangler pages secret put XAI_API_KEY --project-name=originwise
 # npx wrangler pages secret put ANTHROPIC_API_KEY --project-name=originwise
+# optional web-search fallbacks (used only when Gemini Search fails or finds nothing):
+# npx wrangler pages secret put BRAVE_SEARCH_API_KEY --project-name=originwise
+# npx wrangler pages secret put FIRECRAWL_API_KEY --project-name=originwise
 ```
 
 ### 4. Build-time env (GTM, optional)
@@ -163,13 +166,15 @@ In GA4, mark `check_complete` as a conversion if you want a primary success metr
 |----------|--------|
 | `CHECK_MODE` | Ignored. Every check is one JSON query; dimensions choose the sections. |
 | `WEB_LOOKUP` | `auto` (default) / `on` / `off`. Live web research via Gemini Google Search when `GEMINI_API_KEY` is set. |
-| `GEMINI_WEB_MODEL` | Optional. Model for **grounded web search only** (default chain starts with `gemini-2.5-flash`). Independent of `GEMINI_MODEL` / flash-lite agent chain. |
+| `GEMINI_WEB_MODEL` | Optional. Preferred model for **grounded web search only**; it is tried first, then the auto chain. Leave unset (or `auto`) to discover models from the key: Default pool → Gemini 2.5 → Gemini 2 → Gemini 3. Plain `gemini-2.5-flash` now returns 404, so don't pin it. Independent of `GEMINI_MODEL`. |
+| `SEARCH_PROVIDERS` | Default `gemini,brave,firecrawl`. Order of web-search providers; the next runs only if the previous fails or finds no sources. Providers without a key are skipped. |
+| `WEB_SEARCH_MAX_ATTEMPTS` | Default `5` (max `8`). Gemini Search models tried per check. |
 | `CHECK_ALLOWED_ORIGINS` | Comma-separated extra origins for custom domains |
 | `CHECK_RATE_SHORT_LIMIT` | Default `1` (checks per short window) |
 | `CHECK_RATE_SHORT_WINDOW_SEC` | Default `30` (seconds) |
 | `CHECK_RATE_LONG_LIMIT` | Default `10` (checks per long window) |
 | `CHECK_RATE_LONG_WINDOW_SEC` | Default `21600` (6 hours) |
-| `CHECK_CACHE_TTL_SEC` | Default `86400` |
+| `CHECK_CACHE_TTL_SEC` | Default `86400`; capped at `604800` (7 days). Text-only checks only. |
 | `POOL_DISABLE_PROVIDERS` | Optional, e.g. `openai,grok,claude` to force Gemini-only |
 | `LOG_IP_SALT` | Optional log hashing salt |
 | `*_MODEL` | `auto` (default free-tier chain + fallback) or pin e.g. `gpt-5.4-mini`, `grok-4.5`, `claude-haiku-4-5` |
@@ -189,6 +194,8 @@ Having an API **key** is not the same as free **quota**. OriginWise will try fre
 | **xAI Grok** | Trial / credit program, not unlimited free | Console credits required; empty balance → `upstream_error` |
 
 **OpenAI Free tier tip:** OriginWise defaults to `gpt-5.4-mini` then `gpt-5.6-luna`. Pin with `OPENAI_MODEL=gpt-5.4-mini` if you want that only first. Hitting 50 RPD on Free means all models stop for the day until the window resets.
+
+**402 “credits used up” on Gemini:** if the Gemini project has billing on with a **£0 prepaid balance**, every model returns 402 and OriginWise shows the credits notice. Top up the balance, or turn billing off for that project to go back to the free tier.
 
 **Local `.dev.vars` does not update Cloudflare.** Production secrets live in Pages → Settings. If you comment out keys locally, production still uses old secrets until you change them.
 

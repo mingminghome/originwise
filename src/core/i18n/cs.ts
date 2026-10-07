@@ -553,9 +553,17 @@ export const cs = {
     twTitle: 'Tchaj-wan',
     twBody:
       'Tchaj-wan se zde vždy počítá jako vlastní země. Sám o sobě se nepočítá jako „související s Čínou“.',
+    evidenceTitle:
+      'Kdy se země výroby počítá jako potvrzená',
+    evidenceBody:
+      'Země výroby se zobrazí jako potvrzená (shoda čárového kódu) jen tehdy, když pochází z fotky etikety obalu, nebo když webová stránka ukazuje stejný čárový kód (JAN/EAN) vedle údaje o původu. Shoda jen podle názvu produktu je nanejvýš „pravděpodobná“ (shoda názvu) a stránka s více velikostmi nebo variantami zůstává nepotvrzená. Když živé vyhledávání na webu není k dispozici, výsledek vychází jen ze znalostí modelu a uvádí to.',
+    flowWeb:
+      'Vyhledávání na webu',
+    flowWebDetail:
+      'Hledání webových stránek podle názvu produktu nebo čárového kódu a kontrola údaje o původu.',
     privacyTitle: 'Vaše data',
     privacyBody:
-      'Historie zůstává na tomto zařízení. Fotky se neuchovávají jako deník serveru. AI se může mýlit — důležitá rozhodnutí vždy znovu ověřte.',
+      'Historie zůstává v tomto zařízení a fotky se na serveru neukládají. Když je zapnuté živé vyhledávání na webu, název produktu nebo čárový kód se posílá vyhledávacím službám. AI se může mýlit – důležitá rozhodnutí si vždy ověřte.',
     tryBtn: 'Zkusit kontrolu',
   },
   tier: {

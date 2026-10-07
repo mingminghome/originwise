@@ -553,9 +553,17 @@ export const fr = {
     twTitle: 'Taïwan',
     twBody:
       'Taïwan compte toujours ici comme son propre pays. Il ne compte pas à lui seul comme « lié à la Chine ».',
+    evidenceTitle:
+      'Quand un pays de fabrication est confirmé',
+    evidenceBody:
+      'Un pays de fabrication n’apparaît comme confirmé (correspondance du code-barres) que s’il provient d’une photo de l’étiquette, ou si une page web affiche le même code-barres (JAN/EAN) à côté de la mention d’origine. Une correspondance sur le seul nom du produit est au mieux « probable » (correspondance du nom), et une page listant plusieurs tailles ou variantes reste non confirmée. Si la recherche web en direct n’est pas disponible, le résultat repose uniquement sur les connaissances du modèle et l’indique.',
+    flowWeb:
+      'Recherche web',
+    flowWebDetail:
+      'Chercher des pages web par nom de produit ou code-barres et vérifier la mention d’origine.',
     privacyTitle: 'Vos données',
     privacyBody:
-      'L’historique reste sur cet appareil. Les photos ne sont pas conservées comme journal serveur. L’IA peut se tromper — vérifiez toujours les décisions importantes.',
+      'L’historique reste sur cet appareil et les photos ne sont pas stockées sur le serveur. Si la recherche web en direct est activée, le nom du produit ou le code-barres est envoyé aux services de recherche. L’IA peut se tromper : vérifiez toujours les décisions importantes.',
     tryBtn: 'Essayer un contrôle',
   },
   tier: {
