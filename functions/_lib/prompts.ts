@@ -32,12 +32,18 @@ Products often have SEPARATE layers. Report each layer; never substitute one for
    - Do NOT put brand HQ or a generic global factory into madeIn when the unit is labeled elsewhere.
 4) componentsOrigin = where major parts / the global line may be built when different from final madeIn.
 5) parts[] — ALWAYS isolate from THIS product (do not wait for the user to list them):
-   - Infer typical major BOM / recipe / service items for this category and SKU from
-     web research, packaging/OCR, and product knowledge.
+   - List typical major BOM / recipe / service item NAMES for this category and SKU.
    - Consumables (food, drink, cosmetics, supplements) → ingredients. Goods with a bill of materials → parts and common spares.
    - kind: "part" | "spare" | "ingredient" | "component"
-   - madeIn / originCountry per item; chinaRelated true ONLY for mainland China (never Taiwan).
-   - Unknown origin: omit chinaRelated or false; say unknown in note. Do not invent China.
+   - madeIn / originCountry per item ONLY when grounded web research and/or packaging/OCR
+     evidence supports THAT part's country (cross-check the part against Sources / label text).
+   - When <web_research> is empty AND there is no packaging/OCR "Made in" / びん／乳首／キャップ
+     (or equivalent) line: OMIT madeIn and originCountry on every part (names + unknown note only).
+   - NEVER copy brand HQ, originCountry, "Japanese/German/… brand", or design nationality into
+     part countries. Brand home ≠ part factory.
+   - Do not invent ANY country on parts without web/OCR/label evidence — not only "do not invent China."
+   - chinaRelated true ONLY for mainland China (never Taiwan), and only when evidence supports it.
+   - Unknown origin: omit chinaRelated or false; say unknown in note.
    - Max 8. Skip trivia; keep items that can change a China-relation judgment.
 6) notes[] MUST explain multi-layer cases when layers differ (brand vs components vs final COO).
 

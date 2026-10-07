@@ -209,6 +209,9 @@ export const fi = {
     layerOwnershipEmpty: 'Ei omistus-/emoyhtiösignaalia tässä tuloksessa',
     layerFinalCoo: 'Lopullinen COO',
     layerParts: 'Osakandidaatit',
+    partsModelOnlyBanner:
+      'Part countries are model guesses — not packaging or Search confirmed.',
+    partsSourcesLabel: 'Sources',
     sectionShareSave: 'Tallenna kuva',
     sectionShareShare: 'Jaa',
     sectionShareSaved: 'Tallennettu',

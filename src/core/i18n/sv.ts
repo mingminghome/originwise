@@ -209,6 +209,9 @@ export const sv = {
     layerOwnershipEmpty: 'Ingen ägarskaps-/moderbolagssignal i detta resultat',
     layerFinalCoo: 'Slutlig COO',
     layerParts: 'Delkandidater',
+    partsModelOnlyBanner:
+      'Part countries are model guesses — not packaging or Search confirmed.',
+    partsSourcesLabel: 'Sources',
     sectionShareSave: 'Spara bild',
     sectionShareShare: 'Dela',
     sectionShareSaved: 'Sparad',

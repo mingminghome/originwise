@@ -209,6 +209,9 @@ export const hu = {
     layerOwnershipEmpty: 'Nincs tulajdon/anyavállalat jel ebben az eredményben',
     layerFinalCoo: 'Végső COO',
     layerParts: 'Alkatrészjelöltek',
+    partsModelOnlyBanner:
+      'Part countries are model guesses — not packaging or Search confirmed.',
+    partsSourcesLabel: 'Sources',
     sectionShareSave: 'Kép mentése',
     sectionShareShare: 'Megosztás',
     sectionShareSaved: 'Mentve',

@@ -209,6 +209,9 @@ export const en: MessageTree = {
     layerOwnershipEmpty: 'No ownership/parent signal in this result',
     layerFinalCoo: 'Final COO',
     layerParts: 'Parts candidates',
+    partsModelOnlyBanner:
+      'Part countries are model guesses — not packaging or Search confirmed.',
+    partsSourcesLabel: 'Sources',
     sectionShareSave: 'Save image',
     sectionShareShare: 'Share',
     sectionShareSaved: 'Saved',

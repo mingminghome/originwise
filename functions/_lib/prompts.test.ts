@@ -29,6 +29,13 @@ describe('origin accuracy prompt contracts', () => {
     assert.doesNotMatch(p, /"alternatives"/);
   });
 
+  it('tells parts[] not to invent countries or copy brand HQ when ungrounded', () => {
+    const p = prompt(['origin']);
+    assert.match(p, /NEVER copy brand HQ/);
+    assert.match(p, /Do not invent ANY country on parts/i);
+    assert.match(p, /OMIT madeIn and originCountry/i);
+  });
+
   it('tells the company section not to treat distributors as parents', () => {
     const p = prompt(['company_relations']);
     assert.match(p, /PARENT vs LOCAL DISTRIBUTOR/);

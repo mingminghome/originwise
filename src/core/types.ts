@@ -93,6 +93,8 @@ export type CheckResult = {
   disclaimerKey?: string;
   knowledgeBasis?: 'model_memory' | 'web_enriched';
   knowledgeCutoffNote?: string;
+  /** Grounding Sources from live Search (when web_enriched). */
+  sources?: string[];
   product?: {
     name?: string;
     brand?: string;

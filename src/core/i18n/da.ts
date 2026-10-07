@@ -209,6 +209,9 @@ export const da = {
     layerOwnershipEmpty: 'Intet ejerskabs-/moderselskabssignal i dette resultat',
     layerFinalCoo: 'Endelig COO',
     layerParts: 'Delekandidater',
+    partsModelOnlyBanner:
+      'Part countries are model guesses — not packaging or Search confirmed.',
+    partsSourcesLabel: 'Sources',
     sectionShareSave: 'Gem billede',
     sectionShareShare: 'Del',
     sectionShareSaved: 'Gemt',

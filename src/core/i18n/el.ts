@@ -209,6 +209,9 @@ export const el = {
     layerOwnershipEmpty: 'Δεν υπάρχει σήμα ιδιοκτησίας/μητρικής σε αυτό το αποτέλεσμα',
     layerFinalCoo: 'Τελικό COO',
     layerParts: 'Υποψήφια εξαρτήματα',
+    partsModelOnlyBanner:
+      'Part countries are model guesses — not packaging or Search confirmed.',
+    partsSourcesLabel: 'Sources',
     sectionShareSave: 'Αποθήκευση εικόνας',
     sectionShareShare: 'Κοινοποίηση',
     sectionShareSaved: 'Αποθηκεύτηκε',
