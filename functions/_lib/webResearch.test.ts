@@ -277,6 +277,16 @@ describe('mapWebResearchHttpError', () => {
     );
   });
 
+  it('maps a burned non-zero daily free cap to upstream_quota (not no-Search key)', () => {
+    assert.equal(
+      mapWebResearchHttpError(
+        429,
+        'You exceeded your current quota, please check your plan and billing details.\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-robotics-er-2-preview\nPlease retry in 3h6m30s.'
+      ),
+      'upstream_quota'
+    );
+  });
+
   it('does NOT treat bare model-tool errors as quota', () => {
     assert.equal(
       mapWebResearchHttpError(400, 'Grounding not available for this model'),
@@ -480,6 +490,32 @@ describe('runWebResearch', () => {
     assert.ok(modelsTried.includes('gemini-2.5-flash-lite'));
     // Robotics may hit Interactions + generateContent per attempt
     assert.ok(new Set(modelsTried).size <= 5);
+  });
+
+  it('keeps "daily free Search used up" when robotics burned its cap and Gemini 3 is 0/0', async () => {
+    mock.method(
+      globalThis,
+      'fetch',
+      withListedModels(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const model = modelFromFetch(input, init);
+        const message = /robotics-er-2/.test(model)
+          ? 'You exceeded your current quota, please check your plan and billing details.\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-robotics-er-2-preview'
+          : 'You exceeded your current quota, please check your plan and billing details.';
+        return new Response(
+          JSON.stringify({ error: { message, status: 'RESOURCE_EXHAUSTED' } }),
+          { status: 429, headers: { 'Content-Type': 'application/json' } }
+        );
+      })
+    );
+
+    const out = await runWebResearch({
+      entity: 'Pigeon Sheer PPSU 240ml',
+      locale: 'en',
+      env: { GEMINI_API_KEY: 'test-key' },
+    });
+
+    assert.equal(out.ok, false);
+    assert.equal(out.error, 'upstream_quota');
   });
 
   it('falls back across pools after empty / grounding fails', async () => {

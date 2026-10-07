@@ -213,23 +213,44 @@ function copyStyles(from: Document, to: Document, cssWidth: number): Promise<voi
   base.href = from.baseURI;
   to.head.appendChild(base);
 
+  // Inline every readable sheet as <style> so the frame is styled the moment
+  // the clone mounts. Waiting on <link> loads raced the capture (4s settle)
+  // and left later saves unstyled: serif fallback, dark text on #161616.
   const waits: Promise<unknown>[] = [];
-  for (const node of from.querySelectorAll('link[rel="stylesheet"]')) {
-    const el = node as HTMLLinkElement;
-    if (!el.href) continue;
+  for (const sheet of Array.from(from.styleSheets)) {
+    let text = '';
+    try {
+      text = Array.from(sheet.cssRules)
+        .map((rule) => rule.cssText)
+        .join('\n');
+    } catch {
+      text = '';
+    }
+    if (text) {
+      const style = to.createElement('style');
+      if (sheet.media?.mediaText) style.media = sheet.media.mediaText;
+      style.textContent = text;
+      to.head.appendChild(style);
+      continue;
+    }
+    // Cross-origin or unreadable: fall back to the link and wait for it.
+    const owner = sheet.ownerNode as Element | null;
+    const href = sheet.href || (owner as HTMLLinkElement | null)?.href;
+    if (owner && owner.nodeName === 'STYLE') {
+      to.head.appendChild(owner.cloneNode(true));
+      continue;
+    }
+    if (!href) continue;
     const copy = to.createElement('link');
     copy.rel = 'stylesheet';
-    if (el.media) copy.media = el.media;
+    if (sheet.media?.mediaText) copy.media = sheet.media.mediaText;
     const loaded = new Promise<void>((resolve) => {
       copy.addEventListener('load', () => resolve(), { once: true });
       copy.addEventListener('error', () => resolve(), { once: true });
     });
-    copy.href = el.href;
+    copy.href = href;
     to.head.appendChild(copy);
     waits.push(loaded);
-  }
-  for (const style of from.querySelectorAll('style')) {
-    to.head.appendChild(style.cloneNode(true));
   }
 
   const sheets = from.adoptedStyleSheets;

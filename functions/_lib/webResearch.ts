@@ -472,6 +472,13 @@ export function mapWebResearchHttpError(status: number, body: string): string {
     return 'search_grounding_unavailable';
   }
 
+  // Free-tier daily cap with a real (non-zero) limit was burned, e.g.
+  // "free_tier_requests, limit: 20, model: gemini-robotics-er-2-preview".
+  // That is "used up today", not "this key has no Search".
+  if (/free_tier[a-z_]*,?\s*limit:\s*[1-9]\d*/.test(msg)) {
+    return 'upstream_quota';
+  }
+
   if (
     status === 429 ||
     /resource.?exhausted|rate.?limit|quota.?exceeded|insufficient.?quota/.test(
@@ -810,6 +817,8 @@ export async function runWebResearch(opts: {
   let last = 'upstream_error';
   /** Sticky: Default-pool capacity miss must not become API-key caveat later. */
   let sawCapacityMiss = false;
+  /** Sticky: a model hit its non-zero daily free cap (e.g. robotics 20/day). */
+  let sawDailyQuota = false;
   let gemini3Fails = 0;
   let timeouts = 0;
   let attempts = 0;
@@ -875,8 +884,12 @@ export async function runWebResearch(opts: {
     ) {
       // Later-pool Search 429 (often Gemini 3 0/0) must not overwrite a
       // Default-pool capacity miss as "API key has no Search".
+      if (out.code === 'upstream_quota') sawDailyQuota = true;
       if (sawCapacityMiss) {
         last = 'upstream_unavailable';
+      } else if (sawDailyQuota) {
+        // Later Gemini 3 0/0 429s must not hide "daily free Search used up".
+        last = 'upstream_quota';
       } else {
         last = 'search_grounding_unavailable';
       }

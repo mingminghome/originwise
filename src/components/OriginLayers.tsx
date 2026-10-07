@@ -202,7 +202,10 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
   if (p?.componentsOrigin?.trim()) {
     parts.push({ kind: 'components', value: p.componentsOrigin.trim() });
   }
-  for (const cand of p?.originCandidates ?? []) {
+  // Label-read parts already answer it; queried
+  // candidates (e.g. "Japan · likely 55% · parts") would only add noise.
+  const skipPartCandidates = result.partsEvidence === 'label';
+  for (const cand of skipPartCandidates ? [] : p?.originCandidates ?? []) {
     if (isOwnershipCandidate(cand)) continue;
     // confirmed_coo mirrors Final COO — keep out of parts to avoid “made in” confusion
     if (cand.source === 'confirmed_coo') continue;

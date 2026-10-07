@@ -186,4 +186,19 @@ describe('buildOriginLayers', () => {
     );
     assert.equal(model.partsModelOnly, false);
   });
+  it('drops queried part candidates when parts come from the label photo', () => {
+    const model = buildOriginLayers(
+      base({
+        knowledgeBasis: 'model_memory',
+        partsEvidence: 'label',
+        product: {
+          originCandidates: [
+            { label: 'Japan', confidence: 0.55, source: 'parts', rating: 'likely' },
+          ],
+          parts: [{ name: '乳首', kind: 'part', madeIn: 'China' }],
+        },
+      })
+    );
+    assert.ok(!model.parts.some((l) => l.kind === 'candidate'));
+  });
 });
