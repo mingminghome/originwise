@@ -379,8 +379,9 @@ async function runQuery(
     webFailCode: web.used ? undefined : web.error,
     webBrief: web.brief,
     sources: web.sources,
-    // Brave/Firecrawl only: made-in needs a barcode-confirmed claim (or OCR).
-    webCoo: web.used && web.provider && web.provider !== 'gemini' ? web.coo ?? [] : undefined,
+    // Every provider (Gemini included): made-in needs a barcode-confirmed
+    // claim from a source page (or the package-label OCR).
+    webCoo: web.used ? web.coo ?? [] : undefined,
     ocrText: parts.ocrText,
     partials: {
       product: parts.product,
