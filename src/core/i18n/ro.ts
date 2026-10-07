@@ -96,6 +96,7 @@ export const ro = {
     agentFailUnknown: 'eroare',
     agentError: {
       upstream_quota: 'cotă / limită de ritm',
+      upstream_credits: 'credit AI epuizat',
       upstream_error: 'eroare upstream',
       upstream_unavailable: 'serviciu indisponibil',
       empty_response: 'răspuns gol',
@@ -228,6 +229,8 @@ export const ro = {
       'Part countries are model guesses — not packaging or Search confirmed.',
     searchQuotaUsedUp:
       'Cota de căutare AI a fost epuizată — informații mai precise nu sunt disponibile acum. Verificați din nou după resetarea zilnică.',
+    aiCreditsUsedUp:
+      'Creditul serviciului AI s-a epuizat temporar — informații mai precise nu sunt disponibile acum. Încercați din nou mai târziu.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Salvează imaginea',
     sectionShareShare: 'Distribuie',

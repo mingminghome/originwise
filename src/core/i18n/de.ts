@@ -96,6 +96,7 @@ export const de = {
     agentFailUnknown: 'Fehler',
     agentError: {
       upstream_quota: 'Quota / Ratenlimit',
+      upstream_credits: 'KI-Guthaben aufgebraucht',
       upstream_error: 'Upstream-Fehler',
       upstream_unavailable: 'Dienst nicht verfügbar',
       empty_response: 'leere Antwort',
@@ -228,6 +229,8 @@ export const de = {
       'Part countries are model guesses — not packaging or Search confirmed.',
     searchQuotaUsedUp:
       'KI-Suchkontingent aufgebraucht — genauere Informationen sind gerade nicht verfügbar. Bitte nach dem täglichen Reset erneut prüfen.',
+    aiCreditsUsedUp:
+      'KI-Dienstguthaben vorübergehend aufgebraucht — genauere Informationen sind gerade nicht verfügbar. Bitte später erneut versuchen.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Bild speichern',
     sectionShareShare: 'Teilen',

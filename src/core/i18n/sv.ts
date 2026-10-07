@@ -96,6 +96,7 @@ export const sv = {
     agentFailUnknown: 'fel',
     agentError: {
       upstream_quota: 'kvot / hastighetsgräns',
+      upstream_credits: 'AI-kredit slut',
       upstream_error: 'uppströmsfel',
       upstream_unavailable: 'tjänsten otillgänglig',
       empty_response: 'tomt svar',
@@ -228,6 +229,8 @@ export const sv = {
       'Part countries are model guesses — not packaging or Search confirmed.',
     searchQuotaUsedUp:
       'AI-sökkvoten är slut — mer exakt information finns inte just nu. Försök igen efter den dagliga återställningen.',
+    aiCreditsUsedUp:
+      'AI-tjänstens kredit är tillfälligt slut — mer exakt information är inte tillgänglig just nu. Försök igen senare.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Spara bild',
     sectionShareShare: 'Dela',

@@ -96,6 +96,7 @@ export const pl = {
     agentFailUnknown: 'błąd',
     agentError: {
       upstream_quota: 'limit / ograniczenie tempa',
+      upstream_credits: 'środki AI wyczerpane',
       upstream_error: 'błąd źródła',
       upstream_unavailable: 'usługa niedostępna',
       empty_response: 'pusta odpowiedź',
@@ -228,6 +229,8 @@ export const pl = {
       'Part countries are model guesses — not packaging or Search confirmed.',
     searchQuotaUsedUp:
       'Limit wyszukiwania AI wyczerpany — dokładniejsze informacje są teraz niedostępne. Sprawdź ponownie po dziennym resecie.',
+    aiCreditsUsedUp:
+      'Środki usługi AI tymczasowo się wyczerpały — dokładniejsze informacje są teraz niedostępne. Spróbuj ponownie później.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Zapisz obraz',
     sectionShareShare: 'Udostępnij',

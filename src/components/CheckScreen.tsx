@@ -246,6 +246,7 @@ export function CheckScreen({
             parse_error: t('check.parseError'),
             upstream_error: t('check.upstreamError'),
             upstream_quota: t('check.upstreamQuota'),
+            upstream_credits: t('check.aiCreditsUsedUp'),
             upstream_unavailable: t('check.upstreamUnavailable'),
             empty_response: t('check.emptyResponse'),
             server_error: t('check.serverError'),

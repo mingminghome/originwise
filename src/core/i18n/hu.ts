@@ -96,6 +96,7 @@ export const hu = {
     agentFailUnknown: 'hiba',
     agentError: {
       upstream_quota: 'kvóta / sebességkorlát',
+      upstream_credits: 'elfogyott az AI-keret',
       upstream_error: 'felső szintű hiba',
       upstream_unavailable: 'a szolgáltatás nem elérhető',
       empty_response: 'üres válasz',
@@ -228,6 +229,8 @@ export const hu = {
       'Part countries are model guesses — not packaging or Search confirmed.',
     searchQuotaUsedUp:
       'Elfogyott a napi AI-keresési keret — pontosabb információ most nem érhető el. Próbálja újra a napi visszaállítás után.',
+    aiCreditsUsedUp:
+      'Az AI-szolgáltatás kerete átmenetileg elfogyott — pontosabb információ most nem érhető el. Próbálja újra később.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Kép mentése',
     sectionShareShare: 'Megosztás',

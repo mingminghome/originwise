@@ -94,6 +94,7 @@ export const zhHant = {
     agentFailUnknown: '錯誤',
     agentError: {
       upstream_quota: '配額／速率限制',
+      upstream_credits: 'AI 服務額度用盡',
       upstream_error: '上游錯誤',
       upstream_unavailable: '逾時／服務暫時不可用',
       empty_response: '網路搜尋空回應',
@@ -216,6 +217,8 @@ export const zhHant = {
       '零件產地為模型推測，非包裝／Search 確認。',
     searchQuotaUsedUp:
       'AI 搜尋額度已用盡，暫時未能提供更準確的資訊，請於每日額度重設後再查詢。',
+    aiCreditsUsedUp:
+      'AI 服務額度暫時用盡，未能提供更準確的資訊，請稍後再查詢。',
     partsSourcesLabel: '來源',
     sectionShareSave: '儲存圖片',
     sectionShareShare: '分享',

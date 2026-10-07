@@ -96,6 +96,7 @@ export const es = {
     agentFailUnknown: 'error',
     agentError: {
       upstream_quota: 'cuota / límite de ritmo',
+      upstream_credits: 'crédito de IA agotado',
       upstream_error: 'error de origen',
       upstream_unavailable: 'servicio no disponible',
       empty_response: 'respuesta vacía',
@@ -228,6 +229,8 @@ export const es = {
       'Part countries are model guesses — not packaging or Search confirmed.',
     searchQuotaUsedUp:
       'Cuota de búsqueda de IA agotada — no hay información más precisa por ahora. Vuelve a consultar tras el reinicio diario.',
+    aiCreditsUsedUp:
+      'El crédito del servicio de IA se ha agotado temporalmente — no hay información más precisa por ahora. Inténtalo más tarde.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Guardar imagen',
     sectionShareShare: 'Compartir',

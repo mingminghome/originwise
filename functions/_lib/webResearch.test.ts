@@ -19,6 +19,7 @@ import {
   suggestedReplacementModel,
   webSearchModelChain,
 } from './webResearch';
+import { mapLlmHttpError } from './llm';
 
 const LISTED_MODELS = {
   models: [
@@ -287,6 +288,26 @@ describe('mapWebResearchHttpError', () => {
     );
   });
 
+  it('maps HTTP 402 prepaid credits depleted to upstream_credits (not the daily quota)', () => {
+    assert.equal(
+      mapWebResearchHttpError(
+        402,
+        'Your prepayment credits are depleted. Please go to AI Studio at https://ai.studio/projects to manage your project and billing.'
+      ),
+      'upstream_credits'
+    );
+  });
+
+  it('keeps HTTP 429 daily free cap as upstream_quota alongside the 402 mapping', () => {
+    assert.equal(
+      mapWebResearchHttpError(
+        429,
+        'Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-robotics-er-2-preview'
+      ),
+      'upstream_quota'
+    );
+  });
+
   it('does NOT treat bare model-tool errors as quota', () => {
     assert.equal(
       mapWebResearchHttpError(400, 'Grounding not available for this model'),
@@ -337,6 +358,45 @@ describe('runWebResearch', () => {
     assert.equal(out.ok, false);
     assert.equal(out.error, 'disabled');
     assert.equal(called, false);
+  });
+
+  it('402 credits depleted → stops after one attempt with upstream_credits', async () => {
+    let searchCalls = 0;
+    mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (/\/v1beta\/models(\?|$)/.test(url)) {
+        return new Response(
+          JSON.stringify({
+            models: [
+              { name: 'models/gemini-robotics-er-2-preview', supportedGenerationMethods: ['generateContent'] },
+              { name: 'models/gemini-3.5-flash-lite', supportedGenerationMethods: ['generateContent'] },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      searchCalls += 1;
+      return new Response(
+        JSON.stringify({
+          error: {
+            code: 402,
+            message:
+              'Your prepayment credits are depleted. Please go to AI Studio at https://ai.studio/projects to manage your project and billing.',
+          },
+        }),
+        { status: 402, headers: { 'Content-Type': 'application/json' } }
+      );
+    });
+    const out = await runWebResearch({
+      entity: 'Pigeon Softouch 160ml',
+      locale: 'en',
+      env: { GEMINI_API_KEY: 'k' },
+    });
+    assert.equal(out.ok, false);
+    assert.equal(out.error, 'upstream_credits');
+    assert.equal(out.attempts, 1);
+    // One model only: list + Interactions + generateContent at most — no walk to Gemini 3.
+    assert.ok(searchCalls <= 3, `expected no model walk, got ${searchCalls} calls`);
   });
 
   it('uses Interactions API google_search when a Gemini 3 model is pinned', async () => {
@@ -1121,5 +1181,18 @@ describe('runWebResearch', () => {
     assert.equal(out.model, 'gemini-3.5-flash-lite');
     assert.equal(modelsTried[0], 'gemini-2.5-flash-lite');
     assert.ok(modelsTried.includes('gemini-3.5-flash-lite'));
+  });
+});
+
+describe('mapLlmHttpError (answer + extraction calls)', () => {
+  it('402 prepaid credits depleted → upstream_credits', () => {
+    assert.equal(
+      mapLlmHttpError(402, 'Your prepayment credits are depleted. Please go to AI Studio to manage your project and billing.'),
+      'upstream_credits'
+    );
+  });
+
+  it('429 rate/quota → upstream_quota (unchanged)', () => {
+    assert.equal(mapLlmHttpError(429, 'Resource has been exhausted'), 'upstream_quota');
   });
 });

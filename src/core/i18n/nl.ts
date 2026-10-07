@@ -96,6 +96,7 @@ export const nl = {
     agentFailUnknown: 'fout',
     agentError: {
       upstream_quota: 'quota / snelheidslimiet',
+      upstream_credits: 'AI-tegoed op',
       upstream_error: 'upstreamfout',
       upstream_unavailable: 'dienst niet beschikbaar',
       empty_response: 'leeg antwoord',
@@ -228,6 +229,8 @@ export const nl = {
       'Part countries are model guesses — not packaging or Search confirmed.',
     searchQuotaUsedUp:
       'AI-zoekquotum verbruikt — preciezere informatie is nu niet beschikbaar. Probeer het opnieuw na de dagelijkse reset.',
+    aiCreditsUsedUp:
+      'Tegoed van de AI-dienst is tijdelijk op — preciezere informatie is nu niet beschikbaar. Probeer het later opnieuw.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Afbeelding opslaan',
     sectionShareShare: 'Delen',
