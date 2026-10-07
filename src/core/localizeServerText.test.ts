@@ -60,9 +60,9 @@ describe('localizeServerText', () => {
       const english = webFailCaveat(code);
       assert.equal(english, webFailText(code));
       const out = localizeServerText(zh, english);
-      assert.match(out, /製造地及零件產地會較保守/, String(code));
+      assert.match(out, /製造地及零件產地僅依模型知識，結果會較保守。/, String(code));
     }
-    assert.match(localizeServerText(zh, webFailCaveat('upstream_quota')), /每日重設/);
+    assert.match(localizeServerText(zh, webFailCaveat('upstream_quota')), /每日額度重設/);
   });
 
   it('translates made-in conflict notes and keeps the country label', () => {
