@@ -7,17 +7,14 @@
 
 import {
   MAX_RESULT_PAGES,
-  PAGE_FETCH_MS,
   buildSearchQuery,
   extractBriefFromPages,
+  fetchSourcePage,
   fetchWithTimeout,
   findJans,
-  htmlBlocks,
   mapSearchHttpError,
-  stripHtml,
-  textBlocks,
 } from './extract';
-import type { FetchedPage, PageBlock, SearchProvider } from './types';
+import type { FetchedPage, SearchProvider } from './types';
 
 export const BRAVE_ENDPOINT = 'https://api.search.brave.com/res/v1/web/search';
 const BRAVE_SEARCH_MS = 10000;
@@ -33,41 +30,11 @@ function isHttpUrl(u: string): boolean {
   return /^https?:\/\//i.test(u);
 }
 
-async function fetchPageText(r: BraveResult): Promise<FetchedPage> {
-  const url = String(r.url);
-  const title = stripHtml(r.title || '');
-  const snippet = stripHtml(
-    [r.description || '', ...(r.extra_snippets || [])].join('\n')
-  );
-  const res = await fetchWithTimeout(
-    url,
-    {
-      headers: {
-        Accept: 'text/html,application/xhtml+xml,text/plain;q=0.8',
-        'User-Agent': 'OriginWise/1.0 (+https://originwise.pages.dev)',
-      },
-      redirect: 'follow',
-    },
-    PAGE_FETCH_MS
-  );
-  let body = '';
-  let blocks: PageBlock[] | undefined;
-  if (res && res.ok) {
-    const ct = res.headers.get('content-type') || '';
-    if (!ct || /text\/html|text\/plain|xhtml/i.test(ct)) {
-      try {
-        const raw = await res.text();
-        const isHtml = /html/i.test(ct) || /<html|<body|<div/i.test(raw.slice(0, 2000));
-        body = isHtml ? stripHtml(raw) : raw.slice(0, 200_000);
-        blocks = isHtml ? htmlBlocks(raw) : textBlocks(body);
-      } catch {
-        body = '';
-      }
-    }
-  }
-  // Brave's own snippets for this URL stay as fallback text when fetch fails.
-  const text = [title, snippet, body].filter(Boolean).join('\n');
-  return { url, title, text, blocks: blocks ?? textBlocks(text) };
+function fetchPageText(r: BraveResult): Promise<FetchedPage> {
+  return fetchSourcePage(String(r.url), r.title || '', [
+    r.description || '',
+    ...(r.extra_snippets || []),
+  ].join('\n'));
 }
 
 export const braveSearchProvider: SearchProvider = {
