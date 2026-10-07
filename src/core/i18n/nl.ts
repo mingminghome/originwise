@@ -231,6 +231,94 @@ export const nl = {
       'AI-zoekquotum verbruikt — preciezere informatie is nu niet beschikbaar. Probeer het opnieuw na de dagelijkse reset.',
     aiCreditsUsedUp:
       'Tegoed van de AI-dienst is tijdelijk op — preciezere informatie is nu niet beschikbaar. Probeer het later opnieuw.',
+    srv: {
+      partOmittedNoEvidence:
+        'Land van onderdeel weggelaten: geen bewijs uit zoeken/etiket (hoofdkantoor van het merk is geen herkomst van een onderdeel).',
+      partOmittedUnconfirmed:
+        'Land van onderdeel weggelaten: niet bevestigd door zoeken/etiket voor dit onderdeel.',
+      madeInOmittedBrand:
+        'Land van productie weggelaten: kwam alleen overeen met het merk-/ontwerpland, zonder bewijs van fabriek of herkomst.',
+      madeInOmittedOwnership:
+        'Land van productie weggelaten: China komt alleen uit eigendoms-/moedergegevens, niet van product, etiket of winkelier.',
+      cooUnconfirmedSeeParts:
+        'Uiteindelijke herkomst onbevestigd – zie de regel componenten/wereldwijde productie of de onderdelen voor kandidaten (productie niet bevestigd).',
+      cooUnconfirmedNoLabel:
+        'Uiteindelijke herkomst onbevestigd – geen land van herkomst op product/etiket; er wordt er geen verzonnen.',
+      cooUnconfirmedNoBarcode:
+        'Uiteindelijke herkomst onbevestigd – geen webpagina toonde de barcode/JAN samen met een productieland; overeenkomsten op productnaam zijn alleen waarschijnlijke kandidaten.',
+      cooUnconfirmedCandidates:
+        'Uiteindelijke herkomst onbevestigd – de kandidaten hieronder zijn zoeksignalen, geen gedrukte „Made in”.',
+      distributorOmitted:
+        'Lokale distributeur / marktvertegenwoordiger weggelaten uit moederbedrijven (geen juridische eigenaar).',
+      chinaLinkUnclear:
+        'Band met China onduidelijk – niet behandelen als bevestigd zonder China.',
+      verifyConflict:
+        'De controle meldde tegenstrijdige signalen',
+      companyNotAssessed:
+        'Bedrijfs-/eigendomsgegevens niet beoordeeld',
+      taiwanSeparate:
+        'Taiwan wordt voor de relatieniveaus als apart land behandeld',
+      webUnavailableLabel:
+        'Live webonderzoek niet beschikbaar – landen van onderdelen komen van de foto van het etiket, niet uit zoeken.',
+      altsAim:
+        'Alternatieve merken/producten mikken op minder betrokkenheid van China (niet alleen gelijkenis). Niveaus zijn schattingen; het hoofdkantoor alleen bewijst geen productie buiten China.',
+      altsNone:
+        'Geen alternatieven met minder betrokkenheid van China gevonden met voldoende zekerheid.',
+      sumCooUnconfirmed:
+        'Uiteindelijke herkomst onbevestigd',
+      tierUnknown:
+        'Onvoldoende bewijs om banden met China te beoordelen.',
+      tierNone:
+        'Geen banden met China gevonden in de beschikbare signalen.',
+      tierDirect:
+        'Directe signalen van banden met China gevonden.',
+      tierIndirect:
+        'Indirecte signalen van banden met China gevonden.',
+      cooConflictChina:
+        'Uiteindelijke herkomst onbevestigd – {source}-signaal ({label}) spreekt „Made in China” tegen; eigendom/moederbedrijf alleen bepaalt het productieland niet.',
+      cooConflictMadeIn:
+        'Uiteindelijke herkomst onbevestigd – {source}-signaal ({label}) spreekt productie in {madeIn} tegen; alleen als kandidaat behouden.',
+      candidate:
+        '{label} ({rating}, {pct}%, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Live zoekmodellen waren niet beschikbaar met deze API-sleutel – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_search_grounding_unavailable:
+        'Live Google Zoeken was niet beschikbaar met deze API-sleutel – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_upstream_credits:
+        'AI-tegoed op (prepaid saldo leeg) – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_upstream_quota:
+        'Dagelijks gratis Google-zoekquotum op – probeer opnieuw na de dagelijkse reset – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_upstream_unavailable:
+        'Live webonderzoek kreeg een time-out of de dienst was overbelast – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_empty_response:
+        'Live webonderzoek gaf een leeg antwoord – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_disabled:
+        'Live webonderzoek was uitgeschakeld voor deze controle – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_gemini_not_configured:
+        'Gemini is niet ingesteld voor live webonderzoek – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_no_entity:
+        'Geen productnaam voor live webonderzoek – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_default:
+        'Geen live webonderzoek voor deze controle – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      sum: {
+        madeIn: 'Gemaakt in: {value}',
+        candidates: 'Kandidaten: {value}',
+        brandOrigin: 'Herkomst merk: {value}',
+        components: 'Componenten/wereldwijde productie: {value}',
+        parts: 'Onderdelen: {value}',
+        hq: 'Hoofdkantoor: {value}',
+        company: 'Bedrijf: {value}',
+      },
+      signal: {
+        ocr: 'etiket',
+        retailer: 'winkelier',
+        manufacturer: 'fabrikant',
+        ownership: 'eigendom',
+        unknown: 'onbekend',
+      },
+    },
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Afbeelding opslaan',
     sectionShareShare: 'Delen',

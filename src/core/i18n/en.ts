@@ -231,6 +231,94 @@ export const en: MessageTree = {
       'AI search quota used up — more precise information isn\'t available right now. Please check again after the daily reset.',
     aiCreditsUsedUp:
       'AI service credits are temporarily used up — more precise information isn\'t available right now. Please try again later.',
+    srv: {
+      partOmittedNoEvidence:
+        'Part country omitted: no Search/OCR evidence (brand HQ is not a part COO).',
+      partOmittedUnconfirmed:
+        'Part country omitted: not confirmed by Search/OCR for this part.',
+      madeInOmittedBrand:
+        'Made-in omitted: it matched brand/design country without factory/COO evidence.',
+      madeInOmittedOwnership:
+        'Made-in omitted: China came from ownership/parent signals only — not a SKU/label/retailer COO.',
+      cooUnconfirmedSeeParts:
+        'Final COO unconfirmed — see components/global line or parts for candidates (not confirmed made-in).',
+      cooUnconfirmedNoLabel:
+        'Final COO unconfirmed — no SKU/label country of origin; do not invent made-in.',
+      cooUnconfirmedNoBarcode:
+        'Final COO unconfirmed — no web page showed the barcode/JAN with a made-in; product-name matches are likely candidates only.',
+      cooUnconfirmedCandidates:
+        'Final COO unconfirmed — candidates below are queried signals, not a stamped made-in label.',
+      distributorOmitted:
+        'Local distributor / market agent omitted from parents (not a legal owner).',
+      chinaLinkUnclear:
+        'China link unclear — do not treat as confirmed non-China.',
+      verifyConflict:
+        'Verification reported conflicting signals',
+      companyNotAssessed:
+        'Company/ownership data not assessed',
+      taiwanSeparate:
+        'Taiwan is treated as a separate country for relation tiers',
+      webUnavailableLabel:
+        'Live web research unavailable — part countries come from the package label photo, not Search.',
+      altsAim:
+        'Alternative brands/products aim for lower China involvement (not merely similar). Tiers are estimates; HQ alone does not prove non-China manufacture.',
+      altsNone:
+        'No lower China-involvement brand/product alternatives found with enough confidence.',
+      sumCooUnconfirmed:
+        'Final COO unconfirmed',
+      tierUnknown:
+        'Insufficient evidence to assess China-related links.',
+      tierNone:
+        'No China-related links found from available signals.',
+      tierDirect:
+        'Direct China-related signals found.',
+      tierIndirect:
+        'Indirect China-related signals found.',
+      cooConflictChina:
+        'Final COO unconfirmed — {source} signal ({label}) conflicts with China made-in; ownership/parent alone cannot stamp made-in.',
+      cooConflictMadeIn:
+        'Final COO unconfirmed — {source} signal ({label}) conflicts with made-in {madeIn}; keeping candidates only.',
+      candidate:
+        '{label} ({rating}, {pct}%, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Live web Search models were unavailable on this API key — made-in and part countries are more conservative (model knowledge only).',
+      webFail_search_grounding_unavailable:
+        'Live Google Search grounding unavailable on this API key — made-in and part countries are more conservative (model knowledge only).',
+      webFail_upstream_credits:
+        'AI service credits used up (prepaid balance empty) — made-in and part countries are more conservative (model knowledge only).',
+      webFail_upstream_quota:
+        'Daily free Google Search quota used up — try again after the daily reset; made-in and part countries are more conservative (model knowledge only).',
+      webFail_upstream_unavailable:
+        'Live web research timed out or upstream was busy — made-in and part countries are more conservative (model knowledge only).',
+      webFail_empty_response:
+        'Live web research returned an empty reply — made-in and part countries are more conservative (model knowledge only).',
+      webFail_disabled:
+        'Live web research was disabled for this check — made-in and part countries are more conservative (model knowledge only).',
+      webFail_gemini_not_configured:
+        'Gemini not configured for live web — made-in and part countries are more conservative (model knowledge only).',
+      webFail_no_entity:
+        'No product name for live web research — made-in and part countries are more conservative (model knowledge only).',
+      webFail_default:
+        'No live web research for this check — made-in and part countries are more conservative (model knowledge only).',
+      sum: {
+        madeIn: 'Made in: {value}',
+        candidates: 'Candidates: {value}',
+        brandOrigin: 'Brand origin: {value}',
+        components: 'Components/global line: {value}',
+        parts: 'Parts: {value}',
+        hq: 'HQ: {value}',
+        company: 'Company: {value}',
+      },
+      signal: {
+        ocr: 'label',
+        retailer: 'retailer',
+        manufacturer: 'manufacturer',
+        ownership: 'ownership',
+        unknown: 'unknown',
+      },
+    },
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Save image',
     sectionShareShare: 'Share',

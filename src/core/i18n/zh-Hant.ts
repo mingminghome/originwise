@@ -219,6 +219,94 @@ export const zhHant = {
       'AI 搜尋額度已用盡，暫時未能提供更準確的資訊，請於每日額度重設後再查詢。',
     aiCreditsUsedUp:
       'AI 服務額度暫時用盡，未能提供更準確的資訊，請稍後再查詢。',
+    srv: {
+      partOmittedNoEvidence:
+        '未列出零件產地：搜尋或標籤上沒有證據（品牌總部不等於零件產地）。',
+      partOmittedUnconfirmed:
+        '未列出零件產地：搜尋或標籤未能確認此零件的產地。',
+      madeInOmittedBrand:
+        '未列出製造地：只與品牌／設計所在地吻合，沒有工廠或產地證據。',
+      madeInOmittedOwnership:
+        '未列出製造地：「中國」僅來自所有權／母公司資料，並非產品、標籤或零售商標示的產地。',
+      cooUnconfirmedSeeParts:
+        '最終產地未確認：候選產地請參考「零件／全球產線」或「零件」欄（並非已確認的製造地）。',
+      cooUnconfirmedNoLabel:
+        '最終產地未確認：產品或標籤上沒有產地資料，不會自行推斷製造地。',
+      cooUnconfirmedNoBarcode:
+        '最終產地未確認：沒有網頁同時顯示此條碼（JAN）與製造地；依品名比對到的只算較可能的候選。',
+      cooUnconfirmedCandidates:
+        '最終產地未確認：以下候選來自查詢結果，並非標籤上印明的製造地。',
+      distributorOmitted:
+        '母公司名單未列入本地經銷商／市場代理（並非法定擁有人）。',
+      chinaLinkUnclear:
+        '與中國的關聯不明，請勿視為已確認與中國無關。',
+      verifyConflict:
+        '核對時發現互相矛盾的資料',
+      companyNotAssessed:
+        '未評估公司／所有權資料',
+      taiwanSeparate:
+        '在中國關聯分級中，台灣與中國分開計算',
+      webUnavailableLabel:
+        '無法進行即時網路搜尋，零件產地取自包裝標籤相片，並非搜尋結果。',
+      altsAim:
+        '替代品牌／產品以較低的中國參與程度為目標（不只是相似產品）。關聯等級屬估算；單憑總部所在地不能證明並非在中國製造。',
+      altsNone:
+        '找不到有足夠把握、中國參與程度較低的替代品牌或產品。',
+      sumCooUnconfirmed:
+        '最終產地未確認',
+      tierUnknown:
+        '證據不足，未能評估與中國的關聯。',
+      tierNone:
+        '從現有資料中未發現與中國的關聯。',
+      tierDirect:
+        '發現與中國直接相關的跡象。',
+      tierIndirect:
+        '發現與中國間接相關的跡象。',
+      cooConflictChina:
+        '最終產地未確認：{source}資料（{label}）與「中國製造」互相矛盾；單憑所有權／母公司不能判定製造地。',
+      cooConflictMadeIn:
+        '最終產地未確認：{source}資料（{label}）與製造地「{madeIn}」互相矛盾，只保留為候選。',
+      candidate:
+        '{label}（{rating}，{pct}%，{source}）',
+      listSep:
+        '；',
+      webFail_model_unavailable:
+        '此 API 金鑰無法使用即時搜尋模型，製造地及零件產地僅依模型知識，結果會較保守。',
+      webFail_search_grounding_unavailable:
+        '此 API 金鑰無法使用 Google 搜尋，製造地及零件產地僅依模型知識，結果會較保守。',
+      webFail_upstream_credits:
+        'AI 服務額度暫時用盡（預付餘額已用完），製造地及零件產地僅依模型知識，結果會較保守。',
+      webFail_upstream_quota:
+        '今日的免費 Google 搜尋額度已用完，請於每日額度重設後再試；製造地及零件產地僅依模型知識，結果會較保守。',
+      webFail_upstream_unavailable:
+        '即時網路搜尋逾時或服務繁忙，製造地及零件產地僅依模型知識，結果會較保守。',
+      webFail_empty_response:
+        '即時網路搜尋沒有回傳內容，製造地及零件產地僅依模型知識，結果會較保守。',
+      webFail_disabled:
+        '此次查詢未啟用即時網路搜尋，製造地及零件產地僅依模型知識，結果會較保守。',
+      webFail_gemini_not_configured:
+        '尚未設定 Gemini 即時網路搜尋，製造地及零件產地僅依模型知識，結果會較保守。',
+      webFail_no_entity:
+        '沒有產品名稱，無法進行即時網路搜尋；製造地及零件產地僅依模型知識，結果會較保守。',
+      webFail_default:
+        '此次查詢沒有進行即時網路搜尋，製造地及零件產地僅依模型知識，結果會較保守。',
+      sum: {
+        madeIn: '製造地：{value}',
+        candidates: '候選產地：{value}',
+        brandOrigin: '品牌來源地：{value}',
+        components: '零件／全球產線：{value}',
+        parts: '零件：{value}',
+        hq: '總部：{value}',
+        company: '公司：{value}',
+      },
+      signal: {
+        ocr: '標籤',
+        retailer: '零售商',
+        manufacturer: '製造商',
+        ownership: '所有權',
+        unknown: '未知',
+      },
+    },
     partsSourcesLabel: '來源',
     sectionShareSave: '儲存圖片',
     sectionShareShare: '分享',

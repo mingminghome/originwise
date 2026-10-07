@@ -231,6 +231,94 @@ export const pl = {
       'Limit wyszukiwania AI wyczerpany — dokładniejsze informacje są teraz niedostępne. Sprawdź ponownie po dziennym resecie.',
     aiCreditsUsedUp:
       'Środki usługi AI tymczasowo się wyczerpały — dokładniejsze informacje są teraz niedostępne. Spróbuj ponownie później.',
+    srv: {
+      partOmittedNoEvidence:
+        'Pominięto kraj części: brak dowodów z wyszukiwania/etykiety (siedziba marki nie jest krajem pochodzenia części).',
+      partOmittedUnconfirmed:
+        'Pominięto kraj części: niepotwierdzony przez wyszukiwanie/etykietę dla tej części.',
+      madeInOmittedBrand:
+        'Pominięto kraj produkcji: pasował tylko do kraju marki/projektu, bez dowodów z fabryki lub pochodzenia.',
+      madeInOmittedOwnership:
+        'Pominięto kraj produkcji: Chiny pochodzą wyłącznie z danych o własności/spółce matce, nie z produktu, etykiety ani sprzedawcy.',
+      cooUnconfirmedSeeParts:
+        'Ostateczny kraj pochodzenia niepotwierdzony – kandydatów szukaj w linii komponentów/produkcji globalnej lub w częściach (produkcja niepotwierdzona).',
+      cooUnconfirmedNoLabel:
+        'Ostateczny kraj pochodzenia niepotwierdzony – brak kraju pochodzenia na produkcie/etykiecie; żaden nie jest zmyślany.',
+      cooUnconfirmedNoBarcode:
+        'Ostateczny kraj pochodzenia niepotwierdzony – żadna strona nie pokazała kodu kreskowego/JAN razem z krajem produkcji; dopasowania po nazwie to tylko prawdopodobni kandydaci.',
+      cooUnconfirmedCandidates:
+        'Ostateczny kraj pochodzenia niepotwierdzony – poniżsi kandydaci to sygnały z wyszukiwania, nie nadrukowane „Made in”.',
+      distributorOmitted:
+        'Lokalnego dystrybutora / agenta rynkowego pominięto wśród spółek matek (nie jest prawnym właścicielem).',
+      chinaLinkUnclear:
+        'Powiązanie z Chinami niejasne – nie traktuj jako potwierdzonego braku powiązań.',
+      verifyConflict:
+        'Weryfikacja wykazała sprzeczne sygnały',
+      companyNotAssessed:
+        'Nie oceniono danych o firmie/własności',
+      taiwanSeparate:
+        'Tajwan jest traktowany jako odrębny kraj w poziomach powiązań',
+      webUnavailableLabel:
+        'Wyszukiwanie w sieci na żywo niedostępne – kraje części pochodzą ze zdjęcia etykiety, nie z wyszukiwania.',
+      altsAim:
+        'Alternatywne marki/produkty mają mniejsze zaangażowanie Chin (nie tylko podobieństwo). Poziomy są szacunkowe; sama siedziba nie dowodzi produkcji poza Chinami.',
+      altsNone:
+        'Nie znaleziono z wystarczającą pewnością alternatyw o mniejszym zaangażowaniu Chin.',
+      sumCooUnconfirmed:
+        'Ostateczny kraj pochodzenia niepotwierdzony',
+      tierUnknown:
+        'Za mało dowodów, by ocenić powiązania z Chinami.',
+      tierNone:
+        'W dostępnych sygnałach nie znaleziono powiązań z Chinami.',
+      tierDirect:
+        'Znaleziono sygnały bezpośrednich powiązań z Chinami.',
+      tierIndirect:
+        'Znaleziono sygnały pośrednich powiązań z Chinami.',
+      cooConflictChina:
+        'Ostateczny kraj pochodzenia niepotwierdzony – sygnał {source} ({label}) przeczy „Made in China”; sama własność/spółka matka nie wyznacza kraju produkcji.',
+      cooConflictMadeIn:
+        'Ostateczny kraj pochodzenia niepotwierdzony – sygnał {source} ({label}) przeczy produkcji w {madeIn}; zachowano tylko jako kandydata.',
+      candidate:
+        '{label} ({rating}, {pct}%, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Modele wyszukiwania na żywo były niedostępne dla tego klucza API – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_search_grounding_unavailable:
+        'Wyszukiwarka Google na żywo była niedostępna dla tego klucza API – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_upstream_credits:
+        'Wyczerpano środki usługi AI (saldo przedpłacone puste) – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_upstream_quota:
+        'Wyczerpano dzienny darmowy limit wyszukiwania Google – spróbuj po dziennym resecie – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_upstream_unavailable:
+        'Wyszukiwanie w sieci na żywo przekroczyło czas lub usługa była przeciążona – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_empty_response:
+        'Wyszukiwanie w sieci na żywo zwróciło pustą odpowiedź – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_disabled:
+        'Wyszukiwanie w sieci na żywo było wyłączone dla tego sprawdzenia – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_gemini_not_configured:
+        'Gemini nie jest skonfigurowany do wyszukiwania na żywo – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_no_entity:
+        'Brak nazwy produktu do wyszukiwania na żywo – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_default:
+        'Brak wyszukiwania w sieci na żywo dla tego sprawdzenia – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      sum: {
+        madeIn: 'Wyprodukowano w: {value}',
+        candidates: 'Kandydaci: {value}',
+        brandOrigin: 'Pochodzenie marki: {value}',
+        components: 'Komponenty/produkcja globalna: {value}',
+        parts: 'Części: {value}',
+        hq: 'Siedziba: {value}',
+        company: 'Firma: {value}',
+      },
+      signal: {
+        ocr: 'etykieta',
+        retailer: 'sprzedawca',
+        manufacturer: 'producent',
+        ownership: 'własność',
+        unknown: 'nieznane',
+      },
+    },
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Zapisz obraz',
     sectionShareShare: 'Udostępnij',

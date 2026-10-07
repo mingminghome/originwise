@@ -5,6 +5,7 @@
 import type { CheckResult } from '../core/types';
 import type { TFunction } from '../core/i18n';
 import { SectionShare } from './SectionShare';
+import { localizeServerText } from '../core/localizeServerText';
 
 /** Ownership-class chinaRelations types (aligned with server STRONG_REL + minority). */
 const OWNERSHIP_REL_TYPES = new Set([
@@ -290,7 +291,7 @@ function formatOwnership(line: OwnershipLine, t: TFunction): string {
       const bits = [typeLabel === typeKey ? line.type.replace(/_/g, ' ') : typeLabel];
       if (line.country) bits.push(line.country);
       if (line.strength) bits.push(line.strength);
-      if (line.note) bits.push(line.note);
+      if (line.note) bits.push(localizeServerText(t, line.note));
       return bits.join(' · ');
     }
     case 'candidate': {
@@ -321,7 +322,7 @@ function formatParts(line: PartsLine, t: TFunction): string {
       }
       if (line.where) bits.push(line.where);
       if (line.chinaRelated) bits.push(t('check.graphChinaLinked'));
-      if (line.note) bits.push(line.note);
+      if (line.note) bits.push(localizeServerText(t, line.note));
       return bits.join(' · ');
     }
   }

@@ -10,6 +10,11 @@
  */
 
 import { normalizeRegion, type RegionCode } from './regions';
+import {
+  cooConflictChinaText,
+  cooConflictMadeInText,
+  SERVER_TEXT,
+} from './serverText';
 
 export type CooClaimSource =
   | 'ocr'
@@ -179,7 +184,7 @@ export function applyCooPriority(input: CooPriorityInput): CooPriorityResult {
       madeIn = undefined;
       confidenceCap = 0.55;
       notes.push(
-        `Final COO unconfirmed — ${preferred.source} signal (${preferred.label}) conflicts with China made-in; ownership/parent alone cannot stamp made-in.`
+        cooConflictChinaText(preferred.source, preferred.label)
       );
     } else if (
       preferred.region === 'CN' &&
@@ -191,7 +196,7 @@ export function applyCooPriority(input: CooPriorityInput): CooPriorityResult {
       madeIn = undefined;
       confidenceCap = 0.55;
       notes.push(
-        `Final COO unconfirmed — ${preferred.source} signal (${preferred.label}) conflicts with made-in ${input.madeIn}; keeping candidates only.`
+        cooConflictMadeInText(preferred.source, preferred.label, String(input.madeIn))
       );
     }
   }
@@ -234,7 +239,7 @@ export function applyCooPriority(input: CooPriorityInput): CooPriorityResult {
     madeIn = undefined;
     confidenceCap = Math.min(confidenceCap ?? 0.5, 0.5);
     notes.push(
-      'Made-in omitted: China came from ownership/parent signals only — not a SKU/label/retailer COO.'
+      SERVER_TEXT.madeInOmittedOwnership
     );
   }
 

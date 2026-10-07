@@ -1,6 +1,7 @@
 import type { CheckResult, RelationTier } from '../core/types';
 import type { TFunction } from '../core/i18n';
 import { TierBadge } from './TierBadge';
+import { localizeServerText } from '../core/localizeServerText';
 
 type AltItem = {
   name: string;
@@ -98,7 +99,7 @@ export function AlternativeCards({
             .join(' · ')}
         </p>
       ) : null}
-      {b.note ? <p className="muted">{b.note}</p> : null}
+      {b.note ? <p className="muted">{localizeServerText(t, b.note)}</p> : null}
     </li>
   );
 

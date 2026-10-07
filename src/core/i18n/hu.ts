@@ -231,6 +231,94 @@ export const hu = {
       'Elfogyott a napi AI-keresési keret — pontosabb információ most nem érhető el. Próbálja újra a napi visszaállítás után.',
     aiCreditsUsedUp:
       'Az AI-szolgáltatás kerete átmenetileg elfogyott — pontosabb információ most nem érhető el. Próbálja újra később.',
+    srv: {
+      partOmittedNoEvidence:
+        'Alkatrész országa kihagyva: nincs bizonyíték keresésből/címkéről (a márka székhelye nem az alkatrész eredete).',
+      partOmittedUnconfirmed:
+        'Alkatrész országa kihagyva: ehhez az alkatrészhez a keresés/címke nem erősítette meg.',
+      madeInOmittedBrand:
+        'Gyártási ország kihagyva: csak a márka/tervezés országával egyezett, gyári vagy származási bizonyíték nélkül.',
+      madeInOmittedOwnership:
+        'Gyártási ország kihagyva: Kína csak tulajdonosi/anyavállalati adatokból származik, nem a termékről, címkéről vagy kereskedőtől.',
+      cooUnconfirmedSeeParts:
+        'A végső származási ország nincs megerősítve – a jelölteket lásd az alkatrészek/globális gyártás sorban vagy az alkatrészeknél (a gyártás nincs megerősítve).',
+      cooUnconfirmedNoLabel:
+        'A végső származási ország nincs megerősítve – a terméken/címkén nincs származási ország; nem találunk ki egyet.',
+      cooUnconfirmedNoBarcode:
+        'A végső származási ország nincs megerősítve – egy weboldal sem mutatta a vonalkódot/JAN-t gyártási országgal együtt; a terméknév szerinti egyezések csak valószínű jelöltek.',
+      cooUnconfirmedCandidates:
+        'A végső származási ország nincs megerősítve – az alábbi jelöltek keresési jelek, nem nyomtatott „Made in” felirat.',
+      distributorOmitted:
+        'Helyi forgalmazó / piaci képviselő kihagyva az anyavállalatok közül (nem jogi tulajdonos).',
+      chinaLinkUnclear:
+        'A kínai kapcsolat nem egyértelmű – ne tekintse megerősítetten Kína-mentesnek.',
+      verifyConflict:
+        'Az ellenőrzés ellentmondó jeleket talált',
+      companyNotAssessed:
+        'A cég-/tulajdonosi adatokat nem értékeltük',
+      taiwanSeparate:
+        'A kapcsolati szinteknél Tajvan külön országnak számít',
+      webUnavailableLabel:
+        'Élő webes keresés nem érhető el – az alkatrészek országai a csomagolás címkéjének fotójáról származnak, nem keresésből.',
+      altsAim:
+        'Az alternatív márkák/termékek kisebb kínai érintettségre törekszenek (nem csak hasonlóságra). A szintek becslések; a székhely önmagában nem bizonyít Kínán kívüli gyártást.',
+      altsNone:
+        'Nem találtunk elég biztos, kisebb kínai érintettségű alternatívát.',
+      sumCooUnconfirmed:
+        'A végső származási ország nincs megerősítve',
+      tierUnknown:
+        'Kevés a bizonyíték a kínai kapcsolatok értékeléséhez.',
+      tierNone:
+        'A rendelkezésre álló jelekben nincs kínai kapcsolat.',
+      tierDirect:
+        'Közvetlen kínai kapcsolatra utaló jeleket találtunk.',
+      tierIndirect:
+        'Közvetett kínai kapcsolatra utaló jeleket találtunk.',
+      cooConflictChina:
+        'A végső származási ország nincs megerősítve – a(z) {source} jel ({label}) ellentmond a „Made in China” adatnak; a tulajdonos/anyavállalat önmagában nem határozza meg a gyártási országot.',
+      cooConflictMadeIn:
+        'A végső származási ország nincs megerősítve – a(z) {source} jel ({label}) ellentmond a(z) {madeIn} gyártásnak; csak jelöltként marad.',
+      candidate:
+        '{label} ({rating}, {pct}%, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Az élő keresési modellek nem voltak elérhetők ezzel az API-kulccsal – a gyártási és alkatrész-országok óvatosabbak (csak a modell tudása).',
+      webFail_search_grounding_unavailable:
+        'Az élő Google-keresés nem volt elérhető ezzel az API-kulccsal – a gyártási és alkatrész-országok óvatosabbak (csak a modell tudása).',
+      webFail_upstream_credits:
+        'Elfogyott az MI-szolgáltatás kreditje (az előre fizetett egyenleg üres) – a gyártási és alkatrész-országok óvatosabbak (csak a modell tudása).',
+      webFail_upstream_quota:
+        'Elfogyott a napi ingyenes Google-keresési keret – próbálja újra a napi visszaállítás után – a gyártási és alkatrész-országok óvatosabbak (csak a modell tudása).',
+      webFail_upstream_unavailable:
+        'Az élő webes keresés időtúllépés miatt leállt, vagy a szolgáltatás túlterhelt volt – a gyártási és alkatrész-országok óvatosabbak (csak a modell tudása).',
+      webFail_empty_response:
+        'Az élő webes keresés üres választ adott – a gyártási és alkatrész-országok óvatosabbak (csak a modell tudása).',
+      webFail_disabled:
+        'Az élő webes keresés ki volt kapcsolva ennél az ellenőrzésnél – a gyártási és alkatrész-országok óvatosabbak (csak a modell tudása).',
+      webFail_gemini_not_configured:
+        'A Gemini nincs beállítva élő webes kereséshez – a gyártási és alkatrész-országok óvatosabbak (csak a modell tudása).',
+      webFail_no_entity:
+        'Nincs terméknév az élő webes kereséshez – a gyártási és alkatrész-országok óvatosabbak (csak a modell tudása).',
+      webFail_default:
+        'Ennél az ellenőrzésnél nem volt élő webes keresés – a gyártási és alkatrész-országok óvatosabbak (csak a modell tudása).',
+      sum: {
+        madeIn: 'Gyártva: {value}',
+        candidates: 'Jelöltek: {value}',
+        brandOrigin: 'Márka eredete: {value}',
+        components: 'Alkatrészek/globális gyártás: {value}',
+        parts: 'Alkatrészek: {value}',
+        hq: 'Székhely: {value}',
+        company: 'Cég: {value}',
+      },
+      signal: {
+        ocr: 'címke',
+        retailer: 'kereskedő',
+        manufacturer: 'gyártó',
+        ownership: 'tulajdonos',
+        unknown: 'ismeretlen',
+      },
+    },
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Kép mentése',
     sectionShareShare: 'Megosztás',
