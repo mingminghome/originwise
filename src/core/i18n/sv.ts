@@ -231,6 +231,94 @@ export const sv = {
       'AI-sökkvoten är slut — mer exakt information finns inte just nu. Försök igen efter den dagliga återställningen.',
     aiCreditsUsedUp:
       'AI-tjänstens kredit är tillfälligt slut — mer exakt information är inte tillgänglig just nu. Försök igen senare.',
+    srv: {
+      partOmittedNoEvidence:
+        'Delens land utelämnat: inga belägg från sökning/etikett (varumärkets huvudkontor är inte en dels ursprung).',
+      partOmittedUnconfirmed:
+        'Delens land utelämnat: inte bekräftat av sökning/etikett för denna del.',
+      madeInOmittedBrand:
+        'Tillverkningsland utelämnat: det stämde bara med varumärkets/designens land, utan belägg från fabrik eller ursprung.',
+      madeInOmittedOwnership:
+        'Tillverkningsland utelämnat: Kina kommer bara från ägar-/moderbolagsdata, inte från produkt, etikett eller återförsäljare.',
+      cooUnconfirmedSeeParts:
+        'Slutligt ursprungsland obekräftat – se raden komponenter/global produktion eller delarna för kandidater (tillverkning inte bekräftad).',
+      cooUnconfirmedNoLabel:
+        'Slutligt ursprungsland obekräftat – inget ursprungsland på produkt/etikett; inget hittas på.',
+      cooUnconfirmedNoBarcode:
+        'Slutligt ursprungsland obekräftat – ingen webbsida visade streckkoden/JAN tillsammans med ett tillverkningsland; träffar på produktnamn är bara troliga kandidater.',
+      cooUnconfirmedCandidates:
+        'Slutligt ursprungsland obekräftat – kandidaterna nedan är söksignaler, inte en tryckt ”Made in”.',
+      distributorOmitted:
+        'Lokal distributör / marknadsagent utelämnad från moderbolag (inte juridisk ägare).',
+      chinaLinkUnclear:
+        'Koppling till Kina oklar – behandla det inte som bekräftat utan Kina.',
+      verifyConflict:
+        'Kontrollen fann motstridiga signaler',
+      companyNotAssessed:
+        'Företags-/ägardata inte bedömda',
+      taiwanSeparate:
+        'Taiwan behandlas som ett eget land i kopplingsnivåerna',
+      webUnavailableLabel:
+        'Live webbsökning otillgänglig – delarnas länder kommer från fotot av etiketten, inte från sökning.',
+      altsAim:
+        'Alternativa varumärken/produkter siktar på mindre kinesisk inblandning (inte bara likhet). Nivåerna är uppskattningar; huvudkontoret ensamt bevisar inte tillverkning utanför Kina.',
+      altsNone:
+        'Inga alternativ med mindre kinesisk inblandning hittades med tillräcklig säkerhet.',
+      sumCooUnconfirmed:
+        'Slutligt ursprungsland obekräftat',
+      tierUnknown:
+        'För lite belägg för att bedöma kopplingar till Kina.',
+      tierNone:
+        'Inga kopplingar till Kina hittades i tillgängliga signaler.',
+      tierDirect:
+        'Direkta signaler om koppling till Kina hittades.',
+      tierIndirect:
+        'Indirekta signaler om koppling till Kina hittades.',
+      cooConflictChina:
+        'Slutligt ursprungsland obekräftat – {source}-signal ({label}) motsäger ”Made in China”; ägare/moderbolag ensamt avgör inte tillverkningslandet.',
+      cooConflictMadeIn:
+        'Slutligt ursprungsland obekräftat – {source}-signal ({label}) motsäger tillverkning i {madeIn}; behålls bara som kandidat.',
+      candidate:
+        '{label} ({rating}, {pct} %, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Live-sökmodeller var inte tillgängliga med denna API-nyckel – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_search_grounding_unavailable:
+        'Live Google-sökning var inte tillgänglig med denna API-nyckel – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_upstream_credits:
+        'AI-krediter slut (förbetalt saldo tomt) – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_upstream_quota:
+        'Dagens gratis Google-sökkvot är slut – försök igen efter den dagliga återställningen – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_upstream_unavailable:
+        'Live webbsökning fick timeout eller tjänsten var upptagen – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_empty_response:
+        'Live webbsökning gav ett tomt svar – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_disabled:
+        'Live webbsökning var avstängd för denna kontroll – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_gemini_not_configured:
+        'Gemini är inte konfigurerat för live webbsökning – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_no_entity:
+        'Inget produktnamn för live webbsökning – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_default:
+        'Ingen live webbsökning för denna kontroll – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      sum: {
+        madeIn: 'Tillverkad i: {value}',
+        candidates: 'Kandidater: {value}',
+        brandOrigin: 'Varumärkets ursprung: {value}',
+        components: 'Komponenter/global produktion: {value}',
+        parts: 'Delar: {value}',
+        hq: 'Huvudkontor: {value}',
+        company: 'Företag: {value}',
+      },
+      signal: {
+        ocr: 'etikett',
+        retailer: 'återförsäljare',
+        manufacturer: 'tillverkare',
+        ownership: 'ägande',
+        unknown: 'okänt',
+      },
+    },
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Spara bild',
     sectionShareShare: 'Dela',

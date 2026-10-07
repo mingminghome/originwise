@@ -6,6 +6,7 @@ import { OriginLayers } from './OriginLayers';
 import { OriginMap } from './OriginMap';
 import { RelationGraph } from './RelationGraph';
 import { TierBadge } from './TierBadge';
+import { localizeServerText } from '../core/localizeServerText';
 
 function agentLabel(id: string, t: TFunction): string {
   const key = `check.agent.${id}`;
@@ -156,7 +157,7 @@ export function ResultPanel({
       </header>
 
       {result.summary ? (
-        <p className="ask-result-summary">{result.summary}</p>
+        <p className="ask-result-summary">{localizeServerText(t, result.summary)}</p>
       ) : null}
 
       {searchName && typeof searchRequests === 'number' ? (
@@ -188,7 +189,7 @@ export function ResultPanel({
           <h3 className="result-section-title">{t('check.productNotes')}</h3>
           <ul className="tier-reasons-list">
             {notes.map((n) => (
-              <li key={n}>{n}</li>
+              <li key={n}>{localizeServerText(t, n)}</li>
             ))}
           </ul>
         </section>
@@ -224,7 +225,7 @@ export function ResultPanel({
           <h3 className="ask-result-caveats-title">{t('check.caveats')}</h3>
           <ul>
             {result.caveats.map((c) => (
-              <li key={c}>{c}</li>
+              <li key={c}>{localizeServerText(t, c)}</li>
             ))}
           </ul>
         </div>

@@ -231,6 +231,94 @@ export const es = {
       'Cuota de búsqueda de IA agotada — no hay información más precisa por ahora. Vuelve a consultar tras el reinicio diario.',
     aiCreditsUsedUp:
       'El crédito del servicio de IA se ha agotado temporalmente — no hay información más precisa por ahora. Inténtalo más tarde.',
+    srv: {
+      partOmittedNoEvidence:
+        'País de la pieza omitido: sin pruebas de búsqueda/etiqueta (la sede de la marca no es el origen de una pieza).',
+      partOmittedUnconfirmed:
+        'País de la pieza omitido: no confirmado por búsqueda/etiqueta para esta pieza.',
+      madeInOmittedBrand:
+        'País de fabricación omitido: solo coincidía con el país de la marca/diseño, sin pruebas de fábrica u origen.',
+      madeInOmittedOwnership:
+        'País de fabricación omitido: China procede solo de datos de propiedad/matriz, no del producto, la etiqueta o un minorista.',
+      cooUnconfirmedSeeParts:
+        'Origen final sin confirmar: consulta la línea de componentes/producción global o las piezas para ver candidatos (fabricación no confirmada).',
+      cooUnconfirmedNoLabel:
+        'Origen final sin confirmar: no hay país de origen en el producto/etiqueta; no se inventa ninguno.',
+      cooUnconfirmedNoBarcode:
+        'Origen final sin confirmar: ninguna página web mostraba el código de barras/JAN junto con un país de fabricación; las coincidencias por nombre son solo candidatos probables.',
+      cooUnconfirmedCandidates:
+        'Origen final sin confirmar: los candidatos de abajo son señales de búsqueda, no un «Hecho en» impreso.',
+      distributorOmitted:
+        'Distribuidor local / agente de mercado omitido de las matrices (no es propietario legal).',
+      chinaLinkUnclear:
+        'Vínculo con China poco claro: no lo trates como confirmado sin China.',
+      verifyConflict:
+        'La verificación detectó señales contradictorias',
+      companyNotAssessed:
+        'Datos de empresa/propiedad no evaluados',
+      taiwanSeparate:
+        'Taiwán se trata como un país distinto para los niveles de relación',
+      webUnavailableLabel:
+        'Búsqueda web en vivo no disponible: los países de las piezas proceden de la foto de la etiqueta, no de la búsqueda.',
+      altsAim:
+        'Las marcas/productos alternativos buscan menor implicación de China (no solo similitud). Los niveles son estimaciones; la sede por sí sola no demuestra fabricación fuera de China.',
+      altsNone:
+        'No se encontraron alternativas con menor implicación de China con suficiente certeza.',
+      sumCooUnconfirmed:
+        'Origen final sin confirmar',
+      tierUnknown:
+        'Pruebas insuficientes para evaluar vínculos con China.',
+      tierNone:
+        'No se encontraron vínculos con China en las señales disponibles.',
+      tierDirect:
+        'Se encontraron señales de vínculo directo con China.',
+      tierIndirect:
+        'Se encontraron señales de vínculo indirecto con China.',
+      cooConflictChina:
+        'Origen final sin confirmar: la señal de {source} ({label}) contradice «Hecho en China»; la propiedad/matriz por sí sola no fija el país de fabricación.',
+      cooConflictMadeIn:
+        'Origen final sin confirmar: la señal de {source} ({label}) contradice la fabricación en {madeIn}; se mantiene solo como candidato.',
+      candidate:
+        '{label} ({rating}, {pct} %, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Los modelos de búsqueda en vivo no estaban disponibles con esta clave API; los países de fabricación y de las piezas son más prudentes (solo conocimiento del modelo).',
+      webFail_search_grounding_unavailable:
+        'La búsqueda de Google en vivo no estaba disponible con esta clave API; los países de fabricación y de las piezas son más prudentes (solo conocimiento del modelo).',
+      webFail_upstream_credits:
+        'Créditos del servicio de IA agotados (saldo prepago vacío); los países de fabricación y de las piezas son más prudentes (solo conocimiento del modelo).',
+      webFail_upstream_quota:
+        'Cuota diaria gratuita de búsqueda de Google agotada: inténtalo tras el reinicio diario; los países de fabricación y de las piezas son más prudentes (solo conocimiento del modelo).',
+      webFail_upstream_unavailable:
+        'La búsqueda web en vivo agotó el tiempo o el servicio estaba saturado; los países de fabricación y de las piezas son más prudentes (solo conocimiento del modelo).',
+      webFail_empty_response:
+        'La búsqueda web en vivo devolvió una respuesta vacía; los países de fabricación y de las piezas son más prudentes (solo conocimiento del modelo).',
+      webFail_disabled:
+        'La búsqueda web en vivo estaba desactivada para esta consulta; los países de fabricación y de las piezas son más prudentes (solo conocimiento del modelo).',
+      webFail_gemini_not_configured:
+        'Gemini no está configurado para la búsqueda web en vivo; los países de fabricación y de las piezas son más prudentes (solo conocimiento del modelo).',
+      webFail_no_entity:
+        'No hay nombre de producto para la búsqueda web en vivo; los países de fabricación y de las piezas son más prudentes (solo conocimiento del modelo).',
+      webFail_default:
+        'Sin búsqueda web en vivo para esta consulta; los países de fabricación y de las piezas son más prudentes (solo conocimiento del modelo).',
+      sum: {
+        madeIn: 'Hecho en: {value}',
+        candidates: 'Candidatos: {value}',
+        brandOrigin: 'Origen de la marca: {value}',
+        components: 'Componentes/producción global: {value}',
+        parts: 'Piezas: {value}',
+        hq: 'Sede: {value}',
+        company: 'Empresa: {value}',
+      },
+      signal: {
+        ocr: 'etiqueta',
+        retailer: 'minorista',
+        manufacturer: 'fabricante',
+        ownership: 'propiedad',
+        unknown: 'desconocido',
+      },
+    },
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Guardar imagen',
     sectionShareShare: 'Compartir',

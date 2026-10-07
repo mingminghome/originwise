@@ -231,6 +231,94 @@ export const it = {
       'Quota di ricerca IA esaurita — al momento non sono disponibili informazioni più precise. Riprova dopo il reset giornaliero.',
     aiCreditsUsedUp:
       'Credito del servizio IA temporaneamente esaurito — al momento non sono disponibili informazioni più precise. Riprova più tardi.',
+    srv: {
+      partOmittedNoEvidence:
+        'Paese del componente omesso: nessuna prova da ricerca/etichetta (la sede del marchio non è l’origine di un componente).',
+      partOmittedUnconfirmed:
+        'Paese del componente omesso: non confermato da ricerca/etichetta per questo componente.',
+      madeInOmittedBrand:
+        'Paese di fabbricazione omesso: corrispondeva solo al paese del marchio/design, senza prove di stabilimento o origine.',
+      madeInOmittedOwnership:
+        'Paese di fabbricazione omesso: la Cina deriva solo da dati di proprietà/capogruppo, non dal prodotto, dall’etichetta o da un rivenditore.',
+      cooUnconfirmedSeeParts:
+        'Origine finale non confermata – vedi la linea componenti/produzione globale o i componenti per i candidati (fabbricazione non confermata).',
+      cooUnconfirmedNoLabel:
+        'Origine finale non confermata – nessun paese d’origine sul prodotto/etichetta; non ne viene inventato uno.',
+      cooUnconfirmedNoBarcode:
+        'Origine finale non confermata – nessuna pagina web mostrava il codice a barre/JAN con un paese di fabbricazione; le corrispondenze per nome sono solo candidati probabili.',
+      cooUnconfirmedCandidates:
+        'Origine finale non confermata – i candidati qui sotto sono segnali di ricerca, non un «Made in» stampato.',
+      distributorOmitted:
+        'Distributore locale / agente di mercato escluso dalle capogruppo (non è un proprietario legale).',
+      chinaLinkUnclear:
+        'Legame con la Cina non chiaro – non considerarlo confermato privo di legami con la Cina.',
+      verifyConflict:
+        'La verifica ha segnalato indicazioni contrastanti',
+      companyNotAssessed:
+        'Dati su azienda/proprietà non valutati',
+      taiwanSeparate:
+        'Taiwan è trattata come paese distinto per i livelli di relazione',
+      webUnavailableLabel:
+        'Ricerca web in tempo reale non disponibile – i paesi dei componenti provengono dalla foto dell’etichetta, non dalla ricerca.',
+      altsAim:
+        'I marchi/prodotti alternativi puntano a un minore coinvolgimento della Cina (non solo somiglianza). I livelli sono stime; la sede da sola non prova una produzione fuori dalla Cina.',
+      altsNone:
+        'Nessuna alternativa con minore coinvolgimento della Cina trovata con sufficiente certezza.',
+      sumCooUnconfirmed:
+        'Origine finale non confermata',
+      tierUnknown:
+        'Prove insufficienti per valutare i legami con la Cina.',
+      tierNone:
+        'Nessun legame con la Cina trovato nei segnali disponibili.',
+      tierDirect:
+        'Trovati segnali di legame diretto con la Cina.',
+      tierIndirect:
+        'Trovati segnali di legame indiretto con la Cina.',
+      cooConflictChina:
+        'Origine finale non confermata – il segnale {source} ({label}) contraddice «Made in China»; proprietà/capogruppo da sole non bastano a stabilire il paese di fabbricazione.',
+      cooConflictMadeIn:
+        'Origine finale non confermata – il segnale {source} ({label}) contraddice la fabbricazione in {madeIn}; mantenuto solo come candidato.',
+      candidate:
+        '{label} ({rating}, {pct}%, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'I modelli di ricerca in tempo reale non erano disponibili con questa chiave API – i paesi di fabbricazione e dei componenti sono più prudenti (solo conoscenza del modello).',
+      webFail_search_grounding_unavailable:
+        'La ricerca Google in tempo reale non era disponibile con questa chiave API – i paesi di fabbricazione e dei componenti sono più prudenti (solo conoscenza del modello).',
+      webFail_upstream_credits:
+        'Crediti del servizio IA esauriti (saldo prepagato vuoto) – i paesi di fabbricazione e dei componenti sono più prudenti (solo conoscenza del modello).',
+      webFail_upstream_quota:
+        'Quota giornaliera gratuita di ricerca Google esaurita – riprova dopo il ripristino giornaliero – i paesi di fabbricazione e dei componenti sono più prudenti (solo conoscenza del modello).',
+      webFail_upstream_unavailable:
+        'La ricerca web in tempo reale è scaduta o il servizio era sovraccarico – i paesi di fabbricazione e dei componenti sono più prudenti (solo conoscenza del modello).',
+      webFail_empty_response:
+        'La ricerca web in tempo reale ha restituito una risposta vuota – i paesi di fabbricazione e dei componenti sono più prudenti (solo conoscenza del modello).',
+      webFail_disabled:
+        'La ricerca web in tempo reale era disattivata per questa verifica – i paesi di fabbricazione e dei componenti sono più prudenti (solo conoscenza del modello).',
+      webFail_gemini_not_configured:
+        'Gemini non è configurato per la ricerca web in tempo reale – i paesi di fabbricazione e dei componenti sono più prudenti (solo conoscenza del modello).',
+      webFail_no_entity:
+        'Nessun nome di prodotto per la ricerca web in tempo reale – i paesi di fabbricazione e dei componenti sono più prudenti (solo conoscenza del modello).',
+      webFail_default:
+        'Nessuna ricerca web in tempo reale per questa verifica – i paesi di fabbricazione e dei componenti sono più prudenti (solo conoscenza del modello).',
+      sum: {
+        madeIn: 'Prodotto in: {value}',
+        candidates: 'Candidati: {value}',
+        brandOrigin: 'Origine del marchio: {value}',
+        components: 'Componenti/produzione globale: {value}',
+        parts: 'Componenti: {value}',
+        hq: 'Sede: {value}',
+        company: 'Azienda: {value}',
+      },
+      signal: {
+        ocr: 'etichetta',
+        retailer: 'rivenditore',
+        manufacturer: 'produttore',
+        ownership: 'proprietà',
+        unknown: 'sconosciuto',
+      },
+    },
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Salva immagine',
     sectionShareShare: 'Condividi',

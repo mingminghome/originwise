@@ -231,6 +231,94 @@ export const fi = {
       'Tekoälyhaun kiintiö on käytetty — tarkempaa tietoa ei ole nyt saatavilla. Tarkista uudelleen päivittäisen nollauksen jälkeen.',
     aiCreditsUsedUp:
       'Tekoälypalvelun krediitit on tilapäisesti käytetty — tarkempaa tietoa ei ole nyt saatavilla. Yritä myöhemmin uudelleen.',
+    srv: {
+      partOmittedNoEvidence:
+        'Osan maa jätetty pois: ei näyttöä hausta/etiketistä (brändin pääkonttori ei ole osan alkuperä).',
+      partOmittedUnconfirmed:
+        'Osan maa jätetty pois: haku/etiketti ei vahvistanut sitä tälle osalle.',
+      madeInOmittedBrand:
+        'Valmistusmaa jätetty pois: se vastasi vain brändin/suunnittelun maata ilman tehdas- tai alkuperänäyttöä.',
+      madeInOmittedOwnership:
+        'Valmistusmaa jätetty pois: Kiina tulee vain omistus-/emoyhtiötiedoista, ei tuotteesta, etiketistä tai jälleenmyyjältä.',
+      cooUnconfirmedSeeParts:
+        'Lopullinen alkuperämaa vahvistamatta – katso ehdokkaat komponentit/globaali tuotanto -riviltä tai osista (valmistusta ei vahvistettu).',
+      cooUnconfirmedNoLabel:
+        'Lopullinen alkuperämaa vahvistamatta – tuotteessa/etiketissä ei ole alkuperämaata; sitä ei keksitä.',
+      cooUnconfirmedNoBarcode:
+        'Lopullinen alkuperämaa vahvistamatta – mikään verkkosivu ei näyttänyt viivakoodia/JAN-koodia yhdessä valmistusmaan kanssa; tuotenimellä löydetyt ovat vain todennäköisiä ehdokkaita.',
+      cooUnconfirmedCandidates:
+        'Lopullinen alkuperämaa vahvistamatta – alla olevat ehdokkaat ovat hakusignaaleja, eivät painettu ”Made in”.',
+      distributorOmitted:
+        'Paikallinen jakelija / markkina-agentti jätetty pois emoyhtiöistä (ei laillinen omistaja).',
+      chinaLinkUnclear:
+        'Yhteys Kiinaan epäselvä – älä pidä sitä vahvistetusti Kiinasta riippumattomana.',
+      verifyConflict:
+        'Tarkistus löysi ristiriitaisia signaaleja',
+      companyNotAssessed:
+        'Yritys-/omistustietoja ei arvioitu',
+      taiwanSeparate:
+        'Taiwania käsitellään yhteystasoissa erillisenä maana',
+      webUnavailableLabel:
+        'Reaaliaikainen verkkohaku ei käytettävissä – osien maat tulevat pakkausetiketin kuvasta, eivät hausta.',
+      altsAim:
+        'Vaihtoehtoiset brändit/tuotteet tähtäävät pienempään Kiina-kytkökseen (eivät vain samankaltaisuuteen). Tasot ovat arvioita; pääkonttori yksin ei todista valmistusta Kiinan ulkopuolella.',
+      altsNone:
+        'Riittävän varmoja vaihtoehtoja, joissa on pienempi Kiina-kytkös, ei löytynyt.',
+      sumCooUnconfirmed:
+        'Lopullinen alkuperämaa vahvistamatta',
+      tierUnknown:
+        'Liian vähän näyttöä Kiina-yhteyksien arvioimiseksi.',
+      tierNone:
+        'Saatavilla olevista signaaleista ei löytynyt yhteyksiä Kiinaan.',
+      tierDirect:
+        'Löytyi suoria signaaleja yhteydestä Kiinaan.',
+      tierIndirect:
+        'Löytyi epäsuoria signaaleja yhteydestä Kiinaan.',
+      cooConflictChina:
+        'Lopullinen alkuperämaa vahvistamatta – {source}-signaali ({label}) on ristiriidassa ”Made in China” -tiedon kanssa; omistus/emoyhtiö yksin ei määrää valmistusmaata.',
+      cooConflictMadeIn:
+        'Lopullinen alkuperämaa vahvistamatta – {source}-signaali ({label}) on ristiriidassa valmistusmaan {madeIn} kanssa; säilytetään vain ehdokkaana.',
+      candidate:
+        '{label} ({rating}, {pct} %, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Reaaliaikaiset hakumallit eivät olleet käytettävissä tällä API-avaimella – valmistus- ja osamaat ovat varovaisempia (vain mallin tietämys).',
+      webFail_search_grounding_unavailable:
+        'Reaaliaikainen Google-haku ei ollut käytettävissä tällä API-avaimella – valmistus- ja osamaat ovat varovaisempia (vain mallin tietämys).',
+      webFail_upstream_credits:
+        'Tekoälypalvelun krediitit loppuneet (ennakkomaksettu saldo tyhjä) – valmistus- ja osamaat ovat varovaisempia (vain mallin tietämys).',
+      webFail_upstream_quota:
+        'Päivittäinen ilmainen Google-hakukiintiö käytetty – yritä uudelleen päivittäisen nollauksen jälkeen – valmistus- ja osamaat ovat varovaisempia (vain mallin tietämys).',
+      webFail_upstream_unavailable:
+        'Reaaliaikainen verkkohaku aikakatkaistiin tai palvelu oli ruuhkainen – valmistus- ja osamaat ovat varovaisempia (vain mallin tietämys).',
+      webFail_empty_response:
+        'Reaaliaikainen verkkohaku palautti tyhjän vastauksen – valmistus- ja osamaat ovat varovaisempia (vain mallin tietämys).',
+      webFail_disabled:
+        'Reaaliaikainen verkkohaku oli poistettu käytöstä tässä tarkistuksessa – valmistus- ja osamaat ovat varovaisempia (vain mallin tietämys).',
+      webFail_gemini_not_configured:
+        'Geminiä ei ole määritetty reaaliaikaiseen verkkohakuun – valmistus- ja osamaat ovat varovaisempia (vain mallin tietämys).',
+      webFail_no_entity:
+        'Ei tuotenimeä reaaliaikaista verkkohakua varten – valmistus- ja osamaat ovat varovaisempia (vain mallin tietämys).',
+      webFail_default:
+        'Tässä tarkistuksessa ei tehty reaaliaikaista verkkohakua – valmistus- ja osamaat ovat varovaisempia (vain mallin tietämys).',
+      sum: {
+        madeIn: 'Valmistusmaa: {value}',
+        candidates: 'Ehdokkaat: {value}',
+        brandOrigin: 'Brändin alkuperä: {value}',
+        components: 'Komponentit/globaali tuotanto: {value}',
+        parts: 'Osat: {value}',
+        hq: 'Pääkonttori: {value}',
+        company: 'Yritys: {value}',
+      },
+      signal: {
+        ocr: 'etiketti',
+        retailer: 'jälleenmyyjä',
+        manufacturer: 'valmistaja',
+        ownership: 'omistus',
+        unknown: 'tuntematon',
+      },
+    },
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Tallenna kuva',
     sectionShareShare: 'Jaa',

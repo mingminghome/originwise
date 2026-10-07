@@ -231,6 +231,94 @@ export const ro = {
       'Cota de căutare AI a fost epuizată — informații mai precise nu sunt disponibile acum. Verificați din nou după resetarea zilnică.',
     aiCreditsUsedUp:
       'Creditul serviciului AI s-a epuizat temporar — informații mai precise nu sunt disponibile acum. Încercați din nou mai târziu.',
+    srv: {
+      partOmittedNoEvidence:
+        'Țara piesei omisă: nicio dovadă din căutare/etichetă (sediul mărcii nu este originea unei piese).',
+      partOmittedUnconfirmed:
+        'Țara piesei omisă: neconfirmată prin căutare/etichetă pentru această piesă.',
+      madeInOmittedBrand:
+        'Țara de fabricație omisă: corespundea doar țării mărcii/designului, fără dovezi de fabrică sau origine.',
+      madeInOmittedOwnership:
+        'Țara de fabricație omisă: China provine doar din date de proprietate/companie-mamă, nu de pe produs, etichetă sau de la un comerciant.',
+      cooUnconfirmedSeeParts:
+        'Originea finală neconfirmată – vedeți rândul componente/producție globală sau piesele pentru candidați (fabricație neconfirmată).',
+      cooUnconfirmedNoLabel:
+        'Originea finală neconfirmată – nicio țară de origine pe produs/etichetă; nu se inventează una.',
+      cooUnconfirmedNoBarcode:
+        'Originea finală neconfirmată – nicio pagină web nu arăta codul de bare/JAN împreună cu o țară de fabricație; potrivirile după nume sunt doar candidați probabili.',
+      cooUnconfirmedCandidates:
+        'Originea finală neconfirmată – candidații de mai jos sunt semnale de căutare, nu un „Made in” tipărit.',
+      distributorOmitted:
+        'Distribuitorul local / agentul de piață omis din companiile-mamă (nu este proprietar legal).',
+      chinaLinkUnclear:
+        'Legătura cu China este neclară – nu o considerați confirmat fără China.',
+      verifyConflict:
+        'Verificarea a semnalat indicii contradictorii',
+      companyNotAssessed:
+        'Datele despre companie/proprietate nu au fost evaluate',
+      taiwanSeparate:
+        'Taiwanul este tratat ca țară separată pentru nivelurile de legătură',
+      webUnavailableLabel:
+        'Căutarea web în timp real indisponibilă – țările pieselor provin din fotografia etichetei, nu din căutare.',
+      altsAim:
+        'Mărcile/produsele alternative urmăresc o implicare mai mică a Chinei (nu doar asemănare). Nivelurile sunt estimări; sediul singur nu dovedește fabricația în afara Chinei.',
+      altsNone:
+        'Nu s-au găsit alternative cu implicare mai mică a Chinei cu suficientă certitudine.',
+      sumCooUnconfirmed:
+        'Originea finală neconfirmată',
+      tierUnknown:
+        'Dovezi insuficiente pentru a evalua legăturile cu China.',
+      tierNone:
+        'Nu s-au găsit legături cu China în semnalele disponibile.',
+      tierDirect:
+        'S-au găsit semnale de legătură directă cu China.',
+      tierIndirect:
+        'S-au găsit semnale de legătură indirectă cu China.',
+      cooConflictChina:
+        'Originea finală neconfirmată – semnalul {source} ({label}) contrazice „Made in China”; proprietatea/compania-mamă singure nu stabilesc țara de fabricație.',
+      cooConflictMadeIn:
+        'Originea finală neconfirmată – semnalul {source} ({label}) contrazice fabricația în {madeIn}; păstrat doar ca candidat.',
+      candidate:
+        '{label} ({rating}, {pct}%, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Modelele de căutare în timp real nu erau disponibile cu această cheie API – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_search_grounding_unavailable:
+        'Căutarea Google în timp real nu era disponibilă cu această cheie API – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_upstream_credits:
+        'Creditele serviciului AI s-au epuizat (sold preplătit gol) – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_upstream_quota:
+        'Cota zilnică gratuită de căutare Google s-a epuizat – reîncercați după resetarea zilnică – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_upstream_unavailable:
+        'Căutarea web în timp real a expirat sau serviciul era ocupat – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_empty_response:
+        'Căutarea web în timp real a returnat un răspuns gol – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_disabled:
+        'Căutarea web în timp real a fost dezactivată pentru această verificare – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_gemini_not_configured:
+        'Gemini nu este configurat pentru căutarea web în timp real – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_no_entity:
+        'Niciun nume de produs pentru căutarea web în timp real – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_default:
+        'Fără căutare web în timp real pentru această verificare – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      sum: {
+        madeIn: 'Fabricat în: {value}',
+        candidates: 'Candidați: {value}',
+        brandOrigin: 'Originea mărcii: {value}',
+        components: 'Componente/producție globală: {value}',
+        parts: 'Piese: {value}',
+        hq: 'Sediu: {value}',
+        company: 'Companie: {value}',
+      },
+      signal: {
+        ocr: 'etichetă',
+        retailer: 'comerciant',
+        manufacturer: 'producător',
+        ownership: 'proprietate',
+        unknown: 'necunoscut',
+      },
+    },
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Salvează imaginea',
     sectionShareShare: 'Distribuie',

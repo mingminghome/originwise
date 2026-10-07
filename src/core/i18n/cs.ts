@@ -231,6 +231,94 @@ export const cs = {
       'Kvóta AI vyhledávání je vyčerpána — přesnější informace teď nejsou k dispozici. Zkuste to znovu po denním obnovení.',
     aiCreditsUsedUp:
       'Kredit AI služby je dočasně vyčerpán — přesnější informace teď nejsou k dispozici. Zkuste to prosím později.',
+    srv: {
+      partOmittedNoEvidence:
+        'Země dílu vynechána: žádný důkaz z vyhledávání/štítku (sídlo značky není původ dílu).',
+      partOmittedUnconfirmed:
+        'Země dílu vynechána: pro tento díl nepotvrzeno vyhledáváním/štítkem.',
+      madeInOmittedBrand:
+        'Země výroby vynechána: shodovala se jen se zemí značky/designu, bez důkazu o továrně či původu.',
+      madeInOmittedOwnership:
+        'Země výroby vynechána: Čína pochází jen z údajů o vlastnictví/mateřské firmě, ne z výrobku, štítku ani prodejce.',
+      cooUnconfirmedSeeParts:
+        'Konečná země původu nepotvrzena – kandidáty najdete v řádku komponenty/globální výroba nebo u dílů (výroba nepotvrzena).',
+      cooUnconfirmedNoLabel:
+        'Konečná země původu nepotvrzena – na výrobku/štítku není země původu; žádná se nevymýšlí.',
+      cooUnconfirmedNoBarcode:
+        'Konečná země původu nepotvrzena – žádná stránka neukázala čárový kód/JAN se zemí výroby; shody podle názvu jsou jen pravděpodobní kandidáti.',
+      cooUnconfirmedCandidates:
+        'Konečná země původu nepotvrzena – kandidáti níže jsou signály z vyhledávání, ne vytištěné „Made in“.',
+      distributorOmitted:
+        'Místní distributor / tržní zástupce vynechán z mateřských firem (není právním vlastníkem).',
+      chinaLinkUnclear:
+        'Vazba na Čínu nejasná – neberte jako potvrzeně bez Číny.',
+      verifyConflict:
+        'Ověření našlo protichůdné signály',
+      companyNotAssessed:
+        'Údaje o firmě/vlastnictví nebyly posouzeny',
+      taiwanSeparate:
+        'Tchaj-wan je pro úrovně vazeb brán jako samostatná země',
+      webUnavailableLabel:
+        'Živé vyhledávání na webu nedostupné – země dílů pocházejí z fotky štítku, ne z vyhledávání.',
+      altsAim:
+        'Alternativní značky/výrobky míří na menší zapojení Číny (nejen podobnost). Úrovně jsou odhady; samotné sídlo nedokazuje výrobu mimo Čínu.',
+      altsNone:
+        'Nenalezeny dostatečně jisté alternativy s menším zapojením Číny.',
+      sumCooUnconfirmed:
+        'Konečná země původu nepotvrzena',
+      tierUnknown:
+        'Nedostatek důkazů pro posouzení vazeb na Čínu.',
+      tierNone:
+        'V dostupných signálech nenalezeny vazby na Čínu.',
+      tierDirect:
+        'Nalezeny signály přímé vazby na Čínu.',
+      tierIndirect:
+        'Nalezeny signály nepřímé vazby na Čínu.',
+      cooConflictChina:
+        'Konečná země původu nepotvrzena – signál {source} ({label}) odporuje „Made in China“; samotné vlastnictví/mateřská firma neurčuje zemi výroby.',
+      cooConflictMadeIn:
+        'Konečná země původu nepotvrzena – signál {source} ({label}) odporuje výrobě v {madeIn}; ponecháno jen jako kandidát.',
+      candidate:
+        '{label} ({rating}, {pct} %, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Modely živého vyhledávání nebyly s tímto klíčem API dostupné – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_search_grounding_unavailable:
+        'Živé vyhledávání Google nebylo s tímto klíčem API dostupné – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_upstream_credits:
+        'Kredit služby AI vyčerpán (předplacený zůstatek je prázdný) – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_upstream_quota:
+        'Denní bezplatný limit vyhledávání Google vyčerpán – zkuste to po denním resetu – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_upstream_unavailable:
+        'Živé vyhledávání na webu vypršelo nebo byla služba přetížená – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_empty_response:
+        'Živé vyhledávání na webu vrátilo prázdnou odpověď – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_disabled:
+        'Živé vyhledávání na webu bylo pro tuto kontrolu vypnuto – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_gemini_not_configured:
+        'Gemini není nastaven pro živé vyhledávání – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_no_entity:
+        'Chybí název výrobku pro živé vyhledávání – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_default:
+        'Pro tuto kontrolu neproběhlo živé vyhledávání na webu – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      sum: {
+        madeIn: 'Vyrobeno v: {value}',
+        candidates: 'Kandidáti: {value}',
+        brandOrigin: 'Původ značky: {value}',
+        components: 'Komponenty/globální výroba: {value}',
+        parts: 'Díly: {value}',
+        hq: 'Sídlo: {value}',
+        company: 'Firma: {value}',
+      },
+      signal: {
+        ocr: 'štítek',
+        retailer: 'prodejce',
+        manufacturer: 'výrobce',
+        ownership: 'vlastnictví',
+        unknown: 'neznámé',
+      },
+    },
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Uložit obrázek',
     sectionShareShare: 'Sdílet',

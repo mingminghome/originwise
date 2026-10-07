@@ -34,6 +34,7 @@ import {
   type RegionCode,
 } from './regions';
 import { applyCooPriority, extractCooClaimsFromText } from './cooPriority';
+import { SERVER_TEXT, webFailText } from './serverText';
 
 export type SynthesizeInput = {
   jobId: string;
@@ -777,7 +778,7 @@ function sanitizeParts(
       if (!canConfirmCountries) {
         // Search fail / no OCR: never keep model-memory part countries (HQ echo).
         stripCountry(
-          'Part country omitted: no Search/OCR evidence (brand HQ is not a part COO).'
+          SERVER_TEXT.partOmittedNoEvidence
         );
       } else {
         const keepMade =
@@ -801,7 +802,7 @@ function sanitizeParts(
             : undefined;
         if ((madeIn || originCountry) && !madeFinal && !originFinal) {
           stripCountry(
-            'Part country omitted: not confirmed by Search/OCR for this part.'
+            SERVER_TEXT.partOmittedUnconfirmed
           );
         } else {
           madeIn = madeFinal;
@@ -1147,15 +1148,15 @@ function sanitizeProduct(
   const notes = [...(p.notes ?? [])];
   if (madeCopied || mfgCopied) {
     notes.push(
-      'Made-in omitted: it matched brand/design country without factory/COO evidence.'
+      SERVER_TEXT.madeInOmittedBrand
     );
   } else if (hadVagueMade && (p.componentsOrigin || (p.parts && p.parts.length))) {
     notes.push(
-      'Final COO unconfirmed — see components/global line or parts for candidates (not confirmed made-in).'
+      SERVER_TEXT.cooUnconfirmedSeeParts
     );
   } else if (hadVagueMade) {
     notes.push(
-      'Final COO unconfirmed — no SKU/label country of origin; do not invent made-in.'
+      SERVER_TEXT.cooUnconfirmedNoLabel
     );
   }
 
@@ -1219,7 +1220,7 @@ function sanitizeCompany(
   const notes = [...(c.notes ?? [])];
   if (dropped > 0) {
     notes.push(
-      'Local distributor / market agent omitted from parents (not a legal owner).'
+      SERVER_TEXT.distributorOmitted
     );
   }
   return {
@@ -1324,7 +1325,7 @@ function sanitizeAlternative(
     note = `Made in: ${madeIn}`;
   }
   if (tier === 'unknown' && !note) {
-    note = 'China link unclear — do not treat as confirmed non-China.';
+    note = SERVER_TEXT.chinaLinkUnclear;
   }
 
   return {
@@ -1385,28 +1386,7 @@ function parseSourcesFromBrief(brief?: string): string[] {
 
 /** Classify web soft-fail for notes (not a single “no web” bucket). */
 export function webFailCaveat(code?: string): string {
-  switch (code) {
-    case 'model_unavailable':
-      return 'Live web Search models were unavailable on this API key — made-in and part countries are more conservative (model knowledge only).';
-    case 'search_grounding_unavailable':
-      return 'Live Google Search grounding unavailable on this API key — made-in and part countries are more conservative (model knowledge only).';
-    case 'upstream_credits':
-      return 'AI service credits used up (prepaid balance empty) — made-in and part countries are more conservative (model knowledge only).';
-    case 'upstream_quota':
-      return 'Daily free Google Search quota used up — try again after the daily reset; made-in and part countries are more conservative (model knowledge only).';
-    case 'upstream_unavailable':
-      return 'Live web research timed out or upstream was busy — made-in and part countries are more conservative (model knowledge only).';
-    case 'empty_response':
-      return 'Live web research returned an empty reply — made-in and part countries are more conservative (model knowledge only).';
-    case 'disabled':
-      return 'Live web research was disabled for this check — made-in and part countries are more conservative (model knowledge only).';
-    case 'gemini_not_configured':
-      return 'Gemini not configured for live web — made-in and part countries are more conservative (model knowledge only).';
-    case 'no_entity':
-      return 'No product name for live web research — made-in and part countries are more conservative (model knowledge only).';
-    default:
-      return 'No live web research for this check — made-in and part countries are more conservative (model knowledge only).';
-  }
+  return webFailText(code);
 }
 
 /** Same country across labels / scripts (日本 ↔ Japan). */
@@ -1466,7 +1446,7 @@ export function applyWebCooGate(
   const notes = [...(p.notes ?? [])];
   if (stripped) {
     notes.push(
-      'Final COO unconfirmed — no web page showed the barcode/JAN with a made-in; product-name matches are likely candidates only.'
+      SERVER_TEXT.cooUnconfirmedNoBarcode
     );
   }
   return {
@@ -1562,7 +1542,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   // Post-pass: conflict + direct → cap confidence
   if (tier === 'direct' && f.F_CONFLICT) {
     confidence = Math.min(confidence, 0.45);
-    caveats.push('Verification reported conflicting signals');
+    caveats.push(SERVER_TEXT.verifyConflict);
   }
 
   const companyMissing =
@@ -1575,18 +1555,18 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     if (!tierReasons.includes('ownership_not_assessed')) {
       tierReasons = [...tierReasons, 'ownership_not_assessed'];
     }
-    caveats.push('Company/ownership data not assessed');
+    caveats.push(SERVER_TEXT.companyNotAssessed);
   }
 
   // TW country note
   if (tierReasons.includes('taiwan_as_country')) {
-    caveats.push('Taiwan is treated as a separate country for relation tiers');
+    caveats.push(SERVER_TEXT.taiwanSeparate);
   }
 
   if (!input.webEnriched) {
     caveats.push(
       hasOcrPartEvidence(input.ocrText)
-        ? 'Live web research unavailable — part countries come from the package label photo, not Search.'
+        ? SERVER_TEXT.webUnavailableLabel
         : webFailCaveat(input.webFailCode)
     );
   }
@@ -1612,7 +1592,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
 
   if (p && !p.madeIn) {
     caveats.push(
-      'Final COO unconfirmed — candidates below are queried signals, not a stamped made-in label.'
+      SERVER_TEXT.cooUnconfirmedCandidates
     );
   }
 
@@ -1620,7 +1600,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   if (p?.madeIn) {
     summaryParts.push(`Made in: ${p.madeIn}`);
   } else if (p) {
-    summaryParts.push('Final COO unconfirmed');
+    summaryParts.push(SERVER_TEXT.sumCooUnconfirmed);
   }
   const labelPartsEvidence = hasOcrPartEvidence(input.ocrText);
   // A stamped made-in or label-read parts already answer the question; the
@@ -1661,12 +1641,12 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   if (!summaryParts.length) {
     summaryParts.push(
       tier === 'unknown'
-        ? 'Insufficient evidence to assess China-related links.'
+        ? SERVER_TEXT.tierUnknown
         : tier === 'none'
-          ? 'No China-related links found from available signals.'
+          ? SERVER_TEXT.tierNone
           : tier === 'direct'
-            ? 'Direct China-related signals found.'
-            : 'Indirect China-related signals found.'
+            ? SERVER_TEXT.tierDirect
+            : SERVER_TEXT.tierIndirect
     );
   }
 
@@ -1708,12 +1688,12 @@ export function synthesize(input: SynthesizeInput): CheckResult {
       : undefined;
   if (alternatives) {
     caveats.push(
-      'Alternative brands/products aim for lower China involvement (not merely similar). Tiers are estimates; HQ alone does not prove non-China manufacture.'
+      SERVER_TEXT.altsAim
     );
   } else if (alts && ((alts.brands?.length ?? 0) > 0 || (alts.products?.length ?? 0) > 0)) {
     // Model returned only high-CN peers — nothing useful after filter
     caveats.push(
-      'No lower China-involvement brand/product alternatives found with enough confidence.'
+      SERVER_TEXT.altsNone
     );
   }
 

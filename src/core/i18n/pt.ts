@@ -231,6 +231,94 @@ export const pt = {
       'Quota de pesquisa de IA esgotada — não há informação mais precisa de momento. Volte a verificar após a reposição diária.',
     aiCreditsUsedUp:
       'O crédito do serviço de IA esgotou-se temporariamente — não há informação mais precisa de momento. Tente novamente mais tarde.',
+    srv: {
+      partOmittedNoEvidence:
+        'País da peça omitido: sem provas de pesquisa/rótulo (a sede da marca não é a origem de uma peça).',
+      partOmittedUnconfirmed:
+        'País da peça omitido: não confirmado por pesquisa/rótulo para esta peça.',
+      madeInOmittedBrand:
+        'País de fabrico omitido: correspondia apenas ao país da marca/design, sem provas de fábrica ou origem.',
+      madeInOmittedOwnership:
+        'País de fabrico omitido: a China vem apenas de dados de propriedade/empresa-mãe, não do produto, do rótulo ou de um retalhista.',
+      cooUnconfirmedSeeParts:
+        'Origem final não confirmada – veja a linha de componentes/produção global ou as peças para candidatos (fabrico não confirmado).',
+      cooUnconfirmedNoLabel:
+        'Origem final não confirmada – sem país de origem no produto/rótulo; nenhum é inventado.',
+      cooUnconfirmedNoBarcode:
+        'Origem final não confirmada – nenhuma página web mostrava o código de barras/JAN com um país de fabrico; correspondências por nome são apenas candidatos prováveis.',
+      cooUnconfirmedCandidates:
+        'Origem final não confirmada – os candidatos abaixo são sinais de pesquisa, não um «Fabricado em» impresso.',
+      distributorOmitted:
+        'Distribuidor local / agente de mercado omitido das empresas-mãe (não é proprietário legal).',
+      chinaLinkUnclear:
+        'Ligação à China pouco clara – não considere como confirmado sem China.',
+      verifyConflict:
+        'A verificação detetou sinais contraditórios',
+      companyNotAssessed:
+        'Dados de empresa/propriedade não avaliados',
+      taiwanSeparate:
+        'Taiwan é tratado como país distinto para os níveis de relação',
+      webUnavailableLabel:
+        'Pesquisa web em direto indisponível – os países das peças vêm da foto do rótulo, não da pesquisa.',
+      altsAim:
+        'As marcas/produtos alternativos visam menor envolvimento da China (não apenas semelhança). Os níveis são estimativas; a sede por si só não prova fabrico fora da China.',
+      altsNone:
+        'Não foram encontradas alternativas com menor envolvimento da China com certeza suficiente.',
+      sumCooUnconfirmed:
+        'Origem final não confirmada',
+      tierUnknown:
+        'Provas insuficientes para avaliar ligações à China.',
+      tierNone:
+        'Não foram encontradas ligações à China nos sinais disponíveis.',
+      tierDirect:
+        'Encontrados sinais de ligação direta à China.',
+      tierIndirect:
+        'Encontrados sinais de ligação indireta à China.',
+      cooConflictChina:
+        'Origem final não confirmada – o sinal de {source} ({label}) contradiz «Fabricado na China»; propriedade/empresa-mãe por si só não define o país de fabrico.',
+      cooConflictMadeIn:
+        'Origem final não confirmada – o sinal de {source} ({label}) contradiz o fabrico em {madeIn}; mantido apenas como candidato.',
+      candidate:
+        '{label} ({rating}, {pct}%, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Os modelos de pesquisa em direto não estavam disponíveis com esta chave API – os países de fabrico e das peças são mais prudentes (apenas conhecimento do modelo).',
+      webFail_search_grounding_unavailable:
+        'A pesquisa Google em direto não estava disponível com esta chave API – os países de fabrico e das peças são mais prudentes (apenas conhecimento do modelo).',
+      webFail_upstream_credits:
+        'Créditos do serviço de IA esgotados (saldo pré-pago vazio) – os países de fabrico e das peças são mais prudentes (apenas conhecimento do modelo).',
+      webFail_upstream_quota:
+        'Quota diária gratuita da pesquisa Google esgotada – tente após a reposição diária – os países de fabrico e das peças são mais prudentes (apenas conhecimento do modelo).',
+      webFail_upstream_unavailable:
+        'A pesquisa web em direto excedeu o tempo ou o serviço estava sobrecarregado – os países de fabrico e das peças são mais prudentes (apenas conhecimento do modelo).',
+      webFail_empty_response:
+        'A pesquisa web em direto devolveu uma resposta vazia – os países de fabrico e das peças são mais prudentes (apenas conhecimento do modelo).',
+      webFail_disabled:
+        'A pesquisa web em direto estava desativada para esta verificação – os países de fabrico e das peças são mais prudentes (apenas conhecimento do modelo).',
+      webFail_gemini_not_configured:
+        'O Gemini não está configurado para pesquisa web em direto – os países de fabrico e das peças são mais prudentes (apenas conhecimento do modelo).',
+      webFail_no_entity:
+        'Sem nome de produto para a pesquisa web em direto – os países de fabrico e das peças são mais prudentes (apenas conhecimento do modelo).',
+      webFail_default:
+        'Sem pesquisa web em direto para esta verificação – os países de fabrico e das peças são mais prudentes (apenas conhecimento do modelo).',
+      sum: {
+        madeIn: 'Fabricado em: {value}',
+        candidates: 'Candidatos: {value}',
+        brandOrigin: 'Origem da marca: {value}',
+        components: 'Componentes/produção global: {value}',
+        parts: 'Peças: {value}',
+        hq: 'Sede: {value}',
+        company: 'Empresa: {value}',
+      },
+      signal: {
+        ocr: 'rótulo',
+        retailer: 'retalhista',
+        manufacturer: 'fabricante',
+        ownership: 'propriedade',
+        unknown: 'desconhecido',
+      },
+    },
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Guardar imagem',
     sectionShareShare: 'Partilhar',

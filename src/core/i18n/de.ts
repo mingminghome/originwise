@@ -231,6 +231,94 @@ export const de = {
       'KI-Suchkontingent aufgebraucht — genauere Informationen sind gerade nicht verfügbar. Bitte nach dem täglichen Reset erneut prüfen.',
     aiCreditsUsedUp:
       'KI-Dienstguthaben vorübergehend aufgebraucht — genauere Informationen sind gerade nicht verfügbar. Bitte später erneut versuchen.',
+    srv: {
+      partOmittedNoEvidence:
+        'Teileland weggelassen: kein Beleg aus Suche/Etikett (Marken-HQ ist kein Teile-Herkunftsland).',
+      partOmittedUnconfirmed:
+        'Teileland weggelassen: für dieses Teil nicht durch Suche/Etikett bestätigt.',
+      madeInOmittedBrand:
+        'Herstellungsland weggelassen: entsprach nur dem Marken-/Designland, ohne Werks- oder Herkunftsbeleg.',
+      madeInOmittedOwnership:
+        'Herstellungsland weggelassen: China stammt nur aus Eigentümer-/Mutterkonzern-Angaben, nicht von Produkt, Etikett oder Händler.',
+      cooUnconfirmedSeeParts:
+        'Endgültiges Herkunftsland unbestätigt – Kandidaten siehe Komponenten/globale Linie oder Teile (kein bestätigtes Herstellungsland).',
+      cooUnconfirmedNoLabel:
+        'Endgültiges Herkunftsland unbestätigt – kein Herkunftsland auf Produkt/Etikett; es wird keins erfunden.',
+      cooUnconfirmedNoBarcode:
+        'Endgültiges Herkunftsland unbestätigt – keine Webseite zeigte den Barcode/JAN zusammen mit einem Herstellungsland; Treffer nur über den Produktnamen sind lediglich wahrscheinliche Kandidaten.',
+      cooUnconfirmedCandidates:
+        'Endgültiges Herkunftsland unbestätigt – die Kandidaten unten sind Suchsignale, kein aufgedrucktes „Made in“.',
+      distributorOmitted:
+        'Lokaler Händler/Marktvertreter aus den Mutterkonzernen entfernt (kein rechtlicher Eigentümer).',
+      chinaLinkUnclear:
+        'China-Bezug unklar – nicht als bestätigt China-frei werten.',
+      verifyConflict:
+        'Die Prüfung meldete widersprüchliche Signale',
+      companyNotAssessed:
+        'Unternehmens-/Eigentümerdaten nicht bewertet',
+      taiwanSeparate:
+        'Taiwan gilt für die Bezugsstufen als eigenständiges Land',
+      webUnavailableLabel:
+        'Live-Webrecherche nicht verfügbar – Teileländer stammen vom Foto des Verpackungsetiketts, nicht aus der Suche.',
+      altsAim:
+        'Alternative Marken/Produkte zielen auf geringeren China-Bezug (nicht nur Ähnlichkeit). Stufen sind Schätzungen; der Firmensitz allein beweist keine Fertigung außerhalb Chinas.',
+      altsNone:
+        'Keine Alternativen mit geringerem China-Bezug mit ausreichender Sicherheit gefunden.',
+      sumCooUnconfirmed:
+        'Endgültiges Herkunftsland unbestätigt',
+      tierUnknown:
+        'Zu wenige Belege, um China-Bezüge zu bewerten.',
+      tierNone:
+        'Aus den verfügbaren Signalen keine China-Bezüge gefunden.',
+      tierDirect:
+        'Direkte China-Bezüge gefunden.',
+      tierIndirect:
+        'Indirekte China-Bezüge gefunden.',
+      cooConflictChina:
+        'Endgültiges Herkunftsland unbestätigt – {source}-Signal ({label}) widerspricht „Made in China“; Eigentümer/Mutterkonzern allein reichen nicht als Herstellungsland.',
+      cooConflictMadeIn:
+        'Endgültiges Herkunftsland unbestätigt – {source}-Signal ({label}) widerspricht dem Herstellungsland {madeIn}; nur als Kandidaten behalten.',
+      candidate:
+        '{label} ({rating}, {pct} %, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Live-Suchmodelle waren mit diesem API-Schlüssel nicht verfügbar – Herstellungs- und Teileländer sind vorsichtiger (nur Modellwissen).',
+      webFail_search_grounding_unavailable:
+        'Live-Google-Suche war mit diesem API-Schlüssel nicht verfügbar – Herstellungs- und Teileländer sind vorsichtiger (nur Modellwissen).',
+      webFail_upstream_credits:
+        'KI-Guthaben aufgebraucht (Prepaid-Guthaben leer) – Herstellungs- und Teileländer sind vorsichtiger (nur Modellwissen).',
+      webFail_upstream_quota:
+        'Tägliches kostenloses Google-Suchkontingent aufgebraucht – nach dem täglichen Reset erneut versuchen – Herstellungs- und Teileländer sind vorsichtiger (nur Modellwissen).',
+      webFail_upstream_unavailable:
+        'Live-Webrecherche hat das Zeitlimit überschritten oder der Dienst war ausgelastet – Herstellungs- und Teileländer sind vorsichtiger (nur Modellwissen).',
+      webFail_empty_response:
+        'Live-Webrecherche lieferte eine leere Antwort – Herstellungs- und Teileländer sind vorsichtiger (nur Modellwissen).',
+      webFail_disabled:
+        'Live-Webrecherche war für diese Prüfung deaktiviert – Herstellungs- und Teileländer sind vorsichtiger (nur Modellwissen).',
+      webFail_gemini_not_configured:
+        'Gemini ist für die Live-Websuche nicht eingerichtet – Herstellungs- und Teileländer sind vorsichtiger (nur Modellwissen).',
+      webFail_no_entity:
+        'Kein Produktname für die Live-Webrecherche – Herstellungs- und Teileländer sind vorsichtiger (nur Modellwissen).',
+      webFail_default:
+        'Keine Live-Webrecherche für diese Prüfung – Herstellungs- und Teileländer sind vorsichtiger (nur Modellwissen).',
+      sum: {
+        madeIn: 'Hergestellt in: {value}',
+        candidates: 'Kandidaten: {value}',
+        brandOrigin: 'Markenherkunft: {value}',
+        components: 'Komponenten/globale Linie: {value}',
+        parts: 'Teile: {value}',
+        hq: 'Hauptsitz: {value}',
+        company: 'Unternehmen: {value}',
+      },
+      signal: {
+        ocr: 'Etikett',
+        retailer: 'Händler',
+        manufacturer: 'Hersteller',
+        ownership: 'Eigentümer',
+        unknown: 'unbekannt',
+      },
+    },
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Bild speichern',
     sectionShareShare: 'Teilen',

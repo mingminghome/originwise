@@ -231,6 +231,94 @@ export const da = {
       'AI-søgekvoten er brugt op — mere præcise oplysninger er ikke tilgængelige lige nu. Prøv igen efter den daglige nulstilling.',
     aiCreditsUsedUp:
       'AI-tjenestens kredit er midlertidigt brugt op — mere præcise oplysninger er ikke tilgængelige lige nu. Prøv igen senere.',
+    srv: {
+      partOmittedNoEvidence:
+        'Delens land udeladt: intet bevis fra søgning/etiket (mærkets hovedkontor er ikke en dels oprindelse).',
+      partOmittedUnconfirmed:
+        'Delens land udeladt: ikke bekræftet af søgning/etiket for denne del.',
+      madeInOmittedBrand:
+        'Produktionsland udeladt: det matchede kun mærkets/designets land uden bevis fra fabrik eller oprindelse.',
+      madeInOmittedOwnership:
+        'Produktionsland udeladt: Kina stammer kun fra ejer-/moderselskabsdata, ikke fra produkt, etiket eller forhandler.',
+      cooUnconfirmedSeeParts:
+        'Endeligt oprindelsesland ubekræftet – se linjen komponenter/global produktion eller delene for kandidater (produktion ikke bekræftet).',
+      cooUnconfirmedNoLabel:
+        'Endeligt oprindelsesland ubekræftet – intet oprindelsesland på produkt/etiket; der opfindes ikke et.',
+      cooUnconfirmedNoBarcode:
+        'Endeligt oprindelsesland ubekræftet – ingen webside viste stregkoden/JAN sammen med et produktionsland; match på produktnavn er kun sandsynlige kandidater.',
+      cooUnconfirmedCandidates:
+        'Endeligt oprindelsesland ubekræftet – kandidaterne nedenfor er søgesignaler, ikke et trykt „Made in“.',
+      distributorOmitted:
+        'Lokal distributør / markedsagent udeladt fra moderselskaber (ikke juridisk ejer).',
+      chinaLinkUnclear:
+        'Forbindelse til Kina uklar – betragt det ikke som bekræftet uden Kina.',
+      verifyConflict:
+        'Kontrollen fandt modstridende signaler',
+      companyNotAssessed:
+        'Virksomheds-/ejerdata ikke vurderet',
+      taiwanSeparate:
+        'Taiwan behandles som et selvstændigt land i forbindelsesniveauerne',
+      webUnavailableLabel:
+        'Live websøgning utilgængelig – delenes lande kommer fra fotoet af etiketten, ikke fra søgning.',
+      altsAim:
+        'Alternative mærker/produkter sigter mod mindre kinesisk involvering (ikke kun lighed). Niveauer er skøn; hovedkontoret alene beviser ikke produktion uden for Kina.',
+      altsNone:
+        'Ingen alternativer med mindre kinesisk involvering fundet med tilstrækkelig sikkerhed.',
+      sumCooUnconfirmed:
+        'Endeligt oprindelsesland ubekræftet',
+      tierUnknown:
+        'For lidt bevis til at vurdere forbindelser til Kina.',
+      tierNone:
+        'Ingen forbindelser til Kina fundet i de tilgængelige signaler.',
+      tierDirect:
+        'Direkte signaler om forbindelse til Kina fundet.',
+      tierIndirect:
+        'Indirekte signaler om forbindelse til Kina fundet.',
+      cooConflictChina:
+        'Endeligt oprindelsesland ubekræftet – {source}-signal ({label}) modsiger „Made in China“; ejer/moderselskab alene fastlægger ikke produktionslandet.',
+      cooConflictMadeIn:
+        'Endeligt oprindelsesland ubekræftet – {source}-signal ({label}) modsiger produktion i {madeIn}; kun beholdt som kandidat.',
+      candidate:
+        '{label} ({rating}, {pct} %, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Live-søgemodeller var ikke tilgængelige med denne API-nøgle – produktions- og delelande er mere forsigtige (kun modelviden).',
+      webFail_search_grounding_unavailable:
+        'Live Google-søgning var ikke tilgængelig med denne API-nøgle – produktions- og delelande er mere forsigtige (kun modelviden).',
+      webFail_upstream_credits:
+        'AI-kredit opbrugt (forudbetalt saldo tom) – produktions- og delelande er mere forsigtige (kun modelviden).',
+      webFail_upstream_quota:
+        'Dagens gratis Google-søgekvote er opbrugt – prøv igen efter den daglige nulstilling – produktions- og delelande er mere forsigtige (kun modelviden).',
+      webFail_upstream_unavailable:
+        'Live websøgning fik timeout, eller tjenesten var optaget – produktions- og delelande er mere forsigtige (kun modelviden).',
+      webFail_empty_response:
+        'Live websøgning returnerede et tomt svar – produktions- og delelande er mere forsigtige (kun modelviden).',
+      webFail_disabled:
+        'Live websøgning var slået fra for dette tjek – produktions- og delelande er mere forsigtige (kun modelviden).',
+      webFail_gemini_not_configured:
+        'Gemini er ikke sat op til live websøgning – produktions- og delelande er mere forsigtige (kun modelviden).',
+      webFail_no_entity:
+        'Intet produktnavn til live websøgning – produktions- og delelande er mere forsigtige (kun modelviden).',
+      webFail_default:
+        'Ingen live websøgning for dette tjek – produktions- og delelande er mere forsigtige (kun modelviden).',
+      sum: {
+        madeIn: 'Fremstillet i: {value}',
+        candidates: 'Kandidater: {value}',
+        brandOrigin: 'Mærkets oprindelse: {value}',
+        components: 'Komponenter/global produktion: {value}',
+        parts: 'Dele: {value}',
+        hq: 'Hovedkontor: {value}',
+        company: 'Virksomhed: {value}',
+      },
+      signal: {
+        ocr: 'etiket',
+        retailer: 'forhandler',
+        manufacturer: 'producent',
+        ownership: 'ejerskab',
+        unknown: 'ukendt',
+      },
+    },
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Gem billede',
     sectionShareShare: 'Del',
