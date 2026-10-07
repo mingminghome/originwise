@@ -40,6 +40,15 @@ export const pl = {
     accept: 'Rozumiem — zacznij sprawdzać',
   },
   check: {
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Badanie w sieci — zapytanie wysłane do {name}',
+    searchUsage: 'Wyszukiwanie w sieci: {provider} · liczba zapytań: {n}',
+    knowledgeWebVia:
+      'Obejmuje badanie w sieci na żywo ({provider}) oraz wiedzę modelu. Nadal nie jest to rejestr spółek ani baza celna — etykiety i dokumenty urzędowe mogą się różnić od stron WWW. Informacyjnie — nie porada prawna, handlowa ani sankcyjna.',
     title: 'Szybkie sprawdzenie',
     subtitle: 'Czy ten produkt ma związek z Chinami? Wpisz nazwę lub zrób zdjęcie opakowania.',
     placeholder: 'np. marka przekąsek, telefon, zabawka…',
@@ -105,6 +114,8 @@ export const pl = {
       unknownProvider: 'Nieznane AI',
     },
     provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
       gemini: 'Gemini',
       openai: 'OpenAI',
       grok: 'Grok (xAI)',
@@ -390,6 +401,8 @@ export const pl = {
       'Gdy uruchamiasz sprawdzenie, nazwa lub zdjęcie są wysyłane tylko po tę odpowiedź. Nie przechowujemy opakowań jako katalogu produktów.',
     privacyBullet5:
       'Zdjęcia są kompresowane na Twoim urządzeniu przed wysłaniem i nie są przechowywane jako rekordy serwera.',
+    privacyBullet6:
+      'Przy włączonym badaniu w sieci na żywo nazwa produktu (i tekst etykiety) jest też jednorazowo wysyłana do usługi wyszukiwania: najpierw Google Search przez Gemini, a Brave Search lub Firecrawl tylko wtedy, gdy to się nie uda. Kroki postępu i wynik podają faktycznie użytą usługę. Nie zapisujemy zapytań wyszukiwania.',
     privacyPolicyLink: 'Polityka prywatności',
     termsLink: 'Warunki korzystania',
     designTitle: 'Jak to działa',

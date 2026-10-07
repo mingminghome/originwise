@@ -172,7 +172,13 @@ export type CheckResult = {
       ok?: boolean;
       error?: string;
       ms?: number;
+      /** Search API requests (web row). */
+      requests?: number;
     }>;
+    /** Web search provider used ('gemini' | 'brave' | 'firecrawl'), or last tried. */
+    searchProvider?: string;
+    /** Search API requests made for this check (all providers tried). */
+    searchRequests?: number;
   };
 };
 

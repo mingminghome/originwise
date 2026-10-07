@@ -40,6 +40,15 @@ export const it = {
     accept: 'Capito — inizia a verificare',
   },
   check: {
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Ricerca web — richiesta inviata a {name}',
+    searchUsage: 'Ricerca web: {provider} · richieste di ricerca: {n}',
+    knowledgeWebVia:
+      'Include una ricerca web in tempo reale ({provider}) più la conoscenza del modello. Non è comunque un registro societario né una banca dati doganale — etichette e atti ufficiali possono divergere dalle pagine web. Informativo — non consulenza legale, commerciale o sulle sanzioni.',
     title: 'Controllo rapido',
     subtitle: 'Questo articolo è legato alla Cina? Digita un nome o fotografa la confezione.',
     placeholder: 'es. marchio di snack, telefono, giocattolo…',
@@ -105,6 +114,8 @@ export const it = {
       unknownProvider: 'IA sconosciuta',
     },
     provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
       gemini: 'Gemini',
       openai: 'OpenAI',
       grok: 'Grok (xAI)',
@@ -390,6 +401,8 @@ export const it = {
       'Quando avvii una verifica, il nome o la foto vengono inviati solo per quella risposta. Non conserviamo le confezioni come catalogo prodotti.',
     privacyBullet5:
       'Le foto vengono compresse sul tuo dispositivo prima del caricamento e non sono memorizzate come record del server.',
+    privacyBullet6:
+      'Con la ricerca web in tempo reale attiva, il nome del prodotto (e il testo dell’etichetta) viene inviato anche una volta a un servizio di ricerca: prima Google Search tramite Gemini e, solo se non riesce, Brave Search o Firecrawl. I passaggi di avanzamento e il risultato indicano il servizio effettivamente usato. Non conserviamo alcun registro delle ricerche.',
     privacyPolicyLink: 'Informativa sulla privacy',
     termsLink: 'Termini d’uso',
     designTitle: 'Come funziona',

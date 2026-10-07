@@ -40,6 +40,15 @@ export const cs = {
     accept: 'Rozumím — začít kontrolovat',
   },
   check: {
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Webový výzkum — dotaz odeslán do {name}',
+    searchUsage: 'Webové vyhledávání: {provider} · počet požadavků: {n}',
+    knowledgeWebVia:
+      'Zahrnuje živý webový výzkum ({provider}) plus znalosti modelu. Stále to není obchodní rejstřík ani celní databáze — etikety a oficiální dokumenty se mohou lišit od webových stránek. Informativní — ne právní, obchodní ani sankční rada.',
     title: 'Rychlá kontrola',
     subtitle: 'Souvisí tato položka s Čínou? Zadejte název nebo vyfoťte obal.',
     placeholder: 'např. značka snacků, telefon, hračka…',
@@ -105,6 +114,8 @@ export const cs = {
       unknownProvider: 'Neznámá AI',
     },
     provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
       gemini: 'Gemini',
       openai: 'OpenAI',
       grok: 'Grok (xAI)',
@@ -390,6 +401,8 @@ export const cs = {
       'Při kontrole se jméno nebo fotka posílá jen kvůli této odpovědi. Obaly neuchováváme jako katalog produktů.',
     privacyBullet5:
       'Fotky se komprimují na vašem zařízení před odesláním a neukládají se jako záznamy serveru.',
+    privacyBullet6:
+      'Při zapnutém živém webovém výzkumu se název produktu (a text etikety) jednou odešle také vyhledávací službě: nejprve Google Search přes Gemini, Brave Search nebo Firecrawl jen pokud to selže. Kroky průběhu i výsledek uvádějí skutečně použitou službu. Vyhledávací dotazy nikde neukládáme.',
     privacyPolicyLink: 'Zásady ochrany soukromí',
     termsLink: 'Podmínky použití',
     designTitle: 'Jak to funguje',

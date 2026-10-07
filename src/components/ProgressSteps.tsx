@@ -16,7 +16,22 @@ const ORDER = [
   'synthesize',
 ] as const;
 
-function stepLabel(step: string, t: TFunction): string {
+const SEARCH_PROVIDERS = new Set(['gemini', 'brave', 'firecrawl']);
+
+/** Search provider id from a web step detail ("brave" or "brave:upstream_quota"). */
+function webStepProvider(detail: string | undefined): string | undefined {
+  const id = (detail || '').split(':')[0]?.trim().toLowerCase();
+  return id && SEARCH_PROVIDERS.has(id) ? id : undefined;
+}
+
+function stepLabel(step: string, t: TFunction, detail?: string): string {
+  // Name the search service at the moment the lookup is sent to it.
+  if (step === 'web') {
+    const provider = webStepProvider(detail);
+    if (provider) {
+      return t('check.webStepVia', { name: t(`check.searchVia.${provider}`) });
+    }
+  }
   const key = `check.steps.${step}`;
   const label = t(key);
   return label === key ? step : label;
@@ -71,7 +86,7 @@ export function ProgressSteps({
                   <Circle size={14} />
                 )}
               </span>
-              <span>{stepLabel(id, t)}</span>
+              <span>{stepLabel(id, t, s?.detail)}</span>
             </li>
           );
         })}

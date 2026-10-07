@@ -40,6 +40,15 @@ export const pt = {
     accept: 'Percebi — começar a verificar',
   },
   check: {
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Pesquisa web — consulta enviada para {name}',
+    searchUsage: 'Pesquisa web: {provider} · pedidos de pesquisa: {n}',
+    knowledgeWebVia:
+      'Inclui uma passagem de pesquisa web em direto ({provider}) mais o conhecimento do modelo. Continua a não ser um registo comercial nem uma base aduaneira — rótulos e documentos oficiais podem discordar das páginas web. Informativo — não é aconselhamento jurídico, comercial ou sobre sanções.',
     title: 'Verificação rápida',
     subtitle: 'Este artigo está relacionado com a China? Escreva um nome ou fotografe a embalagem.',
     placeholder: 'ex. marca de snacks, telemóvel, brinquedo…',
@@ -105,6 +114,8 @@ export const pt = {
       unknownProvider: 'IA desconhecida',
     },
     provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
       gemini: 'Gemini',
       openai: 'OpenAI',
       grok: 'Grok (xAI)',
@@ -390,6 +401,8 @@ export const pt = {
       'Quando corre uma verificação, o nome ou a foto é enviado apenas para essa resposta. Não guardamos embalagens como catálogo de produtos.',
     privacyBullet5:
       'As fotos são comprimidas no seu dispositivo antes do envio e não são armazenadas como registos do servidor.',
+    privacyBullet6:
+      'Com a pesquisa web em direto ativa, o nome do produto (e o texto do rótulo) também é enviado uma vez a um serviço de pesquisa: primeiro Google Search via Gemini e, só se falhar, Brave Search ou Firecrawl. Os passos de progresso e o resultado indicam o serviço realmente usado. Não guardamos registo das pesquisas.',
     privacyPolicyLink: 'Política de privacidade',
     termsLink: 'Termos de utilização',
     designTitle: 'Como funciona',

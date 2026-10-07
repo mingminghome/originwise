@@ -48,6 +48,8 @@ export type WebResearchResult = {
   error?: string;
   model?: string;
   provider?: 'gemini' | 'grok';
+  /** Grounded Search model attempts made this pass (for the UI request count). */
+  attempts?: number;
 };
 
 const BRIEF_MAX = 2200;
@@ -858,6 +860,7 @@ export async function runWebResearch(opts: {
         ms: Date.now() - t0,
         model,
         provider: 'gemini',
+        attempts,
       };
     }
     last = out.code;
@@ -919,5 +922,6 @@ export async function runWebResearch(opts: {
     sources: [],
     ms: Date.now() - t0,
     error: sawCapacityMiss ? 'upstream_unavailable' : last,
+    attempts,
   };
 }

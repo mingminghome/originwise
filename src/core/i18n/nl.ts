@@ -40,6 +40,15 @@ export const nl = {
     accept: 'Begrepen — starten',
   },
   check: {
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Webonderzoek — zoekopdracht verstuurd naar {name}',
+    searchUsage: 'Webzoeken: {provider} · zoekverzoeken: {n}',
+    knowledgeWebVia:
+      'Bevat een live webonderzoek ({provider}) plus modelkennis. Nog steeds geen ondernemingsregister of douanedatabase — etiketten en officiële stukken kunnen afwijken van webpagina’s. Informatief — geen juridisch, handels- of sanctieadvies.',
     title: 'Snelle check',
     subtitle: 'Is dit artikel China-gerelateerd? Typ een naam of fotografeer de verpakking.',
     placeholder: 'bijv. snackmerk, telefoon, speelgoed…',
@@ -105,6 +114,8 @@ export const nl = {
       unknownProvider: 'Onbekende AI',
     },
     provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
       gemini: 'Gemini',
       openai: 'OpenAI',
       grok: 'Grok (xAI)',
@@ -390,6 +401,8 @@ export const nl = {
       'Als je een check uitvoert, wordt de naam of foto alleen voor dat antwoord verzonden. We bewaren verpakkingen niet als productcatalogus.',
     privacyBullet5:
       'Foto’s worden op je apparaat gecomprimeerd vóór upload en niet als serverrecords opgeslagen.',
+    privacyBullet6:
+      'Met live webonderzoek aan wordt de productnaam (en de etikettekst) ook één keer naar een zoekdienst gestuurd: eerst Google Search via Gemini, en alleen als dat mislukt Brave Search of Firecrawl. De voortgangsstappen en het resultaat noemen de dienst die echt is gebruikt. We houden geen log van zoekopdrachten bij.',
     privacyPolicyLink: 'Privacybeleid',
     termsLink: 'Gebruiksvoorwaarden',
     designTitle: 'Hoe het werkt',

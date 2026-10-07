@@ -40,6 +40,15 @@ export const zhHant = {
     accept: '知道了 — 開始查',
   },
   check: {
+    searchVia: {
+      gemini: 'Google 搜尋（Gemini）',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: '網頁研究——查詢已傳送至 {name}',
+    searchUsage: '網頁搜尋：{provider} · 搜尋請求 {n} 次',
+    knowledgeWebVia:
+      '含即時網頁研究（{provider}）以及模型知識。仍不是公司登記或關務資料庫——標示與官方文件可能與網頁不符。僅供參考——非法律、貿易或制裁建議。',
     title: '快速查',
     subtitle: '這項商品是否與中國相關？輸入名稱，或拍包裝。',
     placeholder: '例如：零食品牌、手機、玩具…',
@@ -103,6 +112,8 @@ export const zhHant = {
       unknownProvider: '未知 AI',
     },
     provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
       gemini: 'Gemini',
       openai: 'OpenAI',
       grok: 'Grok（xAI）',
@@ -370,6 +381,8 @@ export const zhHant = {
     privacyBullet4:
       '執行查詢時，名稱或照片只用於取得該次回答。我們不會把包裝當成產品目錄保存。',
     privacyBullet5: '照片會先在裝置上壓縮再上傳，不會當成伺服器紀錄保存。',
+    privacyBullet6:
+      '開啟即時網頁研究時，產品名稱（及標籤文字）也會傳送一次給搜尋服務：優先使用經 Gemini 的 Google 搜尋，僅在失敗時才改用 Brave Search 或 Firecrawl。進度步驟與結果會標明實際使用的服務。我們不會記錄搜尋內容。',
     privacyPolicyLink: '隱私權政策',
     termsLink: '使用條款',
     designTitle: '它怎麼運作',

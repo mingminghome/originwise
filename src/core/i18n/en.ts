@@ -43,6 +43,15 @@ export const en: MessageTree = {
     accept: 'Got it — start checking',
   },
   check: {
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Web research — lookup sent to {name}',
+    searchUsage: 'Web search: {provider} · {n} search request(s)',
+    knowledgeWebVia:
+      'Includes a live web research pass ({provider}) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.',
     title: 'Quick check',
     subtitle: 'Is this item China-related? Type a name or photo the package.',
     placeholder: 'e.g. snack brand, phone, toy…',
@@ -108,6 +117,8 @@ export const en: MessageTree = {
       unknownProvider: 'Unknown AI',
     },
     provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
       gemini: 'Gemini',
       openai: 'OpenAI',
       grok: 'Grok (xAI)',
@@ -388,6 +399,8 @@ export const en: MessageTree = {
       'When you run a check, the name or photo is sent only for that answer. We do not keep packages as a product catalogue.',
     privacyBullet5:
       'Photos are compressed on your device before upload and are not stored as server records.',
+    privacyBullet6:
+      'With live web research on, the product name (and label text) is also sent once to a search service: Google Search via Gemini first, and Brave Search or Firecrawl only if that fails. The progress steps and the result name the service actually used. We keep no log of search queries.',
     privacyPolicyLink: 'Privacy policy',
     termsLink: 'Terms of use',
     designTitle: 'How it works',

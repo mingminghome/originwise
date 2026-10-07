@@ -40,6 +40,15 @@ export const ro = {
     accept: 'Am înțeles — începe verificarea',
   },
   check: {
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Cercetare web — interogare trimisă către {name}',
+    searchUsage: 'Căutare web: {provider} · cereri de căutare: {n}',
+    knowledgeWebVia:
+      'Include o trecere de cercetare web live ({provider}) plus cunoștințele modelului. Tot nu este un registru de companii sau o bază vamală — etichetele și documentele oficiale pot diferi de paginile web. Informativ — nu sfat juridic, comercial sau privind sancțiunile.',
     title: 'Verificare rapidă',
     subtitle: 'Acest articol este legat de China? Scrie un nume sau fotografiază ambalajul.',
     placeholder: 'ex. brand de snacks, telefon, jucărie…',
@@ -105,6 +114,8 @@ export const ro = {
       unknownProvider: 'IA necunoscută',
     },
     provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
       gemini: 'Gemini',
       openai: 'OpenAI',
       grok: 'Grok (xAI)',
@@ -390,6 +401,8 @@ export const ro = {
       'Când rulezi o verificare, numele sau fotografia este trimisă doar pentru acel răspuns. Nu păstrăm ambalajele ca un catalog de produse.',
     privacyBullet5:
       'Fotografiile sunt comprimate pe dispozitivul tău înainte de încărcare și nu sunt stocate ca înregistrări pe server.',
+    privacyBullet6:
+      'Cu cercetarea web live activă, numele produsului (și textul etichetei) este trimis și o dată unui serviciu de căutare: mai întâi Google Search prin Gemini și doar dacă eșuează Brave Search sau Firecrawl. Pașii de progres și rezultatul arată serviciul folosit efectiv. Nu păstrăm niciun jurnal al căutărilor.',
     privacyPolicyLink: 'Politică de confidențialitate',
     termsLink: 'Termeni de utilizare',
     designTitle: 'Cum funcționează',
