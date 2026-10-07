@@ -686,4 +686,45 @@ describe('parts COO sanitize (ungrounded HQ strip + Search cross-check)', () => 
     );
     assert.equal(r.product?.parts?.[0]?.madeIn, undefined);
   });
+  it('marks label-OCR parts as label evidence and drops the candidates line', () => {
+    const r = synthesize({
+      jobId: 'parts-label-ocr',
+      geoScope: 'prc',
+      companySkipped: true,
+      webEnriched: false,
+      ocrText:
+        '乳首・キャップ・フード：ピジョン(株)中国工場製\nびんの生産・組み立て：日本',
+      partials: {
+        product: {
+          name: 'Pigeon Softouch glass 240ml',
+          brand: 'Pigeon',
+          originCountry: 'Japan',
+          parts: [
+            { name: 'びん', kind: 'part', madeIn: '日本' },
+            { name: '乳首', kind: 'part', madeIn: '中国', chinaRelated: true },
+          ],
+        },
+        company: { name: 'Pigeon', hqCountry: 'Japan' },
+      },
+    });
+    assert.equal(r.partsEvidence, 'label');
+    assert.ok(!/Candidates:/.test(r.summary ?? ''));
+  });
+
+  it('marks parts as model evidence with no label or Search', () => {
+    const r = synthesize({
+      jobId: 'parts-model-only',
+      geoScope: 'prc',
+      companySkipped: true,
+      webEnriched: false,
+      partials: {
+        product: {
+          name: 'Pigeon Sheer PPSU 240ml',
+          brand: 'Pigeon',
+          parts: [{ name: '瓶身', kind: 'part' }],
+        },
+      },
+    });
+    assert.equal(r.partsEvidence, 'model');
+  });
 });

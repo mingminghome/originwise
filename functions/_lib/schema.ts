@@ -108,6 +108,8 @@ export type CheckResult = {
   geoScope: GeoScope;
   disclaimerKey: string;
   knowledgeBasis: 'model_memory' | 'web_enriched';
+  /** Where part countries came from: package label OCR, grounded web, or model only. */
+  partsEvidence?: 'label' | 'web' | 'model';
   knowledgeCutoffNote: string;
   /** Grounding Sources from live Search (when web_enriched). */
   sources?: string[];

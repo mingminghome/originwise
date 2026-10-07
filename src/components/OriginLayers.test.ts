@@ -174,4 +174,16 @@ describe('buildOriginLayers', () => {
     assert.ok(model.partsSources.some((s) => /amazon\.co\.jp/i.test(s)));
   });
 
+  it('hides the model-only banner when parts come from the label photo', () => {
+    const model = buildOriginLayers(
+      base({
+        knowledgeBasis: 'model_memory',
+        partsEvidence: 'label',
+        product: {
+          parts: [{ name: '乳首', kind: 'part', madeIn: 'China' }],
+        },
+      })
+    );
+    assert.equal(model.partsModelOnly, false);
+  });
 });
