@@ -1373,8 +1373,9 @@ export function webFailCaveat(code?: string): string {
     case 'model_unavailable':
       return 'Live web Search models were unavailable on this API key — made-in and part countries are more conservative (model knowledge only).';
     case 'search_grounding_unavailable':
-    case 'upstream_quota':
       return 'Live Google Search grounding unavailable on this API key — made-in and part countries are more conservative (model knowledge only).';
+    case 'upstream_quota':
+      return 'Daily free Google Search quota used up — try again after the daily reset; made-in and part countries are more conservative (model knowledge only).';
     case 'upstream_unavailable':
       return 'Live web research timed out or upstream was busy — made-in and part countries are more conservative (model knowledge only).';
     case 'empty_response':
@@ -1490,7 +1491,11 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   }
 
   if (!input.webEnriched) {
-    caveats.push(webFailCaveat(input.webFailCode));
+    caveats.push(
+      hasOcrPartEvidence(input.ocrText)
+        ? 'Live web research unavailable — part countries come from the package label photo, not Search.'
+        : webFailCaveat(input.webFailCode)
+    );
   }
 
   const p = partials.product;

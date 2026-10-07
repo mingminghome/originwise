@@ -708,6 +708,8 @@ describe('parts COO sanitize (ungrounded HQ strip + Search cross-check)', () => 
       },
     });
     assert.equal(r.partsEvidence, 'label');
+    assert.ok((r.caveats ?? []).some((c) => /package label photo/i.test(c)));
+    assert.ok(!(r.caveats ?? []).some((c) => /model knowledge only/i.test(c)));
     assert.ok(!/Candidates:/.test(r.summary ?? ''));
   });
 
