@@ -43,6 +43,10 @@ export const en: MessageTree = {
     accept: 'Got it — start checking',
   },
   check: {
+    matchBasis: {
+      barcode: 'Matched by barcode',
+      name: 'Matched by product name',
+    },
     searchVia: {
       gemini: 'Google Search (Gemini)',
       brave: 'Brave Search',
@@ -238,6 +242,7 @@ export const en: MessageTree = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'name-matched web page',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',

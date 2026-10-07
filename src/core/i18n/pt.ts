@@ -40,6 +40,10 @@ export const pt = {
     accept: 'Percebi — começar a verificar',
   },
   check: {
+    matchBasis: {
+      barcode: 'Correspondência pelo código de barras',
+      name: 'Correspondência pelo nome do produto',
+    },
     searchVia: {
       gemini: 'Google Search (Gemini)',
       brave: 'Brave Search',
@@ -238,6 +242,7 @@ export const pt = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'página web (correspondência do nome)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',

@@ -113,6 +113,7 @@ export type CheckResult = {
       label: string;
       confidence: number;
       source:
+        | 'web_name'
         | 'confirmed_coo'
         | 'parts'
         | 'components_line'
@@ -123,6 +124,8 @@ export type CheckResult = {
         | 'ownership';
       rating: 'confirmed' | 'likely' | 'possible' | 'mentioned';
     }>;
+    /** How a web-search made-in was confirmed (Brave/Firecrawl): barcode only. */
+    madeInBasis?: 'barcode';
   };
   company?: {
     name?: string;
@@ -199,6 +202,15 @@ export type CheckResult = {
     searchProvider?: string;
     /** Search API requests made for this check (all providers tried). */
     searchRequests?: number;
+    /** Strongest match basis among kept Brave/Firecrawl made-in claims. */
+    searchMatch?: 'barcode' | 'name';
+    /** Gated Brave/Firecrawl made-in claims with their match basis. */
+    searchCoo?: Array<{
+      country: string;
+      basis: 'barcode' | 'name';
+      status: 'confirmed' | 'likely';
+      url?: string;
+    }>;
   };
 };
 

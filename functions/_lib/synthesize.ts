@@ -24,6 +24,7 @@ import {
   type OriginCandidateSource,
   type ProductPartial,
   type RelationTier,
+  type WebCooClaim,
 } from './schema';
 import {
   inScope,
@@ -32,7 +33,7 @@ import {
   type GeoScope,
   type RegionCode,
 } from './regions';
-import { applyCooPriority } from './cooPriority';
+import { applyCooPriority, extractCooClaimsFromText } from './cooPriority';
 
 export type SynthesizeInput = {
   jobId: string;
@@ -53,6 +54,13 @@ export type SynthesizeInput = {
   ocrText?: string;
   /** Grounding Sources URLs/titles from live Search (when webEnriched). */
   sources?: string[];
+  /**
+   * Brave/Firecrawl only (undefined for Gemini grounding): gated made-in claims.
+   * When set, a finished-unit made-in survives only if it matches a
+   * barcode-confirmed claim (or the label OCR); name-only claims become
+   * 'likely' candidates and never the final COO.
+   */
+  webCoo?: WebCooClaim[];
 };
 
 type Factors = {
@@ -461,10 +469,18 @@ function pushCandidate(
  */
 function collectOriginCandidates(
   p: ProductPartial | null | undefined,
-  opts: { webEnriched?: boolean; productConfidence?: number }
+  opts: { webEnriched?: boolean; productConfidence?: number; webLikely?: string[] }
 ): OriginCandidate[] {
-  if (!p) return [];
+  if (!p && !opts.webLikely?.length) return [];
   const out = new Map<string, OriginCandidate>();
+  // Name-only web match (Brave/Firecrawl): 'likely' at most, never confirmed.
+  for (const raw of opts.webLikely ?? []) {
+    const lab = confirmedOriginLabel(raw);
+    if (!lab) continue;
+    const label = matchCountryLabel(lab) || lab;
+    pushCandidate(out, label, 0.6, 'web_name', 'likely');
+  }
+  if (!p) return [...out.values()];
   const base = typeof opts.productConfidence === 'number' ? opts.productConfidence : 0.45;
   const webBoost = opts.webEnriched ? 0.1 : 0;
 
@@ -1391,6 +1407,73 @@ export function webFailCaveat(code?: string): string {
   }
 }
 
+/** Same country across labels / scripts (日本 ↔ Japan). */
+function sameCountry(a?: string, b?: string): boolean {
+  if (!a || !b) return false;
+  if (labelsMatch(a, b)) return true;
+  const la = matchCountryLabel(a);
+  const lb = matchCountryLabel(b);
+  return Boolean(la && lb && labelsMatch(la, lb));
+}
+
+/**
+ * Brave/Firecrawl made-in gate (code-enforced; exported for tests).
+ * Keeps product madeIn / manufacturedIn only when a barcode-confirmed web claim
+ * (or the package-label OCR) names the same country. Everything else is
+ * stripped; name-only claims come back as 'likely' candidate labels.
+ */
+export function applyWebCooGate(
+  p: ProductPartial | null | undefined,
+  webCoo: WebCooClaim[],
+  ocrText?: string
+): { product: ProductPartial | null | undefined; likely: string[]; madeInBasis?: 'barcode' } {
+  const confirmed = webCoo.filter((c) => c.status === 'confirmed' && c.basis === 'barcode');
+  const likely = webCoo
+    .filter((c) => c.status === 'likely')
+    .map((c) => c.country)
+    .filter((c) => !confirmed.some((k) => sameCountry(k.country, c)));
+  if (!p) return { product: p, likely };
+  const ocrClaims = extractCooClaimsFromText(ocrText || '');
+  const byBarcode = (v: string) => confirmed.some((c) => sameCountry(c.country, v));
+  const byOcr = (v: string) => ocrClaims.some((c) => sameCountry(c.label, v));
+  let madeIn = p.madeIn;
+  let manufacturedIn = p.manufacturedIn;
+  let madeInBasis: 'barcode' | undefined;
+  let stripped = false;
+  if (madeIn && confirmedOriginLabel(madeIn)) {
+    if (byBarcode(madeIn)) madeInBasis = 'barcode';
+    else if (!byOcr(madeIn)) {
+      madeIn = undefined;
+      stripped = true;
+    }
+  }
+  // Barcode-confirmed claim fills an empty made-in.
+  if (!madeIn && !stripped && confirmed.length) {
+    madeIn = confirmed[0]!.country;
+    madeInBasis = 'barcode';
+  }
+  if (manufacturedIn && confirmedOriginLabel(manufacturedIn)) {
+    if (!byBarcode(manufacturedIn) && !byOcr(manufacturedIn)) {
+      manufacturedIn = undefined;
+      stripped = true;
+    }
+  }
+  if (!stripped && madeIn === p.madeIn && manufacturedIn === p.manufacturedIn) {
+    return { product: p, likely, madeInBasis };
+  }
+  const notes = [...(p.notes ?? [])];
+  if (stripped) {
+    notes.push(
+      'Final COO unconfirmed — no web page showed the barcode/JAN with a made-in; product-name matches are likely candidates only.'
+    );
+  }
+  return {
+    product: { ...p, madeIn, manufacturedIn, notes: notes.slice(0, 8) },
+    likely,
+    madeInBasis,
+  };
+}
+
 /**
  * Deterministic synthesize. Safe for Workers CPU budget.
  */
@@ -1403,6 +1486,14 @@ export function synthesize(input: SynthesizeInput): CheckResult {
       webBrief: input.webBrief,
       ocrText: input.ocrText,
     }) ?? input.partials.product;
+  let webLikely: string[] = [];
+  let madeInBasis: 'barcode' | undefined;
+  if (input.webCoo && input.webEnriched) {
+    const gated = applyWebCooGate(productSan, input.webCoo, input.ocrText);
+    productSan = gated.product;
+    webLikely = gated.likely;
+    madeInBasis = gated.madeInBasis;
+  }
   if (productSan?.parts?.length) {
     const partsCtx: PartsSanitizeCtx = {
       webEnriched: input.webEnriched,
@@ -1514,6 +1605,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   const originCandidates = collectOriginCandidates(p, {
     webEnriched: input.webEnriched,
     productConfidence: p?.confidence,
+    webLikely,
   });
 
   if (p && !p.madeIn) {
@@ -1688,6 +1780,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
                 rating: c.rating,
               }))
             : undefined,
+          madeInBasis: madeInBasis && p.madeIn ? madeInBasis : undefined,
         }
       : id
         ? { name: id.name, brand: id.brand, category: id.category }

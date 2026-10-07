@@ -6,6 +6,7 @@
  * key are skipped. Nothing here records or logs the query text.
  */
 
+import type { WebCooClaim } from '../schema';
 import type { WebResearchEnv } from '../webResearch';
 
 export type SearchProviderId = 'gemini' | 'brave' | 'firecrawl';
@@ -44,6 +45,11 @@ export type SearchOutput = {
   requests: number;
   /** Model id used (Gemini grounding model, or extraction model). */
   model?: string;
+  /**
+   * Gated made-in claims (Brave / Firecrawl only): basis 'barcode' → confirmed,
+   * 'name' → likely. Undefined for Gemini grounding.
+   */
+  coo?: WebCooClaim[];
 };
 
 export interface SearchProvider {

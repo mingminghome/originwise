@@ -16,6 +16,7 @@ import {
   SEARCH_PROVIDER_IDS,
   type SearchEnv,
   type SearchInput,
+  type SearchOutput,
   type SearchProvider,
   type SearchProviderId,
 } from './types';
@@ -85,6 +86,8 @@ export type SearchChainResult = {
   /** Provider that succeeded, else the last one tried. */
   provider?: SearchProviderId;
   model?: string;
+  /** Gated made-in claims from the winning Brave/Firecrawl provider. */
+  coo?: SearchOutput['coo'];
   tried: SearchAttempt[];
 };
 
@@ -135,6 +138,7 @@ export async function runSearchChain(
         requests,
         provider: id,
         model: out.model,
+        coo: out.coo,
         tried,
       };
     }

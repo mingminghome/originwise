@@ -162,6 +162,9 @@ export function ResultPanel({
       {searchName && typeof searchRequests === 'number' ? (
         <p className="muted result-search-usage" data-testid="search-usage">
           {t('check.searchUsage', { provider: searchName, n: searchRequests })}
+          {result.meta?.searchMatch
+            ? ` · ${t(`check.matchBasis.${result.meta.searchMatch}`)}`
+            : null}
         </p>
       ) : null}
 

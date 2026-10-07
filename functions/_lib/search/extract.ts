@@ -106,7 +106,9 @@ export function variantTokens(entity: string): string[] {
   return [...new Set(parts)].slice(0, 8);
 }
 
-export type PageMatch = 'jan' | 'variant' | null;
+/** Which evidence tied a page to the queried product. */
+export type MatchBasis = 'barcode' | 'name';
+export type PageMatch = MatchBasis | null;
 
 export function matchPage(
   text: string,
@@ -114,13 +116,67 @@ export function matchPage(
   tokens: string[]
 ): PageMatch {
   const digitsOnly = nfkc(text).replace(/[ -]/g, '');
-  if (jans.some((j) => digitsOnly.includes(j))) return 'jan';
+  if (jans.some((j) => digitsOnly.includes(j))) return 'barcode';
   if (!tokens.length) return null;
   const c = compact(text);
   // Require at least one distinctive token (not a lone digit) plus all tokens.
   const distinctive = tokens.some((t) => t.length >= 2);
-  if (distinctive && tokens.every((t) => c.includes(t))) return 'variant';
+  if (distinctive && tokens.every((t) => c.includes(t))) return 'name';
   return null;
+}
+
+/** All checksum-valid GTIN/JAN codes printed on a page (distinct). */
+export function pageBarcodes(text: string): string[] {
+  const out = new Set<string>();
+  for (const m of nfkc(text).matchAll(/(?<!\d)(\d{8}|\d{12,14})(?!\d)/g)) {
+    if (isValidGtin(m[1]!)) out.add(m[1]!);
+  }
+  return [...out];
+}
+
+const VOLUME_RE = /(\d+(?:\.\d+)?)\s*(ml|mℓ|ミリリットル|l|ℓ|リットル|fl\.?\s?oz|oz)(?![a-z])/gi;
+const WEIGHT_RE = /(\d+(?:\.\d+)?)\s*(mg|g|kg|グラム)(?![a-z])/gi;
+const COUNT_RE = /(\d+)\s*(枚入|枚|個入|個|本入|本|pcs|pieces|pack|袋)(?![a-z])/gi;
+
+/** Distinct normalised values for one unit family (ml-equivalent, g-equivalent, count). */
+function distinctAmounts(text: string, re: RegExp, toBase: (n: number, unit: string) => number): Set<string> {
+  const out = new Set<string>();
+  for (const m of text.matchAll(re)) {
+    const n = Number(m[1]);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    out.add(String(Math.round(toBase(n, m[2]!.toLowerCase()) * 100) / 100));
+  }
+  return out;
+}
+
+/** Variant-selector UI (Amazon / Rakuten / Shopify style). */
+const VARIANT_SELECTOR_RE =
+  /(サイズ|容量|カラー|色|スタイル|種類|タイプ|パターン|規格)\s*を\s*選(択|ぶ)|バリエーション|商品を選択|規格を選|選擇(尺寸|容量|款式|規格)|select\s+(a\s+)?(size|capacity|colou?r|style|variant|option)|choose\s+(a\s+)?(size|capacity|colou?r|style|variant|option)|size\s*name\s*:|style\s*name\s*:|data-variant|variant-?selector|swatch/i;
+
+/**
+ * Heuristic: does this page list more than one variant of the product?
+ * True when ANY of:
+ *   - ≥2 distinct checksum-valid barcodes (JAN/EAN/UPC) on the page
+ *   - ≥2 distinct capacities (ml/L/oz, normalised to ml), or ≥2 distinct
+ *     weights (g/kg), or ≥2 distinct pack counts (枚/個/本/pcs)
+ *   - a variant selector cue (サイズを選択, バリエーション, "Select size", swatch…)
+ * Used only for name-only matches: a made-in on such a page can't be tied to
+ * the queried variant, so the claim is dropped (stays 未確認).
+ */
+export function pageListsMultipleVariants(text: string): boolean {
+  const t = nfkc(text);
+  if (pageBarcodes(t).length >= 2) return true;
+  const vol = distinctAmounts(t, VOLUME_RE, (n, u) =>
+    u === 'l' || u === 'ℓ' || u === 'リットル' ? n * 1000 : /oz/.test(u) ? n * 29.5735 : n
+  );
+  if (vol.size >= 2) return true;
+  const wt = distinctAmounts(t, WEIGHT_RE, (n, u) =>
+    u === 'kg' ? n * 1000 : u === 'mg' ? n / 1000 : n
+  );
+  if (wt.size >= 2) return true;
+  const cnt = distinctAmounts(t, COUNT_RE, (n) => n);
+  if (cnt.size >= 2) return true;
+  return VARIANT_SELECTOR_RE.test(t);
 }
 
 /** Search query: entity + JAN + made-in terms (EN / JA). */
@@ -267,17 +323,27 @@ function hostOf(url: string): string {
   }
 }
 
+export type CooStatus = 'confirmed' | 'likely';
+
+export type KeptCooClaim = CooClaim & { basis: MatchBasis; status: CooStatus };
+
 /**
- * Keep only COO claims whose quote is on the page AND whose page matched the
- * JAN or the full variant name. Exported for tests.
+ * Made-in gate (exported for tests). A claim must quote text that is really on
+ * its page and looks like a COO statement, and its page must match the product:
+ *   - barcode/JAN on the page          → status 'confirmed' (basis 'barcode')
+ *   - name only, page lists one variant → status 'likely'   (basis 'name'), never confirmed
+ *   - name only, page lists several variants (sizes / JANs / selector) → dropped
+ *   - no match                          → dropped
  */
 export function enforceCooClaims(
   claims: CooClaim[],
   pages: FetchedPage[],
   matches: PageMatch[]
-): { kept: Array<CooClaim & { match: Exclude<PageMatch, null> }>; dropped: number } {
-  const kept: Array<CooClaim & { match: Exclude<PageMatch, null> }> = [];
+): { kept: KeptCooClaim[]; dropped: number; droppedMultiVariant: number } {
+  const kept: KeptCooClaim[] = [];
   let dropped = 0;
+  let droppedMultiVariant = 0;
+  const multi = new Map<number, boolean>();
   for (const c of claims) {
     const page = pages[c.page - 1];
     const match = matches[c.page - 1];
@@ -290,12 +356,26 @@ export function enforceCooClaims(
       dropped += 1;
       continue;
     }
+    if (match === 'name') {
+      if (!multi.has(c.page)) multi.set(c.page, pageListsMultipleVariants(page.text));
+      if (multi.get(c.page)) {
+        dropped += 1;
+        droppedMultiVariant += 1;
+        continue;
+      }
+    }
     if (kept.some((k) => compact(k.country) === compact(country) && k.page === c.page)) {
       continue;
     }
-    kept.push({ ...c, country: country.slice(0, 40), quote: quote.slice(0, 80), match });
+    kept.push({
+      ...c,
+      country: country.slice(0, 40),
+      quote: quote.slice(0, 80),
+      basis: match,
+      status: match === 'barcode' ? 'confirmed' : 'likely',
+    });
   }
-  return { kept, dropped };
+  return { kept, dropped, droppedMultiVariant };
 }
 
 function parseClaims(obj: Record<string, unknown> | null): {
@@ -409,8 +489,10 @@ export async function extractBriefFromPages(opts: {
     claims = regexCooClaims(pages);
   }
 
-  const { kept, dropped } = enforceCooClaims(claims, pages, matches);
-  // Notes must never smuggle a made-in claim past the JAN/variant check.
+  const { kept, dropped, droppedMultiVariant } = enforceCooClaims(claims, pages, matches);
+  const confirmed = kept.filter((k) => k.status === 'confirmed');
+  const likely = kept.filter((k) => k.status === 'likely');
+  // Notes must never smuggle a made-in claim past the barcode/name gate.
   const safeNotes = notes
     .filter((n) => !NOTE_COO_CUE.test(nfkc(n)))
     .map((n) => n.slice(0, 160))
@@ -419,26 +501,37 @@ export async function extractBriefFromPages(opts: {
   const label = PROVIDER_LABEL[providerId] ?? providerId;
   const lines: string[] = [];
   lines.push(
-    `Web search via ${label} — ${pages.length} page(s) fetched; made-in only counted when the page matches the JAN or exact variant name.`
+    `Web search via ${label} — ${pages.length} page(s) fetched; made-in is confirmed only when the page shows the barcode/JAN.`
   );
   lines.push('STRUCTURED FINISHED-UNIT COO:');
-  if (kept.length) {
-    for (const k of kept) {
+  if (confirmed.length) {
+    for (const k of confirmed) {
       const via = hostOf(pages[k.page - 1]!.url);
-      const why =
-        k.match === 'jan' ? `page matches JAN ${jans.join('/')}` : 'page matches exact variant name';
       lines.push(
-        `- COO: ${k.country} | source: ${k.sourceType} | via: ${via} (${why}) — "${k.quote}"`
+        `- COO: ${k.country} | source: ${k.sourceType} | via: ${via} (matched by barcode JAN ${jans.join('/')}) — "${k.quote}"`
       );
     }
   } else {
     lines.push(
-      `- COO: 未確認 (unconfirmed) — no fetched page both matched the ${jans.length ? `JAN ${jans.join('/')} or ` : ''}exact variant name and stated a made-in / 生産国 / 原産国. Do not infer the finished-unit country.`
+      `- COO: 未確認 (unconfirmed) — no fetched page showed the ${jans.length ? `barcode/JAN ${jans.join('/')}` : 'product barcode/JAN'} next to a made-in / 生産国 / 原産国 statement. Do not state a finished-unit country.`
     );
   }
-  if (dropped > 0) {
+  // Wording avoids "Made in X" / "原産国 X" shapes so COO parsers never read
+  // a likely candidate as a confirmed stamp.
+  for (const k of likely) {
+    const via = hostOf(pages[k.page - 1]!.url);
     lines.push(
-      `- Dropped ${dropped} made-in mention(s) from pages that did not match the JAN/variant (or quote not on page).`
+      `- LIKELY candidate only, NOT confirmed (matched by product name, no barcode on page; single-variant page) — country candidate = ${k.country} | via: ${via}`
+    );
+  }
+  if (droppedMultiVariant > 0) {
+    lines.push(
+      `- Dropped ${droppedMultiVariant} made-in mention(s) from name-only pages that list several variants (sizes / barcodes / selector) — stays 未確認.`
+    );
+  }
+  if (dropped - droppedMultiVariant > 0) {
+    lines.push(
+      `- Dropped ${dropped - droppedMultiVariant} made-in mention(s) from pages that did not match the barcode/name (or quote not on page).`
     );
   }
   if (safeNotes.length) {
@@ -459,5 +552,11 @@ export async function extractBriefFromPages(opts: {
     ms: Date.now() - t0,
     requests,
     model,
+    coo: kept.map((k) => ({
+      country: k.country,
+      basis: k.basis,
+      status: k.status,
+      url: pages[k.page - 1]!.url,
+    })),
   };
 }

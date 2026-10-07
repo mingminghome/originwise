@@ -40,6 +40,10 @@ export const fr = {
     accept: 'Compris — commencer',
   },
   check: {
+    matchBasis: {
+      barcode: 'Correspondance par code-barres',
+      name: 'Correspondance par nom du produit',
+    },
     searchVia: {
       gemini: 'Google Search (Gemini)',
       brave: 'Brave Search',
@@ -238,6 +242,7 @@ export const fr = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'page web (correspondance du nom)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',

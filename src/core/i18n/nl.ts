@@ -40,6 +40,10 @@ export const nl = {
     accept: 'Begrepen — starten',
   },
   check: {
+    matchBasis: {
+      barcode: 'Gekoppeld via barcode',
+      name: 'Gekoppeld via productnaam',
+    },
     searchVia: {
       gemini: 'Google Search (Gemini)',
       brave: 'Brave Search',
@@ -238,6 +242,7 @@ export const nl = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'webpagina (naamovereenkomst)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',

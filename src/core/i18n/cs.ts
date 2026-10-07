@@ -40,6 +40,10 @@ export const cs = {
     accept: 'Rozumím — začít kontrolovat',
   },
   check: {
+    matchBasis: {
+      barcode: 'Shoda podle čárového kódu',
+      name: 'Shoda podle názvu produktu',
+    },
     searchVia: {
       gemini: 'Google Search (Gemini)',
       brave: 'Brave Search',
@@ -238,6 +242,7 @@ export const cs = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'webová stránka (shoda názvu)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',

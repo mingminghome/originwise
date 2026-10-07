@@ -40,6 +40,10 @@ export const es = {
     accept: 'Entendido — empezar',
   },
   check: {
+    matchBasis: {
+      barcode: 'Coincidencia por código de barras',
+      name: 'Coincidencia por nombre del producto',
+    },
     searchVia: {
       gemini: 'Google Search (Gemini)',
       brave: 'Brave Search',
@@ -238,6 +242,7 @@ export const es = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'página web (coincidencia de nombre)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',

@@ -40,6 +40,10 @@ export const hu = {
     accept: 'Értem — kezdjük az ellenőrzést',
   },
   check: {
+    matchBasis: {
+      barcode: 'Vonalkód alapján egyeztetve',
+      name: 'Terméknév alapján egyeztetve',
+    },
     searchVia: {
       gemini: 'Google Search (Gemini)',
       brave: 'Brave Search',
@@ -238,6 +242,7 @@ export const hu = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'weboldal (névegyezés)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',

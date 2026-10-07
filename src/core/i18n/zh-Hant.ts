@@ -40,15 +40,19 @@ export const zhHant = {
     accept: '知道了 — 開始查',
   },
   check: {
+    matchBasis: {
+      barcode: '依條碼比對',
+      name: '依品名比對',
+    },
     searchVia: {
       gemini: 'Google 搜尋（Gemini）',
       brave: 'Brave Search',
       firecrawl: 'Firecrawl',
     },
-    webStepVia: '網頁研究——查詢已傳送至 {name}',
-    searchUsage: '網頁搜尋：{provider} · 搜尋請求 {n} 次',
+    webStepVia: '網路搜尋：查詢已傳送至 {name}',
+    searchUsage: '網路搜尋：{provider}・共 {n} 次搜尋請求',
     knowledgeWebVia:
-      '含即時網頁研究（{provider}）以及模型知識。仍不是公司登記或關務資料庫——標示與官方文件可能與網頁不符。僅供參考——非法律、貿易或制裁建議。',
+      '結果結合即時網路搜尋（{provider}）與模型知識，並非公司登記或關務資料庫；實際包裝標示及官方文件可能與網頁內容不同。僅供參考，不構成法律、貿易或制裁方面的建議。',
     title: '快速查',
     subtitle: '這項商品是否與中國相關？輸入名稱，或拍包裝。',
     placeholder: '例如：零食品牌、手機、玩具…',
@@ -92,7 +96,7 @@ export const zhHant = {
       upstream_quota: '配額／速率限制',
       upstream_error: '上游錯誤',
       upstream_unavailable: '逾時／服務暫時不可用',
-      empty_response: '網頁研究空回應',
+      empty_response: '網路搜尋空回應',
       model_unavailable: '此 API 金鑰無法使用該模型',
       search_grounding_unavailable:
         'Google 搜尋 grounding 不可用 — 改用模型知識',
@@ -151,11 +155,11 @@ export const zhHant = {
     },
     caveats: '注意事項',
     disclaimer:
-      '僅供參考——依模型知識與（若啟用）即時網頁研究，非法律或制裁建議。AI 可能錯誤。',
+      '僅供參考——依模型知識與（若啟用）即時網路搜尋，非法律或制裁建議。AI 可能錯誤。',
     knowledgeModel:
       '僅依一般模型知識（未做即時網頁查詢）。品牌來源、零件工廠與最終組裝／原產地可能因型號／市場而異——請以包裝標示為準。不是公司登記或關務資料庫。僅供參考——非法律、貿易或制裁建議。',
     knowledgeWeb:
-      '含即時網頁研究（經 Gemini grounding 的 Google 搜尋）以及模型知識。仍不是公司登記或關務資料庫——標示與官方文件可能與網頁不符。僅供參考——非法律、貿易或制裁建議。',
+      '含即時網路搜尋（經 Gemini grounding 的 Google 搜尋）以及模型知識。仍不是公司登記或關務資料庫——標示與官方文件可能與網頁不符。僅供參考——非法律、貿易或制裁建議。',
     providerNotConfigured:
       '尚未設定 AI。請在 .dev.vars 加入金鑰，並執行 `npm run pages:dev`（見 README）。',
     rateLimited: '已達免費伺服器限制：每 30 秒 1 次。請稍候。',
@@ -226,6 +230,7 @@ export const zhHant = {
       mentioned: '有提及',
     },
     candidateSource: {
+      web_name: '依品名比對的網頁',
       confirmed_coo: '標籤／確認 COO',
       parts: '零件／物料',
       components_line: '零件／全球產線',
@@ -293,7 +298,7 @@ export const zhHant = {
       start: '開始',
       cache: '快取',
       identify: '讀取標籤',
-      web: '網頁研究',
+      web: '網路搜尋',
       monolith: '完整分析',
       dual_core: '產品與公司',
       product: '產品產地',
@@ -382,7 +387,7 @@ export const zhHant = {
       '執行查詢時，名稱或照片只用於取得該次回答。我們不會把包裝當成產品目錄保存。',
     privacyBullet5: '照片會先在裝置上壓縮再上傳，不會當成伺服器紀錄保存。',
     privacyBullet6:
-      '開啟即時網頁研究時，產品名稱（及標籤文字）也會傳送一次給搜尋服務：優先使用經 Gemini 的 Google 搜尋，僅在失敗時才改用 Brave Search 或 Firecrawl。進度步驟與結果會標明實際使用的服務。我們不會記錄搜尋內容。',
+      '開啟即時網路搜尋時，產品名稱（及標籤文字）也會傳送一次給搜尋服務：優先使用 Gemini 的 Google 搜尋，失敗時才改用 Brave Search 或 Firecrawl。查詢進度與結果都會標明實際使用的服務。我們不會記錄搜尋內容。',
     privacyPolicyLink: '隱私權政策',
     termsLink: '使用條款',
     designTitle: '它怎麼運作',

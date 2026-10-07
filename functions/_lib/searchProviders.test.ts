@@ -24,6 +24,9 @@ import {
   variantTokens,
 } from './search/extract';
 import { runCheckOrchestrator, type ProgressEvent } from './orchestrator';
+import { extractCooClaimsFromText } from './cooPriority';
+import { applyWebCooGate, synthesize } from './synthesize';
+import { pageListsMultipleVariants } from './search/extract';
 
 const JAN = '4902508012348'; // checksum-valid GTIN-13 test code
 const ENTITY = `Pigeon Sheer PPSU 240ml ${JAN}`;
@@ -153,10 +156,10 @@ describe('search provider helpers', () => {
 
   it('matches pages by JAN or every variant token only', () => {
     const tokens = variantTokens('Pigeon Sheer PPSU 240ml');
-    assert.equal(matchPage(`品番 ${JAN} 原産国 日本`, [JAN], tokens), 'jan');
+    assert.equal(matchPage(`品番 ${JAN} 原産国 日本`, [JAN], tokens), 'barcode');
     assert.equal(
       matchPage('Pigeon Sheer PPSU 240 ml — Made in Japan', [JAN], tokens),
-      'variant'
+      'name'
     );
     // Different size → not this variant
     assert.equal(matchPage('Pigeon Sheer PPSU 160ml — Made in China', [JAN], tokens), null);
@@ -174,9 +177,11 @@ describe('search provider helpers', () => {
         { country: 'Thailand', quote: 'Made in Thailand', page: 1, sourceType: 'retailer' },
       ],
       pages,
-      ['jan', null]
+      ['barcode', null]
     );
     assert.deepEqual(kept.map((k) => k.country), ['日本']);
+    assert.equal(kept[0]?.basis, 'barcode');
+    assert.equal(kept[0]?.status, 'confirmed');
     assert.equal(dropped, 2);
   });
 });
@@ -290,7 +295,10 @@ describe('runSearchChain (mocked fetch)', () => {
     assert.equal(braveToken, 'brave-key');
     assert.ok(braveQuery.includes(JAN));
     assert.ok(seen.some((u) => u.startsWith('https://api.search.brave.com/res/v1/web/search?')));
-    assert.match(out.brief, /COO: 日本 \| source: retailer \| via: shop\.example\.jp \(page matches JAN/);
+    assert.match(out.brief, /COO: 日本 \| source: retailer \| via: shop\.example\.jp \(matched by barcode JAN/);
+    assert.deepEqual(out.coo, [
+      { country: '日本', basis: 'barcode', status: 'confirmed', url: 'https://shop.example.jp/sheer' },
+    ]);
     assert.ok(out.brief.includes('Pigeon is a Japanese brand'));
     assert.ok(out.brief.includes('Sources:'));
     // requests = gemini attempts + 1 Brave search
@@ -567,5 +575,196 @@ describe('orchestrator web row + meta', () => {
     assert.equal(web?.provider, 'brave');
     assert.equal(out.result.meta.searchProvider, 'brave');
     assert.ok(out.result.caveats?.some((c) => /Daily free Google Search quota/.test(c)));
+  });
+});
+
+describe('barcode vs name matching rule (Tester / Chief bar)', () => {
+  afterEach(() => {
+    mock.restoreAll();
+  });
+
+  it('detects multi-variant pages: several barcodes, sizes, or a variant selector', () => {
+    assert.equal(pageListsMultipleVariants('Pigeon Sheer PPSU 240ml 生産国：中国'), false);
+    assert.equal(
+      pageListsMultipleVariants(`JAN ${JAN} / JAN 4902508099998`),
+      true
+    );
+    assert.equal(pageListsMultipleVariants('160ml / 240ml / 330ml'), true);
+    assert.equal(pageListsMultipleVariants('240ml と 0.24L'), false); // same capacity
+    assert.equal(pageListsMultipleVariants('サイズを選択 してください'), true);
+    assert.equal(pageListsMultipleVariants('Select size'), true);
+    assert.equal(pageListsMultipleVariants('容量 240ml 重量 90g'), false);
+  });
+
+  it('name-only match on a single-variant page → likely candidate, never a COO stamp', async () => {
+    mockFetch({
+      brave: () =>
+        json({ web: { results: [{ url: 'https://shop.example.jp/one', title: 'Sheer 240ml' }] } }),
+      pages: {
+        // Product name + size match, but no barcode on the page.
+        'https://shop.example.jp/one': '<h1>Pigeon Sheer PPSU 240ml</h1><p>生産国：中国</p>',
+      },
+      extraction: {
+        coo: [{ country: '中国', quote: '生産国：中国', page: 1, sourceType: 'retailer' }],
+        notes: [],
+      },
+    });
+    const out = await runSearchChain({
+      entity: ENTITY,
+      locale: 'ja',
+      env: { BRAVE_SEARCH_API_KEY: 'b', GEMINI_API_KEY: 'g', SEARCH_PROVIDERS: 'brave' },
+    });
+    assert.equal(out.ok, true);
+    assert.deepEqual(out.coo, [
+      { country: '中国', basis: 'name', status: 'likely', url: 'https://shop.example.jp/one' },
+    ]);
+    assert.ok(out.brief.includes('未確認'));
+    assert.match(out.brief, /LIKELY candidate only, NOT confirmed \(matched by product name/);
+    assert.ok(!/COO: 中国/.test(out.brief));
+    // COO parsers (applyCooPriority) must not read the likely line as a stamp.
+    assert.ok(!extractCooClaimsFromText(out.brief).some((c) => c.region === 'CN'));
+  });
+
+  it('name-only match on an Amazon JP listing with 3 variants + 生産国 中国 → dropped, 未確認', async () => {
+    const amazon = `
+      <div id="title">ピジョン 母乳実感 Pigeon Sheer PPSU 240ml</div>
+      <div id="variation_size_name"><span>サイズ名:</span>
+        <ul><li>160ml</li><li>240ml</li><li>330ml</li></ul></div>
+      <table id="productDetails"><tr><th>生産国</th><td>生産国：中国</td></tr></table>`;
+    mockFetch({
+      brave: () =>
+        json({ web: { results: [{ url: 'https://www.amazon.co.jp/dp/B0TEST', title: 'Amazon' }] } }),
+      pages: { 'https://www.amazon.co.jp/dp/B0TEST': amazon },
+      extraction: {
+        coo: [{ country: '中国', quote: '生産国：中国', page: 1, sourceType: 'retailer' }],
+        notes: [],
+      },
+    });
+    const out = await runSearchChain({
+      entity: ENTITY,
+      locale: 'ja',
+      env: { BRAVE_SEARCH_API_KEY: 'b', GEMINI_API_KEY: 'g', SEARCH_PROVIDERS: 'brave' },
+    });
+    assert.equal(out.ok, true);
+    assert.deepEqual(out.coo, []);
+    assert.ok(out.brief.includes('未確認'));
+    assert.ok(out.brief.includes('list several variants'));
+    assert.ok(!/LIKELY/.test(out.brief));
+    assert.ok(!extractCooClaimsFromText(out.brief).some((c) => c.region === 'CN'));
+  });
+
+  it('barcode match on a multi-variant page still confirms (barcode is specific)', async () => {
+    mockFetch({
+      brave: () =>
+        json({ web: { results: [{ url: 'https://shop.example.jp/multi', title: 'Sheer' }] } }),
+      pages: {
+        'https://shop.example.jp/multi': `<p>Pigeon Sheer 160ml / 240ml</p><p>JAN ${JAN}</p><p>原産国：日本</p>`,
+      },
+      extraction: {
+        coo: [{ country: '日本', quote: '原産国：日本', page: 1, sourceType: 'retailer' }],
+        notes: [],
+      },
+    });
+    const out = await runSearchChain({
+      entity: ENTITY,
+      locale: 'ja',
+      env: { BRAVE_SEARCH_API_KEY: 'b', GEMINI_API_KEY: 'g', SEARCH_PROVIDERS: 'brave' },
+    });
+    assert.equal(out.coo?.[0]?.basis, 'barcode');
+    assert.equal(out.coo?.[0]?.status, 'confirmed');
+  });
+
+  it('synthesize gate: barcode claim → confirmed made-in with madeInBasis=barcode', () => {
+    const r = synthesize({
+      jobId: 's1',
+      geoScope: 'prc',
+      webEnriched: true,
+      webBrief: 'x',
+      partials: { product: { name: 'Pigeon Sheer', madeIn: 'Japan', confidence: 0.7 } },
+      webCoo: [{ country: '日本', basis: 'barcode', status: 'confirmed' }],
+    });
+    assert.equal(r.product?.madeIn, 'Japan');
+    assert.equal(r.product?.madeInBasis, 'barcode');
+    assert.ok(r.product?.originCandidates?.some((c) => c.rating === 'confirmed'));
+  });
+
+  it('synthesize gate: name-only claim → likely candidate (web_name), no final COO', () => {
+    const r = synthesize({
+      jobId: 's2',
+      geoScope: 'prc',
+      webEnriched: true,
+      webBrief: 'x',
+      // Monolith tried to stamp China from the name-only page.
+      partials: { product: { name: 'Pigeon Sheer', madeIn: 'China', confidence: 0.7 } },
+      webCoo: [{ country: '中国', basis: 'name', status: 'likely' }],
+    });
+    assert.equal(r.product?.madeIn, undefined);
+    assert.equal(r.product?.madeInBasis, undefined);
+    const cand = r.product?.originCandidates?.find((c) => c.source === 'web_name');
+    assert.equal(cand?.rating, 'likely');
+    assert.ok(!r.product?.originCandidates?.some((c) => c.rating === 'confirmed'));
+  });
+
+  it('synthesize gate keeps a label-OCR made-in even without a barcode web claim', () => {
+    const g = applyWebCooGate(
+      { name: 'x', madeIn: 'Japan' },
+      [],
+      'Made in Japan (package label)'
+    );
+    assert.equal(g.product?.madeIn, 'Japan');
+  });
+
+  it('orchestrator exposes basis: meta.searchMatch / meta.searchCoo; name-only never becomes madeIn', async () => {
+    mock.method(
+      globalThis,
+      'fetch',
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const body = String(init?.body || '');
+        if (url.includes('generativelanguage.googleapis.com')) {
+          if (/\/v1beta\/models(\?|$)/.test(url)) return json({ models: [] });
+          if (url.includes('interactions') || /google_search/.test(body)) {
+            return json(QUOTA_BODY, 429);
+          }
+          if (body.includes('You extract product-origin facts')) {
+            return extractionReply({
+              coo: [{ country: '中国', quote: '生産国：中国', page: 1, sourceType: 'retailer' }],
+              notes: [],
+            });
+          }
+          return extractionReply({
+            product: { name: 'Pigeon Sheer PPSU 240ml', brand: 'Pigeon', madeIn: 'China', confidence: 0.7 },
+          });
+        }
+        if (url.startsWith('https://api.search.brave.com/')) {
+          return json({ web: { results: [{ url: 'https://a.example/1', title: 'A' }] } });
+        }
+        if (url === 'https://a.example/1') {
+          return html('<p>Pigeon Sheer PPSU 240ml</p><p>生産国：中国</p>');
+        }
+        return new Response('', { status: 404 });
+      }
+    );
+    const out = await runCheckOrchestrator({
+      jobId: 'j3',
+      locale: 'ja',
+      text: 'Pigeon Sheer PPSU 240ml',
+      geoScope: 'prc',
+      dimensions: ['origin'],
+      env: { GEMINI_API_KEY: 'g', BRAVE_SEARCH_API_KEY: 'b' },
+    });
+    assert.equal(out.ok, true);
+    if (!out.ok) return;
+    assert.equal(out.result.meta.searchProvider, 'brave');
+    assert.equal(out.result.meta.searchMatch, 'name');
+    assert.deepEqual(out.result.meta.searchCoo, [
+      { country: '中国', basis: 'name', status: 'likely', url: 'https://a.example/1' },
+    ]);
+    assert.equal(out.result.product?.madeIn, undefined);
+    assert.ok(
+      out.result.product?.originCandidates?.some(
+        (c) => c.source === 'web_name' && c.rating === 'likely'
+      )
+    );
   });
 });

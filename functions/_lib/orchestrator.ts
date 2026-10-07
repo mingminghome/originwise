@@ -22,7 +22,7 @@ import {
   type LlmEnv,
   type LlmImage,
 } from './llm';
-import type { CheckDimension, CheckResult } from './schema';
+import type { CheckDimension, CheckResult, WebCooClaim } from './schema';
 import type { GeoScope } from './regions';
 import { synthesize } from './synthesize';
 import {
@@ -92,6 +92,8 @@ type WebPass = {
   provider?: SearchProviderId;
   /** Total search API requests across providers. */
   requests?: number;
+  /** Gated made-in claims (Brave / Firecrawl only). */
+  coo?: WebCooClaim[];
 };
 
 /**
@@ -152,6 +154,7 @@ async function maybeWebResearch(
       sources: wr.sources,
       provider: wr.provider,
       requests: wr.requests,
+      coo: wr.coo,
     };
   }
   const failCode = wr.error || 'empty_response';
@@ -371,6 +374,8 @@ async function runQuery(
     webFailCode: web.used ? undefined : web.error,
     webBrief: web.brief,
     sources: web.sources,
+    // Brave/Firecrawl only: made-in needs a barcode-confirmed claim (or OCR).
+    webCoo: web.used && web.provider && web.provider !== 'gemini' ? web.coo ?? [] : undefined,
     ocrText: parts.ocrText,
     partials: {
       product: parts.product,
@@ -383,6 +388,10 @@ async function runQuery(
   if (web.provider) {
     result.meta.searchProvider = web.provider;
     result.meta.searchRequests = web.requests ?? 0;
+  }
+  if (web.used && web.coo?.length) {
+    result.meta.searchCoo = web.coo;
+    result.meta.searchMatch = web.coo.some((c) => c.basis === 'barcode') ? 'barcode' : 'name';
   }
   emit({ type: 'progress', jobId, step: 'synthesize', status: 'done' });
   return { ok: true, result, mode: 'monolith', agents };

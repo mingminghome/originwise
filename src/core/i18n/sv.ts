@@ -40,6 +40,10 @@ export const sv = {
     accept: 'Uppfattat — börja kolla',
   },
   check: {
+    matchBasis: {
+      barcode: 'Matchad via streckkod',
+      name: 'Matchad via produktnamn',
+    },
     searchVia: {
       gemini: 'Google Search (Gemini)',
       brave: 'Brave Search',
@@ -238,6 +242,7 @@ export const sv = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'webbsida (namnmatchning)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',

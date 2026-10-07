@@ -40,6 +40,10 @@ export const ro = {
     accept: 'Am înțeles — începe verificarea',
   },
   check: {
+    matchBasis: {
+      barcode: 'Potrivire după codul de bare',
+      name: 'Potrivire după numele produsului',
+    },
     searchVia: {
       gemini: 'Google Search (Gemini)',
       brave: 'Brave Search',
@@ -238,6 +242,7 @@ export const ro = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'pagină web (potrivire după nume)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',

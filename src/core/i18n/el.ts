@@ -40,6 +40,10 @@ export const el = {
     accept: 'Κατάλαβα — ξεκινήστε τον έλεγχο',
   },
   check: {
+    matchBasis: {
+      barcode: 'Αντιστοίχιση με γραμμωτό κώδικα',
+      name: 'Αντιστοίχιση με όνομα προϊόντος',
+    },
     searchVia: {
       gemini: 'Google Search (Gemini)',
       brave: 'Brave Search',
@@ -238,6 +242,7 @@ export const el = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'ιστοσελίδα (αντιστοίχιση ονόματος)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',

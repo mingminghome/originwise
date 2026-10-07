@@ -40,6 +40,10 @@ export const fi = {
     accept: 'Selvä — aloita tarkistus',
   },
   check: {
+    matchBasis: {
+      barcode: 'Täsmätty viivakoodilla',
+      name: 'Täsmätty tuotenimellä',
+    },
     searchVia: {
       gemini: 'Google Search (Gemini)',
       brave: 'Brave Search',
@@ -238,6 +242,7 @@ export const fi = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'verkkosivu (nimivastaavuus)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',

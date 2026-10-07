@@ -40,6 +40,10 @@ export const pl = {
     accept: 'Rozumiem — zacznij sprawdzać',
   },
   check: {
+    matchBasis: {
+      barcode: 'Dopasowano po kodzie kreskowym',
+      name: 'Dopasowano po nazwie produktu',
+    },
     searchVia: {
       gemini: 'Google Search (Gemini)',
       brave: 'Brave Search',
@@ -238,6 +242,7 @@ export const pl = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'strona WWW (dopasowanie nazwy)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',

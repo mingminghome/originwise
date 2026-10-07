@@ -40,6 +40,10 @@ export const da = {
     accept: 'Forstået — begynd at tjekke',
   },
   check: {
+    matchBasis: {
+      barcode: 'Matchet via stregkode',
+      name: 'Matchet via produktnavn',
+    },
     searchVia: {
       gemini: 'Google Search (Gemini)',
       brave: 'Brave Search',
@@ -238,6 +242,7 @@ export const da = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'webside (navnematch)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',
