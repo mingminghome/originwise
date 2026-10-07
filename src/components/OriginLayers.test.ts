@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { CheckResult } from '../core/types';
-import { buildOriginLayers } from './OriginLayers';
+import { buildOriginLayers, webQuotaNotice } from './OriginLayers';
 
 function base(partial: Partial<CheckResult> = {}): CheckResult {
   return {
@@ -200,5 +200,23 @@ describe('buildOriginLayers', () => {
       })
     );
     assert.ok(!model.parts.some((l) => l.kind === 'candidate'));
+  });
+});
+
+describe('webQuotaNotice', () => {
+  const withWeb = (error?: string) =>
+    ({ meta: { agents: [{ id: 'web', ok: false, error }] } }) as unknown as CheckResult;
+
+  it('402 upstream_credits → its own credits notice (no daily-reset wording)', () => {
+    assert.equal(webQuotaNotice(withWeb('upstream_credits')), 'aiCreditsUsedUp');
+  });
+
+  it('429 upstream_quota → daily search quota notice', () => {
+    assert.equal(webQuotaNotice(withWeb('upstream_quota')), 'searchQuotaUsedUp');
+  });
+
+  it('other web errors → no quota notice', () => {
+    assert.equal(webQuotaNotice(withWeb('upstream_unavailable')), null);
+    assert.equal(webQuotaNotice({} as CheckResult), null);
   });
 });

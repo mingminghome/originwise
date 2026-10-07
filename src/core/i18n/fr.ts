@@ -96,6 +96,7 @@ export const fr = {
     agentFailUnknown: 'erreur',
     agentError: {
       upstream_quota: 'quota / limite de débit',
+      upstream_credits: 'crédit IA épuisé',
       upstream_error: 'erreur amont',
       upstream_unavailable: 'service indisponible',
       empty_response: 'réponse vide',
@@ -228,6 +229,8 @@ export const fr = {
       'Part countries are model guesses — not packaging or Search confirmed.',
     searchQuotaUsedUp:
       'Quota de recherche IA épuisé — pas d\'informations plus précises pour le moment. Réessayez après la réinitialisation quotidienne.',
+    aiCreditsUsedUp:
+      'Crédit du service IA temporairement épuisé — pas d\'informations plus précises pour le moment. Réessayez plus tard.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: "Enregistrer l'image",
     sectionShareShare: 'Partager',

@@ -96,6 +96,7 @@ export const el = {
     agentFailUnknown: 'σφάλμα',
     agentError: {
       upstream_quota: 'όριο / ρυθμός',
+      upstream_credits: 'εξαντλήθηκαν τα credits AI',
       upstream_error: 'σφάλμα ανάντη',
       upstream_unavailable: 'υπηρεσία μη διαθέσιμη',
       empty_response: 'κενή απάντηση',
@@ -228,6 +229,8 @@ export const el = {
       'Part countries are model guesses — not packaging or Search confirmed.',
     searchQuotaUsedUp:
       'Το όριο αναζήτησης AI εξαντλήθηκε — δεν υπάρχουν πιο ακριβείς πληροφορίες αυτή τη στιγμή. Δοκιμάστε ξανά μετά την ημερήσια επαναφορά.',
+    aiCreditsUsedUp:
+      'Τα credits της υπηρεσίας AI εξαντλήθηκαν προσωρινά — δεν υπάρχουν πιο ακριβείς πληροφορίες αυτή τη στιγμή. Δοκιμάστε ξανά αργότερα.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Αποθήκευση εικόνας',
     sectionShareShare: 'Κοινοποίηση',

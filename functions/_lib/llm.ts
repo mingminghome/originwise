@@ -28,6 +28,7 @@ export type AskErrorCode =
   | 'gemini_not_configured'
   | 'upstream_error'
   | 'upstream_quota'
+  | 'upstream_credits'
   | 'upstream_unavailable'
   | 'empty_response';
 
@@ -173,12 +174,28 @@ type CallOnce =
 
 function mapHttpError(status: number, bodyText: string): AskErrorCode {
   const msg = bodyText.toLowerCase();
+  // Prepaid balance at zero (e.g. Gemini "prepayment credits are depleted").
+  // Not a daily reset — the whole project is blocked until credit is added.
+  if (isCreditsDepleted(status, msg)) return 'upstream_credits';
   if (status === 429 || /quota|rate limit|resource exhausted|insufficient_quota|billing/.test(msg)) {
     return 'upstream_quota';
   }
   if (status === 503 || status === 504) return 'upstream_unavailable';
   return 'upstream_error';
 }
+
+/** HTTP 402 / prepaid-credit exhaustion (exported for unit tests). */
+export function isCreditsDepleted(status: number, body: string): boolean {
+  const msg = String(body || '').toLowerCase();
+  return (
+    status === 402 ||
+    /prepayment credits|credits are depleted|credit balance is too low|payment required/.test(
+      msg
+    )
+  );
+}
+
+export { mapHttpError as mapLlmHttpError };
 
 /** True when the failure is worth trying the next model in the free-tier chain. */
 function shouldTryNextModel(kind: AskErrorCode): boolean {
@@ -529,5 +546,8 @@ export async function callProvider(
     break;
   }
 
-  throw llmFail(last, last === 'upstream_quota' ? 429 : 502);
+  throw llmFail(
+    last,
+    last === 'upstream_credits' ? 402 : last === 'upstream_quota' ? 429 : 502
+  );
 }

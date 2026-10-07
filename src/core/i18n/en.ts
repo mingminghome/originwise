@@ -99,6 +99,7 @@ export const en: MessageTree = {
     agentFailUnknown: 'error',
     agentError: {
       upstream_quota: 'quota / rate limit',
+      upstream_credits: 'AI credits used up',
       upstream_error: 'upstream error',
       upstream_unavailable: 'timed out / service unavailable',
       empty_response: 'empty web reply',
@@ -228,6 +229,8 @@ export const en: MessageTree = {
       'Part countries are model guesses — not packaging or Search confirmed.',
     searchQuotaUsedUp:
       'AI search quota used up — more precise information isn\'t available right now. Please check again after the daily reset.',
+    aiCreditsUsedUp:
+      'AI service credits are temporarily used up — more precise information isn\'t available right now. Please try again later.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Save image',
     sectionShareShare: 'Share',

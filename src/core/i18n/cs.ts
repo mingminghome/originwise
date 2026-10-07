@@ -96,6 +96,7 @@ export const cs = {
     agentFailUnknown: 'chyba',
     agentError: {
       upstream_quota: 'kvóta / rychlostní limit',
+      upstream_credits: 'kredit AI vyčerpán',
       upstream_error: 'chyba zdroje',
       upstream_unavailable: 'služba nedostupná',
       empty_response: 'prázdná odpověď',
@@ -228,6 +229,8 @@ export const cs = {
       'Part countries are model guesses — not packaging or Search confirmed.',
     searchQuotaUsedUp:
       'Kvóta AI vyhledávání je vyčerpána — přesnější informace teď nejsou k dispozici. Zkuste to znovu po denním obnovení.',
+    aiCreditsUsedUp:
+      'Kredit AI služby je dočasně vyčerpán — přesnější informace teď nejsou k dispozici. Zkuste to prosím později.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Uložit obrázek',
     sectionShareShare: 'Sdílet',

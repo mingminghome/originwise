@@ -96,6 +96,7 @@ export const pt = {
     agentFailUnknown: 'erro',
     agentError: {
       upstream_quota: 'quota / limite de ritmo',
+      upstream_credits: 'crédito de IA esgotado',
       upstream_error: 'erro a montante',
       upstream_unavailable: 'serviço indisponível',
       empty_response: 'resposta vazia',
@@ -228,6 +229,8 @@ export const pt = {
       'Part countries are model guesses — not packaging or Search confirmed.',
     searchQuotaUsedUp:
       'Quota de pesquisa de IA esgotada — não há informação mais precisa de momento. Volte a verificar após a reposição diária.',
+    aiCreditsUsedUp:
+      'O crédito do serviço de IA esgotou-se temporariamente — não há informação mais precisa de momento. Tente novamente mais tarde.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Guardar imagem',
     sectionShareShare: 'Partilhar',

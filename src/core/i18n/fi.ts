@@ -96,6 +96,7 @@ export const fi = {
     agentFailUnknown: 'virhe',
     agentError: {
       upstream_quota: 'kiintiö / nopeusraja',
+      upstream_credits: 'tekoälykrediitit käytetty',
       upstream_error: 'ylävirran virhe',
       upstream_unavailable: 'palvelu ei käytettävissä',
       empty_response: 'tyhjä vastaus',
@@ -228,6 +229,8 @@ export const fi = {
       'Part countries are model guesses — not packaging or Search confirmed.',
     searchQuotaUsedUp:
       'Tekoälyhaun kiintiö on käytetty — tarkempaa tietoa ei ole nyt saatavilla. Tarkista uudelleen päivittäisen nollauksen jälkeen.',
+    aiCreditsUsedUp:
+      'Tekoälypalvelun krediitit on tilapäisesti käytetty — tarkempaa tietoa ei ole nyt saatavilla. Yritä myöhemmin uudelleen.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Tallenna kuva',
     sectionShareShare: 'Jaa',

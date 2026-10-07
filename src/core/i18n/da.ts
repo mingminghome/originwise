@@ -96,6 +96,7 @@ export const da = {
     agentFailUnknown: 'fejl',
     agentError: {
       upstream_quota: 'kvote / hastighedsgrænse',
+      upstream_credits: 'AI-kredit brugt op',
       upstream_error: 'upstream-fejl',
       upstream_unavailable: 'tjeneste utilgængelig',
       empty_response: 'tomt svar',
@@ -228,6 +229,8 @@ export const da = {
       'Part countries are model guesses — not packaging or Search confirmed.',
     searchQuotaUsedUp:
       'AI-søgekvoten er brugt op — mere præcise oplysninger er ikke tilgængelige lige nu. Prøv igen efter den daglige nulstilling.',
+    aiCreditsUsedUp:
+      'AI-tjenestens kredit er midlertidigt brugt op — mere præcise oplysninger er ikke tilgængelige lige nu. Prøv igen senere.',
     partsSourcesLabel: 'Sources',
     sectionShareSave: 'Gem billede',
     sectionShareShare: 'Del',

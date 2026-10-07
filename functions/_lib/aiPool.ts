@@ -129,6 +129,7 @@ export function assignProvider(
 export function isProviderDeadError(code: string | undefined): boolean {
   return (
     code === 'upstream_quota' ||
+    code === 'upstream_credits' ||
     code === 'upstream_error' ||
     code === 'upstream_unavailable' ||
     code === 'provider_not_configured' ||

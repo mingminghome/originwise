@@ -345,7 +345,12 @@ async function runQuery(
         out.code === 'parse_error'
           ? 'Could not understand the answer. Please try again.'
           : 'The answer service failed. Please try again later.',
-      httpStatus: out.code === 'upstream_quota' ? 429 : 502,
+      httpStatus:
+        out.code === 'upstream_credits'
+          ? 402
+          : out.code === 'upstream_quota'
+            ? 429
+            : 502,
       agents,
     };
   }

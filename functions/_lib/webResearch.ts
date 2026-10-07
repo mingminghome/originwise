@@ -28,7 +28,7 @@
  */
 
 import { langLabel } from './locale';
-import type { LlmEnv } from './llm';
+import { isCreditsDepleted, type LlmEnv } from './llm';
 
 export type WebResearchEnv = LlmEnv & {
   WEB_LOOKUP?: string;
@@ -456,6 +456,9 @@ export function suggestedReplacementModel(body: string): string | undefined {
 export function mapWebResearchHttpError(status: number, body: string): string {
   const msg = body.toLowerCase();
 
+  // Prepaid balance at zero — blocks every model on the key, not a daily reset.
+  if (isCreditsDepleted(status, msg)) return 'upstream_credits';
+
   // Dead / retired model ids for new users (not a rate-limit burn)
   if (
     status === 404 ||
@@ -819,6 +822,7 @@ export async function runWebResearch(opts: {
   let last = 'upstream_error';
   /** Sticky: Default-pool capacity miss must not become API-key caveat later. */
   let sawCapacityMiss = false;
+  let creditsDepleted = false;
   /** Sticky: a model hit its non-zero daily free cap (e.g. robotics 20/day). */
   let sawDailyQuota = false;
   let gemini3Fails = 0;
@@ -864,6 +868,12 @@ export async function runWebResearch(opts: {
       };
     }
     last = out.code;
+
+    // 402 / prepaid credits empty: every model on this key fails the same way.
+    if (out.code === 'upstream_credits') {
+      creditsDepleted = true;
+      break;
+    }
 
     // Dead model id — keep walking; queue Google's suggested replacement if any.
     // Do NOT let 404/retired ids erase a prior capacity miss (that became the
@@ -921,7 +931,11 @@ export async function runWebResearch(opts: {
     brief: '',
     sources: [],
     ms: Date.now() - t0,
-    error: sawCapacityMiss ? 'upstream_unavailable' : last,
+    error: creditsDepleted
+      ? 'upstream_credits'
+      : sawCapacityMiss
+        ? 'upstream_unavailable'
+        : last,
     attempts,
   };
 }

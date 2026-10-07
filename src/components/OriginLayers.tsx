@@ -133,6 +133,20 @@ function pickCompanyLabel(result: CheckResult): string | null {
  * Partition existing result fields into labeled origin layers.
  * Does not invent COO — Final COO is madeIn only (or unconfirmed).
  */
+/**
+ * Which quota notice the web row calls for (exported for unit tests).
+ * 402 prepaid credits empty → aiCreditsUsedUp (no daily reset);
+ * 429 daily free cap → searchQuotaUsedUp.
+ */
+export function webQuotaNotice(
+  result: Pick<CheckResult, 'meta'>
+): 'aiCreditsUsedUp' | 'searchQuotaUsedUp' | null {
+  const web = result.meta?.agents?.find((a) => a.id === 'web');
+  if (web?.error === 'upstream_credits') return 'aiCreditsUsedUp';
+  if (web?.error === 'upstream_quota') return 'searchQuotaUsedUp';
+  return null;
+}
+
 export function buildOriginLayers(result: CheckResult): OriginLayersModel {
   const p = result.product;
   const c = result.company;
@@ -361,14 +375,19 @@ export function OriginLayers({
   const brandItems = model.brandOps.map((l) => formatBrandOps(l, t));
   const ownershipItems = model.ownership.map((l) => formatOwnership(l, t));
   const partsItems = model.parts.map((l) => formatParts(l, t));
-  const searchQuotaUsedUp = result.meta?.agents?.some(
-    (a) => a.id === 'web' && a.error === 'upstream_quota'
-  );
+  const notice = webQuotaNotice(result);
+  const searchQuotaUsedUp = notice === 'searchQuotaUsedUp';
+  const aiCreditsUsedUp = notice === 'aiCreditsUsedUp';
 
   return (
     <div className="origin-layers card-soft" data-testid="origin-layers">
       <h3 className="result-section-title">{t('check.originLayersTitle')}</h3>
       <p className="muted origin-layers-intro">{t('check.originLayersIntro')}</p>
+      {aiCreditsUsedUp ? (
+        <p className="origin-layers-quota" role="status" data-testid="ai-credits-used-up">
+          {t('check.aiCreditsUsedUp')}
+        </p>
+      ) : null}
       {searchQuotaUsedUp ? (
         <p className="origin-layers-quota" role="status" data-testid="search-quota-used-up">
           {t('check.searchQuotaUsedUp')}
