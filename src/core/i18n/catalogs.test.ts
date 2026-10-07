@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { SUPPORTED_LOCALES } from '../../../functions/_lib/locale';
-import { catalogs } from './index';
+import { catalogs, createT } from './index';
 import { LOCALES, type Locale, parseLocale } from './locales';
 import { en, type MessageTree } from './en';
 
@@ -62,5 +62,27 @@ describe('i18n catalogs', () => {
   it('exports a typed catalog for each Locale', () => {
     const _check: Record<Locale, MessageTree> = catalogs;
     assert.ok(_check.en);
+  });
+
+  it('zh-Hant search copy: provider filled from searchVia, no English "grounding"', () => {
+    const t = createT('zh-Hant');
+    assert.equal(t('check.searchVia.gemini'), 'Google 搜尋（Gemini）');
+    const via = t('check.knowledgeWebVia', { provider: t('check.searchVia.brave') });
+    assert.ok(via.startsWith('結果結合經 Brave Search 取得的即時網路資料'));
+    // Gemini note reads exactly like knowledgeWebVia filled with the Gemini label.
+    const noSpace = (x: string) => x.replace(/\s+/g, '');
+    assert.equal(
+      noSpace(t('check.knowledgeWeb')),
+      noSpace(t('check.knowledgeWebVia', { provider: t('check.searchVia.gemini') }))
+    );
+    const values: string[] = [];
+    const walk = (tree: MessageTree) => {
+      for (const v of Object.values(tree)) {
+        if (typeof v === 'string') values.push(v);
+        else walk(v);
+      }
+    };
+    walk(catalogs['zh-Hant']);
+    assert.deepEqual(values.filter((v) => /grounding/i.test(v)), []);
   });
 });

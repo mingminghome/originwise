@@ -40,6 +40,19 @@ export const fr = {
     accept: 'Compris — commencer',
   },
   check: {
+    matchBasis: {
+      barcode: 'Correspondance par code-barres',
+      name: 'Correspondance par nom du produit',
+    },
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Recherche web — requête envoyée à {name}',
+    searchUsage: 'Recherche web : {provider} · requêtes de recherche : {n}',
+    knowledgeWebVia:
+      'Inclut une recherche web en direct ({provider}) plus les connaissances du modèle. Ce n’est toujours pas un registre d’entreprises ni une base douanière — les étiquettes et documents officiels peuvent diverger des pages web. Informatif — pas un conseil juridique, commercial ou sur les sanctions.',
     title: 'Contrôle rapide',
     subtitle: 'Cet article est-il lié à la Chine ? Saisissez un nom ou photographiez l’emballage.',
     placeholder: 'ex. marque de snacks, téléphone, jouet…',
@@ -105,6 +118,8 @@ export const fr = {
       unknownProvider: 'IA inconnue',
     },
     provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
       gemini: 'Gemini',
       openai: 'OpenAI',
       grok: 'Grok (xAI)',
@@ -227,6 +242,7 @@ export const fr = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'page web (correspondance du nom)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',
@@ -390,6 +406,8 @@ export const fr = {
       'Lorsque vous lancez un contrôle, le nom ou la photo n’est envoyé que pour cette réponse. Nous ne conservons pas les emballages comme catalogue.',
     privacyBullet5:
       'Les photos sont compressées sur votre appareil avant l’envoi et ne sont pas stockées comme enregistrements serveur.',
+    privacyBullet6:
+      'Lorsque la recherche web en direct est active, le nom du produit (et le texte de l’étiquette) est aussi envoyé une fois à un service de recherche : d’abord Google Search via Gemini, puis Brave Search ou Firecrawl seulement en cas d’échec. Les étapes de progression et le résultat indiquent le service réellement utilisé. Nous ne conservons aucun journal des recherches.',
     privacyPolicyLink: 'Politique de confidentialité',
     termsLink: 'Conditions d’utilisation',
     designTitle: 'Comment ça marche',

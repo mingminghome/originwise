@@ -40,6 +40,19 @@ export const es = {
     accept: 'Entendido — empezar',
   },
   check: {
+    matchBasis: {
+      barcode: 'Coincidencia por código de barras',
+      name: 'Coincidencia por nombre del producto',
+    },
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Investigación web — consulta enviada a {name}',
+    searchUsage: 'Búsqueda web: {provider} · solicitudes de búsqueda: {n}',
+    knowledgeWebVia:
+      'Incluye una pasada de investigación web en vivo ({provider}) más el conocimiento del modelo. Sigue sin ser un registro mercantil ni una base aduanera: las etiquetas y los documentos oficiales pueden discrepar de las páginas web. Informativo — no es asesoramiento legal, comercial ni sobre sanciones.',
     title: 'Comprobación rápida',
     subtitle: '¿Este artículo está relacionado con China? Escribe un nombre o fotografía el envase.',
     placeholder: 'p. ej. marca de snacks, teléfono, juguete…',
@@ -105,6 +118,8 @@ export const es = {
       unknownProvider: 'IA desconocida',
     },
     provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
       gemini: 'Gemini',
       openai: 'OpenAI',
       grok: 'Grok (xAI)',
@@ -227,6 +242,7 @@ export const es = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'página web (coincidencia de nombre)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',
@@ -390,6 +406,8 @@ export const es = {
       'Al hacer una comprobación, el nombre o la foto se envían solo para esa respuesta. No guardamos envases como catálogo de productos.',
     privacyBullet5:
       'Las fotos se comprimen en tu dispositivo antes de subirlas y no se almacenan como registros del servidor.',
+    privacyBullet6:
+      'Con la investigación web en vivo activada, el nombre del producto (y el texto de la etiqueta) también se envía una vez a un servicio de búsqueda: primero Google Search mediante Gemini y, solo si falla, Brave Search o Firecrawl. Los pasos de progreso y el resultado indican el servicio realmente usado. No guardamos registro de las búsquedas.',
     privacyPolicyLink: 'Política de privacidad',
     termsLink: 'Términos de uso',
     designTitle: 'Cómo funciona',

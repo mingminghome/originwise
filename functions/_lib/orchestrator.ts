@@ -22,14 +22,15 @@ import {
   type LlmEnv,
   type LlmImage,
 } from './llm';
-import type { CheckDimension, CheckResult } from './schema';
+import type { CheckDimension, CheckResult, WebCooClaim } from './schema';
 import type { GeoScope } from './regions';
 import { synthesize } from './synthesize';
 import {
-  isWebLookupEnabled,
-  runWebResearch,
-  type WebResearchEnv,
-} from './webResearch';
+  isSearchEnabled,
+  runSearchChain,
+  type SearchEnv,
+  type SearchProviderId,
+} from './search';
 
 export type ProgressEvent = {
   type: 'progress';
@@ -40,7 +41,7 @@ export type ProgressEvent = {
 };
 
 export type OrchestratorEnv = LlmEnv &
-  WebResearchEnv & {
+  SearchEnv & {
     CHECK_MODE?: string;
     POOL_DISABLE_PROVIDERS?: string;
   };
@@ -61,6 +62,8 @@ export type AgentMeta = {
   ok?: boolean;
   error?: string;
   ms?: number;
+  /** Search API requests (web row only). */
+  requests?: number;
 };
 
 export type OrchestratorOk = {
@@ -80,8 +83,23 @@ export type OrchestratorErr = {
 
 export type ProgressEmit = (ev: ProgressEvent) => void;
 
+type WebPass = {
+  brief: string;
+  used: boolean;
+  error?: string;
+  sources?: string[];
+  /** Search provider that succeeded, else the last one tried. */
+  provider?: SearchProviderId;
+  /** Total search API requests across providers. */
+  requests?: number;
+  /** Gated made-in claims (Brave / Firecrawl only). */
+  coo?: WebCooClaim[];
+};
+
 /**
- * Optional Gemini Google Search pass. Soft-fail; returns brief for prompts.
+ * Web research pass over the search-provider chain (Gemini grounding →
+ * Brave → Firecrawl). Soft-fail; returns brief for prompts. The progress
+ * event names the provider at the moment the lookup is sent to it.
  */
 async function maybeWebResearch(
   opts: {
@@ -93,9 +111,9 @@ async function maybeWebResearch(
     agents: AgentMeta[];
   },
   emit: ProgressEmit
-): Promise<{ brief: string; used: boolean; error?: string; sources?: string[] }> {
+): Promise<WebPass> {
   const { jobId, locale, entity, ocrText, env, agents } = opts;
-  if (!isWebLookupEnabled(env)) {
+  if (!isSearchEnabled(env)) {
     emit({ type: 'progress', jobId, step: 'web', status: 'skipped' });
     agents.push({
       id: 'web',
@@ -103,17 +121,24 @@ async function maybeWebResearch(
       ok: false,
       error: 'disabled',
       ms: 0,
+      requests: 0,
     });
-    return { brief: '', used: false, error: 'disabled', sources: [] };
+    return { brief: '', used: false, error: 'disabled', sources: [], requests: 0 };
   }
-  emit({ type: 'progress', jobId, step: 'web', status: 'running' });
-  const wr = await runWebResearch({ entity, ocrText, locale, env });
+  const wr = await runSearchChain(
+    { entity, ocrText, locale, env },
+    {
+      onAttempt: (id) =>
+        emit({ type: 'progress', jobId, step: 'web', status: 'running', detail: id }),
+    }
+  );
   agents.push({
     id: 'web',
-    provider: 'gemini',
+    provider: wr.provider ?? 'gemini',
     ok: wr.ok,
     error: wr.ok ? undefined : wr.error,
     ms: wr.ms,
+    requests: wr.requests,
   });
   if (wr.ok && wr.brief.trim()) {
     emit({
@@ -121,9 +146,16 @@ async function maybeWebResearch(
       jobId,
       step: 'web',
       status: 'done',
-      detail: wr.model,
+      detail: wr.provider,
     });
-    return { brief: wr.brief, used: true, sources: wr.sources };
+    return {
+      brief: wr.brief,
+      used: true,
+      sources: wr.sources,
+      provider: wr.provider,
+      requests: wr.requests,
+      coo: wr.coo,
+    };
   }
   const failCode = wr.error || 'empty_response';
   emit({
@@ -131,9 +163,16 @@ async function maybeWebResearch(
     jobId,
     step: 'web',
     status: 'error',
-    detail: failCode,
+    detail: wr.provider ? `${wr.provider}:${failCode}` : failCode,
   });
-  return { brief: '', used: false, error: failCode, sources: [] };
+  return {
+    brief: '',
+    used: false,
+    error: failCode,
+    sources: [],
+    provider: wr.provider,
+    requests: wr.requests,
+  };
 }
 
 type JsonCallResult =
@@ -256,7 +295,7 @@ async function runQuery(
   const ctx = { dimensions, hasImage: Boolean(image) };
   const sections = selectSections(ctx);
 
-  let web: { brief: string; used: boolean; error?: string; sources?: string[] };
+  let web: WebPass;
   if (entity) {
     web = await maybeWebResearch(
       { jobId, locale, entity, env, agents },
@@ -335,6 +374,8 @@ async function runQuery(
     webFailCode: web.used ? undefined : web.error,
     webBrief: web.brief,
     sources: web.sources,
+    // Brave/Firecrawl only: made-in needs a barcode-confirmed claim (or OCR).
+    webCoo: web.used && web.provider && web.provider !== 'gemini' ? web.coo ?? [] : undefined,
     ocrText: parts.ocrText,
     partials: {
       product: parts.product,
@@ -344,6 +385,14 @@ async function runQuery(
     },
   });
   result.meta.agents = agents;
+  if (web.provider) {
+    result.meta.searchProvider = web.provider;
+    result.meta.searchRequests = web.requests ?? 0;
+  }
+  if (web.used && web.coo?.length) {
+    result.meta.searchCoo = web.coo;
+    result.meta.searchMatch = web.coo.some((c) => c.basis === 'barcode') ? 'barcode' : 'name';
+  }
   emit({ type: 'progress', jobId, step: 'synthesize', status: 'done' });
   return { ok: true, result, mode: 'monolith', agents };
 }

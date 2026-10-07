@@ -40,6 +40,19 @@ export const fi = {
     accept: 'Selvä — aloita tarkistus',
   },
   check: {
+    matchBasis: {
+      barcode: 'Täsmätty viivakoodilla',
+      name: 'Täsmätty tuotenimellä',
+    },
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Verkkotutkimus — haku lähetetty palveluun {name}',
+    searchUsage: 'Verkkohaku: {provider} · hakupyyntöjä: {n}',
+    knowledgeWebVia:
+      'Sisältää live-verkkotutkimuksen ({provider}) sekä mallitiedon. Silti ei yritysrekisteri tai tullitietokanta — etiketit ja viralliset asiakirjat voivat poiketa verkkosivuista. Tiedoksi — ei oikeudellista, kauppa- tai pakoteneuvontaa.',
     title: 'Nopea tarkistus',
     subtitle: 'Liittyykö tämä tuote Kiinaan? Kirjoita nimi tai kuvaa pakkaus.',
     placeholder: 'esim. snack-merkki, puhelin, lelu…',
@@ -105,6 +118,8 @@ export const fi = {
       unknownProvider: 'Tuntematon tekoäly',
     },
     provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
       gemini: 'Gemini',
       openai: 'OpenAI',
       grok: 'Grok (xAI)',
@@ -227,6 +242,7 @@ export const fi = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'verkkosivu (nimivastaavuus)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',
@@ -390,6 +406,8 @@ export const fi = {
       'Kun ajat tarkistuksen, nimi tai kuva lähetetään vain sitä vastausta varten. Emme säilytä pakkauksia tuoteluettelona.',
     privacyBullet5:
       'Kuvat pakataan laitteellasi ennen lähetystä eikä niitä tallenneta palvelintietueiksi.',
+    privacyBullet6:
+      'Kun live-verkkotutkimus on päällä, tuotteen nimi (ja etiketin teksti) lähetetään lisäksi kerran hakupalveluun: ensin Google Search Geminin kautta ja vain sen epäonnistuessa Brave Search tai Firecrawl. Edistymisvaiheet ja tulos kertovat todella käytetyn palvelun. Hakuja ei kirjata lokiin.',
     privacyPolicyLink: 'Tietosuojakäytäntö',
     termsLink: 'Käyttöehdot',
     designTitle: 'Miten se toimii',

@@ -45,8 +45,8 @@ GEMINI_API_KEY=
 # CHECK_MODE is ignored. One JSON query per check; dimensions choose the sections.
 #
 # Live web research (Gemini Google Search grounding) before product/company agents:
-#   WEB_LOOKUP=auto  (default) — on when GEMINI_API_KEY is set
-#   WEB_LOOKUP=on    — force on (still needs Gemini key)
+#   WEB_LOOKUP=auto  (default) — on when any SEARCH_PROVIDERS key is set (Gemini, Brave, Firecrawl)
+#   WEB_LOOKUP=on    — same as auto (still needs at least one provider key)
 #   WEB_LOOKUP=off   — model memory only (old behaviour)
 # WEB_LOOKUP=auto
 #
@@ -56,6 +56,21 @@ GEMINI_API_KEY=
 # GEMINI_WEB_MODEL=gemini-robotics-er-2-preview
 # GEMINI_WEB_MODEL=auto
 # WEB_LOOKUP=off  # skip web if needed
+#
+# Search-provider chain (functions/_lib/search/). Each provider runs only if the
+# previous one failed or returned no Sources; providers without a key are skipped.
+# If every provider fails, Gemini's error code is kept (e.g. upstream_quota →
+# "AI search quota used up" notice). No search query is logged or stored.
+#   gemini    = Google Search grounding above (GEMINI_API_KEY)
+#   brave     = Brave Search API → fetch top pages → gemini-3.5-flash-lite extraction
+#               (https://api.search.brave.com/res/v1/web/search, X-Subscription-Token)
+#   firecrawl = Firecrawl /v1/search with markdown scrape → same extraction
+#               (storeInCache:false)
+# Made-in from Brave/Firecrawl only counts when the page matches the JAN or the
+# exact variant name; otherwise the brief says 未確認 (unconfirmed).
+# SEARCH_PROVIDERS=gemini,brave,firecrawl
+# BRAVE_SEARCH_API_KEY=
+# FIRECRAWL_API_KEY=
 # CHECK_ALLOWED_ORIGINS=http://localhost:8788
 # Free-server rate limits (defaults shown)
 # CHECK_RATE_SHORT_LIMIT=1

@@ -377,7 +377,15 @@ export function OriginLayers({
       <div className="origin-layers-grid">
         <LayerRow
           label={t('check.layerFinalCoo')}
-          items={model.finalCoo ? [model.finalCoo] : []}
+          items={
+            model.finalCoo
+              ? [
+                  result.product?.madeInBasis === 'barcode'
+                    ? `${model.finalCoo} · ${t('check.matchBasis.barcode')}`
+                    : model.finalCoo,
+                ]
+              : []
+          }
           empty={t('check.madeInUnconfirmed')}
           variant="coo"
           t={t}

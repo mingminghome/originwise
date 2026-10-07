@@ -40,6 +40,19 @@ export const el = {
     accept: 'Κατάλαβα — ξεκινήστε τον έλεγχο',
   },
   check: {
+    matchBasis: {
+      barcode: 'Αντιστοίχιση με γραμμωτό κώδικα',
+      name: 'Αντιστοίχιση με όνομα προϊόντος',
+    },
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Έρευνα στο web — το ερώτημα στάλθηκε σε {name}',
+    searchUsage: 'Αναζήτηση web: {provider} · αιτήματα αναζήτησης: {n}',
+    knowledgeWebVia:
+      'Περιλαμβάνει ζωντανή έρευνα ιστού ({provider}) συν γνώση μοντέλου. Ακόμα όχι μητρώο εταιρειών ούτε τελωνειακή βάση — ετικέτες και επίσημα έγγραφα μπορεί να διαφωνούν με ιστοσελίδες. Ενημερωτικό — όχι νομική, εμπορική συμβουλή ή για κυρώσεις.',
     title: 'Γρήγορος έλεγχος',
     subtitle: 'Σχετίζεται αυτό το είδος με την Κίνα; Πληκτρολογήστε όνομα ή φωτογραφίστε τη συσκευασία.',
     placeholder: 'π.χ. μάρκα σνακ, τηλέφωνο, παιχνίδι…',
@@ -105,6 +118,8 @@ export const el = {
       unknownProvider: 'Άγνωστη ΤΝ',
     },
     provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
       gemini: 'Gemini',
       openai: 'OpenAI',
       grok: 'Grok (xAI)',
@@ -227,6 +242,7 @@ export const el = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'ιστοσελίδα (αντιστοίχιση ονόματος)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',
@@ -390,6 +406,8 @@ export const el = {
       'Όταν εκτελείτε έλεγχο, το όνομα ή η φωτογραφία στέλνεται μόνο για αυτή την απάντηση. Δεν κρατάμε συσκευασίες ως κατάλογο προϊόντων.',
     privacyBullet5:
       'Οι φωτογραφίες συμπιέζονται στη συσκευή σας πριν την αποστολή και δεν αποθηκεύονται ως εγγραφές διακομιστή.',
+    privacyBullet6:
+      'Όταν είναι ενεργή η ζωντανή έρευνα στο web, το όνομα του προϊόντος (και το κείμενο της ετικέτας) στέλνεται επίσης μία φορά σε υπηρεσία αναζήτησης: πρώτα Google Search μέσω Gemini και μόνο αν αποτύχει Brave Search ή Firecrawl. Τα βήματα προόδου και το αποτέλεσμα αναφέρουν την υπηρεσία που χρησιμοποιήθηκε. Δεν κρατάμε αρχείο με τα ερωτήματα αναζήτησης.',
     privacyPolicyLink: 'Πολιτική απορρήτου',
     termsLink: 'Όροι χρήσης',
     designTitle: 'Πώς λειτουργεί',

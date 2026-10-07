@@ -40,6 +40,19 @@ export const hu = {
     accept: 'Értem — kezdjük az ellenőrzést',
   },
   check: {
+    matchBasis: {
+      barcode: 'Vonalkód alapján egyeztetve',
+      name: 'Terméknév alapján egyeztetve',
+    },
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Webes kutatás — lekérdezés elküldve ide: {name}',
+    searchUsage: 'Webes keresés: {provider} · keresési kérések: {n}',
+    knowledgeWebVia:
+      'Tartalmaz egy élő webes kutatási kört ({provider}) plusz modellismeretet. Még mindig nem cégnyilvántartás vagy vámadatbázis — a címkék és hivatalos iratok eltérhetnek a weboldalaktól. Tájékoztató — nem jogi, kereskedelmi vagy szankciós tanács.',
     title: 'Gyors ellenőrzés',
     subtitle: 'Ez a tétel Kínához kapcsolódik? Írj be egy nevet, vagy fotózd le a csomagolást.',
     placeholder: 'pl. snackmárka, telefon, játék…',
@@ -105,6 +118,8 @@ export const hu = {
       unknownProvider: 'Ismeretlen MI',
     },
     provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
       gemini: 'Gemini',
       openai: 'OpenAI',
       grok: 'Grok (xAI)',
@@ -227,6 +242,7 @@ export const hu = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'weboldal (névegyezés)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',
@@ -390,6 +406,8 @@ export const hu = {
       'Ellenőrzéskor a név vagy fotó csak arra a válaszra megy el. A csomagolásokat nem őrizzük termékkatalógusként.',
     privacyBullet5:
       'A fotók az eszközödön tömörülnek feltöltés előtt, és nem tárolódnak szerverrekordként.',
+    privacyBullet6:
+      'Élő webes kutatás esetén a termék neve (és a címke szövege) egyszer egy keresőszolgáltatáshoz is eljut: először a Google Search a Geminin keresztül, és csak ha ez nem sikerül, a Brave Search vagy a Firecrawl. A folyamat lépései és az eredmény a ténylegesen használt szolgáltatást mutatják. A kereséseket nem naplózzuk.',
     privacyPolicyLink: 'Adatvédelmi irányelv',
     termsLink: 'Felhasználási feltételek',
     designTitle: 'Hogyan működik',

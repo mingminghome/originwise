@@ -139,6 +139,7 @@ export function AboutScreen({ state }: { state: AppState }) {
           <li>{t('about.privacyBullet3')}</li>
           <li>{t('about.privacyBullet4')}</li>
           <li>{t('about.privacyBullet5')}</li>
+          <li>{t('about.privacyBullet6')}</li>
         </ul>
         <p className="about-legal-links muted">
           <a href="/privacy.html" target="_blank" rel="noopener noreferrer">

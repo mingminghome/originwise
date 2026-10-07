@@ -40,6 +40,19 @@ export const da = {
     accept: 'Forstået — begynd at tjekke',
   },
   check: {
+    matchBasis: {
+      barcode: 'Matchet via stregkode',
+      name: 'Matchet via produktnavn',
+    },
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Webundersøgelse — opslag sendt til {name}',
+    searchUsage: 'Websøgning: {provider} · antal søgeforespørgsler: {n}',
+    knowledgeWebVia:
+      'Inkluderer et live-webundersøgelsespass ({provider}) plus modelviden. Stadig ikke et selskabsregister eller en tolddatabase — etiketter og officielle dokumenter kan være uenige med websider. Informativt — ikke juridisk, handels- eller sanktionsrådgivning.',
     title: 'Hurtigt tjek',
     subtitle: 'Er denne vare relateret til Kina? Skriv et navn eller fotografer emballagen.',
     placeholder: 'f.eks. snackmærke, telefon, legetøj…',
@@ -105,6 +118,8 @@ export const da = {
       unknownProvider: 'Ukendt AI',
     },
     provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
       gemini: 'Gemini',
       openai: 'OpenAI',
       grok: 'Grok (xAI)',
@@ -227,6 +242,7 @@ export const da = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'webside (navnematch)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',
@@ -390,6 +406,8 @@ export const da = {
       'Når du kører et tjek, sendes navnet eller fotoet kun til det svar. Vi gemmer ikke emballage som et produktkatalog.',
     privacyBullet5:
       'Fotos komprimeres på din enhed før upload og gemmes ikke som serverposter.',
+    privacyBullet6:
+      'Når live-webundersøgelse er slået til, sendes produktnavnet (og etiketteksten) også én gang til en søgetjeneste: først Google Search via Gemini, og kun Brave Search eller Firecrawl hvis det fejler. Fremdriftstrinene og resultatet viser den tjeneste, der faktisk blev brugt. Vi gemmer ingen log over søgninger.',
     privacyPolicyLink: 'Privatlivspolitik',
     termsLink: 'Brugsvilkår',
     designTitle: 'Sådan virker det',

@@ -40,6 +40,19 @@ export const sv = {
     accept: 'Uppfattat — börja kolla',
   },
   check: {
+    matchBasis: {
+      barcode: 'Matchad via streckkod',
+      name: 'Matchad via produktnamn',
+    },
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Webbforskning — sökning skickad till {name}',
+    searchUsage: 'Webbsökning: {provider} · sökförfrågningar: {n}',
+    knowledgeWebVia:
+      'Inkluderar en live-webforskning ({provider}) plus modellkunskap. Fortfarande inte ett företagsregister eller en tullbas — etiketter och officiella handlingar kan skilja sig från webbsidor. Informativt — inte juridisk, handels- eller sanktionsrådgivning.',
     title: 'Snabbkoll',
     subtitle: 'Är den här varan relaterad till Kina? Skriv ett namn eller fotografera förpackningen.',
     placeholder: 't.ex. snacksvarumärke, telefon, leksak…',
@@ -105,6 +118,8 @@ export const sv = {
       unknownProvider: 'Okänd AI',
     },
     provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
       gemini: 'Gemini',
       openai: 'OpenAI',
       grok: 'Grok (xAI)',
@@ -227,6 +242,7 @@ export const sv = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'webbsida (namnmatchning)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',
@@ -390,6 +406,8 @@ export const sv = {
       'När du kör en koll skickas namnet eller fotot bara för det svaret. Vi sparar inte förpackningar som en produktkatalog.',
     privacyBullet5:
       'Foton komprimeras på din enhet före uppladdning och lagras inte som serverposter.',
+    privacyBullet6:
+      'Med live-webbforskning påslagen skickas produktnamnet (och etikettexten) också en gång till en söktjänst: först Google Search via Gemini och bara om det misslyckas Brave Search eller Firecrawl. Förloppsstegen och resultatet visar vilken tjänst som faktiskt användes. Vi sparar ingen logg över sökningar.',
     privacyPolicyLink: 'Integritetspolicy',
     termsLink: 'Användarvillkor',
     designTitle: 'Så fungerar det',

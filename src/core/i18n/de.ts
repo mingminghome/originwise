@@ -40,6 +40,19 @@ export const de = {
     accept: 'Verstanden — jetzt prüfen',
   },
   check: {
+    matchBasis: {
+      barcode: 'Abgleich per Barcode',
+      name: 'Abgleich per Produktname',
+    },
+    searchVia: {
+      gemini: 'Google-Suche (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Webrecherche — Anfrage gesendet an {name}',
+    searchUsage: 'Websuche: {provider} · Suchanfragen: {n}',
+    knowledgeWebVia:
+      'Enthält eine Live-Webrecherche ({provider}) plus Modellwissen. Weiterhin kein Unternehmensregister oder Zolldatenbank — Etiketten und amtliche Unterlagen können von Webseiten abweichen. Informativ — keine Rechts-, Handels- oder Sanktionsberatung.',
     title: 'Schnellcheck',
     subtitle: 'Ist dieser Artikel China-bezogen? Namen eingeben oder Verpackung fotografieren.',
     placeholder: 'z. B. Snackmarke, Handy, Spielzeug…',
@@ -105,6 +118,8 @@ export const de = {
       unknownProvider: 'Unbekannte KI',
     },
     provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
       gemini: 'Gemini',
       openai: 'OpenAI',
       grok: 'Grok (xAI)',
@@ -227,6 +242,7 @@ export const de = {
       mentioned: 'mentioned',
     },
     candidateSource: {
+      web_name: 'Webseite (Namensabgleich)',
       confirmed_coo: 'stamped COO',
       parts: 'parts / BOM',
       components_line: 'components / global line',
@@ -390,6 +406,8 @@ export const de = {
       'Beim Check wird Name oder Foto nur für diese Antwort gesendet. Wir speichern Verpackungen nicht als Produktkatalog.',
     privacyBullet5:
       'Fotos werden auf deinem Gerät vor dem Upload komprimiert und nicht als Serverdatensätze gespeichert.',
+    privacyBullet6:
+      'Bei aktiver Live-Webrecherche wird der Produktname (und der Etikettentext) zusätzlich einmal an einen Suchdienst gesendet: zuerst Google-Suche über Gemini, nur bei einem Fehler Brave Search oder Firecrawl. Fortschrittsschritte und Ergebnis nennen den tatsächlich genutzten Dienst. Suchanfragen werden nicht protokolliert.',
     privacyPolicyLink: 'Datenschutz',
     termsLink: 'Nutzungsbedingungen',
     designTitle: 'So funktioniert’s',

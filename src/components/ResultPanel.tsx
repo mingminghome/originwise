@@ -13,6 +13,14 @@ function agentLabel(id: string, t: TFunction): string {
   return label === key ? id : label;
 }
 
+const SEARCH_PROVIDER_IDS = new Set(['gemini', 'brave', 'firecrawl']);
+
+/** Display name of the web search service (Google Search / Brave / Firecrawl). */
+function searchProviderLabel(p: string | undefined, t: TFunction): string | null {
+  if (!p || !SEARCH_PROVIDER_IDS.has(p)) return null;
+  return t(`check.searchVia.${p}`);
+}
+
 function providerLabel(p: string | undefined, t: TFunction): string {
   if (!p) return t('check.agent.unknownProvider');
   const key = `check.provider.${p}`;
@@ -63,7 +71,9 @@ function AgentsPoolCard({
                 <div className="agent-row-title">
                   <strong>{agentLabel(a.id, t)}</strong>
                   <span className="agent-row-provider">
-                    {providerLabel(a.provider, t)}
+                    {a.id === 'web'
+                      ? searchProviderLabel(a.provider, t) ?? providerLabel(a.provider, t)
+                      : providerLabel(a.provider, t)}
                   </span>
                 </div>
                 <p className="muted agent-row-meta">
@@ -73,6 +83,12 @@ function AgentsPoolCard({
                         err: agentErrorLabel(a.error, t),
                       })}
                   {typeof a.ms === 'number' ? ` · ${a.ms}ms` : null}
+                  {a.id === 'web' && typeof a.requests === 'number' && a.requests > 0
+                    ? ` · ${t('check.searchUsage', {
+                        provider: searchProviderLabel(a.provider, t) ?? a.provider ?? '',
+                        n: a.requests,
+                      })}`
+                    : null}
                 </p>
               </div>
             </li>
@@ -102,6 +118,8 @@ export function ResultPanel({
   const failCount = agents.filter((a) => a.ok === false && !skippedAgent(a)).length;
   const okCount = agents.filter((a) => a.ok !== false).length;
   const notes = result.product?.notes?.filter((n) => n.trim()) ?? [];
+  const searchName = searchProviderLabel(result.meta?.searchProvider, t);
+  const searchRequests = result.meta?.searchRequests;
 
   return (
     <div className="ask-result" role="status">
@@ -139,6 +157,15 @@ export function ResultPanel({
 
       {result.summary ? (
         <p className="ask-result-summary">{result.summary}</p>
+      ) : null}
+
+      {searchName && typeof searchRequests === 'number' ? (
+        <p className="muted result-search-usage" data-testid="search-usage">
+          {t('check.searchUsage', { provider: searchName, n: searchRequests })}
+          {result.meta?.searchMatch
+            ? ` · ${t(`check.matchBasis.${result.meta.searchMatch}`)}`
+            : null}
+        </p>
       ) : null}
 
       <OriginLayers result={result} t={t} />
@@ -205,7 +232,9 @@ export function ResultPanel({
 
       <p className="muted result-disclaimer">
         {result.knowledgeBasis === 'web_enriched'
-          ? t('check.knowledgeWeb')
+          ? searchName && result.meta?.searchProvider !== 'gemini'
+            ? t('check.knowledgeWebVia', { provider: searchName })
+            : t('check.knowledgeWeb')
           : result.knowledgeBasis === 'model_memory'
             ? t('check.knowledgeModel')
             : result.knowledgeCutoffNote || t('check.disclaimer')}

@@ -62,7 +62,18 @@ export type ProductPart = {
 };
 
 
+/** Made-in claim from a Brave/Firecrawl page, after the barcode/name gate. */
+export type WebCooClaim = {
+  country: string;
+  /** 'barcode' = JAN/EAN on the page; 'name' = product name only. */
+  basis: 'barcode' | 'name';
+  /** barcode → confirmed; name-only single-variant page → likely (never confirmed). */
+  status: 'confirmed' | 'likely';
+  url?: string;
+};
+
 export type OriginCandidateSource =
+  | 'web_name'
   | 'confirmed_coo'
   | 'parts'
   | 'components_line'
@@ -130,6 +141,8 @@ export type CheckResult = {
     notes?: string[];
     /** All queried origin candidates (confirmed COO is rating=confirmed only) */
     originCandidates?: OriginCandidate[];
+    /** How a web-search made-in was confirmed (Brave/Firecrawl): barcode only. */
+    madeInBasis?: 'barcode';
   };
   company?: {
     name?: string;
@@ -172,7 +185,17 @@ export type CheckResult = {
       ok?: boolean;
       error?: string;
       ms?: number;
+      /** Search API requests (web row). */
+      requests?: number;
     }>;
+    /** Web search provider used ('gemini' | 'brave' | 'firecrawl'), or last tried. */
+    searchProvider?: string;
+    /** Search API requests made for this check (all providers tried). */
+    searchRequests?: number;
+    /** Strongest match basis among kept Brave/Firecrawl made-in claims. */
+    searchMatch?: 'barcode' | 'name';
+    /** Gated Brave/Firecrawl made-in claims with their match basis. */
+    searchCoo?: WebCooClaim[];
   };
 };
 
