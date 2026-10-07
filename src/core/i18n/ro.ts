@@ -209,6 +209,9 @@ export const ro = {
     layerOwnershipEmpty: 'Niciun semnal de proprietate/societate-mamă în acest rezultat',
     layerFinalCoo: 'COO final',
     layerParts: 'Candidați piese',
+    partsModelOnlyBanner:
+      'Part countries are model guesses — not packaging or Search confirmed.',
+    partsSourcesLabel: 'Sources',
     sectionShareSave: 'Salvează imaginea',
     sectionShareShare: 'Distribuie',
     sectionShareSaved: 'Salvat',

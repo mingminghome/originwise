@@ -197,6 +197,9 @@ export const zhHant = {
     layerOwnershipEmpty: '此結果未有所有權／母公司訊號',
     layerFinalCoo: '最終原產地（COO）',
     layerParts: '零件候選',
+    partsModelOnlyBanner:
+      '零件產地為模型推測，非包裝／Search 確認。',
+    partsSourcesLabel: '來源',
     sectionShareSave: '儲存圖片',
     sectionShareShare: '分享',
     sectionShareSaved: '已儲存',

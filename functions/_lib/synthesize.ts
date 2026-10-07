@@ -51,6 +51,8 @@ export type SynthesizeInput = {
   webBrief?: string;
   /** Packaging / label OCR text (highest COO priority). */
   ocrText?: string;
+  /** Grounding Sources URLs/titles from live Search (when webEnriched). */
+  sources?: string[];
 };
 
 type Factors = {
@@ -308,7 +310,7 @@ const COUNTRY_NAME_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
   { label: 'Japan', pattern: /\bjapan\b|日本/i },
   { label: 'South Korea', pattern: /south\s*korea|\bkorea\b|韓國|韩国/i },
   { label: 'Vietnam', pattern: /\bvietnam\b|越南/i },
-  { label: 'Thailand', pattern: /\bthailand\b|泰國|泰国/i },
+  { label: 'Thailand', pattern: /\bthailand\b|泰國|泰国|タイ/i },
   { label: 'Indonesia', pattern: /\bindonesia\b|印尼|印度尼西亞/i },
   { label: 'Malaysia', pattern: /\bmalaysia\b|馬來西亞|马来西亚/i },
   { label: 'India', pattern: /\bindia\b|印度/i },
@@ -530,8 +532,197 @@ function collectOriginCandidates(
     .slice(0, 8);
 }
 
-function sanitizeParts(raw: unknown): ProductPart[] {
+type PartsSanitizeCtx = {
+  webEnriched?: boolean;
+  webBrief?: string;
+  ocrText?: string;
+  brandOriginCountry?: string;
+  hqCountry?: string;
+};
+
+/** Packaging / label cues that can support part countries without live Search. */
+function hasOcrPartEvidence(ocrText?: string): boolean {
+  if (!ocrText || !ocrText.trim()) return false;
+  return /made\s*in|country\s*of\s*origin|原產|原产|產地|产地|びん|乳首|キャップ|瓶身|奶嘴|瓶蓋|瓶盖|日本製|中国製|中國製|タイ製|泰國製|泰国製|製造國|制造国|assembled\s*in/i.test(
+    ocrText
+  );
+}
+
+/** Synonyms so part names match JP/EN/ZH label wording in Search/OCR. */
+const PART_NAME_SYNONYMS: Array<{ match: RegExp; cues: RegExp }> = [
+  {
+    match: /glass|bottle|瓶|びん|耐熱/i,
+    cues: /glass|bottle|瓶身|玻璃|びん|哺乳びん|bottle\s*body/i,
+  },
+  {
+    match: /nipple|teat|乳首|奶嘴/i,
+    cues: /nipple|teat|乳首|奶嘴|sucking/i,
+  },
+  {
+    match: /cap|collar|蓋|盖|栓|キャップ/i,
+    cues: /cap|collar|蓋|盖|瓶蓋|瓶盖|瓶栓|キャップ|hood/i,
+  },
+  {
+    match: /textile|fabric|布|織|织/i,
+    cues: /textile|fabric|布|織|织|cloth|upholstery/i,
+  },
+  {
+    match: /battery|電池|电池/i,
+    cues: /battery|電池|电池|cell/i,
+  },
+  {
+    match: /soy|醬|酱|sauce/i,
+    cues: /soy|醬|酱|sauce|醤油|醬油|酱油/i,
+  },
+];
+
+function evidenceMentionsCountry(evidence: string, country: string): boolean {
+  if (!evidence.trim() || !country.trim()) return false;
+  const label = matchCountryLabel(country) || country.trim();
+  const labels = extractCountryLabelsFromText(evidence);
+  if (labels.some((l) => labelsMatch(l, label) || labelsMatch(l, country))) {
+    return true;
+  }
+  // Direct pattern / substring (e.g. 日本製, Thailand)
+  for (const row of COUNTRY_NAME_PATTERNS) {
+    if (
+      (labelsMatch(row.label, label) || labelsMatch(row.label, country)) &&
+      row.pattern.test(evidence)
+    ) {
+      return true;
+    }
+  }
+  const low = evidence.toLowerCase();
+  const c = country.trim().toLowerCase();
+  if (c.length >= 2 && low.includes(c)) return true;
+  if (label.length >= 2 && low.includes(label.toLowerCase())) return true;
+  return false;
+}
+
+function evidenceMentionsPart(evidence: string, partName: string): boolean {
+  if (!evidence.trim() || !partName.trim()) return false;
+  const low = evidence.toLowerCase();
+  const name = partName.trim().toLowerCase();
+  if (name.length >= 2 && low.includes(name)) return true;
+  for (const row of PART_NAME_SYNONYMS) {
+    if (row.match.test(partName) && row.cues.test(evidence)) return true;
+  }
+  // Token overlap for multi-word names (skip very short tokens)
+  for (const tok of name.split(/[^a-z0-9\u4e00-\u9fff\u3040-\u30ff]+/i)) {
+    if (tok.length >= 3 && low.includes(tok)) return true;
+  }
+  return false;
+}
+
+/**
+ * Cross-check a part country against Search brief / OCR.
+ * Country must appear with THIS part (same segment / nearby), not merely
+ * elsewhere in the brief (avoids glass→Japan leaking onto nipple).
+ */
+function partCountryCrossCheck(
+  partName: string,
+  country: string,
+  evidence: string
+): boolean {
+  if (!evidenceMentionsCountry(evidence, country)) return false;
+
+  // Segment association: "びん：日本製" / "乳首・キャップ：中国／タイ製"
+  const segments = evidence.split(/[、，,;\n]+/);
+  for (const seg of segments) {
+    if (
+      evidenceMentionsPart(seg, partName) &&
+      evidenceMentionsCountry(seg, country)
+    ) {
+      return true;
+    }
+  }
+
+  // Proximity window: part cue and country within ~48 chars
+  const low = evidence.toLowerCase();
+  const countryHits: number[] = [];
+  const label = matchCountryLabel(country) || country;
+  for (const row of COUNTRY_NAME_PATTERNS) {
+    if (!labelsMatch(row.label, label) && !labelsMatch(row.label, country)) {
+      continue;
+    }
+    const re = new RegExp(row.pattern.source, row.pattern.flags.includes('g') ? row.pattern.flags : row.pattern.flags + 'g');
+    for (const m of evidence.matchAll(re)) {
+      if (typeof m.index === 'number') countryHits.push(m.index);
+    }
+  }
+  const partHits: number[] = [];
+  if (partName.trim().length >= 2) {
+    let idx = low.indexOf(partName.trim().toLowerCase());
+    while (idx >= 0) {
+      partHits.push(idx);
+      idx = low.indexOf(partName.trim().toLowerCase(), idx + 1);
+    }
+  }
+  for (const row of PART_NAME_SYNONYMS) {
+    if (!row.match.test(partName)) continue;
+    const re = new RegExp(row.cues.source, row.cues.flags.includes('g') ? row.cues.flags : row.cues.flags + 'g');
+    for (const m of evidence.matchAll(re)) {
+      if (typeof m.index === 'number') partHits.push(m.index);
+    }
+  }
+  for (const p of partHits) {
+    for (const c of countryHits) {
+      if (Math.abs(p - c) <= 48) return true;
+    }
+  }
+
+  // Single-country evidence + part mentioned somewhere (simple "soy sauce Made in China")
+  const countries = extractCountryLabelsFromText(evidence);
+  if (
+    countries.length === 1 &&
+    evidenceMentionsCountry(evidence, country) &&
+    evidenceMentionsPart(evidence, partName)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function isHqEchoPartCountry(
+  country: string | undefined,
+  ctx: PartsSanitizeCtx
+): boolean {
+  if (!country) return false;
+  if (
+    madeInCopiedFromBrandOrigin({
+      madeIn: country,
+      originCountry: ctx.brandOriginCountry,
+      hqCountry: ctx.hqCountry,
+    })
+  ) {
+    return true;
+  }
+  // CJK ↔ English (日本 vs Japan) — labelsMatch alone misses this.
+  const partLabel = matchCountryLabel(country);
+  if (!partLabel) return false;
+  const madeRegion = normalizeRegion(country);
+  if (madeRegion === 'CN' || madeRegion === 'UNKNOWN') return false;
+  for (const seed of [ctx.brandOriginCountry, ctx.hqCountry]) {
+    if (!seed) continue;
+    const seedLabel = matchCountryLabel(seed);
+    if (seedLabel && labelsMatch(partLabel, seedLabel)) return true;
+    if (normalizeRegion(seed) === madeRegion && madeRegion === 'OTHER') {
+      if (seedLabel && partLabel && labelsMatch(seedLabel, partLabel)) return true;
+    }
+  }
+  return false;
+}
+
+function sanitizeParts(
+  raw: unknown,
+  ctx: PartsSanitizeCtx = {}
+): ProductPart[] {
   if (!Array.isArray(raw)) return [];
+  const evidence = [ctx.webBrief, ctx.ocrText].filter(Boolean).join('\n');
+  const grounded = Boolean(ctx.webEnriched);
+  const ocrOk = hasOcrPartEvidence(ctx.ocrText);
+  const canConfirmCountries = grounded || ocrOk;
   const out: ProductPart[] = [];
   const seen = new Set<string>();
   for (const item of raw) {
@@ -548,18 +739,77 @@ function sanitizeParts(raw: unknown): ProductPart[] {
     const kind: PartKind = PART_KINDS.has(kindRaw as PartKind)
       ? (kindRaw as PartKind)
       : 'part';
+    let originCountry = confirmedOriginLabel(
+      rec.originCountry ? String(rec.originCountry) : undefined
+    );
+    let madeIn = confirmedOriginLabel(
+      rec.madeIn ? String(rec.madeIn) : undefined
+    );
+    let chinaRelated =
+      typeof rec.chinaRelated === 'boolean' ? rec.chinaRelated : undefined;
+    let note = rec.note ? String(rec.note).trim().slice(0, 160) : undefined;
+    const stripCountry = (why: string) => {
+      madeIn = undefined;
+      originCountry = undefined;
+      chinaRelated = undefined;
+      if (!note || !/no Search\/OCR|unknown/i.test(note)) {
+        note = [note, why].filter(Boolean).join(' — ').slice(0, 160);
+      }
+    };
+
+    if (madeIn || originCountry || chinaRelated) {
+      if (!canConfirmCountries) {
+        // Search fail / no OCR: never keep model-memory part countries (HQ echo).
+        stripCountry(
+          'Part country omitted: no Search/OCR evidence (brand HQ is not a part COO).'
+        );
+      } else {
+        const keepMade =
+          madeIn && partCountryCrossCheck(name, madeIn, evidence)
+            ? madeIn
+            : undefined;
+        const keepOrigin =
+          originCountry && partCountryCrossCheck(name, originCountry, evidence)
+            ? originCountry
+            : undefined;
+        // Drop HQ-echo even if a loose country mention exists without part cue
+        const madeHq = keepMade && isHqEchoPartCountry(keepMade, ctx);
+        const originHq = keepOrigin && isHqEchoPartCountry(keepOrigin, ctx);
+        const madeFinal =
+          keepMade && !(madeHq && !evidenceMentionsPart(evidence, name))
+            ? keepMade
+            : undefined;
+        const originFinal =
+          keepOrigin && !(originHq && !evidenceMentionsPart(evidence, name))
+            ? keepOrigin
+            : undefined;
+        if ((madeIn || originCountry) && !madeFinal && !originFinal) {
+          stripCountry(
+            'Part country omitted: not confirmed by Search/OCR for this part.'
+          );
+        } else {
+          madeIn = madeFinal;
+          originCountry = originFinal;
+          if (chinaRelated) {
+            const cnOk =
+              (madeFinal && normalizeRegion(madeFinal) === 'CN') ||
+              (originFinal && normalizeRegion(originFinal) === 'CN') ||
+              evidenceMentionsCountry(evidence, 'China');
+            if (!cnOk || !evidenceMentionsPart(evidence, name)) {
+              chinaRelated = undefined;
+            }
+          }
+        }
+      }
+    }
+
     out.push({
       name,
       kind,
-      originCountry: confirmedOriginLabel(
-        rec.originCountry ? String(rec.originCountry) : undefined
-      ),
-      madeIn: confirmedOriginLabel(
-        rec.madeIn ? String(rec.madeIn) : undefined
-      ),
-      chinaRelated:
-        typeof rec.chinaRelated === 'boolean' ? rec.chinaRelated : undefined,
-      note: rec.note ? String(rec.note).trim().slice(0, 160) : undefined,
+      originCountry,
+      madeIn,
+      chinaRelated,
+      note,
     });
     if (out.length >= PART_CAP) break;
   }
@@ -660,7 +910,8 @@ function buildGraph(
     }
   }
 
-  const parts = sanitizeParts(p?.parts);
+  // Parts already sanitized in synthesize() (evidence / HQ-echo rules).
+  const parts = p?.parts ?? [];
   for (const part of parts) {
     const pr = normalizeRegion(part.madeIn || part.originCountry);
     const partCn =
@@ -1099,26 +1350,43 @@ function finalizeAlternativesList(
   return ranked.slice(0, ALT_CAP);
 }
 
+
+/** Pull Sources lines embedded in a web research brief. */
+function parseSourcesFromBrief(brief?: string): string[] {
+  if (!brief) return [];
+  const m = brief.match(/\nSources:\s*\n([\s\S]*)$/i);
+  if (!m) return [];
+  const out: string[] = [];
+  for (const line of m[1].split('\n')) {
+    const t = line.trim();
+    if (!t) continue;
+    const cleaned = t.replace(/^\[\d+\]\s*/, '').replace(/^[-*]\s*/, '').trim();
+    if (cleaned && !out.includes(cleaned)) out.push(cleaned);
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
 /** Classify web soft-fail for notes (not a single “no web” bucket). */
 export function webFailCaveat(code?: string): string {
   switch (code) {
     case 'model_unavailable':
-      return 'Live web Search models were unavailable on this API key — made-in is more conservative (model knowledge only).';
+      return 'Live web Search models were unavailable on this API key — made-in and part countries are more conservative (model knowledge only).';
     case 'search_grounding_unavailable':
     case 'upstream_quota':
-      return 'Live Google Search grounding unavailable on this API key — made-in is more conservative (model knowledge only).';
+      return 'Live Google Search grounding unavailable on this API key — made-in and part countries are more conservative (model knowledge only).';
     case 'upstream_unavailable':
-      return 'Live web research timed out or upstream was busy — made-in is more conservative (model knowledge only).';
+      return 'Live web research timed out or upstream was busy — made-in and part countries are more conservative (model knowledge only).';
     case 'empty_response':
-      return 'Live web research returned an empty reply — made-in is more conservative (model knowledge only).';
+      return 'Live web research returned an empty reply — made-in and part countries are more conservative (model knowledge only).';
     case 'disabled':
-      return 'Live web research was disabled for this check — made-in is more conservative (model knowledge only).';
+      return 'Live web research was disabled for this check — made-in and part countries are more conservative (model knowledge only).';
     case 'gemini_not_configured':
-      return 'Gemini not configured for live web — made-in is more conservative (model knowledge only).';
+      return 'Gemini not configured for live web — made-in and part countries are more conservative (model knowledge only).';
     case 'no_entity':
-      return 'No product name for live web research — made-in is more conservative (model knowledge only).';
+      return 'No product name for live web research — made-in and part countries are more conservative (model knowledge only).';
     default:
-      return 'No live web research for this check — made-in is more conservative (model knowledge only).';
+      return 'No live web research for this check — made-in and part countries are more conservative (model knowledge only).';
   }
 }
 
@@ -1127,14 +1395,28 @@ export function webFailCaveat(code?: string): string {
  */
 export function synthesize(input: SynthesizeInput): CheckResult {
   const { jobId, geoScope } = input;
+  const companySan =
+    sanitizeCompany(input.partials.company) ?? input.partials.company;
+  let productSan =
+    sanitizeProduct(input.partials.product, {
+      webBrief: input.webBrief,
+      ocrText: input.ocrText,
+    }) ?? input.partials.product;
+  if (productSan?.parts?.length) {
+    const partsCtx: PartsSanitizeCtx = {
+      webEnriched: input.webEnriched,
+      webBrief: input.webBrief,
+      ocrText: input.ocrText,
+      brandOriginCountry: productSan.originCountry,
+      hqCountry: companySan?.hqCountry,
+    };
+    const cleanedParts = sanitizeParts(productSan.parts, partsCtx);
+    productSan = { ...productSan, parts: cleanedParts };
+  }
   const partials: AgentPartials = {
     ...input.partials,
-    product:
-      sanitizeProduct(input.partials.product, {
-        webBrief: input.webBrief,
-        ocrText: input.ocrText,
-      }) ?? input.partials.product,
-    company: sanitizeCompany(input.partials.company) ?? input.partials.company,
+    product: productSan,
+    company: companySan,
   };
   const f = extractFactors(partials, geoScope);
   let { tier, tierReasons } = decideTier(f);
@@ -1257,7 +1539,13 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   if (p?.componentsOrigin) {
     summaryParts.push(`Components/global line: ${String(p.componentsOrigin).slice(0, 80)}`);
   }
-  const resultParts = sanitizeParts(p?.parts);
+  const resultParts = sanitizeParts(p?.parts, {
+    webEnriched: input.webEnriched,
+    webBrief: input.webBrief,
+    ocrText: input.ocrText,
+    brandOriginCountry: p?.originCountry,
+    hqCountry: c?.hqCountry,
+  });
   if (resultParts.length) {
     summaryParts.push(
       `Parts: ${resultParts
@@ -1334,6 +1622,17 @@ export function synthesize(input: SynthesizeInput): CheckResult {
       (partials.company == null && !input.companySkipped && !input.productSkipped)
   );
 
+  const groundingSources = (
+    input.webEnriched
+      ? (input.sources?.length
+          ? input.sources
+          : parseSourcesFromBrief(input.webBrief))
+      : []
+  )
+    .map((s) => String(s).trim().slice(0, 240))
+    .filter(Boolean)
+    .slice(0, 8);
+
   return {
     schemaVersion: 1,
     relationTier: tier,
@@ -1347,6 +1646,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     disclaimerKey: DEFAULT_DISCLAIMER_KEY,
     knowledgeBasis: input.webEnriched ? 'web_enriched' : 'model_memory',
     knowledgeCutoffNote: input.webEnriched ? WEB_KNOWLEDGE_NOTE : KNOWLEDGE_NOTE,
+    sources: groundingSources.length ? groundingSources : undefined,
     product: p
       ? {
           name: p.name,

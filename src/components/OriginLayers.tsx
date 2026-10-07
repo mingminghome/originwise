@@ -76,6 +76,10 @@ export type OriginLayersModel = {
   /** Confirmed final COO label, or null when unconfirmed. */
   finalCoo: string | null;
   parts: PartsLine[];
+  /** Model-only / ungrounded parts — countries not Search/OCR confirmed. */
+  partsModelOnly: boolean;
+  /** Grounding Sources to show with parts when Search-backed. */
+  partsSources: string[];
 };
 
 function isConfirmedMadeIn(raw: string | undefined): string | null {
@@ -221,7 +225,14 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
     });
   }
 
-  return { brandOps, ownership, finalCoo, parts };
+  const partsModelOnly =
+    result.knowledgeBasis === 'model_memory' && parts.length > 0;
+  const partsSources =
+    result.knowledgeBasis === 'web_enriched' && Array.isArray(result.sources)
+      ? result.sources.map((s) => String(s).trim()).filter(Boolean).slice(0, 8)
+      : [];
+
+  return { brandOps, ownership, finalCoo, parts, partsModelOnly, partsSources };
 }
 
 function formatBrandOps(line: BrandOpsLine, t: TFunction): string {
@@ -377,12 +388,49 @@ export function OriginLayers({
         />
 
         {partsItems.length ? (
-          <LayerRow
-            label={t('check.layerParts')}
-            items={partsItems}
-            variant="parts"
-            t={t}
-          />
+          <div className="origin-layer-parts-wrap">
+            {model.partsModelOnly ? (
+              <p
+                className="muted origin-parts-banner"
+                data-testid="parts-model-only-banner"
+              >
+                {t('check.partsModelOnlyBanner')}
+              </p>
+            ) : null}
+            <LayerRow
+              label={t('check.layerParts')}
+              items={partsItems}
+              variant="parts"
+              t={t}
+            />
+            {model.partsSources.length ? (
+              <div
+                className="origin-parts-sources"
+                data-testid="parts-sources"
+              >
+                <span className="muted origin-parts-sources-label">
+                  {t('check.partsSourcesLabel')}
+                </span>
+                <ul>
+                  {model.partsSources.map((src) => {
+                    const urlMatch = src.match(/https?:\/\/\S+/);
+                    const href = urlMatch ? urlMatch[0] : undefined;
+                    return (
+                      <li key={src}>
+                        {href ? (
+                          <a href={href} target="_blank" rel="noreferrer">
+                            {src}
+                          </a>
+                        ) : (
+                          src
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : null}
+          </div>
         ) : null}
       </div>
       <p className="muted origin-layers-share">{t('check.sectionShareHint')}</p>

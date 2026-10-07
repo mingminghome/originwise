@@ -147,4 +147,31 @@ describe('buildOriginLayers', () => {
     assert.ok(model.brandOps.some((l) => l.kind === 'brand' && l.value === 'Acme'));
   });
 
+  it('flags model-only parts banner when knowledgeBasis is model_memory', () => {
+    const model = buildOriginLayers(
+      base({
+        knowledgeBasis: 'model_memory',
+        product: {
+          parts: [{ name: 'Nipple', kind: 'part' }],
+        },
+      })
+    );
+    assert.equal(model.partsModelOnly, true);
+    assert.deepEqual(model.partsSources, []);
+  });
+
+  it('exposes Search Sources for parts when web_enriched', () => {
+    const model = buildOriginLayers(
+      base({
+        knowledgeBasis: 'web_enriched',
+        sources: ['Amazon JP — https://amazon.co.jp/dp/x'],
+        product: {
+          parts: [{ name: 'Glass bottle', kind: 'part', madeIn: 'Japan' }],
+        },
+      })
+    );
+    assert.equal(model.partsModelOnly, false);
+    assert.ok(model.partsSources.some((s) => /amazon\.co\.jp/i.test(s)));
+  });
+
 });

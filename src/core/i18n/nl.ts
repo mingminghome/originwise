@@ -209,6 +209,9 @@ export const nl = {
     layerOwnershipEmpty: 'Geen eigendoms-/moederbedrijfssignaal in dit resultaat',
     layerFinalCoo: 'Definitieve COO',
     layerParts: 'Onderdeel-kandidaten',
+    partsModelOnlyBanner:
+      'Part countries are model guesses — not packaging or Search confirmed.',
+    partsSourcesLabel: 'Sources',
     sectionShareSave: 'Afbeelding opslaan',
     sectionShareShare: 'Delen',
     sectionShareSaved: 'Opgeslagen',

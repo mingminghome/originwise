@@ -93,7 +93,7 @@ async function maybeWebResearch(
     agents: AgentMeta[];
   },
   emit: ProgressEmit
-): Promise<{ brief: string; used: boolean; error?: string }> {
+): Promise<{ brief: string; used: boolean; error?: string; sources?: string[] }> {
   const { jobId, locale, entity, ocrText, env, agents } = opts;
   if (!isWebLookupEnabled(env)) {
     emit({ type: 'progress', jobId, step: 'web', status: 'skipped' });
@@ -104,7 +104,7 @@ async function maybeWebResearch(
       error: 'disabled',
       ms: 0,
     });
-    return { brief: '', used: false, error: 'disabled' };
+    return { brief: '', used: false, error: 'disabled', sources: [] };
   }
   emit({ type: 'progress', jobId, step: 'web', status: 'running' });
   const wr = await runWebResearch({ entity, ocrText, locale, env });
@@ -123,7 +123,7 @@ async function maybeWebResearch(
       status: 'done',
       detail: wr.model,
     });
-    return { brief: wr.brief, used: true };
+    return { brief: wr.brief, used: true, sources: wr.sources };
   }
   const failCode = wr.error || 'empty_response';
   emit({
@@ -133,7 +133,7 @@ async function maybeWebResearch(
     status: 'error',
     detail: failCode,
   });
-  return { brief: '', used: false, error: failCode };
+  return { brief: '', used: false, error: failCode, sources: [] };
 }
 
 type JsonCallResult =
@@ -256,7 +256,7 @@ async function runQuery(
   const ctx = { dimensions, hasImage: Boolean(image) };
   const sections = selectSections(ctx);
 
-  let web: { brief: string; used: boolean; error?: string };
+  let web: { brief: string; used: boolean; error?: string; sources?: string[] };
   if (entity) {
     web = await maybeWebResearch(
       { jobId, locale, entity, env, agents },
@@ -264,7 +264,7 @@ async function runQuery(
     );
   } else {
     emit({ type: 'progress', jobId, step: 'web', status: 'skipped' });
-    web = { brief: '', used: false };
+    web = { brief: '', used: false, sources: [] };
   }
 
   emit({ type: 'progress', jobId, step: 'monolith', status: 'running' });
@@ -334,6 +334,7 @@ async function runQuery(
     webEnriched: web.used,
     webFailCode: web.used ? undefined : web.error,
     webBrief: web.brief,
+    sources: web.sources,
     ocrText: parts.ocrText,
     partials: {
       product: parts.product,

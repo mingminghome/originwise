@@ -67,6 +67,9 @@ describe('synthesize decision table', () => {
     const r = synthesize({
       jobId: 't-stokke-shape',
       geoScope: 'prc',
+      webEnriched: true,
+      webBrief:
+        'Textiles / fabric sourced from China, India, Pakistan, and Turkey. Aluminum chassis made in Europe.\n\nSources:\n[1] https://example.com/stroller-bom',
       partials: {
         product: {
           name: 'Stroller',
@@ -121,6 +124,9 @@ describe('synthesize decision table', () => {
       jobId: 't-parts',
       geoScope: 'prc',
       companySkipped: true,
+      webEnriched: true,
+      webBrief:
+        'Ingredient soy sauce Made in China.\n\nSources:\n[1] https://example.com/snack',
       partials: {
         product: {
           name: 'Snack',
@@ -561,5 +567,123 @@ describe('webFailCaveat', () => {
     assert.match(webFailCaveat('search_grounding_unavailable'), /Search grounding/i);
     assert.match(webFailCaveat('empty_response'), /empty reply/i);
     assert.match(webFailCaveat(undefined), /No live web research/i);
+    assert.match(webFailCaveat(undefined), /part countries/i);
+  });
+});
+
+describe('parts COO sanitize (ungrounded HQ strip + Search cross-check)', () => {
+  it('strips ungrounded HQ-echo part countries (Softouch nipple→Japan class)', () => {
+    const r = synthesize({
+      jobId: 'parts-hq-echo',
+      geoScope: 'prc',
+      companySkipped: true,
+      webEnriched: false,
+      partials: {
+        product: {
+          name: 'Pigeon Softouch glass 240ml',
+          brand: 'Pigeon',
+          originCountry: 'Japan',
+          madeIn: undefined,
+          confidence: 0.6,
+          parts: [
+            {
+              name: '玻璃瓶身',
+              kind: 'part',
+              madeIn: '日本',
+              note: '確切產地需視實際包裝標示',
+            },
+            {
+              name: '奶嘴',
+              kind: 'part',
+              madeIn: '日本',
+              note: '確切產地需視實際包裝標示',
+            },
+          ],
+        },
+        company: { name: 'Pigeon', hqCountry: 'Japan' },
+      },
+    });
+    const parts = r.product?.parts ?? [];
+    assert.equal(parts.length, 2);
+    for (const p of parts) {
+      assert.equal(p.madeIn, undefined, p.name);
+      assert.equal(p.originCountry, undefined, p.name);
+      assert.match(String(p.note), /no Search\/OCR/i);
+    }
+    assert.equal(r.knowledgeBasis, 'model_memory');
+    assert.ok((r.caveats ?? []).some((c) => /part countries/i.test(c)));
+    // Final COO sanitize unchanged — still unconfirmed
+    assert.equal(r.product?.madeIn, undefined);
+  });
+
+  it('keeps grounded Search part countries when cross-check passes + Sources', () => {
+    const brief = [
+      'JP Softouch glass bottle label: びん：日本製、乳首・キャップ：中国／タイ製.',
+      'Glass body Made in Japan; nipple and cap China/Thailand.',
+      '',
+      'Sources:',
+      '[1] Amazon JP Softouch — https://amazon.co.jp/dp/B01CCLDEM0',
+      '[2] Rakuten — https://item.rakuten.co.jp/example/u561577/',
+    ].join('\n');
+    const r = synthesize({
+      jobId: 'parts-grounded',
+      geoScope: 'prc',
+      companySkipped: true,
+      webEnriched: true,
+      webBrief: brief,
+      sources: [
+        'Amazon JP Softouch — https://amazon.co.jp/dp/B01CCLDEM0',
+        'Rakuten — https://item.rakuten.co.jp/example/u561577/',
+      ],
+      partials: {
+        product: {
+          name: 'Pigeon Softouch glass 240ml',
+          brand: 'Pigeon',
+          originCountry: 'Japan',
+          parts: [
+            { name: '玻璃瓶身', kind: 'part', madeIn: '日本' },
+            { name: '乳首', kind: 'part', madeIn: '中国', chinaRelated: true },
+            { name: 'キャップ', kind: 'part', madeIn: 'タイ' },
+          ],
+        },
+        company: { name: 'Pigeon', hqCountry: 'Japan' },
+      },
+    });
+    const byName = Object.fromEntries(
+      (r.product?.parts ?? []).map((p) => [p.name, p])
+    );
+    assert.ok(byName['玻璃瓶身']?.madeIn);
+    assert.match(String(byName['玻璃瓶身']?.madeIn), /日本|Japan/i);
+    assert.ok(byName['乳首']?.madeIn);
+    assert.match(String(byName['乳首']?.madeIn), /中国|China/i);
+    assert.ok(byName['キャップ']?.madeIn);
+    assert.match(String(byName['キャップ']?.madeIn), /タイ|Thailand|泰國/i);
+    assert.ok(r.sources?.length);
+    assert.ok(r.sources?.some((s) => /amazon\.co\.jp/i.test(s)));
+    assert.equal(r.knowledgeBasis, 'web_enriched');
+  });
+
+  it('does not weaken final COO HQ-strip when parts are present', () => {
+    const r = synthesize({
+      jobId: 'parts-final-coo',
+      geoScope: 'prc',
+      companySkipped: true,
+      webEnriched: false,
+      partials: {
+        product: {
+          name: 'Widget',
+          brand: 'Acme',
+          originCountry: 'Japan',
+          madeIn: 'Japan',
+          parts: [{ name: 'Shell', kind: 'part', madeIn: 'Japan' }],
+        },
+        company: { name: 'Acme', hqCountry: 'Japan' },
+      },
+    });
+    assert.equal(r.product?.madeIn, undefined);
+    assert.ok(
+      (r.product?.notes ?? []).some((n) => /Made-in omitted/i.test(n))
+    );
+    assert.equal(r.product?.parts?.[0]?.madeIn, undefined);
   });
 });

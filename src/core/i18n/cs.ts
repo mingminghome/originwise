@@ -209,6 +209,9 @@ export const cs = {
     layerOwnershipEmpty: 'V tomto výsledku není signál vlastnictví/mateřské společnosti',
     layerFinalCoo: 'Finální COO',
     layerParts: 'Kandidáti dílů',
+    partsModelOnlyBanner:
+      'Part countries are model guesses — not packaging or Search confirmed.',
+    partsSourcesLabel: 'Sources',
     sectionShareSave: 'Uložit obrázek',
     sectionShareShare: 'Sdílet',
     sectionShareSaved: 'Uloženo',

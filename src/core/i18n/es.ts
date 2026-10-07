@@ -209,6 +209,9 @@ export const es = {
     layerOwnershipEmpty: 'Sin señal de propiedad/matriz en este resultado',
     layerFinalCoo: 'COO final',
     layerParts: 'Candidatos de piezas',
+    partsModelOnlyBanner:
+      'Part countries are model guesses — not packaging or Search confirmed.',
+    partsSourcesLabel: 'Sources',
     sectionShareSave: 'Guardar imagen',
     sectionShareShare: 'Compartir',
     sectionShareSaved: 'Guardado',
