@@ -61,10 +61,42 @@ const OWNERSHIP_CONTEXT =
 const COUNTRY_TOKEN =
   '(?:mainland\\s+china|people.?s\\s+republic\\s+of\\s+china|hong\\s+kong|macau|macao|taiwan|thailand|vietnam|indonesia|malaysia|philippines|india|japan|korea|south\\s+korea|china|prc|cn|jp|th|vn|id|my|ph|in|kr|tw|hk|mo|美國|美国|日本|韓國|韩国|泰國|泰国|越南|印尼|馬來西亞|马来西亚|菲律賓|菲律宾|印度|中國大陸|中国大陆|中國|中国|台灣|台湾|香港|澳門|澳门)';
 
+/** CJK country names as written on Japanese / Chinese packaging. */
+const CJK_COUNTRY_TOKEN =
+  '(?:中華人民共和国|中華人民共和國|中国|中國|日本|韓国|韓國|韩国|台湾|台灣|タイ|泰國|泰国|ベトナム|越南|インドネシア|印尼|マレーシア|馬來西亞|马来西亚|フィリピン|菲律賓|菲律宾|インド|印度|香港)';
+
+/** Suffix form on labels: 「日本製」「中国工場製」「タイ製」. */
 const COO_LINE = new RegExp(
-  `(?:made[\\s-]?in|country\\s+of\\s+origin|country\\s+of\\s+publication|coo|製造国|製造國|原産国|原產國|产地|產地|生产地|生產地)\\s*[:：]?\\s*(${COUNTRY_TOKEN})`,
+  `(?:made[\\s-]?in|assembled[\\s-]?in|country\\s+of\\s+origin|country\\s+of\\s+publication|coo|製造国|製造國|原産国名?|原產國|产地|產地|生产地|生產地|生産(?:[・･/／]組み?立て?)?|組み?立て?|組裝|组装)\\s*[:：]?\\s*(${CJK_COUNTRY_TOKEN}|${COUNTRY_TOKEN})`,
   'gi'
 );
+
+const COO_SUFFIX = new RegExp(`(${CJK_COUNTRY_TOKEN})(?:工場|工厂|廠)?製`, 'g');
+
+/** Same country in English or CJK ("Japan" / 日本 / タイ vs Thailand). */
+const CANON_COUNTRY: Record<string, string> = {
+  日本: 'japan', jp: 'japan', 泰國: 'thailand', 泰国: 'thailand', タイ: 'thailand', th: 'thailand',
+  越南: 'vietnam', ベトナム: 'vietnam', vn: 'vietnam', 'viet nam': 'vietnam',
+  印尼: 'indonesia', インドネシア: 'indonesia', 馬來西亞: 'malaysia', 马来西亚: 'malaysia',
+  マレーシア: 'malaysia', 菲律賓: 'philippines', 菲律宾: 'philippines', フィリピン: 'philippines',
+  印度: 'india', インド: 'india', 韓國: 'korea', 韓国: 'korea', 韩国: 'korea',
+  'south korea': 'korea', kr: 'korea', 美國: 'united states', 美国: 'united states',
+  usa: 'united states', us: 'united states',
+};
+
+export function canonCountry(label: string | undefined): string {
+  const s = String(label ?? '').trim();
+  if (!s) return '';
+  const region = normalizeRegion(s);
+  if (region === 'CN' || region === 'HK' || region === 'TW' || region === 'MO') return region;
+  return CANON_COUNTRY[s] ?? CANON_COUNTRY[s.toLowerCase()] ?? s.toLowerCase();
+}
+
+const CJK_TO_LABEL: Record<string, string> = {
+  中華人民共和国: '中国', 中華人民共和國: '中國', タイ: 'Thailand', ベトナム: 'Vietnam',
+  インドネシア: 'Indonesia', マレーシア: 'Malaysia', フィリピン: 'Philippines',
+  インド: 'India', 韓国: '韓國',
+};
 
 function classifySource(window: string): CooClaimSource {
   if (OWNERSHIP_CONTEXT.test(window) && !OCR_CONTEXT.test(window) && !RETAILER_CONTEXT.test(window)) {
@@ -98,13 +130,26 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
   COO_LINE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = COO_LINE.exec(raw)) !== null) {
-    const label = m[1].trim();
+    const label = CJK_TO_LABEL[m[1].trim()] ?? m[1].trim();
     const region = normalizeRegion(label);
     if (region === 'UNKNOWN') continue;
     const start = Math.max(0, m.index - 80);
     const end = Math.min(raw.length, m.index + m[0].length + 80);
     const window = raw.slice(start, end);
     const source = classifySource(window);
+    const key = `${source}:${region}:${label.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ label, region, source });
+  }
+  COO_SUFFIX.lastIndex = 0;
+  while ((m = COO_SUFFIX.exec(raw)) !== null) {
+    const label = CJK_TO_LABEL[m[1]] ?? m[1];
+    const region = normalizeRegion(label);
+    if (region === 'UNKNOWN') continue;
+    const start = Math.max(0, m.index - 80);
+    const end = Math.min(raw.length, m.index + m[0].length + 80);
+    const source = classifySource(raw.slice(start, end));
     const key = `${source}:${region}:${label.toLowerCase()}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -171,7 +216,19 @@ export function applyCooPriority(input: CooPriorityInput): CooPriorityResult {
   const madeRegion = normalizeRegion(madeIn);
   const mfgRegion = normalizeRegion(manufacturedIn);
 
-  if (preferred && preferred.source !== 'ownership') {
+  // The label / page also names the stamped made-in (e.g. body 日本 and
+  // nipple 中国工場製 on one box): that is the made-in, not a conflict.
+  const madeInBacked =
+    Boolean(madeIn) &&
+    Boolean(preferred) &&
+    all.some(
+      (c) =>
+        c.source !== 'ownership' &&
+        SOURCE_RANK[c.source] <= SOURCE_RANK[preferred!.source] &&
+        canonCountry(c.label) === canonCountry(madeIn)
+    );
+
+  if (preferred && preferred.source !== 'ownership' && !madeInBacked) {
     // Prefer explicit higher-priority COO when LLM left madeIn empty / vague
     if (!madeIn || normalizeRegion(madeIn) === 'UNKNOWN') {
       madeIn = preferred.label;

@@ -42,9 +42,23 @@ export const el = {
     accept: 'Κατάλαβα — ξεκινήστε τον έλεγχο',
   },
   check: {
+    chinaLink: {
+      title: 'Σχέση με την Κίνα',
+      chinaCompany: 'Κινεζική εταιρεία',
+      chinaControlled: 'Υπό κινεζικό έλεγχο',
+      hq: 'Έδρα',
+      owner: 'Ελέγχων ιδιοκτήτης',
+      brandOrigin: 'Προέλευση μάρκας',
+      madeIn: 'Τόπος κατασκευής',
+      parts: 'Εξαρτήματα',
+      china: 'Κίνα',
+      unconfirmed: 'Μη επιβεβαιωμένο',
+      partsChina: 'Ορισμένα εξαρτήματα κατασκευάζονται στην Κίνα',
+    },
     matchBasis: {
       barcode: 'Αντιστοίχιση με γραμμωτό κώδικα',
       name: 'Αντιστοίχιση με όνομα προϊόντος',
+      label: 'Σύμφωνα με την ετικέτα της συσκευασίας',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',

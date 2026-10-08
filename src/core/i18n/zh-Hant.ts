@@ -42,9 +42,23 @@ export const zhHant = {
     accept: '知道了 — 開始查',
   },
   check: {
+    chinaLink: {
+      title: '與中國的關係',
+      chinaCompany: '中國公司',
+      chinaControlled: '中資控股',
+      hq: '總部',
+      owner: '控股／母公司',
+      brandOrigin: '品牌來源地',
+      madeIn: '製造地',
+      parts: '零件',
+      china: '中國',
+      unconfirmed: '未確認',
+      partsChina: '部分零件在中國製造',
+    },
     matchBasis: {
       barcode: '依條碼比對',
       name: '依品名比對',
+      label: '依包裝標示',
     },
     searchVia: {
       gemini: 'Google 搜尋（Gemini）',

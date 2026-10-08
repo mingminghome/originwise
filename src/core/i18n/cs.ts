@@ -42,9 +42,23 @@ export const cs = {
     accept: 'Rozumím — začít kontrolovat',
   },
   check: {
+    chinaLink: {
+      title: 'Vazba na Čínu',
+      chinaCompany: 'Čínská společnost',
+      chinaControlled: 'Pod čínskou kontrolou',
+      hq: 'Sídlo',
+      owner: 'Ovládající vlastník',
+      brandOrigin: 'Původ značky',
+      madeIn: 'Vyrobeno v',
+      parts: 'Díly',
+      china: 'Čína',
+      unconfirmed: 'Nepotvrzeno',
+      partsChina: 'Některé díly vyrobeny v Číně',
+    },
     matchBasis: {
       barcode: 'Shoda podle čárového kódu',
       name: 'Shoda podle názvu produktu',
+      label: 'Podle údaje na obalu',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',

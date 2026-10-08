@@ -42,9 +42,23 @@ export const ro = {
     accept: 'Am înțeles — începe verificarea',
   },
   check: {
+    chinaLink: {
+      title: 'Legătura cu China',
+      chinaCompany: 'Companie chineză',
+      chinaControlled: 'Sub control chinez',
+      hq: 'Sediu',
+      owner: 'Proprietar care deține controlul',
+      brandOrigin: 'Originea mărcii',
+      madeIn: 'Fabricat în',
+      parts: 'Componente',
+      china: 'China',
+      unconfirmed: 'Neconfirmat',
+      partsChina: 'Unele componente fabricate în China',
+    },
     matchBasis: {
       barcode: 'Potrivire după codul de bare',
       name: 'Potrivire după numele produsului',
+      label: 'Conform etichetei de pe ambalaj',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',

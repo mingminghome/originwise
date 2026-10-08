@@ -1,4 +1,5 @@
 import type { CheckResult } from '../core/types';
+import { ChinaLink, displayTier } from './ChinaLink';
 import type { TFunction } from '../core/i18n';
 import { formatTierReason } from '../core/i18n/tierReasons';
 import { AlternativeCards } from './AlternativeCards';
@@ -131,6 +132,7 @@ export function ResultPanel({
       )
       .filter(Boolean) ?? [];
   const searchName = searchProviderLabel(result.meta?.searchProvider, t);
+  const shown = displayTier(result);
   const searchRequests = result.meta?.searchRequests;
 
   return (
@@ -153,19 +155,32 @@ export function ResultPanel({
         <div className="result-tier-hero">
           <p className="result-tier-label muted">{t('check.relationLabel')}</p>
           <TierBadge
-            tier={result.relationTier}
-            label={t(`tier.${result.relationTier}`)}
+            tier={shown.tier}
+            label={t(`tier.${shown.tier}`)}
             size="lg"
           />
-          {typeof result.confidence === 'number' ? (
+          {typeof shown.confidence === 'number' ? (
             <span className="muted result-tier-conf">
               {t('check.confidence', {
-                n: Math.round(result.confidence * 100),
+                n: Math.round(shown.confidence * 100),
               })}
             </span>
           ) : null}
         </div>
       </header>
+
+      <ChinaLink result={result} t={t} />
+
+      {result.tierReasons?.length ? (
+        <section className="result-why">
+          <h3 className="result-section-title">{t('check.reasons')}</h3>
+          <ul className="tier-reasons-list">
+            {result.tierReasons.map((r) => (
+              <li key={r}>{formatTierReason(r, t, result)}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {result.summary ? (
         <p className="ask-result-summary">{localizeServerText(t, result.summary)}</p>
@@ -181,17 +196,6 @@ export function ResultPanel({
       ) : null}
 
       <OriginLayers result={result} t={t} />
-
-      {result.tierReasons?.length ? (
-        <section className="result-why">
-          <h3 className="result-section-title">{t('check.reasons')}</h3>
-          <ul className="tier-reasons-list">
-            {result.tierReasons.map((r) => (
-              <li key={r}>{formatTierReason(r, t, result)}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
 
       <AlternativeCards alternatives={result.alternatives} t={t} />
 

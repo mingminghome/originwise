@@ -124,8 +124,11 @@ export type CheckResult = {
         | 'ownership';
       rating: 'confirmed' | 'likely' | 'possible' | 'mentioned';
     }>;
-    /** How a web-search made-in was confirmed (Brave/Firecrawl): barcode only. */
-    madeInBasis?: 'barcode';
+    /**
+     * How the made-in was confirmed: a web page showing the barcode/JAN with a
+     * made-in ('barcode'), or the package label photo ('label').
+     */
+    madeInBasis?: 'barcode' | 'label';
   };
   company?: {
     name?: string;

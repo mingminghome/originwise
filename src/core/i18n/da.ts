@@ -42,9 +42,23 @@ export const da = {
     accept: 'Forstået — begynd at tjekke',
   },
   check: {
+    chinaLink: {
+      title: 'Forbindelse til Kina',
+      chinaCompany: 'Kinesisk virksomhed',
+      chinaControlled: 'Kinesisk kontrolleret',
+      hq: 'Hovedsæde',
+      owner: 'Kontrollerende ejer',
+      brandOrigin: 'Mærkets oprindelse',
+      madeIn: 'Fremstillet i',
+      parts: 'Dele',
+      china: 'Kina',
+      unconfirmed: 'Ikke bekræftet',
+      partsChina: 'Nogle dele fremstillet i Kina',
+    },
     matchBasis: {
       barcode: 'Matchet via stregkode',
       name: 'Matchet via produktnavn',
+      label: 'Ifølge emballagens mærkning',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',

@@ -310,6 +310,27 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const longWindowSec =
       Number(env.CHECK_RATE_LONG_WINDOW_SEC) || DEFAULT_LONG_WINDOW_SEC;
 
+    // In-flight check first: a request turned away because another check is
+    // still running must not use up the 30 s / 6 h quota (auto-resend loop).
+    const gotLock = await acquireInFlight(ip);
+    if (!gotLock) {
+      return json(
+        {
+          ok: false,
+          error:
+            'A check is already running (max 1 at a time). Please wait for it to finish.',
+          code: 'rate_limited',
+          jobId,
+          limit: 1,
+          window: 'inflight',
+          retryAfterSec: 30,
+        },
+        429,
+        { 'Retry-After': '30' }
+      );
+    }
+    holdLock = true;
+
     try {
       // Short burst limit: default 1 check / 30s
       const short = await checkRateLimit({
@@ -362,24 +383,6 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       /* rate limit optional — continue */
     }
 
-    const gotLock = await acquireInFlight(ip);
-    if (!gotLock) {
-      return json(
-        {
-          ok: false,
-          error:
-            'A check is already running (max 1 at a time). Please wait for it to finish.',
-          code: 'rate_limited',
-          jobId,
-          limit: 1,
-          window: 'inflight',
-          retryAfterSec: 30,
-        },
-        429,
-        { 'Retry-After': '30' }
-      );
-    }
-    holdLock = true;
 
     const parsed = await parseBody(request);
     if (!parsed.ok) {

@@ -5,7 +5,7 @@ import {
   extractCooClaimsFromText,
   bestCooClaim,
 } from './cooPriority';
-import { synthesize } from './synthesize';
+import { applyWebCooGate, labelConfirmsMadeIn, synthesize } from './synthesize';
 
 describe('extractCooClaimsFromText', () => {
   it('pulls Country of Publication as retailer COO', () => {
@@ -118,5 +118,73 @@ describe('synthesize + COO priority', () => {
       'china',
       'must not keep China stamp against retailer Thailand COO'
     );
+  });
+});
+
+describe('package label OCR (Pigeon Softouch glass)', () => {
+  // Text as read from the Softouch box: body made in Japan, nipple made in a China plant.
+  const SOFTOUCH_OCR = [
+    'ピジョン 母乳実感 哺乳びん 耐熱ガラス製 160ml',
+    '生産・組み立て：日本',
+    '乳首：シリコーンゴム 中国工場製',
+    '販売元 ピジョン株式会社 東京都中央区',
+  ].join('\n');
+
+  it('reads 生産・組み立て：日本 and 中国工場製 as made-in claims', () => {
+    const claims = extractCooClaimsFromText(SOFTOUCH_OCR);
+    assert.ok(claims.some((c) => c.region === 'OTHER' && /日本/.test(c.label)), JSON.stringify(claims));
+    assert.ok(claims.some((c) => c.region === 'CN' && /中国/.test(c.label)), JSON.stringify(claims));
+  });
+
+  it('reads other label forms: 原産国名、組立、タイ製、Assembled in', () => {
+    const labels = (txt: string) => extractCooClaimsFromText(txt).map((c) => c.label);
+    assert.ok(labels('原産国名：タイ').some((l) => /タイ|thailand/i.test(l)));
+    assert.ok(labels('組み立て：中国').some((l) => /中国/.test(l)));
+    assert.ok(labels('タイ製').some((l) => /thailand/i.test(l)));
+    assert.ok(labels('Assembled in Vietnam').some((l) => /vietnam/i.test(l)));
+    assert.ok(labels('组装：中国').some((l) => /中国/.test(l)));
+  });
+
+  it('web gate keeps a made-in the label confirms, with basis label', () => {
+    const gated = applyWebCooGate(
+      { name: 'Softouch glass 160ml', madeIn: 'Japan', confidence: 0.7 },
+      [{ country: 'Thailand', basis: 'name', status: 'likely' }],
+      SOFTOUCH_OCR
+    );
+    assert.equal(gated.product?.madeIn, 'Japan');
+    assert.equal(gated.madeInBasis, 'label');
+  });
+
+  it('web gate still strips a made-in the label does not name', () => {
+    const gated = applyWebCooGate(
+      { name: 'Softouch glass 160ml', madeIn: 'Thailand', confidence: 0.7 },
+      [{ country: 'Thailand', basis: 'name', status: 'likely' }],
+      SOFTOUCH_OCR
+    );
+    assert.equal(gated.product?.madeIn, undefined);
+    assert.equal(gated.madeInBasis, undefined);
+  });
+
+  it('labelConfirmsMadeIn matches English and CJK names', () => {
+    assert.equal(labelConfirmsMadeIn('Japan', SOFTOUCH_OCR), true);
+    assert.equal(labelConfirmsMadeIn('China', SOFTOUCH_OCR), true);
+    assert.equal(labelConfirmsMadeIn('Thailand', SOFTOUCH_OCR), false);
+    assert.equal(labelConfirmsMadeIn('Japan', ''), false);
+  });
+
+  it('synthesize returns madeInBasis label for a label-confirmed made-in', () => {
+    const r = synthesize({
+      jobId: 'softouch',
+      geoScope: 'prc',
+      ocrText: SOFTOUCH_OCR,
+      webEnriched: true,
+      webCoo: [],
+      partials: {
+        product: { name: 'Softouch glass 160ml', brand: 'Pigeon', madeIn: 'Japan', confidence: 0.8 },
+        company: { name: 'Pigeon', hqCountry: 'Japan', confidence: 0.9 },
+      },
+    });
+    assert.equal(r.product?.madeIn, 'Japan');
+    assert.equal(r.product?.madeInBasis, 'label');
   });
 });

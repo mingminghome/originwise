@@ -42,9 +42,23 @@ export const sv = {
     accept: 'Uppfattat — börja kolla',
   },
   check: {
+    chinaLink: {
+      title: 'Koppling till Kina',
+      chinaCompany: 'Kinesiskt företag',
+      chinaControlled: 'Under kinesisk kontroll',
+      hq: 'Huvudkontor',
+      owner: 'Kontrollerande ägare',
+      brandOrigin: 'Varumärkets ursprung',
+      madeIn: 'Tillverkad i',
+      parts: 'Delar',
+      china: 'Kina',
+      unconfirmed: 'Ej bekräftat',
+      partsChina: 'Vissa delar tillverkade i Kina',
+    },
     matchBasis: {
       barcode: 'Matchad via streckkod',
       name: 'Matchad via produktnamn',
+      label: 'Enligt förpackningens märkning',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',

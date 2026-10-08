@@ -4,7 +4,8 @@
  */
 
 import type { CheckResult } from '../types';
-import type { TFunction } from './index';
+import { localeOfT, type TFunction } from './index';
+import { localizeCountry } from './countries';
 
 const KNOWN = new Set([
   'made_in_cn',
@@ -59,9 +60,11 @@ export function formatTierReason(
   t: TFunction,
   result: CheckResult
 ): string {
-  const places = uniquePlaces(result);
-  const placeStr = places.join(', ');
-  const nonCnStr = uniqueNonCnPlaces(result).join(', ');
+  const loc = (p: string) => localizeCountry(t, p);
+  const listSep = localeOfT(t) === 'zh-Hant' ? '、' : ', ';
+  const places = uniquePlaces(result).map(loc);
+  const placeStr = [...new Set(places)].join(listSep);
+  const nonCnStr = [...new Set(uniqueNonCnPlaces(result).map(loc))].join(listSep);
 
   // Prefer detail variants when we have concrete place names
   if (code === 'explicit_non_cn_geo' && nonCnStr) {
@@ -72,21 +75,21 @@ export function formatTierReason(
   }
   if (code === 'made_in_cn') {
     const p = result.product?.madeIn || result.product?.manufacturedIn;
-    if (p) return t('check.reason.made_in_cn_detail', { place: p });
+    if (p) return t('check.reason.made_in_cn_detail', { place: loc(p) });
   }
   if (code === 'origin_cn' && result.product?.originCountry) {
     return t('check.reason.origin_cn_detail', {
-      place: result.product.originCountry,
+      place: loc(result.product.originCountry),
     });
   }
   if (code === 'manufacturer_cn') {
-    const p =
-      result.product?.manufacturerCountry || result.product?.manufacturer;
+    const country = result.product?.manufacturerCountry;
+    const p = country ? loc(country) : result.product?.manufacturer;
     if (p) return t('check.reason.manufacturer_cn_detail', { place: p });
   }
   if (code === 'hq_cn' && result.company?.hqCountry) {
     return t('check.reason.hq_cn_detail', {
-      place: result.company.hqCountry,
+      place: loc(result.company.hqCountry),
     });
   }
   if (code === 'taiwan_as_country' && placeStr) {

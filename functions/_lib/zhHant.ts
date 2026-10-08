@@ -31,8 +31,15 @@ const CHARS: Record<string, string> = {
   仅: '僅', 视: '視', 觉: '覺',
 };
 
-const COUNTRY_ZH: Record<string, string> = {
-  Japan: '日本', China: '中國', Taiwan: '台灣', 'Hong Kong': '香港',
+export const COUNTRY_ZH: Record<string, string> = {
+  Japan: '日本', China: '中國', 'Mainland China': '中國', PRC: '中國',
+  "People's Republic of China": '中國', Macau: '澳門', Macao: '澳門',
+  Austria: '奧地利', Belgium: '比利時', Finland: '芬蘭', Norway: '挪威',
+  Ireland: '愛爾蘭', Hungary: '匈牙利', Romania: '羅馬尼亞', Greece: '希臘',
+  Slovakia: '斯洛伐克', Czechia: '捷克', Brazil: '巴西', Cambodia: '柬埔寨',
+  Bangladesh: '孟加拉', 'Sri Lanka': '斯里蘭卡', Myanmar: '緬甸', Pakistan: '巴基斯坦',
+  'South Africa': '南非', Egypt: '埃及', Morocco: '摩洛哥', Tunisia: '突尼西亞',
+  'Republic of Korea': '韓國', 'Great Britain': '英國', England: '英國', Taiwan: '台灣', 'Hong Kong': '香港',
   Korea: '韓國', 'South Korea': '韓國', Thailand: '泰國', Vietnam: '越南',
   Malaysia: '馬來西亞', Indonesia: '印尼', Philippines: '菲律賓', India: '印度',
   Singapore: '新加坡', Germany: '德國', France: '法國', Italy: '義大利',
@@ -51,11 +58,24 @@ const COUNTRY_ALT = Object.keys(COUNTRY_ZH)
 const MADE_IN_COUNTRY_RE = new RegExp(`\\bmade[- ]?in\\s+(${COUNTRY_ALT})\\b`, 'gi');
 const COUNTRY_RE = new RegExp(`(?<![A-Za-z])(${COUNTRY_ALT})(?![A-Za-z])`, 'g');
 
-function zhCountry(name: string): string {
+export function zhCountry(name: string): string {
   const key = Object.keys(COUNTRY_ZH).find(
     (k) => k.toLowerCase() === name.replace(/\s+/g, ' ').toLowerCase()
   );
   return key ? COUNTRY_ZH[key] : name;
+}
+
+/**
+ * A short country value ("China", "Changsha, China", "中国") in 繁中.
+ * Unlike zhEnglishLeftovers this also runs on pure-English values: the
+ * caller knows the string is a place, not a server sentence.
+ */
+export function zhCountryText(value: string): string {
+  const s = String(value ?? '').trim();
+  if (!s) return s;
+  const exact = zhCountry(s);
+  if (exact !== s) return exact;
+  return toTraditionalZh(s).replace(COUNTRY_RE, (c: string) => zhCountry(c));
 }
 
 /** Simplified → Traditional for the mapped characters only. */

@@ -42,9 +42,23 @@ export const pt = {
     accept: 'Percebi — começar a verificar',
   },
   check: {
+    chinaLink: {
+      title: 'Ligação à China',
+      chinaCompany: 'Empresa chinesa',
+      chinaControlled: 'Sob controlo chinês',
+      hq: 'Sede',
+      owner: 'Proprietário controlador',
+      brandOrigin: 'Origem da marca',
+      madeIn: 'Fabricado em',
+      parts: 'Peças',
+      china: 'China',
+      unconfirmed: 'Não confirmado',
+      partsChina: 'Algumas peças fabricadas na China',
+    },
     matchBasis: {
       barcode: 'Correspondência pelo código de barras',
       name: 'Correspondência pelo nome do produto',
+      label: 'Segundo o rótulo da embalagem',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',

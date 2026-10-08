@@ -196,9 +196,27 @@ describe('synthesize decision table', () => {
     assert.equal(lo.relationTier, 'none');
   });
 
-  it('strong CN + verify conflict → direct with capped confidence', () => {
+  it('strong CN made-in only + verify conflict → direct with capped confidence', () => {
     const r = synthesize({
       jobId: 't7',
+      geoScope: 'prc',
+      partials: {
+        product: { name: 'Phone', madeIn: 'China', confidence: 0.9 },
+        company: { name: 'Co', hqCountry: 'Japan', confidence: 0.9 },
+        verify: {
+          consistent: false,
+          conflicts: ['origin mismatch'],
+          confidence: 0.9,
+        },
+      },
+    });
+    assert.equal(r.relationTier, 'direct');
+    assert.ok(r.confidence <= 0.45);
+  });
+
+  it('China HQ + verify conflict → direct, confidence kept at the company floor', () => {
+    const r = synthesize({
+      jobId: 't7b',
       geoScope: 'prc',
       partials: {
         product: { name: 'Phone', madeIn: 'China', confidence: 0.9 },
@@ -211,7 +229,7 @@ describe('synthesize decision table', () => {
       },
     });
     assert.equal(r.relationTier, 'direct');
-    assert.ok(r.confidence <= 0.45);
+    assert.equal(r.confidence, 0.75);
   });
 
   it('CN origin only (no strong mfg/hq) → indirect', () => {
@@ -778,5 +796,67 @@ describe('HQ / manufacturer country is never a made-in candidate', () => {
     const srcs = (r.product?.originCandidates ?? []).map((c) => c.source);
     assert.ok(!srcs.includes('manufacturer'), JSON.stringify(srcs));
     assert.ok(!/Candidates:.*manufacturer/.test(r.summary ?? ''), r.summary);
+  });
+});
+
+describe('China HQ / China-controlling parent → direct with strong confidence', () => {
+  it('China HQ alone (made-in unconfirmed, weak product confidence) → direct ≥ 0.75', () => {
+    const r = synthesize({
+      jobId: 'cn-hq',
+      geoScope: 'prc',
+      partials: {
+        product: { name: 'Tapo C200', brand: 'Tapo', confidence: 0.5 },
+        company: { name: 'TP-Link', hqCountry: 'China', confidence: 0.85 },
+      },
+    });
+    assert.equal(r.relationTier, 'direct');
+    assert.ok(r.tierReasons.includes('hq_cn'));
+    assert.ok(r.confidence >= 0.75, String(r.confidence));
+    assert.equal(r.confidence, 0.85);
+  });
+
+  it('majority China parent with a German HQ → direct ≥ 0.75', () => {
+    const r = synthesize({
+      jobId: 'cn-parent',
+      geoScope: 'prc',
+      partials: {
+        product: { name: 'Cybex Melio', brand: 'Cybex', confidence: 0.45 },
+        company: {
+          name: 'Cybex GmbH',
+          hqCountry: 'Germany',
+          parents: [{ name: 'Goodbaby International', country: 'China', control: 'majority' }],
+          confidence: 0.8,
+        },
+      },
+    });
+    assert.equal(r.relationTier, 'direct');
+    assert.ok(r.tierReasons.includes('parent_majority_cn'));
+    assert.ok(r.confidence >= 0.75);
+  });
+
+  it('China HQ with no company confidence still gets the floor', () => {
+    const r = synthesize({
+      jobId: 'cn-hq-noconf',
+      geoScope: 'prc',
+      partials: {
+        product: { name: 'Anker charger', confidence: 0.4 },
+        company: { name: 'Anker Innovations', hqCountry: 'China' },
+      },
+    });
+    assert.equal(r.relationTier, 'direct');
+    assert.ok(r.confidence >= 0.75);
+  });
+
+  it('Taiwan HQ is never a China link', () => {
+    const r = synthesize({
+      jobId: 'tw-hq',
+      geoScope: 'greater_china',
+      partials: {
+        product: { name: 'Router', confidence: 0.6 },
+        company: { name: 'ASUS', hqCountry: 'Taiwan', confidence: 0.9 },
+      },
+    });
+    assert.notEqual(r.relationTier, 'direct');
+    assert.ok(!r.tierReasons.includes('hq_cn'));
   });
 });

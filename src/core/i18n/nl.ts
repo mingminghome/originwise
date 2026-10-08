@@ -42,9 +42,23 @@ export const nl = {
     accept: 'Begrepen — starten',
   },
   check: {
+    chinaLink: {
+      title: 'Band met China',
+      chinaCompany: 'Chinees bedrijf',
+      chinaControlled: 'Onder Chinese zeggenschap',
+      hq: 'Hoofdkantoor',
+      owner: 'Eigenaar met zeggenschap',
+      brandOrigin: 'Herkomst merk',
+      madeIn: 'Gemaakt in',
+      parts: 'Onderdelen',
+      china: 'China',
+      unconfirmed: 'Niet bevestigd',
+      partsChina: 'Sommige onderdelen gemaakt in China',
+    },
     matchBasis: {
       barcode: 'Gekoppeld via barcode',
       name: 'Gekoppeld via productnaam',
+      label: 'Volgens het verpakkingslabel',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',

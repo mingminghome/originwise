@@ -42,9 +42,23 @@ export const hu = {
     accept: 'Értem — kezdjük az ellenőrzést',
   },
   check: {
+    chinaLink: {
+      title: 'Kapcsolat Kínával',
+      chinaCompany: 'Kínai vállalat',
+      chinaControlled: 'Kínai irányítás alatt',
+      hq: 'Székhely',
+      owner: 'Irányító tulajdonos',
+      brandOrigin: 'Márka eredete',
+      madeIn: 'Gyártási hely',
+      parts: 'Alkatrészek',
+      china: 'Kína',
+      unconfirmed: 'Nincs megerősítve',
+      partsChina: 'Egyes alkatrészek Kínában készültek',
+    },
     matchBasis: {
       barcode: 'Vonalkód alapján egyeztetve',
       name: 'Terméknév alapján egyeztetve',
+      label: 'A csomagolás felirata alapján',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',

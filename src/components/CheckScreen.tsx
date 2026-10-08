@@ -8,7 +8,8 @@ import {
   Square,
   X,
 } from 'lucide-react';
-import type { ProgressStep, RateLimitMeta } from '../core/ai/client';
+import type { ProgressStep } from '../core/ai/client';
+import { autoRetrySeconds, type RateHit } from '../core/util/autoRetry';
 import { engineRunCheck } from '../core/ai/engine';
 import {
   checkInputType,
@@ -27,21 +28,6 @@ import type { CheckResult } from '../core/types';
 import { ProgressSteps } from './ProgressSteps';
 import { ResultPanel } from './ResultPanel';
 
-type RateHit = {
-  code: 'rate_limited' | 'rate_limited_day';
-  meta?: RateLimitMeta;
-};
-
-/** Auto-retry only for short / inflight waits (not multi-hour caps). */
-function autoRetrySeconds(hit: RateHit): number | null {
-  const w = hit.meta?.window;
-  if (hit.code === 'rate_limited_day' || w === 'long' || w === 'day') {
-    return null;
-  }
-  const fallback = w === 'inflight' ? 15 : 30;
-  const s = hit.meta?.retryAfterSec ?? fallback;
-  return Math.max(1, Math.min(Math.ceil(s), 120));
-}
 
 export function CheckScreen({
   state,
@@ -74,9 +60,11 @@ export function CheckScreen({
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const dropLeaveTimerRef = useRef(0);
-  const runCheckRef = useRef<(opts?: { forceRefresh?: boolean }) => Promise<void>>(
-    async () => undefined
-  );
+  const runCheckRef = useRef<
+    (opts?: { forceRefresh?: boolean; auto?: boolean }) => Promise<void>
+  >(async () => undefined);
+  /** Automatic re-submits since the user last pressed submit (capped). */
+  const autoAttemptsRef = useRef(0);
   /** Keep last successful/attempted inputs for re-check after composer is cleared */
   const lastInputRef = useRef<{ question: string; photo: PreparedImage | null }>({
     question: '',
@@ -167,8 +155,10 @@ export function CheckScreen({
   };
 
   const runCheck = useCallback(
-    async (opts?: { forceRefresh?: boolean }) => {
+    async (opts?: { forceRefresh?: boolean; auto?: boolean }) => {
       const forceRefresh = Boolean(opts?.forceRefresh);
+      if (opts?.auto) autoAttemptsRef.current += 1;
+      else autoAttemptsRef.current = 0;
       setError(null);
       setRateHit(null);
       setAutoRetryLeft(null);
@@ -234,7 +224,7 @@ export function CheckScreen({
             };
             setRateHit(hit);
             setError(rateLimitMessage(hit));
-            const wait = autoRetrySeconds(hit);
+            const wait = autoRetrySeconds(hit, autoAttemptsRef.current);
             if (wait != null) setAutoRetryLeft(wait);
             return;
           }
@@ -385,7 +375,7 @@ export function CheckScreen({
     if (autoRetryLeft == null) return;
     if (autoRetryLeft <= 0) {
       setAutoRetryLeft(null);
-      void runCheckRef.current();
+      void runCheckRef.current({ auto: true });
       return;
     }
     const id = window.setTimeout(() => {

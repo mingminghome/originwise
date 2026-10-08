@@ -52,9 +52,12 @@ function getPath(obj: unknown, path: string): unknown {
   return cur;
 }
 
+/** Locale each `t` was made for (country names etc. need it, not just keys). */
+const LOCALE_OF_T = new WeakMap<object, Locale>();
+
 export function createT(locale: Locale) {
   const tree = catalogs[locale] ?? en;
-  return (key: Path, vars?: Record<string, string | number>): string => {
+  const t = (key: Path, vars?: Record<string, string | number>): string => {
     const raw = getPath(tree, key) ?? getPath(en, key) ?? key;
     if (typeof raw !== 'string') return key;
     if (!vars) return raw;
@@ -62,6 +65,13 @@ export function createT(locale: Locale) {
       vars[name] !== undefined ? String(vars[name]) : `{${name}}`
     );
   };
+  LOCALE_OF_T.set(t, catalogs[locale] ? locale : 'en');
+  return t;
+}
+
+/** Locale of a `t` from createT; 'en' for anything else (test stubs). */
+export function localeOfT(t: object): Locale {
+  return LOCALE_OF_T.get(t) ?? 'en';
 }
 
 export type TFunction = ReturnType<typeof createT>;

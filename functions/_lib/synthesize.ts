@@ -1405,6 +1405,17 @@ function sameCountry(a?: string, b?: string): boolean {
   return Boolean(la && lb && labelsMatch(la, lb));
 }
 
+export type MadeInBasis = 'barcode' | 'label';
+
+/** Confidence floor for a direct tier from China HQ / China-controlling parent. */
+export const COMPANY_DIRECT_MIN_CONFIDENCE = 0.75;
+
+/** True when the package-label OCR text names the same made-in country. */
+export function labelConfirmsMadeIn(madeIn: string | undefined, ocrText?: string): boolean {
+  if (!madeIn || !ocrText) return false;
+  return extractCooClaimsFromText(ocrText).some((c) => sameCountry(c.label, madeIn));
+}
+
 /**
  * Brave/Firecrawl made-in gate (code-enforced; exported for tests).
  * Keeps product madeIn / manufacturedIn only when a barcode-confirmed web claim
@@ -1415,7 +1426,7 @@ export function applyWebCooGate(
   p: ProductPartial | null | undefined,
   webCoo: WebCooClaim[],
   ocrText?: string
-): { product: ProductPartial | null | undefined; likely: string[]; madeInBasis?: 'barcode' } {
+): { product: ProductPartial | null | undefined; likely: string[]; madeInBasis?: MadeInBasis } {
   const confirmed = webCoo.filter((c) => c.status === 'confirmed' && c.basis === 'barcode');
   const likely = webCoo
     .filter((c) => c.status === 'likely')
@@ -1427,11 +1438,12 @@ export function applyWebCooGate(
   const byOcr = (v: string) => ocrClaims.some((c) => sameCountry(c.label, v));
   let madeIn = p.madeIn;
   let manufacturedIn = p.manufacturedIn;
-  let madeInBasis: 'barcode' | undefined;
+  let madeInBasis: MadeInBasis | undefined;
   let stripped = false;
   if (madeIn && confirmedOriginLabel(madeIn)) {
     if (byBarcode(madeIn)) madeInBasis = 'barcode';
-    else if (!byOcr(madeIn)) {
+    else if (byOcr(madeIn)) madeInBasis = 'label';
+    else {
       madeIn = undefined;
       stripped = true;
     }
@@ -1476,12 +1488,17 @@ export function synthesize(input: SynthesizeInput): CheckResult {
       ocrText: input.ocrText,
     }) ?? input.partials.product;
   let webLikely: string[] = [];
-  let madeInBasis: 'barcode' | undefined;
+  let madeInBasis: MadeInBasis | undefined;
   if (input.webCoo && input.webEnriched) {
     const gated = applyWebCooGate(productSan, input.webCoo, input.ocrText);
     productSan = gated.product;
     webLikely = gated.likely;
     madeInBasis = gated.madeInBasis;
+  }
+  // Package label photo names the same country → label-confirmed made-in
+  // (also when web research was off for this check).
+  if (!madeInBasis && productSan?.madeIn && labelConfirmsMadeIn(productSan.madeIn, input.ocrText)) {
+    madeInBasis = 'label';
   }
   if (productSan?.parts?.length) {
     const partsCtx: PartsSanitizeCtx = {
@@ -1550,6 +1567,20 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   if (tier === 'direct' && f.F_CONFLICT) {
     confidence = Math.min(confidence, 0.45);
     caveats.push(SERVER_TEXT.verifyConflict);
+  }
+
+  // A China HQ or China-controlling parent is company-level evidence: the
+  // tier is direct whatever the made-in says, so its confidence follows the
+  // company finding, not a weak / unconfirmed made-in (no 50% "weak" China HQ).
+  if (tier === 'direct' && (f.F_HQ_CN || f.F_PARENT_CN_MAJORITY)) {
+    const companyConf = partials.company?.confidence;
+    const base =
+      typeof companyConf === 'number' && Number.isFinite(companyConf) && companyConf > 0
+        ? companyConf
+        : 0.8;
+    confidence = Math.max(confidence, Math.min(base, 0.95), COMPANY_DIRECT_MIN_CONFIDENCE);
+    // Verification conflicts usually concern the made-in; keep the floor.
+    if (f.F_CONFLICT) confidence = COMPANY_DIRECT_MIN_CONFIDENCE;
   }
 
   const companyMissing =
