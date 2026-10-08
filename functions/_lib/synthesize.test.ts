@@ -730,3 +730,53 @@ describe('parts COO sanitize (ungrounded HQ strip + Search cross-check)', () => 
     assert.equal(r.partsEvidence, 'model');
   });
 });
+
+describe('placeholder values and HQ echo (Sheer live leftovers)', () => {
+  const r = synthesize({
+    jobId: 'sheer-leftovers',
+    geoScope: 'prc',
+    companySkipped: true,
+    partials: {
+      product: {
+        name: 'Sheer PPSU 240ml',
+        madeIn: 'China',
+        originCountry: 'Japan',
+        manufacturerCountry: 'Japan',
+        componentsOrigin: 'unknown',
+        notes: ['Final assembly country (madeIn) per retailer page.'],
+      },
+    },
+  });
+  it('omits a components line of "unknown" from summary and payload', () => {
+    assert.ok(!/Components\/global line/.test(r.summary ?? ''), r.summary);
+    assert.equal(r.product?.componentsOrigin, undefined);
+  });
+  it('drops the manufacturer candidate once made-in is confirmed', () => {
+    const srcs = (r.product?.originCandidates ?? []).map((c) => c.source);
+    assert.ok(!srcs.includes('manufacturer'), JSON.stringify(srcs));
+  });
+  it('strips echoed schema keys from notes', () => {
+    assert.ok(!(r.product?.notes ?? []).some((n) => n.includes('(madeIn)')));
+  });
+});
+
+describe('HQ / manufacturer country is never a made-in candidate', () => {
+  it('name-only, unconfirmed: no manufacturer candidate, no Japan in Candidates', () => {
+    const r = synthesize({
+      jobId: 'hq-echo-unconfirmed',
+      geoScope: 'prc',
+      companySkipped: true,
+      partials: {
+        product: {
+          name: '母乳実感 哺乳びん',
+          brand: 'Pigeon',
+          originCountry: 'Japan',
+          manufacturerCountry: 'Japan',
+        },
+      },
+    });
+    const srcs = (r.product?.originCandidates ?? []).map((c) => c.source);
+    assert.ok(!srcs.includes('manufacturer'), JSON.stringify(srcs));
+    assert.ok(!/Candidates:.*manufacturer/.test(r.summary ?? ''), r.summary);
+  });
+});

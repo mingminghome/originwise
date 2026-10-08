@@ -69,6 +69,8 @@ function localizeSegment(t: TFunction, seg: string): string {
   for (const [k, prefix] of Object.entries(SUMMARY_PREFIX)) {
     if (!s.startsWith(prefix)) continue;
     const rest = s.slice(prefix.length);
+    // Placeholder values from older cached results ("Components/global line: unknown").
+    if (VAGUE_VALUE_RE.test(rest.trim())) return '';
     const value =
       k === 'candidates'
         ? rest
@@ -90,10 +92,13 @@ function localizeSegment(t: TFunction, seg: string): string {
   return out === s ? seg : out;
 }
 
+const VAGUE_VALUE_RE = /^(unknown|n\/?a|none|null|unclear|未知|不明|不詳)$/i;
+
 export function localizeServerText(t: TFunction, text: string | undefined | null): string {
   if (!text) return '';
   return splitTopLevel(text)
     .map((seg) => localizeSegment(t, seg))
+    .filter(Boolean)
     .join(SUMMARY_SEP);
 }
 

@@ -118,7 +118,18 @@ export function ResultPanel({
     (a.error === 'search_grounding_unavailable' || a.error === 'disabled');
   const failCount = agents.filter((a) => a.ok === false && !skippedAgent(a)).length;
   const okCount = agents.filter((a) => a.ok !== false).length;
-  const notes = result.product?.notes?.filter((n) => n.trim()) ?? [];
+  // Older cached results may still carry echoed schema keys like "(madeIn)".
+  const notes =
+    result.product?.notes
+      ?.map((n) =>
+        n
+          .replace(
+            /\s*[(（]\s*(?:madeIn|manufacturedIn|originCountry|componentsOrigin|manufacturerCountry|hqCountry|chinaRelated)\s*[)）]/g,
+            ''
+          )
+          .trim()
+      )
+      .filter(Boolean) ?? [];
   const searchName = searchProviderLabel(result.meta?.searchProvider, t);
   const searchRequests = result.meta?.searchRequests;
 

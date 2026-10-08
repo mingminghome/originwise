@@ -97,3 +97,13 @@ describe('localizeServerText', () => {
     }
   });
 });
+
+describe('localizeServerText placeholder values', () => {
+  it('drops a summary bit whose value is unknown', () => {
+    const t = ((k: string, v?: Record<string, string>) =>
+      k === 'check.srv.sum.madeIn' ? `MADE:${v?.value}` : k === 'check.srv.sum.components' ? `COMP:${v?.value}` : k) as never;
+    const out = localizeServerText(t, 'Made in: China · Components/global line: unknown · HQ: Japan');
+    assert.ok(!out.includes('unknown'), out);
+    assert.ok(out.length > 0, out);
+  });
+});
