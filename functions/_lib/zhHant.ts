@@ -142,7 +142,7 @@ export function fixZhHantDeep<T>(value: T, keep: readonly string[], skip: Readon
 }
 
 /** Result field names the model sometimes writes into zh text. */
-const FIELD = '(?:originCountry|madeIn|manufacturedIn|componentsOrigin|manufacturerCountry)';
+const FIELD = '(?:originCountry|designedIn|madeIn|manufacturedIn|componentsOrigin|manufacturerCountry)';
 const FIELD_PAREN_RE = new RegExp(`\\s*[(（]\\s*${FIELD}\\s*[)）]`, 'g');
 const FIELD_LIST_RE = new RegExp(`${FIELD}(?:\\s*(?:與|和|及|、|/|and)\\s*${FIELD})*\\s*`, 'g');
 const KANA_RE = /[\u3040-\u30ff]/;

@@ -131,6 +131,8 @@ export type CheckResult = {
     madeInBasis?: 'barcode' | 'label' | 'model';
     /** 依型號比對: 'web' = 2+ exact-model domains; 'ai_web' = AI answer + 1+ page. */
     madeInSupport?: 'web' | 'ai_web';
+    /** Design / brand country wording (附加資訊); never a made-in candidate. */
+    designInfo?: Array<{ country: string; kind: 'design' | 'brand'; url?: string; quote?: string }>;
   };
   company?: {
     name?: string;

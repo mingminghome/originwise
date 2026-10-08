@@ -13,10 +13,11 @@
 
 import { isSearchResultUrl } from '../sourceLine';
 import { canonicalCountry } from '../countryLabel';
+import { designMentions, quoteBacksCountry, stripDesignPhrases } from '../designOrigin';
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
 import type { FetchedPage, PageBlock, SearchEnv, SearchEvidence, SearchOutput } from './types';
-import type { WebCooClaim, WebExcludedPage } from '../schema';
+import type { DesignInfo, WebCooClaim, WebExcludedPage } from '../schema';
 
 /** Analysis model for extraction (plain call, no grounding). */
 export const EXTRACT_MODEL = 'gemini-3.5-flash-lite';
@@ -863,7 +864,8 @@ export function cooClaimsFromSourcePages(
   ocrText: string | undefined,
   pages: FetchedPage[],
   excludedOut?: WebExcludedPage[],
-  evidenceOut?: SearchEvidence
+  evidenceOut?: SearchEvidence,
+  designOut?: DesignInfo[]
 ): WebCooClaim[] {
   // Search-result pages list many products, so they are never evidence.
   const usable = pages.filter(
@@ -871,8 +873,9 @@ export function cooClaimsFromSourcePages(
   );
   if (!usable.length) return [];
   const jans = findJans(entity, ocrText);
-  const { kept, excluded, droppedPages } = gateClaims(entity, jans, usable, regexCooClaims(usable));
+  const { kept, excluded, droppedPages, design } = gateClaims(entity, jans, usable, regexCooClaims(usable));
   excludedOut?.push(...excludedPages(excluded, usable));
+  designOut?.push(...designFromPages(design, usable));
   if (evidenceOut) {
     const ev = searchEvidence(usable, droppedPages);
     evidenceOut.pages.push(...ev.pages);
@@ -966,7 +969,7 @@ export function mapSearchHttpError(status: number, body: string): string {
 
 /** A quote must look like a COO statement (Made in / 原産国 / 〜製 …). */
 const COO_CUE =
-  /made\s*in|country\s*of\s*origin|origin|原産|原產|生産|生產|製|産地|產地/i;
+  /made\s*in|manufactured\s*in|assembled\s*in|country\s*of\s*origin|origin|原産|原產|生産|生產|製|産地|產地/i;
 
 /** Notes that look like a made-in claim are dropped (they skipped the JAN check). */
 const NOTE_COO_CUE =
@@ -1001,9 +1004,10 @@ export type CooClaim = {
 export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
   const out: CooClaim[] = [];
   pages.forEach((p, idx) => {
-    const t = nfkc(p.text);
+    // Design / brand wording is blanked first ("Designed in Germany, made in China" → China).
+    const t = stripDesignPhrases(nfkc(p.text));
     const patterns: RegExp[] = [
-      /\b(?:[Mm]ade in|MADE IN|[Cc]ountry of [Oo]rigin\s*[:：]?)\s*([A-Z][A-Za-z]+(?: [A-Z][a-z]+)?)/g,
+      /\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|[Cc]ountry of [Oo]rigin\s*[:：]?)\s*([A-Z][A-Za-z]+(?: [A-Z][a-z]+)?)/g,
       /(?:原産国|生産国|製造国|原産地|生産地|原產地|原產國|生產國|生產地|產地|製造地)(?:名)?\s*[:：・／/]?\s*([^\s:：、。,，|/／()（）<>[\]]{1,12})/g,
     ];
     for (const re of patterns) {
@@ -1040,7 +1044,10 @@ function claimOnPage(c: CooClaim, page: FetchedPage): boolean {
     Boolean((c.country || '').trim()) &&
     quote.length >= 3 &&
     compact(page.text).includes(compact(quote)) &&
-    COO_CUE.test(nfkc(quote))
+    // Only the made-in part of the quote counts: "Engineered in Germany" is
+    // not a made-in line, and a mixed sentence backs its made-in country only.
+    COO_CUE.test(stripDesignPhrases(nfkc(quote))) &&
+    quoteBacksCountry(nfkc(quote), c.country)
   );
 }
 
@@ -1123,6 +1130,8 @@ export function gateClaims(
   excluded: ExcludedPage[];
   /** Pages with a made-in claim of which none passed the gate (1-based). */
   droppedPages: number[];
+  /** Design / brand wording on pages about this product (never made-in). */
+  design: PageDesign[];
 } {
   const tokens = variantTokens(entity);
   const mentions = pages.map((p) => modelMentions(p.text, entity));
@@ -1149,7 +1158,35 @@ export function gateClaims(
   const droppedPages = [...new Set(claims.map((c) => c.page))].filter(
     (n) => n >= 1 && n <= pages.length && !keptPages.has(n)
   );
-  return { ...out, kept: promoteModelMatches(out.kept, claims, pages, exact), excluded, droppedPages };
+  // Design / brand wording on pages about this product: 附加資訊, never made-in.
+  const design: PageDesign[] = [];
+  pages.forEach((p, i) => {
+    if (matches[i] === null) return;
+    for (const d of designMentions(nfkc(p.text))) {
+      if (design.some((x) => x.country === d.country)) continue;
+      design.push({ page: i + 1, country: d.country, kind: d.kind, quote: d.phrase });
+    }
+  });
+  return {
+    ...out,
+    kept: promoteModelMatches(out.kept, claims, pages, exact),
+    excluded,
+    droppedPages,
+    design: design.slice(0, 3),
+  };
+}
+
+/** One design / brand phrase on a product page (1-based page). */
+export type PageDesign = { page: number; country: string; kind: 'design' | 'brand'; quote: string };
+
+/** Gate design rows → DesignInfo with the page URL. */
+export function designFromPages(design: PageDesign[], pages: FetchedPage[]): DesignInfo[] {
+  return design.map((d) => ({
+    country: d.country,
+    kind: d.kind,
+    url: pages[d.page - 1]!.url,
+    quote: d.quote.slice(0, 80),
+  }));
 }
 
 /** 'model' = two domains name the exact model with this made-in (依型號比對). */
@@ -1278,6 +1315,8 @@ Rules:
 - The quote must be copied character-for-character from that page.
 - If no page states a COO for this product, return "coo": [].
 - Taiwan is not China. Ownership / HQ is never COO.
+- Design / brand wording is never COO: "Designed in / by", "Engineered in", "Developed in", "German engineering", "design from", "conceived in", "R&D in", "German brand", 設計於, 德國設計, 研發於, 德國工程, 德國品牌. Put such a country in notes as design / brand info.
+- One sentence with both ("Designed in Germany, made in China"): the coo quote is only the made-in part ("made in China").
 - At most 5 notes, each under 160 characters.
 
 PAGES:
@@ -1338,7 +1377,7 @@ export async function extractBriefFromPages(opts: {
     claims = regexCooClaims(pages);
   }
 
-  const { kept, dropped, droppedMultiVariant, excluded, droppedPages } = gateClaims(entity, jans, pages, claims);
+  const { kept, dropped, droppedMultiVariant, excluded, droppedPages, design } = gateClaims(entity, jans, pages, claims);
   const confirmed = kept.filter((k) => k.status === 'confirmed');
   const likely = kept.filter((k) => k.status === 'likely' && !k.evidenceOnly);
   // Notes must never smuggle a made-in claim past the barcode/name gate.
@@ -1385,6 +1424,12 @@ export async function extractBriefFromPages(opts: {
       `- Dropped ${dropped - droppedMultiVariant} made-in mention(s) from pages that did not match the barcode/name (or quote not on page).`
     );
   }
+  // Wording avoids made-in shapes: design / brand country is never COO.
+  for (const d of design) {
+    lines.push(
+      `- Design / brand wording only, NOT made-in — ${d.kind === 'brand' ? 'brand country' : 'design country'} = ${d.country} | via: ${hostOf(pages[d.page - 1]!.url)}`
+    );
+  }
   if (safeNotes.length) {
     lines.push('Brand / company notes (not COO):');
     for (const n of safeNotes) lines.push(`- ${n}`);
@@ -1405,6 +1450,7 @@ export async function extractBriefFromPages(opts: {
     model,
     coo: webCooFromKept(kept, pages),
     excluded: excludedPages(excluded, pages),
+    design: designFromPages(design, pages),
     evidence: searchEvidence(pages, droppedPages),
   };
 }

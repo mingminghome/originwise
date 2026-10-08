@@ -90,6 +90,8 @@ export type SearchChainResult = {
   coo?: SearchOutput['coo'];
   /** Pages about another model of that name (winning provider). */
   excluded?: SearchOutput['excluded'];
+  /** Design / brand wording on product pages (winning provider). */
+  design?: SearchOutput['design'];
   /** Page text + dropped-claim URLs for the AI-cited check (winning provider). */
   evidence?: SearchOutput['evidence'];
   tried: SearchAttempt[];
@@ -144,6 +146,7 @@ export async function runSearchChain(
         model: out.model,
         coo: out.coo,
         excluded: out.excluded,
+        design: out.design,
         evidence: out.evidence,
         tried,
       };

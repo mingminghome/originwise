@@ -4,6 +4,7 @@
  * the country tables and the fixed server sentences.
  */
 import { COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
+import { stripDesignPhrases } from './designOrigin';
 import { SERVER_TEXT } from './serverText';
 
 /** Clauses: a country and a made-in word only count together in one clause. */
@@ -26,10 +27,20 @@ function clauseNames(clause: string, label: string): boolean {
  */
 export function notesNameMadeIn(notes: readonly unknown[] | undefined, label: string): boolean {
   return (notes ?? []).some((n) =>
-    String(n ?? '')
+    stripDesignPhrases(String(n ?? ''))
       .split(CLAUSE_SPLIT)
       .some((c) => clauseNames(c, label) && MADE_CUE.test(c))
   );
+}
+
+/**
+ * The notes name this country only inside design / brand wording
+ * (「品牌源自德國」, "German engineering"): not a made-in candidate.
+ */
+export function notesNameOnlyAsDesign(notes: readonly unknown[] | undefined, label: string): boolean {
+  const texts = (notes ?? []).map((n) => String(n ?? ''));
+  if (!texts.some((t) => clauseNames(t, label))) return false;
+  return !texts.some((t) => clauseNames(stripDesignPhrases(t), label));
 }
 
 /** Any country name (or "made in") in the text. */

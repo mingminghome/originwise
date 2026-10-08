@@ -25,6 +25,12 @@ MULTI-LAYER ORIGIN (critical — do not collapse into one country):
 Products often have SEPARATE layers. Report each layer; never substitute one for another.
 
 1) originCountry = brand design / brand home market. Not the factory.
+   designedIn = the country the brand says it designs / engineers / develops this product in
+   ("Designed in Germany", "Engineered in Germany", "German engineering", "Designed by Apple in California",
+   德國設計, 設計於, 研發於, 德國工程). Report it ONLY here (or in notes as design info), separately from madeIn.
+   Design / brand wording is never made-in evidence: never put it in madeIn, madeInSources quotes, parts or componentsOrigin.
+   One sentence with both ("Designed in Germany, made in China"): only the made-in part counts for madeIn,
+   and a madeInSources quote is only that part ("made in China").
 2) manufacturerCountry = legal manufacturer domicile (often same as brand HQ).
 3) madeIn / manufacturedIn = FINAL legal country of origin for THIS unit/SKU:
    - Prefer packaging "Made in …" / "Country of origin" / retailer COO for this exact model.

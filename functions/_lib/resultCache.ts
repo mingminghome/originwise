@@ -30,8 +30,10 @@ function sortedDims(dims: CheckDimension[]): string {
  * v9: 依型號比對 (madeInBasis 'model', madeInSupport), AI-cited sources
  *     (citedUnverified / citedFetches), searchExcluded, exactModel /
  *     evidenceOnly on searchCoo
+ * v10: design / brand wording is never made-in (product.designInfo,
+ *     附加資訊), 爭議 line on disagreeing pages
  */
-export const CACHE_KEY_VERSION = 'check:v9';
+export const CACHE_KEY_VERSION = 'check:v10';
 
 export async function cacheKeyHash(parts: CacheLookupKey): Promise<string> {
   const material = [

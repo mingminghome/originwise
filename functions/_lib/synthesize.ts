@@ -26,6 +26,7 @@ import {
   type ProductPartial,
   type RelationTier,
   type WebCooClaim,
+  type DesignInfo,
 } from './schema';
 import {
   inScope,
@@ -40,6 +41,7 @@ import { tierFromCodes } from './tierRules';
 import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
 import { SERVER_TEXT, webFailText } from './serverText';
 import { notesNameMadeIn, omittedPartNote } from './noteText';
+import { designMentions, stripDesignPhrases } from './designOrigin';
 import { exactModelConflict, siteOf } from './search/extract';
 
 export type SynthesizeInput = {
@@ -68,6 +70,8 @@ export type SynthesizeInput = {
    * 'likely' candidates and never the final COO.
    */
   webCoo?: WebCooClaim[];
+  /** Design / brand wording on product pages (附加資訊; never made-in). */
+  webDesign?: DesignInfo[];
 };
 
 type Factors = {
@@ -419,7 +423,8 @@ function collectOriginCandidates(
   // note ties it to manufacturing in the same clause.
   const echoCountries = [opts.hqCountry, p.manufacturerCountry, p.originCountry];
   for (const n of p.notes ?? []) {
-    for (const label of extractCountryLabelsFromText(String(n))) {
+    // Design / brand wording (「品牌源自德國」, "Engineered in Germany") is not a candidate.
+    for (const label of extractCountryLabelsFromText(stripDesignPhrases(String(n)))) {
       if (out.get(label)?.rating === 'confirmed') continue;
       const echo = echoCountries.some((c) => sameCountry(label, c));
       if (echo && !out.has(label) && !notesNameMadeIn([n], label)) continue;
@@ -646,7 +651,8 @@ function sanitizeParts(
   ctx: PartsSanitizeCtx = {}
 ): ProductPart[] {
   if (!Array.isArray(raw)) return [];
-  const evidence = [ctx.webBrief, ctx.ocrText].filter(Boolean).join('\n');
+  // Design / brand wording never backs a part country.
+  const evidence = stripDesignPhrases([ctx.webBrief, ctx.ocrText].filter(Boolean).join('\n'));
   const grounded = Boolean(ctx.webEnriched);
   const ocrOk = hasOcrPartEvidence(ctx.ocrText);
   const canConfirmCountries = grounded || ocrOk;
@@ -1038,16 +1044,13 @@ function sanitizeProduct(
 ): ProductPartial | null | undefined {
   if (!p) return p;
   const noteBlob = (p.notes ?? []).join(' ');
-  const madeCopied = madeInCopiedFromBrandOrigin({
-    madeIn: p.madeIn,
-    originCountry: p.originCountry,
-    note: noteBlob,
-  });
-  const mfgCopied = madeInCopiedFromBrandOrigin({
-    madeIn: p.manufacturedIn,
-    originCountry: p.originCountry,
-    note: noteBlob,
-  });
+  // The design country (designedIn) is brand info like originCountry: never a made-in.
+  const madeCopied =
+    madeInCopiedFromBrandOrigin({ madeIn: p.madeIn, originCountry: p.originCountry, note: noteBlob }) ||
+    madeInCopiedFromBrandOrigin({ madeIn: p.madeIn, originCountry: p.designedIn, note: noteBlob });
+  const mfgCopied =
+    madeInCopiedFromBrandOrigin({ madeIn: p.manufacturedIn, originCountry: p.originCountry, note: noteBlob }) ||
+    madeInCopiedFromBrandOrigin({ madeIn: p.manufacturedIn, originCountry: p.designedIn, note: noteBlob });
   const hadVagueMade =
     (Boolean(p.madeIn && String(p.madeIn).trim()) &&
       isVagueOriginLabel(p.madeIn)) ||
@@ -1628,6 +1631,8 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     input.queryText?.trim().slice(0, 80) ||
     'Result';
 
+  const designInfo = collectDesignInfo(p, input.webEnriched ? input.webDesign : undefined);
+
   const originCandidates = collectOriginCandidates(p, {
     webEnriched: input.webEnriched,
     productConfidence: p?.confidence,
@@ -1808,6 +1813,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
             : undefined,
           madeInBasis: madeInBasis && p.madeIn ? madeInBasis : undefined,
           madeInSupport: madeInBasis === 'model' && p.madeIn ? madeInSupport : undefined,
+          designInfo: designInfo.length ? designInfo : undefined,
         }
       : id
         ? { name: id.name, brand: id.brand, category: id.category }
@@ -1857,9 +1863,54 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   };
 }
 
+/** At most this many 附加資訊 lines. */
+const MAX_DESIGN_INFO = 2;
+
+/**
+ * Design / brand country wording (附加資訊): product pages first (with their
+ * link), then the model's designedIn and its notes. One row per country
+ * ('design' wording wins over 'brand'); a country that is the confirmed
+ * made-in is left out (「德國設計」 next to a German made-in says nothing).
+ */
+function collectDesignInfo(
+  p: ProductPartial | null | undefined,
+  webDesign: DesignInfo[] | undefined
+): DesignInfo[] {
+  if (!p) return [];
+  const rows: DesignInfo[] = [];
+  const add = (d: DesignInfo) => {
+    const country = canonicalCountry(d.country) ?? d.country.trim();
+    if (!country || isVagueOriginLabel(country)) return;
+    if (p.madeIn && sameCountry(country, p.madeIn)) return;
+    const i = rows.findIndex((r) => sameCountry(r.country, country));
+    const row: DesignInfo = {
+      country,
+      kind: d.kind,
+      ...(d.url ? { url: d.url } : {}),
+      ...(d.quote ? { quote: d.quote.slice(0, 80) } : {}),
+    };
+    if (i === -1) rows.push(row);
+    else {
+      const prev = rows[i]!;
+      rows[i] = {
+        ...prev,
+        kind: prev.kind === 'design' || d.kind === 'design' ? 'design' : 'brand',
+        ...(!prev.url && d.url ? { url: d.url, quote: row.quote } : {}),
+      };
+    }
+  };
+  for (const d of webDesign ?? []) add(d);
+  if (p.designedIn && confirmedOriginLabel(p.designedIn)) add({ country: p.designedIn, kind: 'design' });
+  for (const n of p.notes ?? []) {
+    for (const d of designMentions(String(n))) add({ country: d.country, kind: d.kind });
+  }
+  return rows.slice(0, MAX_DESIGN_INFO);
+}
+
 /** Exported for unit tests */
 export const __test = {
   collectOriginCandidates,
+  collectDesignInfo,
   sanitizeParts,
   extractFactors,
   decideTier,

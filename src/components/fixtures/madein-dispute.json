@@ -1,0 +1,380 @@
+{
+ "dispute1": {
+  "result": {
+   "schemaVersion": 1,
+   "relationTier": "unknown",
+   "title": "Cybex Melio 嬰兒推車",
+   "summary": "Final COO unconfirmed",
+   "confidence": 0.9,
+   "tierReasons": [
+    "insufficient"
+   ],
+   "caveats": [
+    "Final COO unconfirmed — candidates below are queried signals, not a stamped made-in label."
+   ],
+   "regions": [],
+   "geoScope": "prc",
+   "disclaimerKey": "check.disclaimer",
+   "knowledgeBasis": "web_enriched",
+   "knowledgeCutoffNote": "Includes a live web research pass (Google Search via Gemini grounding) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.",
+   "sources": [
+    "CYBEX Melio 嬰兒推車｜CYBEX 官方 — https://www.cybex-online.com/zh-tw/melio"
+   ],
+   "product": {
+    "name": "Cybex Melio 嬰兒推車",
+    "brand": "Cybex",
+    "designInfo": [
+     {
+      "country": "Germany",
+      "kind": "design",
+      "url": "https://www.cybex-online.com/zh-tw/melio",
+      "quote": "Engineered in Germany"
+     }
+    ]
+   },
+   "graph": {
+    "nodes": [
+     {
+      "id": "product",
+      "label": "Cybex Melio 嬰兒推車",
+      "kind": "product",
+      "region": "UNKNOWN",
+      "chinaRelated": false
+     }
+    ],
+    "edges": []
+   },
+   "meta": {
+    "jobId": "design",
+    "degraded": true,
+    "searchProvider": "firecrawl",
+    "searchMatch": "name"
+   }
+  }
+ },
+ "dispute2": {
+  "result": {
+   "schemaVersion": 1,
+   "relationTier": "direct",
+   "title": "Cybex Melio 嬰兒推車",
+   "summary": "Made in: China",
+   "confidence": 0.9,
+   "tierReasons": [
+    "made_in_cn"
+   ],
+   "caveats": [],
+   "regions": [
+    "CN"
+   ],
+   "geoScope": "prc",
+   "disclaimerKey": "check.disclaimer",
+   "knowledgeBasis": "web_enriched",
+   "knowledgeCutoffNote": "Includes a live web research pass (Google Search via Gemini grounding) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.",
+   "sources": [
+    "Cybex Melio 嬰兒推車 - momo購物網 — https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=10501",
+    "CYBEX Melio 嬰兒推車｜CYBEX 官方 — https://www.cybex-online.com/zh-tw/melio"
+   ],
+   "product": {
+    "name": "Cybex Melio 嬰兒推車",
+    "brand": "Cybex",
+    "madeIn": "China",
+    "originCandidates": [
+     {
+      "label": "China",
+      "confidence": 0.75,
+      "source": "confirmed_coo",
+      "rating": "confirmed"
+     }
+    ],
+    "madeInBasis": "model",
+    "madeInSupport": "ai_web",
+    "designInfo": [
+     {
+      "country": "Germany",
+      "kind": "design",
+      "url": "https://www.cybex-online.com/zh-tw/melio",
+      "quote": "Engineered in Germany"
+     }
+    ]
+   },
+   "graph": {
+    "nodes": [
+     {
+      "id": "product",
+      "label": "Cybex Melio 嬰兒推車",
+      "kind": "product",
+      "region": "CN",
+      "chinaRelated": true
+     },
+     {
+      "id": "place:made:CN",
+      "label": "China",
+      "kind": "place",
+      "region": "CN",
+      "chinaRelated": true
+     }
+    ],
+    "edges": [
+     {
+      "from": "product",
+      "to": "place:made:CN",
+      "label": "made in",
+      "type": "manufacturing",
+      "strength": "strong",
+      "chinaRelated": true
+     }
+    ]
+   },
+   "meta": {
+    "jobId": "design",
+    "degraded": true,
+    "searchProvider": "firecrawl",
+    "searchCoo": [
+     {
+      "country": "中國",
+      "basis": "name",
+      "status": "likely",
+      "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=10501",
+      "exactModel": true
+     }
+    ],
+    "searchMatch": "model"
+   }
+  }
+ },
+ "dispute3": {
+  "result": {
+   "schemaVersion": 1,
+   "relationTier": "unknown",
+   "title": "Cybex Melio 嬰兒推車",
+   "summary": "Final COO unconfirmed · Candidates: China (likely 60% · web_name); Germany (likely 60% · web_name)",
+   "confidence": 0.9,
+   "tierReasons": [
+    "insufficient"
+   ],
+   "caveats": [
+    "Final COO unconfirmed — candidates below are queried signals, not a stamped made-in label."
+   ],
+   "regions": [],
+   "geoScope": "prc",
+   "disclaimerKey": "check.disclaimer",
+   "knowledgeBasis": "web_enriched",
+   "knowledgeCutoffNote": "Includes a live web research pass (Google Search via Gemini grounding) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.",
+   "sources": [
+    "Cybex Melio 嬰兒推車 - momo購物網 — https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=10501",
+    "Cybex Melio Kinderwagen — https://www.kinderwagen-shop.de/cybex-melio"
+   ],
+   "product": {
+    "name": "Cybex Melio 嬰兒推車",
+    "brand": "Cybex",
+    "originCandidates": [
+     {
+      "label": "China",
+      "confidence": 0.6,
+      "source": "web_name",
+      "rating": "likely"
+     },
+     {
+      "label": "Germany",
+      "confidence": 0.6,
+      "source": "web_name",
+      "rating": "likely"
+     }
+    ]
+   },
+   "graph": {
+    "nodes": [
+     {
+      "id": "product",
+      "label": "Cybex Melio 嬰兒推車",
+      "kind": "product",
+      "region": "UNKNOWN",
+      "chinaRelated": false
+     }
+    ],
+    "edges": []
+   },
+   "meta": {
+    "jobId": "design",
+    "degraded": true,
+    "searchProvider": "firecrawl",
+    "searchCoo": [
+     {
+      "country": "中國",
+      "basis": "name",
+      "status": "likely",
+      "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=10501",
+      "exactModel": true
+     },
+     {
+      "country": "Germany",
+      "basis": "name",
+      "status": "likely",
+      "url": "https://www.kinderwagen-shop.de/cybex-melio",
+      "exactModel": true
+     }
+    ],
+    "searchMatch": "name"
+   }
+  }
+ },
+ "dispute4": {
+  "result": {
+   "schemaVersion": 1,
+   "relationTier": "direct",
+   "title": "Cybex Melio 嬰兒推車",
+   "summary": "Made in: China",
+   "confidence": 0.9,
+   "tierReasons": [
+    "made_in_cn"
+   ],
+   "caveats": [],
+   "regions": [
+    "CN"
+   ],
+   "geoScope": "prc",
+   "disclaimerKey": "check.disclaimer",
+   "knowledgeBasis": "web_enriched",
+   "knowledgeCutoffNote": "Includes a live web research pass (Google Search via Gemini grounding) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.",
+   "sources": [
+    "Cybex Melio 嬰兒推車 4058511012346 — https://www.babyhome.com.tw/item/4058511012346",
+    "CYBEX Melio 嬰兒推車｜CYBEX 官方 — https://www.cybex-online.com/zh-tw/melio"
+   ],
+   "product": {
+    "name": "Cybex Melio 嬰兒推車",
+    "brand": "Cybex",
+    "madeIn": "China",
+    "notes": [],
+    "originCandidates": [
+     {
+      "label": "China",
+      "confidence": 0.95,
+      "source": "confirmed_coo",
+      "rating": "confirmed"
+     }
+    ],
+    "madeInBasis": "barcode",
+    "designInfo": [
+     {
+      "country": "Germany",
+      "kind": "design",
+      "url": "https://www.cybex-online.com/zh-tw/melio",
+      "quote": "Designed in Germany"
+     }
+    ]
+   },
+   "graph": {
+    "nodes": [
+     {
+      "id": "product",
+      "label": "Cybex Melio 嬰兒推車",
+      "kind": "product",
+      "region": "CN",
+      "chinaRelated": true
+     },
+     {
+      "id": "place:made:CN",
+      "label": "China",
+      "kind": "place",
+      "region": "CN",
+      "chinaRelated": true
+     }
+    ],
+    "edges": [
+     {
+      "from": "product",
+      "to": "place:made:CN",
+      "label": "made in",
+      "type": "manufacturing",
+      "strength": "strong",
+      "chinaRelated": true
+     }
+    ]
+   },
+   "meta": {
+    "jobId": "design",
+    "degraded": true,
+    "searchProvider": "firecrawl",
+    "searchCoo": [
+     {
+      "country": "China",
+      "basis": "barcode",
+      "status": "confirmed",
+      "url": "https://www.babyhome.com.tw/item/4058511012346"
+     }
+    ],
+    "searchMatch": "barcode"
+   }
+  }
+ },
+ "dispute5": {
+  "result": {
+   "schemaVersion": 1,
+   "relationTier": "unknown",
+   "title": "Cybex Melio 嬰兒推車",
+   "summary": "Final COO unconfirmed · Candidates: China (likely 60% · web_name)",
+   "confidence": 0.9,
+   "tierReasons": [
+    "insufficient"
+   ],
+   "caveats": [
+    "Final COO unconfirmed — candidates below are queried signals, not a stamped made-in label."
+   ],
+   "regions": [],
+   "geoScope": "prc",
+   "disclaimerKey": "check.disclaimer",
+   "knowledgeBasis": "web_enriched",
+   "knowledgeCutoffNote": "Includes a live web research pass (Google Search via Gemini grounding) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.",
+   "sources": [
+    "Cybex Melio 嬰兒推車 | MamiLove — https://mamilove.com.tw/product/cybex-melio"
+   ],
+   "product": {
+    "name": "Cybex Melio 嬰兒推車",
+    "brand": "Cybex",
+    "originCandidates": [
+     {
+      "label": "China",
+      "confidence": 0.6,
+      "source": "web_name",
+      "rating": "likely"
+     }
+    ],
+    "designInfo": [
+     {
+      "country": "Germany",
+      "kind": "design",
+      "url": "https://mamilove.com.tw/product/cybex-melio",
+      "quote": "Designed in Germany"
+     }
+    ]
+   },
+   "graph": {
+    "nodes": [
+     {
+      "id": "product",
+      "label": "Cybex Melio 嬰兒推車",
+      "kind": "product",
+      "region": "UNKNOWN",
+      "chinaRelated": false
+     }
+    ],
+    "edges": []
+   },
+   "meta": {
+    "jobId": "design",
+    "degraded": true,
+    "searchProvider": "firecrawl",
+    "searchCoo": [
+     {
+      "country": "China",
+      "basis": "name",
+      "status": "likely",
+      "url": "https://mamilove.com.tw/product/cybex-melio",
+      "exactModel": true
+     }
+    ],
+    "searchMatch": "name"
+   }
+  }
+ }
+}

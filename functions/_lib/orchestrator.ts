@@ -22,7 +22,7 @@ import {
   type LlmEnv,
   type LlmImage,
 } from './llm';
-import type { CheckDimension, CheckResult, WebCooClaim, WebExcludedPage } from './schema';
+import type { CheckDimension, CheckResult, DesignInfo, WebCooClaim, WebExcludedPage } from './schema';
 import { WEB_KNOWLEDGE_NOTE, webKnowledgeNote } from './schema';
 import type { GeoScope } from './regions';
 import { normalizeLocale } from './locale';
@@ -110,6 +110,8 @@ type WebPass = {
   coo?: WebCooClaim[];
   /** Pages about another model of that name. */
   excluded?: WebExcludedPage[];
+  /** Design / brand wording on product pages (附加資訊). */
+  design?: DesignInfo[];
   /** Page text + dropped-claim URLs for the AI-cited check (not stored). */
   evidence?: SearchEvidence;
 };
@@ -174,6 +176,7 @@ async function maybeWebResearch(
       requests: wr.requests,
       coo: wr.coo,
       excluded: wr.excluded,
+      design: wr.design,
       evidence: wr.evidence,
     };
   }
@@ -432,6 +435,7 @@ async function runQuery(
     // Every provider (Gemini included): made-in needs a barcode / label /
     // 依型號比對 basis from source pages (AI-cited pages only once verified).
     webCoo,
+    webDesign: web.used ? web.design : undefined,
     ocrText: parts.ocrText,
     partials: {
       product: parts.product,

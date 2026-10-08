@@ -5242,6 +5242,40 @@ p {
 .rc-source-country {
   white-space: nowrap;
 }
+/* 爭議: both sides of a 網頁說法不一 card, plain text (sources are the
+   candidate rows below). */
+.rc-dispute {
+  margin: 0.15rem 0 0.45rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+/* 附加資訊: design / brand wording, never a made-in (soft, muted). */
+.rc-design {
+  list-style: none;
+  margin: 0.55rem 0 0;
+  padding: 0.55rem 0 0;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 0.35rem;
+}
+.rc-design-row {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.rc-design-text {
+  display: block;
+}
+.rc-source.rc-design-source {
+  display: block;
+  margin: 0.25rem 0 0;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.8rem;
+  color: var(--text);
+}
 .rc-candidates {
   margin-top: 0.2rem;
   padding-top: 0.55rem;

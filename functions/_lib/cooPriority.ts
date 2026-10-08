@@ -9,6 +9,7 @@
  * stamp, clear madeIn and keep layered candidates — do not fake a stamp.
  */
 
+import { stripDesignPhrases } from './designOrigin';
 import { normalizeRegion, type RegionCode } from './regions';
 import {
   cooConflictChinaText,
@@ -123,7 +124,8 @@ function classifySource(window: string): CooClaimSource {
  * Source rank is inferred from nearby wording — no SKU/retailer allowlists.
  */
 export function extractCooClaimsFromText(text: string): CooClaim[] {
-  const raw = String(text || '');
+  // Design / brand wording is never a COO claim ("Designed in Germany, made in China" → China).
+  const raw = stripDesignPhrases(String(text || ''));
   if (!raw.trim()) return [];
   const out: CooClaim[] = [];
   const seen = new Set<string>();

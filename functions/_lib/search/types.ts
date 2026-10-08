@@ -6,7 +6,7 @@
  * key are skipped. Nothing here records or logs the query text.
  */
 
-import type { WebCooClaim, WebExcludedPage } from '../schema';
+import type { DesignInfo, WebCooClaim, WebExcludedPage } from '../schema';
 import type { WebResearchEnv } from '../webResearch';
 
 export type SearchProviderId = 'gemini' | 'brave' | 'firecrawl';
@@ -52,6 +52,8 @@ export type SearchOutput = {
   coo?: WebCooClaim[];
   /** Pages about another model of that name (not counted, listed on the card). */
   excluded?: WebExcludedPage[];
+  /** Design / brand wording on product pages (附加資訊, never made-in). */
+  design?: DesignInfo[];
   /** Page text and dropped-claim URLs for the AI-cited check (not stored). */
   evidence?: SearchEvidence;
 };
