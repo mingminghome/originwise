@@ -415,7 +415,8 @@ describe('runSearchChain (mocked fetch)', () => {
       env: { BRAVE_SEARCH_API_KEY: 'b', GEMINI_API_KEY: 'g', SEARCH_PROVIDERS: 'brave' },
     });
     assert.equal(out.ok, true);
-    assert.match(out.brief, /COO: タイ/);
+    // Page names are normalized to the card's own name (タイ → Thailand → 泰國).
+    assert.match(out.brief, /COO: Thailand/);
     assert.ok(!/COO: China/.test(out.brief));
   });
 
@@ -1069,6 +1070,7 @@ describe('Gemini answers use the same made-in gate (#24)', () => {
     assert.equal(out.coo!.length, 1);
     assert.equal(out.coo![0]!.status, 'confirmed');
     assert.equal(out.coo![0]!.url, PAGE);
-    assert.ok(/タイ/.test(out.coo![0]!.country));
+    // 生産国：タイ, normalized to the card's own name (Thailand → 泰國).
+    assert.equal(out.coo![0]!.country, 'Thailand');
   });
 });

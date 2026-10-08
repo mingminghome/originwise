@@ -8,6 +8,8 @@
  * English sentences are left alone (the client translates them by exact match).
  */
 
+import { countryNameZhHant } from './countryNames';
+
 const PHRASES: [string, string][] = [
   ['硅胶', '矽膠'],
   ['硅膠', '矽膠'],
@@ -75,7 +77,9 @@ export function zhCountry(name: string): string {
   const key = Object.keys(COUNTRY_ZH).find(
     (k) => k.toLowerCase() === name.replace(/\s+/g, ' ').toLowerCase()
   );
-  return key ? COUNTRY_ZH[key] : name;
+  // Exact value only, from the full made-in country list (Chad, Georgia … are
+  // never translated inside a sentence).
+  return key ? COUNTRY_ZH[key] : (countryNameZhHant(name) ?? name);
 }
 
 /**
@@ -142,7 +146,7 @@ export function fixZhHantDeep<T>(value: T, keep: readonly string[], skip: Readon
 }
 
 /** Result field names the model sometimes writes into zh text. */
-const FIELD = '(?:originCountry|madeIn|manufacturedIn|componentsOrigin|manufacturerCountry)';
+const FIELD = '(?:originCountry|designedIn|madeIn|manufacturedIn|componentsOrigin|manufacturerCountry)';
 const FIELD_PAREN_RE = new RegExp(`\\s*[(（]\\s*${FIELD}\\s*[)）]`, 'g');
 const FIELD_LIST_RE = new RegExp(`${FIELD}(?:\\s*(?:與|和|及|、|/|and)\\s*${FIELD})*\\s*`, 'g');
 const KANA_RE = /[\u3040-\u30ff]/;

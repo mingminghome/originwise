@@ -288,16 +288,18 @@ describe('製造地 rule cases (example fixture madein-rules.json)', () => {
       assert.ok(!html.includes('cand-exact-one'), html);
       assert.ok(html.includes(`${t('check.candidateRating.likely')} · ${t('check.candidateSource.web_name')}`), html);
     }
-    // Disagreeing exact pages (case 4) stay neutral: no grade and no exact-page count.
+    // Disagreeing exact pages (case 4) stay neutral: no grade and no exact-page
+    // count on the rows; the counts sit in the 爭議 line only.
     const four = renderToStaticMarkup(React.createElement(MadeInCard, { result: RULES.rule4.result, t: zhT }));
-    assert.ok(!four.includes('1 個型號相符的網頁') && !four.includes('rc-cand-meta'), four);
+    assert.ok(!four.includes('cand-exact-one') && !four.includes('rc-cand-meta'), four);
+    assert.ok(four.includes('madein-dispute'), four);
   });
 
   it('reasons are localised in every locale; the old barcode-only reason is gone', () => {
     const en = createT('en');
     for (const lng of locales) {
       const t = createT(lng);
-      for (const k of ['aiOnly', 'pagesDisagree', 'aiCitedUnverified', 'onePageOnly']) {
+      for (const k of ['aiOnly', 'pagesDisagree', 'sourcesDisagree', 'aiCitedUnverified', 'onePageOnly']) {
         const v = t(`check.rc.reason.${k}`);
         assert.ok(v && v !== `check.rc.reason.${k}`, `${lng} ${k}`);
         if (lng !== 'en') assert.notEqual(v, en(`check.rc.reason.${k}`), `${lng} ${k}`);

@@ -20,6 +20,7 @@ import {
   buildMadeInView,
   cleanValue,
   modelOnlyPartCandidate,
+  type DisputeSide,
   type LayerTag,
 } from './resultCards.model';
 import { ModelRefLabel } from './ModelRef';
@@ -162,6 +163,28 @@ export function sourcePrefix(t: TFunction, n: number): { before: string; after: 
   return { before, after };
 }
 
+/** "來源：" for a 附加資訊 link, as plain text outside the link. */
+function infoSourcePrefix(t: TFunction): { before: string; after: string } {
+  const MARK = '\u0001';
+  const [before = '', after = ''] = t('check.rc.infoSource', { label: MARK }).split(MARK);
+  return { before, after };
+}
+
+/** One 爭議 side: 「中國（1 個型號相符的網頁）」「中國（包裝標示）」「中國（包裝標示、1 個型號相符的網頁）」. */
+function disputeSide(t: TFunction, d: DisputeSide): string {
+  const country = localizeCountry(t, d.country);
+  if (d.label) {
+    // Matching-model pages are worded as on a page-only side (「1 個型號相符的網頁」).
+    if (!d.pages) return t('check.rc.disputeSideLabel', { country });
+    if (!d.exactPages) return t('check.rc.disputeSideLabelPages', { country, n: d.pages });
+    if (d.exactPages >= d.pages) return t('check.rc.disputeSideLabelExact', { country, n: d.exactPages });
+    return t('check.rc.disputeSideLabelMixed', { country, n: d.pages, e: d.exactPages });
+  }
+  if (!d.exactPages) return t('check.rc.disputeSidePages', { country, n: d.pages });
+  if (d.exactPages >= d.pages) return t('check.rc.disputeSideExact', { country, n: d.exactPages });
+  return t('check.rc.disputeSideMixed', { country, n: d.pages, e: d.exactPages });
+}
+
 /**
  * One source row: prefix text, then the title (the only underlined, clickable
  * part), then host / path hint / 生產國. Shared by every 製造地 row variant.
@@ -248,6 +271,16 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
           ) : null}
         </div>
 
+        {!confirmed && view.dispute?.length ? (
+          // 網頁說法不一: both sides with their page counts; each side's pages are
+          // its candidate's source rows below (ungraded).
+          <p className="rc-dispute" data-testid="madein-dispute">
+            {t('check.rc.dispute', {
+              sides: view.dispute.map((d) => disputeSide(t, d)).join(t('check.rc.disputeSep')),
+            })}
+          </p>
+        ) : null}
+
         {confirmed && view.basis === 'label' ? (
           <p className="rc-source">{t('check.rc.labelSource')}</p>
         ) : null}
@@ -292,7 +325,8 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
           </ul>
         ) : null}
 
-        {!confirmed || view.candidates.length ? (
+        {view.candidates.length || (!confirmed && !view.dispute?.length) ? (
+          // Under a 爭議 line with nothing below it, the empty heading is hidden too.
           <div className="rc-candidates">
             <p className="rc-sub">{t('check.rc.candidatesTitle')}</p>
             {view.candidates.length ? (
@@ -333,10 +367,34 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
                   );
                 })}
               </ul>
-            ) : (
+            ) : view.dispute?.length ? null : (
+              // A 爭議 line already says why there is no answer.
               <p className="rc-empty">{t('check.rc.noCandidates')}</p>
             )}
           </div>
+        ) : null}
+
+        {view.designRows.length ? (
+          // Design / brand wording: extra info, never a made-in or a candidate.
+          <ul className="rc-design" data-testid="madein-design">
+            {view.designRows.map((d) => {
+              const { before, after } = infoSourcePrefix(t);
+              return (
+                <li key={d.country} className="rc-design-row">
+                  <span className="rc-design-text">
+                    {t(d.kind === 'brand' ? 'check.rc.brandInfo' : 'check.rc.designInfo', {
+                      country: localizeCountry(t, d.country),
+                    })}
+                  </span>
+                  {d.source ? (
+                    <span className="rc-source rc-design-source">
+                      <SourceLine t={t} prefix={before} suffix={after} src={d.source} />
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
         ) : null}
       </div>
     </SectionShare>

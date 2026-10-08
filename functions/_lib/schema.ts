@@ -65,6 +65,17 @@ export type ProductPart = {
 /** A search page left out: it is about another model of that name (Melio Carbon). */
 export type WebExcludedPage = { url: string; model: string; title?: string; country?: string };
 
+/**
+ * Design / brand wording ("Engineered in Germany", 德國品牌): never a made-in,
+ * shown as 附加資訊. url only when a search page said it.
+ */
+export type DesignInfo = {
+  country: string;
+  kind: 'design' | 'brand';
+  url?: string;
+  quote?: string;
+};
+
 /** A page the model cites for its made-in answer (checked before it counts). */
 export type CitedSource = { url: string; title?: string; quote?: string };
 
@@ -178,6 +189,10 @@ export type CheckResult = {
      * 'ai_web' = the AI answer plus 1+ exact-model page (shown as a source row).
      */
     madeInSupport?: 'web' | 'ai_web';
+    /** Design / brand country wording (附加資訊); never a made-in candidate. */
+    designInfo?: DesignInfo[];
+    /** Two explicit made-in claims in one label field (「產地：中國 日本製」): the 爭議 sides. */
+    labelDispute?: string[];
   };
   company?: {
     name?: string;
@@ -245,6 +260,8 @@ export type ProductPartial = {
   name?: string;
   brand?: string;
   originCountry?: string;
+  /** Country the brand says it designs / engineers in (never a made-in). */
+  designedIn?: string;
   madeIn?: string;
   manufacturedIn?: string;
   /** Pages the model cites for madeIn (at most 2; verified before they count). */

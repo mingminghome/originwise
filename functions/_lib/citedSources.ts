@@ -20,6 +20,7 @@
  * counts.
  */
 import { canonicalCountry } from './countryLabel';
+import { stripDesignPhrases } from './designOrigin';
 import type { CitedSource, WebCooClaim } from './schema';
 import {
   compact,
@@ -86,7 +87,8 @@ export function citedPageConfirms(
   // No made-in line the regex reads: the model's own quote must be on the page
   // and name the country.
   const q = (quote || '').trim();
-  return q.length >= 3 && compact(text).includes(compact(q)) && sameCountry(q, country);
+  // Design / brand wording in the quote never counts ("Engineered in Germany").
+  return q.length >= 3 && compact(text).includes(compact(q)) && sameCountry(stripDesignPhrases(q), country);
 }
 
 /** Wildcard-DNS services that resolve any name to a chosen (often private) IP. */

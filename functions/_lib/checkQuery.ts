@@ -70,7 +70,7 @@ function hasDim(ctx: QueryContext, ...ids: CheckDimension[]): boolean {
 }
 
 const PRODUCT_SCHEMA =
-  '{"name":"string","brand":"string","originCountry":"string","madeIn":"string","manufacturedIn":"string","madeInSources":[{"url":"string","title":"string","quote":"string"}],"manufacturer":"string","manufacturerCountry":"string","category":"string","componentsOrigin":"string","parts":[{"name":"string","kind":"part|spare|ingredient|component","madeIn":"string","originCountry":"string","chinaRelated":false,"note":"string"}],"confidence":0.0,"notes":["string"]}';
+  '{"name":"string","brand":"string","originCountry":"string","designedIn":"string","madeIn":"string","manufacturedIn":"string","madeInSources":[{"url":"string","title":"string","quote":"string"}],"manufacturer":"string","manufacturerCountry":"string","category":"string","componentsOrigin":"string","parts":[{"name":"string","kind":"part|spare|ingredient|component","madeIn":"string","originCountry":"string","chinaRelated":false,"note":"string"}],"confidence":0.0,"notes":["string"]}';
 
 const COMPANY_SCHEMA =
   '{"name":"string","legalName":"string","hqCountry":"string","parents":[{"name":"string","country":"string","control":"majority|wholly|minority|unknown"}],"chinaRelations":[{"type":"ownership|subsidiary|hq|manufacturing|supply|retail|other","country":"string","strength":"strong|moderate|weak","note":"string"}],"confidence":0.0}';

@@ -26,6 +26,7 @@ import {
   type ProductPartial,
   type RelationTier,
   type WebCooClaim,
+  type DesignInfo,
 } from './schema';
 import {
   inScope,
@@ -34,12 +35,21 @@ import {
   type GeoScope,
   type RegionCode,
 } from './regions';
-import { applyCooPriority, extractCooClaimsFromText } from './cooPriority';
+import { countryNameLabel } from './countryNames';
+import {
+  applyCooPriority,
+  blankVerbFormMakers,
+  cooFieldDisputes,
+  wholeClaimDisputeSides,
+  extractCooClaimsFromText,
+  usPlacesAsUsa,
+} from './cooPriority';
 import { hqFoldedIntoParent } from './chinaChip';
 import { tierFromCodes } from './tierRules';
 import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
 import { SERVER_TEXT, webFailText } from './serverText';
 import { notesNameMadeIn, omittedPartNote } from './noteText';
+import { designMentions, stripDesignPhrases } from './designOrigin';
 import { exactModelConflict, siteOf } from './search/extract';
 
 export type SynthesizeInput = {
@@ -68,6 +78,8 @@ export type SynthesizeInput = {
    * 'likely' candidates and never the final COO.
    */
   webCoo?: WebCooClaim[];
+  /** Design / brand wording on product pages (附加資訊; never made-in). */
+  webDesign?: DesignInfo[];
 };
 
 type Factors = {
@@ -277,8 +289,20 @@ function matchCountryLabel(token: string): string | undefined {
   return undefined;
 }
 
-function extractCountryLabelsFromText(blob: string): string[] {
-  if (!blob || !blob.trim()) return [];
+/**
+ * Country names in free text. 2-letter / ISO codes ("IT company" → Italy,
+ * "DE", "my") never count in notes or other free text; only the
+ * componentsOrigin field, a country list the model writes ("CN / TH / VN"),
+ * reads codes, and only as whole list items.
+ */
+const LOWER_PART_CODES = new Set(['cn', 'tw', 'vn', 'th', 'jp', 'kr', 'hk']);
+
+const FREE_TEXT_TURKEY = /\b(?:Turkey|TURKEY)\b(?!-)|[Tt]ürkiye|TÜRKIYE|土耳其/;
+
+function extractCountryLabelsFromText(input: string, opts: { codes?: boolean } = {}): string[] {
+  if (!input || !input.trim()) return [];
+  // 「Made in Mexico, Missouri」 is a US town: no Mexico mention.
+  const blob = usPlacesAsUsa(input);
   const found: string[] = [];
   const seen = new Set<string>();
   const add = (label: string) => {
@@ -288,24 +312,28 @@ function extractCountryLabelsFromText(blob: string): string[] {
     }
   };
   for (const row of COUNTRY_NAME_PATTERNS) {
-    if (row.pattern.test(blob)) add(row.label);
+    // Free text: "turkey" is also a word ("Turkey-shaped silicone mould"); only the
+    // capitalised name not joined to a hyphen, Türkiye or 土耳其 counts.
+    const pattern = row.label === 'Turkey' ? FREE_TEXT_TURKEY : row.pattern;
+    if (pattern.test(blob)) add(row.label);
   }
-  // Slash / comma lists: "CN / TH / VN" or "China, Thailand"
+  if (!opts.codes) return found;
+  // componentsOrigin lists only: "Often CN / TH / VN (unconfirmed)". Upper-case
+  // code items count; "IT" never does (IT company / IT parts, not Italy).
   for (const raw of blob.split(/[/|,;、＋+與和]|\band\b/i)) {
-    const cleaned = raw.replace(/[()（）]/g, ' ').trim();
-    const label = matchCountryLabel(cleaned);
-    if (label) add(label);
-    // "Often CN" / "mainly VN" — pick trailing ISO token
-    const m = cleaned.match(/\b([A-Za-z]{2,3})\b\s*$/);
-    if (m) {
+    for (const m of raw.matchAll(/(?<![A-Za-z])([A-Z]{2,3})(?![A-Za-z])/g)) {
+      if (m[1] === 'IT') continue;
       const fromCode = COUNTRY_CODE_TO_LABEL[m[1].toLowerCase()];
       if (fromCode) add(fromCode);
     }
   }
-  // Bare ISO codes anywhere: "... CN / TH / VN ..."
-  for (const m of blob.matchAll(/(?:^|[^A-Za-z])([A-Za-z]{2,3})(?=[^A-Za-z]|$)/g)) {
-    const fromCode = COUNTRY_CODE_TO_LABEL[m[1].toLowerCase()];
-    if (fromCode) add(fromCode);
+  // Lower case only when the whole field is a code list ("cn / th", "vn, cn"):
+  // 2-letter items split by / , ; and nothing else. Even then only these
+  // codes; in / id / it / my / ph / us … are ordinary words in lower case.
+  if (/^\s*[a-z]{2}(?:\s*[/,;]\s*[a-z]{2})*\s*$/.test(blob)) {
+    for (const code of blob.split(/[/,;]/).map((c) => c.trim())) {
+      if (LOWER_PART_CODES.has(code)) add(COUNTRY_CODE_TO_LABEL[code]!);
+    }
   }
   return found;
 }
@@ -399,7 +427,7 @@ function collectOriginCandidates(
   }
 
   if (!isVagueOriginLabel(p.componentsOrigin)) {
-    for (const label of extractCountryLabelsFromText(String(p.componentsOrigin))) {
+    for (const label of extractCountryLabelsFromText(String(p.componentsOrigin), { codes: true })) {
       // Do not promote to confirmed — components line is candidate only
       if (out.get(label)?.rating === 'confirmed') continue;
       pushCandidate(
@@ -419,7 +447,16 @@ function collectOriginCandidates(
   // note ties it to manufacturing in the same clause.
   const echoCountries = [opts.hqCountry, p.manufacturerCountry, p.originCountry];
   for (const n of p.notes ?? []) {
-    for (const label of extractCountryLabelsFromText(String(n))) {
+    // Design / brand wording (「品牌源自德國」, "Engineered in Germany") is not a candidate.
+    // 「德國製造於中國」: only 中國 is the made-in; 德國 is not even a mention.
+    // A side of a whole-product 爭議 ("Made in USA\nMade in Bangladesh") is a mention even
+    // when the free-text name list does not know it: no side is dropped from the note.
+    const mentioned = extractCountryLabelsFromText(blankVerbFormMakers(stripDesignPhrases(String(n))));
+    for (const side of wholeClaimDisputeSides(String(n))) {
+      const label = matchCountryLabel(side) || side;
+      if (!mentioned.some((m) => sameCountry(m, label))) mentioned.push(label);
+    }
+    for (const label of mentioned) {
       if (out.get(label)?.rating === 'confirmed') continue;
       const echo = echoCountries.some((c) => sameCountry(label, c));
       if (echo && !out.has(label) && !notesNameMadeIn([n], label)) continue;
@@ -646,7 +683,8 @@ function sanitizeParts(
   ctx: PartsSanitizeCtx = {}
 ): ProductPart[] {
   if (!Array.isArray(raw)) return [];
-  const evidence = [ctx.webBrief, ctx.ocrText].filter(Boolean).join('\n');
+  // Design / brand wording never backs a part country.
+  const evidence = stripDesignPhrases([ctx.webBrief, ctx.ocrText].filter(Boolean).join('\n'));
   const grounded = Boolean(ctx.webEnriched);
   const ocrOk = hasOcrPartEvidence(ctx.ocrText);
   const canConfirmCountries = grounded || ocrOk;
@@ -1038,16 +1076,13 @@ function sanitizeProduct(
 ): ProductPartial | null | undefined {
   if (!p) return p;
   const noteBlob = (p.notes ?? []).join(' ');
-  const madeCopied = madeInCopiedFromBrandOrigin({
-    madeIn: p.madeIn,
-    originCountry: p.originCountry,
-    note: noteBlob,
-  });
-  const mfgCopied = madeInCopiedFromBrandOrigin({
-    madeIn: p.manufacturedIn,
-    originCountry: p.originCountry,
-    note: noteBlob,
-  });
+  // The design country (designedIn) is brand info like originCountry: never a made-in.
+  const madeCopied =
+    madeInCopiedFromBrandOrigin({ madeIn: p.madeIn, originCountry: p.originCountry, note: noteBlob }) ||
+    madeInCopiedFromBrandOrigin({ madeIn: p.madeIn, originCountry: p.designedIn, note: noteBlob });
+  const mfgCopied =
+    madeInCopiedFromBrandOrigin({ madeIn: p.manufacturedIn, originCountry: p.originCountry, note: noteBlob }) ||
+    madeInCopiedFromBrandOrigin({ madeIn: p.manufacturedIn, originCountry: p.designedIn, note: noteBlob });
   const hadVagueMade =
     (Boolean(p.madeIn && String(p.madeIn).trim()) &&
       isVagueOriginLabel(p.madeIn)) ||
@@ -1354,11 +1389,15 @@ export function applyWebCooGate(
   // AI-cited pages): if any names another country, nothing confirms by model
   // (未確認 · 網頁說法不一), whatever the AI answer or its cited pages say.
   const conflict = exactModelConflict(webCoo);
+  // Two made-in claims on the package label (「產地：中國 日本製」): label evidence
+  // outranks web pages, so no page agreement replaces the 爭議 (only a barcode
+  // page does); the pages stay candidates and join the 爭議 line.
+  const labelDisputed = cooFieldDisputes(ocrText || '').length > 0;
   // 依型號比對 counts only when no barcode page confirmed anything (barcode outranks it).
-  let byModelClaims = confirmed.length || conflict
+  let byModelClaims = confirmed.length || conflict || labelDisputed
     ? []
     : webCoo.filter((c) => c.status === 'confirmed' && c.basis === 'model' && !c.evidenceOnly);
-  let exactPages = confirmed.length || byModelClaims.length || conflict
+  let exactPages = confirmed.length || byModelClaims.length || conflict || labelDisputed
     ? []
     : webCoo.filter((c) => c.status === 'likely' && c.exactModel && !c.evidenceOnly);
   // Exact-model pages added after the page gate (AI-cited pages that passed
@@ -1379,7 +1418,7 @@ export function applyWebCooGate(
   const byOcr = (v: string) => ocrClaims.some((c) => sameCountry(c.label, v));
   const likelyOf = (backed: string | undefined) =>
     webCoo
-      .filter((c) => c.status === 'likely' || (conflict && c.basis === 'model'))
+      .filter((c) => c.status === 'likely' || ((conflict || labelDisputed) && c.basis === 'model'))
       .map((c) => c.country)
       .filter(
         (c) =>
@@ -1628,6 +1667,13 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     input.queryText?.trim().slice(0, 80) ||
     'Result';
 
+  const designInfo = collectDesignInfo(p, input.webEnriched ? input.webDesign : undefined, input.ocrText);
+  // 「產地：中國 日本製」「產地：德國 中國」: two made-in claims in one label field → 爭議 line.
+  // Sides as English labels (中國 → China) so every locale shows its own name.
+  const labelDispute = (cooFieldDisputes(input.ocrText ?? '')[0] ?? [])
+    .slice(0, 4)
+    .map((c) => canonicalCountry(c) ?? countryNameLabel(c) ?? c);
+
   const originCandidates = collectOriginCandidates(p, {
     webEnriched: input.webEnriched,
     productConfidence: p?.confidence,
@@ -1808,6 +1854,8 @@ export function synthesize(input: SynthesizeInput): CheckResult {
             : undefined,
           madeInBasis: madeInBasis && p.madeIn ? madeInBasis : undefined,
           madeInSupport: madeInBasis === 'model' && p.madeIn ? madeInSupport : undefined,
+          designInfo: designInfo.length ? designInfo : undefined,
+          labelDispute: labelDispute.length >= 2 ? labelDispute : undefined,
         }
       : id
         ? { name: id.name, brand: id.brand, category: id.category }
@@ -1857,9 +1905,57 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   };
 }
 
+/** At most this many 附加資訊 lines. */
+const MAX_DESIGN_INFO = 2;
+
+/**
+ * Design / brand country wording (附加資訊): product pages first (with their
+ * link), then the package label text, the model's designedIn and its notes. One row per country
+ * ('design' wording wins over 'brand'); a country that is the confirmed
+ * made-in is left out (「德國設計」 next to a German made-in says nothing).
+ */
+function collectDesignInfo(
+  p: ProductPartial | null | undefined,
+  webDesign: DesignInfo[] | undefined,
+  ocrText?: string
+): DesignInfo[] {
+  if (!p) return [];
+  const rows: DesignInfo[] = [];
+  const add = (d: DesignInfo) => {
+    const country = canonicalCountry(d.country) ?? d.country.trim();
+    if (!country || isVagueOriginLabel(country)) return;
+    if (p.madeIn && sameCountry(country, p.madeIn)) return;
+    const i = rows.findIndex((r) => sameCountry(r.country, country));
+    const row: DesignInfo = {
+      country,
+      kind: d.kind,
+      ...(d.url ? { url: d.url } : {}),
+      ...(d.quote ? { quote: d.quote.slice(0, 80) } : {}),
+    };
+    if (i === -1) rows.push(row);
+    else {
+      const prev = rows[i]!;
+      rows[i] = {
+        ...prev,
+        kind: prev.kind === 'design' || d.kind === 'design' ? 'design' : 'brand',
+        ...(!prev.url && d.url ? { url: d.url, quote: row.quote } : {}),
+      };
+    }
+  };
+  for (const d of webDesign ?? []) add(d);
+  // Package label photo: 「設計於德國 中國製造」 → design 德國 (made-in 中國 is the label's).
+  for (const d of designMentions(ocrText ?? '')) add({ country: d.country, kind: d.kind });
+  if (p.designedIn && confirmedOriginLabel(p.designedIn)) add({ country: p.designedIn, kind: 'design' });
+  for (const n of p.notes ?? []) {
+    for (const d of designMentions(String(n))) add({ country: d.country, kind: d.kind });
+  }
+  return rows.slice(0, MAX_DESIGN_INFO);
+}
+
 /** Exported for unit tests */
 export const __test = {
   collectOriginCandidates,
+  collectDesignInfo,
   sanitizeParts,
   extractFactors,
   decideTier,

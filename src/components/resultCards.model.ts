@@ -13,7 +13,7 @@ import type { CheckResult } from '../core/types';
 import { normalizeRegion } from '../../functions/_lib/regions';
 import { zhCountryText } from '../../functions/_lib/zhHant';
 import { canonicalCountry } from '../../functions/_lib/countryLabel';
-import { notesNameMadeIn } from '../../functions/_lib/noteText';
+import { notesNameMadeIn, notesNameOnlyAsDesign } from '../../functions/_lib/noteText';
 import { brandHqFolded, companyFactsSourced, confirmedMadeIn, pickOwner } from './ChinaLink';
 
 const VAGUE_RE =
@@ -29,7 +29,7 @@ type Candidate = NonNullable<NonNullable<CheckResult['product']>['originCandidat
 export type MadeInBasis = 'barcode' | 'label' | 'model' | 'name';
 
 /** Why a made-in stays 未確認 (one chip; replaces the old barcode-only reason). */
-export type UnconfirmedReason = 'pagesDisagree' | 'aiCitedUnverified' | 'aiOnly' | 'onePageOnly';
+export type UnconfirmedReason = 'pagesDisagree' | 'sourcesDisagree' | 'aiCitedUnverified' | 'aiOnly' | 'onePageOnly';
 
 export type MadeInView = {
   /**
@@ -69,6 +69,16 @@ export type MadeInView = {
   }>;
   /** Unconfirmed only: the one reason chip. */
   reason?: UnconfirmedReason;
+  /**
+   * 網頁說法不一 only: each side of the disagreement (爭議 line), in candidate
+   * order, with its page counts. The pages are the candidate's source rows.
+   */
+  dispute?: DisputeSide[];
+  /**
+   * Design / brand wording (附加資訊), in every state: 「品牌標示「德國設計／研發」，
+   * 這不是製造地。」 with the page link when a search page said it.
+   */
+  designRows: DesignRow[];
   /** Pages about another model of that name: 「型號不符（…），未計算」 rows. */
   excludedRows: Array<SourceRow & { model: string }>;
   /**
@@ -77,6 +87,11 @@ export type MadeInView = {
    */
   citedRows: SourceRow[];
 };
+
+/** One 爭議 side; `label` = a claim on the package label (no page count). */
+export type DisputeSide = { country: string; pages: number; exactPages: number; label?: boolean };
+
+export type DesignRow = { country: string; kind: 'design' | 'brand'; source?: SourceRow };
 
 /** Candidate sources that never stand for a made-in (HQ / owner echoes). */
 const NOT_MADE_IN = new Set(['ownership', 'manufacturer', 'confirmed_coo']);
@@ -259,6 +274,8 @@ function candidateRows(result: CheckResult, candidates: Candidate[], unconfirmed
     }
     if (NOT_MADE_IN.has(String(c.source))) continue;
     if (notesEchoCandidate(result, c)) continue;
+    // Older answers: a note naming the country only as design / brand wording.
+    if (c.source === 'notes' && notesNameOnlyAsDesign(result.product?.notes, c.label)) continue;
     put({ label: c.label, rating: c.rating, source: c.source });
   }
   if (unconfirmedMadeIn) modelLabels.push(unconfirmedMadeIn);
@@ -371,7 +388,7 @@ function withPathHints(rows: SourceRow[]): SourceRow[] {
   });
 }
 
-function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' | 'excludedRows'> {
+function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' | 'excludedRows' | 'designRows'> {
   const p = result.product;
   const meta = result.meta;
   const sources = Array.isArray(result.sources) ? cleanSources(result.sources, 8) : [];
@@ -424,7 +441,13 @@ function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' 
   // Not confirmed: the headline is 未確認 and every country is a candidate
   // row underneath, web ones with their own source rows.
   let rows = candidateRows(result, candidates, madeIn);
-  const likelyHits = searchCoo.filter((c) => c.status === 'likely');
+  // Two made-in claims on the package label: label evidence outranks pages, so
+  // exact-model pages that agreed (依型號比對) are only one more 爭議 side.
+  const labelSides = p?.labelDispute ?? [];
+  const labelDisputed = labelSides.length >= 2;
+  const likelyHits = searchCoo.filter(
+    (c) => c.status === 'likely' || (labelDisputed && c.status === 'confirmed' && c.basis === 'model')
+  );
   for (const h of likelyHits) {
     if (!rows.some((r) => sameCountryLabel(r.label, h.country))) {
       rows.push({ label: canonicalCountry(h.country) ?? h.country, rating: 'likely', source: 'web_name' });
@@ -436,8 +459,10 @@ function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' 
   }
   // Pages that disagree (exact-model ones, or name-matched ones): neutral rows.
   const exactCountries = searchCoo.filter((c) => c.exactModel).map((c) => c.country);
-  const disagree =
+  const pagesDisagree =
     exactCountries.some((c) => !sameCountryLabel(c, exactCountries[0]!)) || webCountries.length >= 2;
+  // Every country is a 爭議 side (ungraded) when pages disagree or the label does.
+  const disagree = pagesDisagree || labelDisputed;
   rows = rows.map((r) => {
     if (r.source !== 'web_name') return r;
     const srcRows = supportingRows(
@@ -460,7 +485,10 @@ function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' 
   const webPages = new Set(likelyHits.map((h) => h.url).filter(Boolean)).size;
   const aiSaid = [madeIn, ...candidates.filter((c) => c.source === 'model_memory').map((c) => c.label)].filter(Boolean);
   const aiBacks = (label: string) => aiSaid.some((a) => sameCountryLabel(a, label));
-  const reason: UnconfirmedReason | undefined = disagree
+  // 「網頁說法不一」 only when every side is a web page; with the label as a side 「來源說法不一」.
+  const reason: UnconfirmedReason | undefined = labelDisputed
+    ? 'sourcesDisagree'
+    : pagesDisagree
     ? 'pagesDisagree'
     : (meta?.citedUnverified ?? []).length
       ? 'aiCitedUnverified'
@@ -469,6 +497,37 @@ function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' 
         : webCountries.length === 1 && webPages === 1 && !aiBacks(webCountries[0]!)
           ? 'onePageOnly'
           : undefined;
+  // 爭議: every side of the disagreement with its page counts.
+  const pageDispute: DisputeSide[] =
+    disagree
+      ? rows
+          .filter((r) => r.source === 'web_name')
+          .map((r) => {
+            const hits = likelyHits.filter((h) => sameCountryLabel(h.country, r.label));
+            return {
+              country: r.label,
+              pages: new Set(hits.map((h) => h.url ?? '')).size,
+              exactPages: new Set(hits.filter((h) => h.exactModel).map((h) => h.url ?? '')).size,
+            };
+          })
+          .filter((d) => d.pages > 0)
+      : [];
+  // Two made-in claims in one label field (「產地：中國 日本製」「產地：德國 中國」):
+  // merged with every page country, each country once with each of its sources, label first.
+  let dispute: DisputeSide[] = pageDispute;
+  if (labelDisputed) {
+    const merged: DisputeSide[] = labelSides.map((country) => {
+      const hits = likelyHits.filter((h) => sameCountryLabel(h.country, country));
+      return {
+        country,
+        pages: new Set(hits.map((h) => h.url ?? '')).size,
+        exactPages: new Set(hits.filter((h) => h.exactModel).map((h) => h.url ?? '')).size,
+        label: true,
+      };
+    });
+    for (const d of pageDispute) if (!merged.some((x) => sameCountryLabel(x.country, d.country))) merged.push(d);
+    dispute = merged;
+  }
   return {
     state: 'unconfirmed',
     // No basis / confidence / source-count chip on a 未確認 headline.
@@ -476,6 +535,7 @@ function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' 
     sourceRows: [],
     candidates: rows,
     ...(reason ? { reason } : {}),
+    ...(dispute.length >= 2 ? { dispute } : {}),
   };
 }
 
@@ -627,5 +687,36 @@ function excludedRows(result: CheckResult): MadeInView['excludedRows'] {
 }
 
 export function buildMadeInView(result: CheckResult): MadeInView {
-  return { ...buildMadeInViewCore(result), citedRows: citedRows(result), excludedRows: excludedRows(result) };
+  const core = buildMadeInViewCore(result);
+  return {
+    ...core,
+    citedRows: citedRows(result),
+    excludedRows: excludedRows(result),
+    designRows: designRows(result, core.state === 'confirmed' ? core.country : undefined),
+  };
+}
+
+/** At most this many 附加資訊 lines. */
+export const MAX_DESIGN_ROWS = 2;
+
+/** product.designInfo → 附加資訊 rows (not the confirmed made-in country). */
+function designRows(result: CheckResult, madeIn?: string): DesignRow[] {
+  const sources = Array.isArray(result.sources) ? cleanSources(result.sources, 8) : [];
+  const rows: DesignRow[] = [];
+  for (const d of result.product?.designInfo ?? []) {
+    const country = cleanValue(d.country);
+    if (!country || (madeIn && sameCountryLabel(country, madeIn))) continue;
+    if (rows.some((r) => sameCountryLabel(r.country, country))) continue;
+    const url = d.url?.trim();
+    let source: SourceRow | undefined;
+    if (url) {
+      const parts = splitSourceLine(sources.find((s) => s.includes(url)) ?? url);
+      const host = sourceLabel({ title: '', url: parts.url ?? url });
+      const label = sourceLabel(parts) || host || url;
+      source = { label, url: parts.url ?? url, host: host && host !== label ? host : undefined };
+    }
+    rows.push({ country: canonicalCountry(country) ?? country, kind: d.kind === 'brand' ? 'brand' : 'design', ...(source ? { source } : {}) });
+    if (rows.length >= MAX_DESIGN_ROWS) break;
+  }
+  return rows;
 }
