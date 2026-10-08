@@ -12,10 +12,11 @@
  */
 
 import { isSearchResultUrl } from '../sourceLine';
+import { canonicalCountry } from '../countryLabel';
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
 import type { FetchedPage, PageBlock, SearchEnv, SearchOutput } from './types';
-import type { WebCooClaim } from '../schema';
+import type { WebCooClaim, WebExcludedPage } from '../schema';
 
 /** Analysis model for extraction (plain call, no grounding). */
 export const EXTRACT_MODEL = 'gemini-3.5-flash-lite';
@@ -305,17 +306,22 @@ export function barcodeTiedToCoo(
  * Used only for name-only matches: a made-in on such a page can't be tied to
  * the queried variant, so the claim is dropped (stays 未確認).
  */
-export function pageListsMultipleVariants(text: string): boolean {
+export function pageListsMultipleVariants(text: string, entity?: string): boolean {
   const t = nfkc(text);
   if (pageBarcodes(t).length >= 2) return true;
   const vol = distinctAmounts(t, VOLUME_RE, (n, u) =>
     u === 'l' || u === 'ℓ' || u === 'リットル' ? n * 1000 : /oz/.test(u) ? n * 29.5735 : n
   );
   if (vol.size >= 2) return true;
+  // Weights are spec lines on hardware pages (stroller 5.9 kg, child up to
+  // 22 kg), not sizes on sale; they mark variants only when the query itself
+  // names a weight ("Calbee 60g"). Without an entity (older callers) they
+  // still count.
+  const weightIsSize = entity === undefined || new RegExp(WEIGHT_RE.source, 'i').test(nfkc(entity));
   const wt = distinctAmounts(t, WEIGHT_RE, (n, u) =>
     u === 'kg' ? n * 1000 : u === 'mg' ? n / 1000 : n
   );
-  if (wt.size >= 2) return true;
+  if (weightIsSize && wt.size >= 2) return true;
   const cnt = distinctAmounts(t, COUNT_RE, (n) => n);
   if (cnt.size >= 2) return true;
   return VARIANT_SELECTOR_RE.test(t);
@@ -326,6 +332,203 @@ export function buildSearchQuery(entity: string, jans: string[]): string {
   const base = entity.trim().slice(0, 160);
   const jan = jans[0] ? ` ${jans[0]}` : '';
   return `${base}${jan} "made in" OR 生産国 OR 原産国`;
+}
+
+/**
+ * Wider made-in wording for the one follow-up query: how retailer and spec
+ * pages state it in EN, zh-Hant / zh (產地 / 製造地 / 原產地) and JA. The
+ * first query only has "made in" / 生産国 / 原産国, so a Taiwan retailer page
+ * that says 「產地：中國」 never matched it.
+ */
+export const MADE_IN_FOLLOWUP_TERMS = [
+  '"made in"',
+  '"country of origin"',
+  '產地',
+  '製造地',
+  '原產地',
+  '生産国',
+  '原産国',
+] as const;
+
+/** The follow-up query: the model name (no barcode) + the wider made-in terms. */
+export function buildMadeInQuery(entity: string): string {
+  const base = entity.trim().slice(0, 160);
+  return `${base} ${MADE_IN_FOLLOWUP_TERMS.join(' OR ')}`;
+}
+
+/** Pages handed to the one extraction after a follow-up (first query's pages first). */
+export const MAX_MERGED_PAGES = MAX_RESULT_PAGES * 2;
+
+/**
+ * At most one follow-up search per check, and only when the first query's
+ * pages give no made-in line that passes the gate (deterministic label regex,
+ * no model call), or only one page backs a country (a model-match
+ * confirmation needs two domains).
+ */
+export function needsMadeInFollowup(
+  entity: string,
+  ocrText: string | undefined,
+  pages: FetchedPage[]
+): boolean {
+  const usable = pages.filter((p) => p.url && p.text.trim() && !isSearchResultUrl(p.url));
+  if (!usable.length) return false;
+  const jans = findJans(entity, ocrText);
+  const { kept } = gateClaims(entity, jans, usable, regexCooClaims(usable));
+  if (kept.some((k) => k.status === 'confirmed')) return false;
+  return kept.length < 2;
+}
+
+function pageKey(url: string): string {
+  return url.replace(/[?#].*$/, '').replace(/\/+$/, '').toLowerCase();
+}
+
+/** First pages, then new ones from the follow-up; same URL once; capped. */
+export function mergePages(
+  first: FetchedPage[],
+  extra: FetchedPage[],
+  cap = MAX_MERGED_PAGES
+): FetchedPage[] {
+  const seen = new Set<string>();
+  const out: FetchedPage[] = [];
+  for (const p of [...first, ...extra]) {
+    if (!p.url) continue;
+    const k = pageKey(p.url);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(p);
+    if (out.length >= cap) break;
+  }
+  return out;
+}
+
+/* ---------- Exact-model match (依型號比對) ---------- */
+
+/**
+ * Words that make "<brand> <model> X" a different model: Melio vs Melio
+ * Carbon. A number or roman numeral right after the model does too.
+ */
+const MODEL_EDITION_WORDS = new Set([
+  'carbon', 'plus', 'pro', 'max', 'mini', 'lite', 'light', 'ultra', 'air', 'neo',
+  'se', 'gt', 'gtx', 'evo', 'sport', 'street', 'edition', 'deluxe', 'premium',
+  'classic', 'xl', 'xs', 'duo', 'twin', 'double', 'travel', 'go', 'one', 'cot',
+  'lux', 'luxe', 'elite', 'prime', 'next', 'new', 'jr', 'junior', 'kids',
+]);
+
+function normModelText(s: string): string {
+  return nfkc(s || '')
+    .toLowerCase()
+    .replace(/[-‐‑‒–—_·・/／]+/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+/**
+ * Brand + model words of the query: its Latin / digit words when there are
+ * at least two ("Cybex Melio 嬰兒推車" → cybex, melio), else every word.
+ */
+export function modelTokens(entity: string): string[] {
+  const words = normModelText(entity)
+    .split(/[\s,，、|()（）【】[\]「」『』:：;；+&＆"'“”]+/)
+    .map((w) => w.trim())
+    .filter((w) => w && !STOP_TOKENS.has(w) && !/^\d{8,14}$/.test(w));
+  const latin = words.filter((w) => /^[a-z0-9][a-z0-9.+]*$/.test(w));
+  return latin.length >= 2 ? latin : words;
+}
+
+/**
+ * How often the page names the exact model, and how often the same words
+ * run on into another model ("Cybex Melio Carbon", "Melio 2"). Case,
+ * spacing and hyphens are normalised ("cybex-melio" = "Cybex Melio").
+ */
+export function modelMentions(
+  text: string,
+  entity: string
+): { exact: number; variant: number; variants: string[] } {
+  const tokens = modelTokens(entity);
+  if (tokens.length < 2) return { exact: 0, variant: 0, variants: [] };
+  const esc = (w: string) =>
+    w
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/(\d)([a-z])/g, '$1\\s?$2')
+      .replace(/([a-z])(\d)/g, '$1\\s?$2');
+  const latin = (c: string) => /[a-z0-9]/.test(c);
+  const first = tokens[0]!;
+  const last = tokens[tokens.length - 1]!;
+  const re = new RegExp(
+    `${latin(first[0]!) ? '(?<![a-z0-9])' : ''}${tokens.map(esc).join('\\s?')}${latin(last[last.length - 1]!) ? '(?![a-z0-9])' : ''}`,
+    'g'
+  );
+  const t = normModelText(text).slice(0, PAGE_TEXT_MAX);
+  let exact = 0;
+  let variant = 0;
+  const variants: string[] = [];
+  for (const m of t.matchAll(re)) {
+    const end = (m.index ?? 0) + m[0].length;
+    const next = /^ ?([a-z0-9]+)/.exec(t.slice(end, end + 24))?.[1];
+    if (next && (MODEL_EDITION_WORDS.has(next) || /^\d+$/.test(next) || /^(ii|iii|iv|vi)$/.test(next))) {
+      variant += 1;
+      if (!variants.includes(next)) variants.push(next);
+    } else {
+      exact += 1;
+    }
+  }
+  return { exact, variant, variants };
+}
+
+/**
+ * Display name of the other model a page is about: the query's model word in
+ * its own casing + the edition word ("Cybex Melio" + carbon → "Melio Carbon").
+ */
+export function otherModelName(entity: string, edition: string): string {
+  const tokens = modelTokens(entity);
+  const last = tokens[tokens.length - 1] ?? '';
+  const orig =
+    nfkc(entity)
+      .split(/\s+/)
+      .find((w) => w.toLowerCase() === last) ?? last;
+  const word = /^\d+$|^(ii|iii|iv|vi)$/.test(edition)
+    ? edition.toUpperCase()
+    : edition.charAt(0).toUpperCase() + edition.slice(1);
+  return `${orig} ${word}`.trim();
+}
+
+/** A page left out because it is about another model of that name. */
+export type ExcludedPage = { page: number; model: string; country?: string };
+
+/** The page names this exact model and no other model of the same name. */
+export function exactModelPage(text: string, entity: string): boolean {
+  const m = modelMentions(text, entity);
+  return m.exact > 0 && m.variant === 0;
+}
+
+/** Two-level public suffixes, so shop.aeon.com.tw and aeon.com.tw are one domain. */
+const SECOND_LEVEL = new Set([
+  'co.jp', 'ne.jp', 'or.jp', 'com.tw', 'org.tw', 'co.uk', 'org.uk', 'com.au', 'com.cn',
+  'com.hk', 'co.kr', 'com.sg', 'com.my', 'co.nz', 'com.br', 'co.th', 'com.vn', 'co.id',
+]);
+
+/** Registrable domain of a page ("www.momoshop.com.tw" → "momoshop.com.tw"). */
+export function siteOf(url: string): string {
+  let host = '';
+  try {
+    host = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+  const labels = host.split('.');
+  const two = labels.slice(-2).join('.');
+  return labels.length >= 3 && SECOND_LEVEL.has(two) ? labels.slice(-3).join('.') : two;
+}
+
+/** Where a page really is (Gemini Sources are redirect links; use the landing URL). */
+function pageSite(p: FetchedPage): string {
+  return siteOf(p.finalUrl || p.url);
+}
+
+/** Pages from different domains that must agree before a model match confirms. */
+export const MODEL_MATCH_MIN_SITES = 2;
+
+function claimCountryKey(country: string): string {
+  return canonicalCountry(country) ?? compact(country);
 }
 
 const ENTITY_MAP: Record<string, string> = {
@@ -424,7 +627,13 @@ export async function fetchSourcePage(
     }
   }
   const text = [title, snippet, body].filter(Boolean).join('\n');
-  return { url, title, text, blocks: blocks ?? textBlocks(text) };
+  return {
+    url,
+    finalUrl: res?.url && res.url !== url ? res.url : undefined,
+    title,
+    text,
+    blocks: blocks ?? textBlocks(text),
+  };
 }
 
 /** "title — https://…" or bare URL source lines → { url, title }. */
@@ -446,7 +655,8 @@ export function parseSourceLine(line: string): { url: string; title: string } | 
 export function cooClaimsFromSourcePages(
   entity: string,
   ocrText: string | undefined,
-  pages: FetchedPage[]
+  pages: FetchedPage[],
+  excludedOut?: WebExcludedPage[]
 ): WebCooClaim[] {
   // Search-result pages list many products, so they are never evidence.
   const usable = pages.filter(
@@ -454,15 +664,28 @@ export function cooClaimsFromSourcePages(
   );
   if (!usable.length) return [];
   const jans = findJans(entity, ocrText);
-  const tokens = variantTokens(entity);
-  const matches = usable.map((p) => matchPage(p.text, jans, tokens));
-  const { kept } = enforceCooClaims(regexCooClaims(usable), usable, matches, jans);
+  const { kept, excluded } = gateClaims(entity, jans, usable, regexCooClaims(usable));
+  excludedOut?.push(...excludedPages(excluded, usable));
   return kept.map((k) => ({
     country: k.country,
     basis: k.basis,
-    status: k.status,
-    url: usable[k.page - 1]!.url,
+      status: k.status,
+      url: usable[k.page - 1]!.url,
+      ...(k.exactModel ? { exactModel: true } : {}),
   }));
+}
+
+/** Gate output → page rows for the card (url + title + the other model). */
+export function excludedPages(excluded: ExcludedPage[], pages: FetchedPage[]): WebExcludedPage[] {
+  return excluded.map((e) => {
+    const p = pages[e.page - 1]!;
+    return {
+      url: p.url,
+      model: e.model,
+      ...(p.title ? { title: p.title.slice(0, 160) } : {}),
+      ...(e.country ? { country: e.country } : {}),
+    };
+  });
 }
 
 /** Map a search API HTTP failure to the shared web error codes. */
@@ -550,7 +773,109 @@ function hostOf(url: string): string {
 
 export type CooStatus = 'confirmed' | 'likely';
 
-export type KeptCooClaim = CooClaim & { basis: MatchBasis; status: CooStatus };
+/** The claim quotes a made-in line that is really on its page. */
+function claimOnPage(c: CooClaim, page: FetchedPage): boolean {
+  const quote = (c.quote || '').trim();
+  return (
+    Boolean((c.country || '').trim()) &&
+    quote.length >= 3 &&
+    compact(page.text).includes(compact(quote)) &&
+    COO_CUE.test(nfkc(quote))
+  );
+}
+
+/**
+ * 依型號比對: name-matched ('likely') claims become confirmed (basis 'model')
+ * when pages from at least MODEL_MATCH_MIN_SITES different domains each name
+ * the exact model with the same made-in country, and no exact-model page
+ * (multi-variant pages included) names another country. A barcode-confirmed
+ * claim outranks it: then nothing is promoted. One page, loose (non-exact)
+ * matches, or a conflict stay as they were (likely / dropped).
+ */
+export function promoteModelMatches(
+  kept: KeptCooClaim[],
+  claims: CooClaim[],
+  pages: FetchedPage[],
+  exact: boolean[]
+): KeptCooClaim[] {
+  if (kept.some((k) => k.status === 'confirmed')) return kept;
+  const named = new Set(
+    claims
+      .filter((c) => exact[c.page - 1] && pages[c.page - 1] && claimOnPage(c, pages[c.page - 1]!))
+      .map((c) => claimCountryKey(c.country))
+  );
+  if (!named.size) return kept;
+  if (named.size > 1) {
+    // Exact-model pages disagree: flag the kept ones when they disagree too, so
+    // synthesize and the card see the conflict (未確認 + candidates); otherwise
+    // flag none (the dissenting page was dropped, so nothing may confirm).
+    const keptExact = kept.filter((k) => k.status === 'likely' && exact[k.page - 1]);
+    const keptCountries = new Set(keptExact.map((k) => claimCountryKey(k.country)));
+    if (keptCountries.size < 2) return kept;
+    return kept.map((k) => (keptExact.includes(k) ? { ...k, exactModel: true } : k));
+  }
+  const [country] = [...named];
+  const backing = kept.filter(
+    (k) => k.status === 'likely' && exact[k.page - 1] && claimCountryKey(k.country) === country
+  );
+  const sites = new Set(backing.map((k) => pageSite(pages[k.page - 1]!)).filter(Boolean));
+  const promote = sites.size >= MODEL_MATCH_MIN_SITES;
+  return kept.map((k) =>
+    backing.includes(k)
+      ? promote
+        ? { ...k, basis: 'model', status: 'confirmed', exactModel: true }
+        : { ...k, exactModel: true }
+      : k
+  );
+}
+
+/**
+ * Full gate for one set of pages: page match (barcode, every name token, or
+ * the exact brand + model), the per-page rules (enforceCooClaims), then the
+ * two-domain model-match promotion.
+ */
+export function gateClaims(
+  entity: string,
+  jans: string[],
+  pages: FetchedPage[],
+  claims: CooClaim[]
+): {
+  kept: KeptCooClaim[];
+  dropped: number;
+  droppedMultiVariant: number;
+  excluded: ExcludedPage[];
+} {
+  const tokens = variantTokens(entity);
+  const mentions = pages.map((p) => modelMentions(p.text, entity));
+  const exact = mentions.map((m) => m.exact > 0 && m.variant === 0);
+  const matches = pages.map((p, i) => {
+    const m = matchPage(p.text, jans, tokens);
+    if (m === 'barcode') return m;
+    // The page only names another model of that name (Melio Carbon for a
+    // Melio check): not this product, not even a likely candidate.
+    if (mentions[i]!.exact === 0 && mentions[i]!.variant > 0) return null;
+    return m ?? (exact[i] ? 'name' : null);
+  });
+  const out = enforceCooClaims(claims, pages, matches, jans, entity);
+  // Near-miss pages with a made-in line: listed as excluded (型號不符，未計算).
+  const excluded: ExcludedPage[] = [];
+  pages.forEach((p, i) => {
+    const m = mentions[i]!;
+    if (matches[i] !== null || m.exact > 0 || !m.variants.length) return;
+    const claim = claims.find((c) => c.page === i + 1 && claimOnPage(c, p));
+    if (!claim) return;
+    excluded.push({ page: i + 1, model: otherModelName(entity, m.variants[0]!), country: claim.country });
+  });
+  return { ...out, kept: promoteModelMatches(out.kept, claims, pages, exact), excluded };
+}
+
+/** 'model' = two domains name the exact model with this made-in (依型號比對). */
+export type KeptCooClaim = CooClaim & {
+  basis: MatchBasis | 'model';
+  status: CooStatus;
+  /** On a page naming the exact model, and no exact-model page disagrees. */
+  exactModel?: boolean;
+};
 
 /**
  * Made-in gate (exported for tests). A claim must quote text that is really on
@@ -566,7 +891,8 @@ export function enforceCooClaims(
   claims: CooClaim[],
   pages: FetchedPage[],
   matches: PageMatch[],
-  jans: string[] = []
+  jans: string[] = [],
+  entity?: string
 ): { kept: KeptCooClaim[]; dropped: number; droppedMultiVariant: number } {
   const kept: KeptCooClaim[] = [];
   let dropped = 0;
@@ -577,14 +903,11 @@ export function enforceCooClaims(
     const match = matches[c.page - 1];
     const quote = (c.quote || '').trim();
     const country = (c.country || '').trim();
-    const onPage =
-      Boolean(page) && quote.length >= 3 && compact(page!.text).includes(compact(quote));
-    const isCoo = COO_CUE.test(nfkc(quote));
-    if (!page || !country || !onPage || !isCoo || !match) {
+    if (!page || !claimOnPage(c, page) || !match) {
       dropped += 1;
       continue;
     }
-    if (!multi.has(c.page)) multi.set(c.page, pageListsMultipleVariants(page.text));
+    if (!multi.has(c.page)) multi.set(c.page, pageListsMultipleVariants(page.text, entity));
     const multiVariant = multi.get(c.page) === true;
     if (match === 'name' && multiVariant) {
       dropped += 1;
@@ -708,8 +1031,6 @@ export async function extractBriefFromPages(opts: {
   }
 
   const jans = findJans(entity, ocrText);
-  const tokens = variantTokens(entity);
-  const matches = pages.map((p) => matchPage(p.text, jans, tokens));
 
   let claims: CooClaim[] = [];
   let notes: string[] = [];
@@ -729,7 +1050,7 @@ export async function extractBriefFromPages(opts: {
     claims = regexCooClaims(pages);
   }
 
-  const { kept, dropped, droppedMultiVariant } = enforceCooClaims(claims, pages, matches, jans);
+  const { kept, dropped, droppedMultiVariant, excluded } = gateClaims(entity, jans, pages, claims);
   const confirmed = kept.filter((k) => k.status === 'confirmed');
   const likely = kept.filter((k) => k.status === 'likely');
   // Notes must never smuggle a made-in claim past the barcode/name gate.
@@ -747,9 +1068,11 @@ export async function extractBriefFromPages(opts: {
   if (confirmed.length) {
     for (const k of confirmed) {
       const via = hostOf(pages[k.page - 1]!.url);
-      lines.push(
-        `- COO: ${k.country} | source: ${k.sourceType} | via: ${via} (matched by barcode JAN ${jans.join('/')}) — "${k.quote}"`
-      );
+      const how =
+        k.basis === 'model'
+          ? `matched by exact model on ${MODEL_MATCH_MIN_SITES}+ sites`
+          : `matched by barcode JAN ${jans.join('/')}`;
+      lines.push(`- COO: ${k.country} | source: ${k.sourceType} | via: ${via} (${how}) — "${k.quote}"`);
     }
   } else {
     lines.push(
@@ -797,6 +1120,8 @@ export async function extractBriefFromPages(opts: {
       basis: k.basis,
       status: k.status,
       url: pages[k.page - 1]!.url,
+      ...(k.exactModel ? { exactModel: true } : {}),
     })),
+    excluded: excludedPages(excluded, pages),
   };
 }

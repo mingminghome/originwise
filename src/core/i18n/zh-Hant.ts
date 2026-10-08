@@ -64,19 +64,26 @@ export const zhHant = {
       reasonBrandOrigin: '品牌來源地：{place}。',
       madeInLineBarcode: '製造地：{place}（依條碼比對，見下方製造地卡）',
       madeInLineLabel: '製造地：{place}（依包裝標示，見下方製造地卡）',
+      madeInLineModel: '製造地：{place}（依型號比對，見下方製造地卡）',
     },
     rc: {
       modelRef: '模型參考（未經確認）',
       modelRefHelp: '未經網頁或包裝標示確認，只是模型的推測；請以包裝上的標示為準。',
       moreInfo: '說明',
-      notConfirmed: '（非確認）',
-      likelyNote: '僅依品名比對，尚未確認製造地，請勿當作已確認。',
       candidatesTitle: '查到的產地候選（未確認）',
       noCandidates: '沒有查到可信的產地候選。',
-      noBarcodePage: '沒有網頁同時顯示條碼及產地',
       sourceCount: '{n} 個來源',
       sourceFirst: '來源 1：{label}',
       sourceNth: '來源 {n}：{label}',
+      sourceAiAnswer: 'AI 回答',
+      citedUnverified: 'AI 引用，未能驗證',
+      excludedOtherModel: '型號不符（{model}），未計算',
+      reason: {
+        aiOnly: '只有 AI 回答，未有網頁佐證',
+        pagesDisagree: '網頁說法不一',
+        aiCitedUnverified: 'AI 引用未能驗證',
+        onePageOnly: '只有一個網頁提及',
+      },
       sourceCountry: '生產國 {country}',
       labelSource: '來源：包裝標示照片',
       parent: '母公司',
@@ -94,6 +101,7 @@ export const zhHant = {
       barcode: '依條碼比對',
       name: '依品名比對',
       label: '依包裝標示',
+      model: '依型號比對',
     },
     searchVia: {
       gemini: 'Google 搜尋（Gemini）',
@@ -293,7 +301,7 @@ export const zhHant = {
       cooUnconfirmedNoLabel:
         '最終產地未確認：產品或標籤上沒有產地資料，不會自行推斷製造地。',
       cooUnconfirmedNoBarcode:
-        '最終產地未確認：沒有網頁同時顯示此條碼（JAN）與製造地；依品名比對到的只算較可能的候選。',
+        '最終產地未確認：沒有條碼網頁、包裝標示或型號比對可佐證；其他國家只列為候選。',
       cooUnconfirmedCandidates:
         '最終產地未確認：以下候選來自查詢結果，並非標籤上印明的製造地。',
       distributorOmitted:
@@ -600,7 +608,7 @@ export const zhHant = {
     evidenceTitle:
       '產地怎樣才算確認',
     evidenceBody:
-      '只有包裝標籤照片，或網頁上同一個條碼（JAN）旁寫明產地，才會顯示為已確認（依條碼比對）。只對上品名的，最多顯示「較可能」（依品名比對）；同一頁有多個尺寸或款式時，維持「未確認」。若即時網路搜尋無法使用，結果只依模型知識，並會另行標示。',
+      '已確認的製造地有三種來源。最強的是包裝標籤照片，或網頁上同一個條碼（JAN）旁寫明產地（依條碼比對）。其次是依型號比對：AI 回答與至少一個寫明同一品牌型號的網頁指向同一國家，或兩個以上不同網站、寫明同一型號的網頁一致；此時 AI 回答會列為其中一個來源。兩種情況都要求沒有寫明同一型號的網頁指向其他國家。只有 AI 回答時不算確認，仍顯示為模型參考；寫明同一型號的網頁彼此矛盾時，維持「未確認」並列出候選。AI 引用的連結要先經過查核才算：須是網路搜尋也找到的網頁，或能開啟且寫明同一型號與該國家；否則會標示「AI 引用，未能驗證」，不計入確認。只對上品名的，只列在「未確認」下的候選；同一頁有多個尺寸或款式時，維持「未確認」。若即時網路搜尋無法使用，結果只依模型知識，並會另行標示。',
     flowWeb:
       '網路搜尋',
     flowWebDetail:

@@ -64,19 +64,26 @@ export const pl = {
       reasonBrandOrigin: 'Pochodzenie marki: {place}.',
       madeInLineBarcode: 'Wyprodukowano w: {place} (zgodność kodu kreskowego, zob. kartę „Wyprodukowano w” poniżej)',
       madeInLineLabel: 'Wyprodukowano w: {place} (etykieta opakowania, zob. kartę „Wyprodukowano w” poniżej)',
+      madeInLineModel: 'Wyprodukowano w: {place} (zgodność dokładnego modelu, zob. kartę „Wyprodukowano w” poniżej)',
     },
     rc: {
       modelRef: 'Wskazanie modelu (niepotwierdzone)',
       modelRefHelp: 'Nie potwierdza tego żadna strona internetowa ani etykieta na opakowaniu; to tylko przypuszczenie modelu. Kieruj się etykietą na opakowaniu.',
       moreInfo: 'Więcej informacji',
-      notConfirmed: ' (niepotwierdzone)',
-      likelyNote: 'Dopasowano tylko po nazwie produktu – kraj produkcji niepotwierdzony. Nie traktuj tego jako potwierdzone.',
       candidatesTitle: 'Znalezione kraje produkcji (niepotwierdzone)',
       noCandidates: 'Nie znaleziono wiarygodnych kandydatów.',
-      noBarcodePage: 'Żadna strona nie pokazała kodu kreskowego z krajem produkcji',
       sourceCount: 'Źródła: {n}',
       sourceFirst: 'Źródło 1: {label}',
       sourceNth: 'Źródło {n}: {label}',
+      sourceAiAnswer: 'Odpowiedź AI',
+      citedUnverified: 'Cytowane przez AI, nie udało się zweryfikować',
+      excludedOtherModel: 'Inny model ({model}), nie liczy się',
+      reason: {
+        aiOnly: 'Tylko odpowiedź AI, żadna strona jej nie potwierdza',
+        pagesDisagree: 'Strony internetowe są sprzeczne',
+        aiCitedUnverified: 'Nie udało się zweryfikować linku cytowanego przez AI',
+        onePageOnly: 'Wspomina o tym tylko jedna strona',
+      },
       sourceCountry: 'wyprodukowano w: {country}',
       labelSource: 'Źródło: zdjęcie etykiety opakowania',
       parent: 'Spółka matka',
@@ -94,6 +101,7 @@ export const pl = {
       barcode: 'Dopasowano po kodzie kreskowym',
       name: 'Dopasowano po nazwie produktu',
       label: 'Według oznaczenia na opakowaniu',
+      model: 'Zgodność dokładnego modelu',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',
@@ -305,7 +313,7 @@ export const pl = {
       cooUnconfirmedNoLabel:
         'Ostateczny kraj pochodzenia niepotwierdzony – brak kraju pochodzenia na produkcie/etykiecie; żaden nie jest zmyślany.',
       cooUnconfirmedNoBarcode:
-        'Ostateczny kraj pochodzenia niepotwierdzony – żadna strona nie pokazała kodu kreskowego/JAN razem z krajem produkcji; dopasowania po nazwie to tylko prawdopodobni kandydaci.',
+        'Ostateczny kraj produkcji niepotwierdzony – nie potwierdza go strona z kodem kreskowym, etykieta opakowania ani zgodność dokładnego modelu; inne kraje to tylko kandydaci.',
       cooUnconfirmedCandidates:
         'Ostateczny kraj pochodzenia niepotwierdzony – poniżsi kandydaci to sygnały z wyszukiwania, nie nadrukowane „Made in”.',
       distributorOmitted:
@@ -616,7 +624,7 @@ export const pl = {
     evidenceTitle:
       'Kiedy kraj produkcji uznaje się za potwierdzony',
     evidenceBody:
-      'Kraj produkcji jest pokazany jako potwierdzony (zgodność kodu kreskowego) tylko wtedy, gdy pochodzi ze zdjęcia etykiety opakowania albo gdy strona internetowa pokazuje ten sam kod kreskowy (JAN/EAN) obok informacji o pochodzeniu. Dopasowanie tylko po nazwie produktu to co najwyżej „prawdopodobne” (zgodność nazwy), a strona z kilkoma rozmiarami lub wariantami pozostaje niepotwierdzona. Gdy wyszukiwanie w sieci na żywo jest niedostępne, wynik opiera się wyłącznie na wiedzy modelu i jest tak oznaczony.',
+      'Kraj produkcji może zostać pokazany jako potwierdzony na trzy sposoby. Najsilniejszy: zdjęcie etykiety opakowania lub strona internetowa z tym samym kodem kreskowym (JAN/EAN) obok informacji o pochodzeniu (zgodność kodu kreskowego). Dalej zgodność dokładnego modelu: odpowiedź AI i co najmniej jedna strona z dokładną marką i modelem podają ten sam kraj albo zgadzają się co najmniej dwie takie strony z różnych serwisów; odpowiedź AI jest wtedy pokazana jako jedno ze źródeł. W obu przypadkach żadna strona z dokładnym modelem nie może podawać innego kraju. Sama odpowiedź AI nigdy nie jest potwierdzeniem i pozostaje odniesieniem modelu; gdy strony z dokładnym modelem są sprzeczne, kraj pozostaje niepotwierdzony, a kandydaci są wymienieni. Link cytowany przez AI liczy się dopiero po sprawdzeniu: to strona, którą zwróciło też wyszukiwanie, albo wczytuje się i podaje dokładny model i kraj; w przeciwnym razie jest oznaczony jako „Cytowane przez AI, nie udało się zweryfikować” i się nie liczy. Luźne dopasowanie po nazwie produktu jest pokazywane tylko jako kandydat pod „Niepotwierdzone”, a strona z kilkoma rozmiarami lub wariantami pozostaje niepotwierdzona. Gdy wyszukiwanie w sieci na żywo jest niedostępne, wynik opiera się wyłącznie na wiedzy modelu i jest tak oznaczony.',
     flowWeb:
       'Wyszukiwanie w sieci',
     flowWebDetail:

@@ -164,16 +164,18 @@ export function companyFactsSourced(result: CheckResult): boolean {
 }
 
 /**
- * Made-in confirmed by a barcode page or the package label. A made-in without
- * that basis is a model reference only (candidate row, never a verdict).
+ * Made-in confirmed by a barcode page, the package label, or 依型號比對
+ * (exact model on 2+ domains, or the AI answer plus an exact-model page). A
+ * made-in without one of those is a model reference only (candidate row,
+ * never a verdict).
  */
 export function confirmedMadeIn(
   result: CheckResult
-): { country: string; basis: 'barcode' | 'label' } | undefined {
+): { country: string; basis: 'barcode' | 'label' | 'model' } | undefined {
   const p = result.product;
   const madeIn = clean(p?.madeIn);
   if (!madeIn) return undefined;
-  if (p?.madeInBasis === 'barcode' || p?.madeInBasis === 'label') {
+  if (p?.madeInBasis === 'barcode' || p?.madeInBasis === 'label' || p?.madeInBasis === 'model') {
     return { country: madeIn, basis: p.madeInBasis };
   }
   const meta = result.meta;
@@ -211,7 +213,7 @@ export type ChinaCardReason =
   | { kind: 'code'; code: string }
   | { kind: 'parent' }
   | { kind: 'brandOrigin'; country: string }
-  | { kind: 'madeIn'; country: string; basis: 'barcode' | 'label' }
+  | { kind: 'madeIn'; country: string; basis: 'barcode' | 'label' | 'model' }
   | { kind: 'pointer' };
 
 export type ChinaCardView = {

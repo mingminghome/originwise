@@ -22,12 +22,14 @@ import {
   type LlmEnv,
   type LlmImage,
 } from './llm';
-import type { CheckDimension, CheckResult, WebCooClaim } from './schema';
+import type { CheckDimension, CheckResult, WebCooClaim, WebExcludedPage } from './schema';
 import { WEB_KNOWLEDGE_NOTE, webKnowledgeNote } from './schema';
 import type { GeoScope } from './regions';
 import { normalizeLocale } from './locale';
 import { SERVER_TEXT, SUMMARY_PREFIX } from './serverText';
 import { synthesize } from './synthesize';
+import { citedFetcher, verifyCitedSources, type CitedCheck } from './citedSources';
+import { parseSourceLine } from './search/extract';
 import { fixZhHantDeep } from './zhHant';
 import {
   isSearchEnabled,
@@ -105,6 +107,8 @@ type WebPass = {
   requests?: number;
   /** Gated made-in claims (Brave / Firecrawl only). */
   coo?: WebCooClaim[];
+  /** Pages about another model of that name. */
+  excluded?: WebExcludedPage[];
 };
 
 /**
@@ -166,6 +170,7 @@ async function maybeWebResearch(
       provider: wr.provider,
       requests: wr.requests,
       coo: wr.coo,
+      excluded: wr.excluded,
     };
   }
   const failCode = wr.error || 'empty_response';
@@ -378,6 +383,32 @@ async function runQuery(
     };
   }
 
+  // AI-cited made-in pages: checked (search match, else ≤2 fetches) before they count.
+  let webCoo = web.used ? web.coo ?? [] : undefined;
+  let sources = web.sources;
+  let cited: CitedCheck | undefined;
+  if (web.used && entity && parts.product?.madeInSources?.length) {
+    cited = await verifyCitedSources({
+      entity,
+      country: parts.product.madeIn,
+      cited: parts.product.madeInSources,
+      searchUrls: [
+        ...web.sources.map((l) => parseSourceLine(l)?.url ?? ''),
+        ...(web.coo ?? []).map((c) => c.url ?? ''),
+      ].filter(Boolean),
+      searchCoo: web.coo ?? [],
+      fetchPage: citedFetcher(web.provider, env),
+    });
+    webCoo = [...(webCoo ?? []), ...cited.verified];
+    const titles = new Map(parts.product.madeInSources.map((c) => [c.url, c.title]));
+    sources = [
+      ...sources,
+      ...cited.verified
+        .filter((v) => v.cited === 'fetched' && v.url)
+        .map((v) => (titles.get(v.url!) ? `${titles.get(v.url!)} — ${v.url}` : v.url!)),
+    ];
+  }
+
   emit({ type: 'progress', jobId, step: 'synthesize', status: 'running' });
   const result = synthesize({
     jobId,
@@ -389,10 +420,10 @@ async function runQuery(
     webEnriched: web.used,
     webFailCode: web.used ? undefined : web.error,
     webBrief: web.brief,
-    sources: web.sources,
-    // Every provider (Gemini included): made-in needs a barcode-confirmed
-    // claim from a source page (or the package-label OCR).
-    webCoo: web.used ? web.coo ?? [] : undefined,
+    sources,
+    // Every provider (Gemini included): made-in needs a barcode / label /
+    // 依型號比對 basis from source pages (AI-cited pages only once verified).
+    webCoo,
     ocrText: parts.ocrText,
     partials: {
       product: parts.product,
@@ -417,9 +448,20 @@ async function runQuery(
       result.knowledgeCutoffNote = webKnowledgeNote(web.provider);
     }
   }
-  if (web.used && web.coo?.length) {
-    result.meta.searchCoo = web.coo;
-    result.meta.searchMatch = web.coo.some((c) => c.basis === 'barcode') ? 'barcode' : 'name';
+  if (web.used && webCoo?.length) {
+    result.meta.searchCoo = webCoo;
+    result.meta.searchMatch = webCoo.some((c) => c.basis === 'barcode')
+      ? 'barcode'
+      : webCoo.some((c) => c.basis === 'model') || result.product?.madeInBasis === 'model'
+        ? 'model'
+        : 'name';
+  }
+  if (web.used && web.excluded?.length) result.meta.searchExcluded = web.excluded;
+  if (cited?.unverified.length) result.meta.citedUnverified = cited.unverified;
+  if (cited?.fetches) result.meta.citedFetches = cited.fetches;
+  // Cited links live in meta (checked) only, not on the product.
+  if (result.product && 'madeInSources' in result.product) {
+    delete (result.product as { madeInSources?: unknown }).madeInSources;
   }
   emit({ type: 'progress', jobId, step: 'synthesize', status: 'done' });
   return { ok: true, result, mode: 'monolith', agents };

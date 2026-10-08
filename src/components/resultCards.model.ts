@@ -26,12 +26,18 @@ export function cleanValue(raw?: string | null): string {
 
 type Candidate = NonNullable<NonNullable<CheckResult['product']>['originCandidates']>[number];
 
-export type MadeInBasis = 'barcode' | 'label' | 'name';
+export type MadeInBasis = 'barcode' | 'label' | 'model' | 'name';
+
+/** Why a made-in stays 未確認 (one chip; replaces the old barcode-only reason). */
+export type UnconfirmedReason = 'pagesDisagree' | 'aiCitedUnverified' | 'aiOnly' | 'onePageOnly';
 
 export type MadeInView = {
-  /** A confirmed / B unconfirmed / C likely (name match only). */
-  state: 'confirmed' | 'unconfirmed' | 'likely';
-  /** Headline country (confirmed or likely). */
+  /**
+   * confirmed (barcode / label / 依型號比對) or unconfirmed. Nothing else ever
+   * reaches the headline: a likely country is a candidate under 未確認.
+   */
+  state: 'confirmed' | 'unconfirmed';
+  /** Headline country (confirmed only). */
   country?: string;
   basis?: MadeInBasis;
   /** 0–1, for the confidence chip. */
@@ -44,10 +50,26 @@ export type MadeInView = {
    * name/likely), at most MAX_SOURCE_ROWS. Label basis: none.
    */
   sourceRows: SourceRow[];
-  /** B only: queried candidates, not confirmed. */
-  candidates: Array<{ label: string; rating: Candidate['rating']; source: Candidate['source'] }>;
-  /** Web research ran but no page showed the barcode with a made-in. */
-  noBarcodePage: boolean;
+  /**
+   * Candidate countries (not confirmed). Web candidates carry their own
+   * source rows; `neutral` (exact-model pages disagree) shows no grade.
+   */
+  candidates: Array<{
+    label: string;
+    rating: Candidate['rating'];
+    source: Candidate['source'];
+    sources?: SourceRow[];
+    neutral?: boolean;
+  }>;
+  /** Unconfirmed only: the one reason chip. */
+  reason?: UnconfirmedReason;
+  /** Pages about another model of that name: 「型號不符（…），未計算」 rows. */
+  excludedRows: Array<SourceRow & { model: string }>;
+  /**
+   * AI-cited pages that failed the check: listed as 「AI 引用，未能驗證」 in
+   * every state, outside the numbered source rows and never in the chip.
+   */
+  citedRows: SourceRow[];
 };
 
 /** Candidate sources that never stand for a made-in (HQ / owner echoes). */
@@ -255,6 +277,8 @@ export type SourceRow = {
    */
   pathHint?: string;
   country?: string;
+  /** The AI answer counted as one source (依型號比對 'ai_web'); label from the view. */
+  ai?: boolean;
 };
 
 /** Rows (and the count chip) stop here; the chip never claims more than shown. */
@@ -266,7 +290,8 @@ type CooHit = NonNullable<NonNullable<CheckResult['meta']>['searchCoo']>[number]
 function supportingRows(
   hits: CooHit[],
   sources: string[],
-  match: (h: CooHit) => boolean
+  match: (h: CooHit) => boolean,
+  max = MAX_SOURCE_ROWS
 ): SourceRow[] {
   const rows: SourceRow[] = [];
   const seen = new Set<string>();
@@ -284,7 +309,7 @@ function supportingRows(
       host: host && host !== label ? host : undefined,
       country: canonicalCountry(h.country) ?? h.country,
     });
-    if (rows.length === MAX_SOURCE_ROWS) break;
+    if (rows.length >= max) break;
   }
   return withPathHints(rows);
 }
@@ -336,28 +361,45 @@ function withPathHints(rows: SourceRow[]): SourceRow[] {
   });
 }
 
-export function buildMadeInView(result: CheckResult): MadeInView {
+function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' | 'excludedRows'> {
   const p = result.product;
   const meta = result.meta;
   const sources = Array.isArray(result.sources) ? cleanSources(result.sources, 8) : [];
   const searchCoo = meta?.searchCoo ?? [];
   const candidates = p?.originCandidates ?? [];
   const madeIn = cleanValue(p?.madeIn);
-  const webRan = result.knowledgeBasis === 'web_enriched';
 
   const made = confirmedMadeIn(result);
   if (made) {
     const basis: MadeInBasis = made.basis;
     const confirmed = candidates.find((c) => c.rating === 'confirmed');
     // Label basis: the package photo, no web rows, so no web-source chip.
-    const sourceRows =
+    // 依型號比對: the exact-model pages, plus the AI answer as the first row
+    // when it was one of the two sources ('ai_web').
+    const aiRow = basis === 'model' && p?.madeInSupport === 'ai_web';
+    const webRows =
       basis === 'label'
         ? []
         : supportingRows(
             searchCoo,
             sources,
-            (h) => h.status === 'confirmed' && h.basis === 'barcode' && sameCountryLabel(h.country, madeIn)
+            (h) =>
+              sameCountryLabel(h.country, madeIn) &&
+              (basis === 'model'
+                ? (h.status === 'confirmed' && h.basis === 'model') || Boolean(h.exactModel)
+                : h.status === 'confirmed' && h.basis === 'barcode'),
+            aiRow ? MAX_SOURCE_ROWS - 1 : MAX_SOURCE_ROWS
           );
+    const sourceRows: SourceRow[] = aiRow
+      ? [{ label: '', ai: true, country: canonicalCountry(madeIn) ?? madeIn }, ...webRows]
+      : webRows;
+    // 2+ domains outvoted the AI answer: its country stays a candidate row.
+    const outvoted =
+      basis === 'model'
+        ? candidates
+            .filter((c) => c.source === 'model_memory' && !sameCountryLabel(c.label, madeIn))
+            .map((c) => ({ label: c.label, rating: c.rating, source: c.source }))
+        : [];
     return {
       state: 'confirmed',
       country: madeIn,
@@ -365,50 +407,55 @@ export function buildMadeInView(result: CheckResult): MadeInView {
       confidence: confirmed?.confidence ?? result.confidence,
       sourceCount: sourceRows.length,
       sourceRows,
-      candidates: [],
-      noBarcodePage: false,
+      candidates: outvoted,
     };
   }
 
-  // C: a single name-matched page says "likely <country>" — never confirmed.
-  const nameLikely =
-    candidates.find((c) => c.source === 'web_name' && c.rating === 'likely') ??
-    (searchCoo.find((c) => c.status === 'likely' && c.basis === 'name')
-      ? {
-          label: searchCoo.find((c) => c.status === 'likely' && c.basis === 'name')!.country,
-          confidence: 0.55,
-          source: 'web_name' as const,
-          rating: 'likely' as const,
-        }
-      : undefined);
-  const hadBarcode = searchCoo.some((c) => c.basis === 'barcode');
-  if (nameLikely) {
-    const sourceRows = supportingRows(
-      searchCoo,
+  // Not confirmed: the headline is 未確認 and every country is a candidate
+  // row underneath, web ones with their own source rows.
+  let rows = candidateRows(result, candidates, madeIn);
+  const likelyHits = searchCoo.filter((c) => c.status === 'likely');
+  for (const h of likelyHits) {
+    if (!rows.some((r) => sameCountryLabel(r.label, h.country))) {
+      rows.push({ label: canonicalCountry(h.country) ?? h.country, rating: 'likely', source: 'web_name' });
+    }
+  }
+  const webCountries: string[] = [];
+  for (const r of rows) {
+    if (r.source === 'web_name' && !webCountries.some((c) => sameCountryLabel(c, r.label))) webCountries.push(r.label);
+  }
+  // Pages that disagree (exact-model ones, or name-matched ones): neutral rows.
+  const exactCountries = searchCoo.filter((c) => c.exactModel).map((c) => c.country);
+  const disagree =
+    exactCountries.some((c) => !sameCountryLabel(c, exactCountries[0]!)) || webCountries.length >= 2;
+  rows = rows.map((r) => {
+    if (r.source !== 'web_name') return r;
+    const srcRows = supportingRows(
+      likelyHits,
       sources,
-      (h) => h.status === 'likely' && h.basis === 'name' && sameCountryLabel(h.country, nameLikely.label)
+      (h) => sameCountryLabel(h.country, r.label)
     );
-    return {
-      state: 'likely',
-      country: nameLikely.label,
-      basis: 'name',
-      confidence: nameLikely.confidence,
-      sourceCount: sourceRows.length,
-      sourceRows,
-      candidates: [],
-      noBarcodePage: webRan && !hadBarcode,
-    };
-  }
-
-  const rows = candidateRows(result, candidates, madeIn);
+    return { ...r, ...(srcRows.length ? { sources: srcRows } : {}), ...(disagree ? { neutral: true } : {}) };
+  });
+  const webPages = new Set(likelyHits.map((h) => h.url).filter(Boolean)).size;
+  const aiSaid = [madeIn, ...candidates.filter((c) => c.source === 'model_memory').map((c) => c.label)].filter(Boolean);
+  const aiBacks = (label: string) => aiSaid.some((a) => sameCountryLabel(a, label));
+  const reason: UnconfirmedReason | undefined = disagree
+    ? 'pagesDisagree'
+    : (meta?.citedUnverified ?? []).length
+      ? 'aiCitedUnverified'
+      : !webCountries.length && aiSaid.length && rows.some((r) => modelOnlyPartCandidate(result, r))
+        ? 'aiOnly'
+        : webCountries.length === 1 && webPages === 1 && !aiBacks(webCountries[0]!)
+          ? 'onePageOnly'
+          : undefined;
   return {
     state: 'unconfirmed',
-    basis: rows.some((c) => c.source === 'web_name') ? 'name' : undefined,
-    // B: no source-count chip, no source rows.
+    // No basis / confidence / source-count chip on a 未確認 headline.
     sourceCount: 0,
     sourceRows: [],
     candidates: rows,
-    noBarcodePage: webRan && !hadBarcode,
+    ...(reason ? { reason } : {}),
   };
 }
 
@@ -531,4 +578,34 @@ export function cleanNotes(result: CheckResult): string[] {
       )
       .filter(Boolean) ?? []
   );
+}
+
+/** AI-cited made-in pages that failed the check (meta.citedUnverified). */
+function citedRows(result: CheckResult): SourceRow[] {
+  const rows: SourceRow[] = [];
+  for (const c of result.meta?.citedUnverified ?? []) {
+    const url = c.url?.trim();
+    if (!url || rows.some((r) => r.url === url)) continue;
+    const host = sourceLabel({ title: '', url });
+    const title = c.title?.trim();
+    rows.push({ label: title || host || url, url, host: title && host && host !== title ? host : undefined });
+  }
+  return rows;
+}
+
+/** Search pages about another model of that name (meta.searchExcluded). */
+function excludedRows(result: CheckResult): MadeInView['excludedRows'] {
+  const rows: MadeInView['excludedRows'] = [];
+  for (const e of result.meta?.searchExcluded ?? []) {
+    const url = e.url?.trim();
+    if (!url || !e.model || rows.some((r) => r.url === url)) continue;
+    const host = sourceLabel({ title: '', url });
+    const title = e.title?.trim();
+    rows.push({ label: title || host || url, url, host: title && host && host !== title ? host : undefined, model: e.model });
+  }
+  return rows;
+}
+
+export function buildMadeInView(result: CheckResult): MadeInView {
+  return { ...buildMadeInViewCore(result), citedRows: citedRows(result), excludedRows: excludedRows(result) };
 }

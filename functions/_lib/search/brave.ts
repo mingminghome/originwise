@@ -7,12 +7,15 @@
 
 import {
   MAX_RESULT_PAGES,
+  buildMadeInQuery,
   buildSearchQuery,
   extractBriefFromPages,
   fetchSourcePage,
   fetchWithTimeout,
   findJans,
   mapSearchHttpError,
+  mergePages,
+  needsMadeInFollowup,
 } from './extract';
 import type { FetchedPage, SearchProvider } from './types';
 
@@ -37,6 +40,57 @@ function fetchPageText(r: BraveResult): Promise<FetchedPage> {
   ].join('\n'));
 }
 
+/** One Brave web-search call → up to MAX_RESULT_PAGES new results (or an error code). */
+async function braveResults(
+  key: string,
+  q: string,
+  skip: ReadonlySet<string> = new Set()
+): Promise<{ results: BraveResult[] } | { error: string }> {
+  const params = new URLSearchParams({
+    q,
+    count: String(MAX_RESULT_PAGES + 2),
+    extra_snippets: 'true',
+    safesearch: 'moderate',
+  });
+  const res = await fetchWithTimeout(
+    `${BRAVE_ENDPOINT}?${params.toString()}`,
+    {
+      headers: {
+        Accept: 'application/json',
+        'X-Subscription-Token': key,
+      },
+    },
+    BRAVE_SEARCH_MS
+  );
+  if (!res) return { error: 'upstream_unavailable' };
+  if (!res.ok) {
+    let body = '';
+    try {
+      body = await res.text();
+    } catch {
+      /* ignore */
+    }
+    return { error: mapSearchHttpError(res.status, body) };
+  }
+  let data: { web?: { results?: BraveResult[] } };
+  try {
+    data = (await res.json()) as typeof data;
+  } catch {
+    return { error: 'upstream_error' };
+  }
+  const seen = new Set<string>(skip);
+  const results = (data.web?.results ?? [])
+    .filter((r) => r?.url && isHttpUrl(String(r.url)))
+    .filter((r) => {
+      const u = String(r.url);
+      if (seen.has(u)) return false;
+      seen.add(u);
+      return true;
+    })
+    .slice(0, MAX_RESULT_PAGES);
+  return { results };
+}
+
 export const braveSearchProvider: SearchProvider = {
   id: 'brave',
   isConfigured(env) {
@@ -46,69 +100,35 @@ export const braveSearchProvider: SearchProvider = {
     const t0 = Date.now();
     const key = env.BRAVE_SEARCH_API_KEY?.trim() || '';
     const jans = findJans(entity, ocrText);
-    const q = buildSearchQuery(entity, jans);
-    const params = new URLSearchParams({
-      q,
-      count: String(MAX_RESULT_PAGES + 2),
-      extra_snippets: 'true',
-      safesearch: 'moderate',
-    });
-    const res = await fetchWithTimeout(
-      `${BRAVE_ENDPOINT}?${params.toString()}`,
-      {
-        headers: {
-          Accept: 'application/json',
-          'X-Subscription-Token': key,
-        },
-      },
-      BRAVE_SEARCH_MS
-    );
-    if (!res) {
-      return { ok: false, brief: '', sources: [], error: 'upstream_unavailable', ms: Date.now() - t0, requests: 1 };
+    const first = await braveResults(key, buildSearchQuery(entity, jans));
+    if ('error' in first) {
+      return { ok: false, brief: '', sources: [], error: first.error, ms: Date.now() - t0, requests: 1 };
     }
-    if (!res.ok) {
-      let body = '';
-      try {
-        body = await res.text();
-      } catch {
-        /* ignore */
-      }
-      return {
-        ok: false,
-        brief: '',
-        sources: [],
-        error: mapSearchHttpError(res.status, body),
-        ms: Date.now() - t0,
-        requests: 1,
-      };
-    }
-    let data: { web?: { results?: BraveResult[] } };
-    try {
-      data = (await res.json()) as typeof data;
-    } catch {
-      return { ok: false, brief: '', sources: [], error: 'upstream_error', ms: Date.now() - t0, requests: 1 };
-    }
-    const seen = new Set<string>();
-    const results = (data.web?.results ?? [])
-      .filter((r) => r?.url && isHttpUrl(String(r.url)))
-      .filter((r) => {
-        const u = String(r.url);
-        if (seen.has(u)) return false;
-        seen.add(u);
-        return true;
-      })
-      .slice(0, MAX_RESULT_PAGES);
-    if (!results.length) {
+    if (!first.results.length) {
       return { ok: false, brief: '', sources: [], error: 'empty_response', ms: Date.now() - t0, requests: 1 };
     }
-    const pages = await Promise.all(results.map((r) => fetchPageText(r)));
+    let pages = await Promise.all(first.results.map((r) => fetchPageText(r)));
+    let requests = 1;
+    // One bounded follow-up (see firecrawl.ts): only when no made-in yet.
+    if (needsMadeInFollowup(entity, ocrText, pages)) {
+      requests += 1;
+      const extra = await braveResults(
+        key,
+        buildMadeInQuery(entity),
+        new Set(first.results.map((r) => String(r.url)))
+      );
+      if (!('error' in extra) && extra.results.length) {
+        const more = await Promise.all(extra.results.map((r) => fetchPageText(r)));
+        pages = mergePages(pages, more);
+      }
+    }
     return extractBriefFromPages({
       providerId: 'brave',
       entity,
       ocrText,
       pages,
       env,
-      requests: 1,
+      requests,
       t0,
     });
   },

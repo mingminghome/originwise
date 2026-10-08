@@ -1,0 +1,460 @@
+{
+ "_note": "EXAMPLE data for the 製造地 rule cases (made-up pages and URLs), run through the real gate and synthesize.",
+ "rule1": {
+  "example": true,
+  "result": {
+   "schemaVersion": 1,
+   "relationTier": "direct",
+   "title": "Cybex Melio",
+   "summary": "Made in: China",
+   "confidence": 0.85,
+   "tierReasons": [
+    "made_in_cn"
+   ],
+   "caveats": [],
+   "regions": [
+    "CN"
+   ],
+   "geoScope": "prc",
+   "disclaimerKey": "check.disclaimer",
+   "knowledgeBasis": "web_enriched",
+   "knowledgeCutoffNote": "Includes a live web research pass (Google Search via Gemini grounding) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.",
+   "sources": [
+    "Cybex Melio 輕量嬰兒推車 — https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=1001"
+   ],
+   "product": {
+    "name": "Cybex Melio",
+    "brand": "Cybex",
+    "madeIn": "China",
+    "originCandidates": [
+     {
+      "label": "China",
+      "confidence": 0.75,
+      "source": "confirmed_coo",
+      "rating": "confirmed"
+     }
+    ],
+    "madeInBasis": "model",
+    "madeInSupport": "ai_web"
+   },
+   "graph": {
+    "nodes": [
+     {
+      "id": "product",
+      "label": "Cybex Melio",
+      "kind": "product",
+      "region": "CN",
+      "chinaRelated": true
+     },
+     {
+      "id": "place:made:CN",
+      "label": "China",
+      "kind": "place",
+      "region": "CN",
+      "chinaRelated": true
+     }
+    ],
+    "edges": [
+     {
+      "from": "product",
+      "to": "place:made:CN",
+      "label": "made in",
+      "type": "manufacturing",
+      "strength": "strong",
+      "chinaRelated": true
+     }
+    ]
+   },
+   "meta": {
+    "jobId": "example",
+    "degraded": true,
+    "searchProvider": "firecrawl",
+    "searchCoo": [
+     {
+      "country": "中國",
+      "basis": "name",
+      "status": "likely",
+      "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=1001",
+      "exactModel": true
+     }
+    ],
+    "searchMatch": "model"
+   }
+  },
+  "provider": "firecrawl"
+ },
+ "rule2": {
+  "example": true,
+  "result": {
+   "schemaVersion": 1,
+   "relationTier": "direct",
+   "title": "Cybex Melio",
+   "summary": "Made in: 中國",
+   "confidence": 0.85,
+   "tierReasons": [
+    "made_in_cn"
+   ],
+   "caveats": [],
+   "regions": [
+    "CN"
+   ],
+   "geoScope": "prc",
+   "disclaimerKey": "check.disclaimer",
+   "knowledgeBasis": "web_enriched",
+   "knowledgeCutoffNote": "Includes a live web research pass (Google Search via Gemini grounding) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.",
+   "sources": [
+    "Cybex Melio 輕量嬰兒推車 — https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=1001",
+    "CYBEX MELIO 推車 規格 — https://mamilove.com.tw/product/2002"
+   ],
+   "product": {
+    "name": "Cybex Melio",
+    "brand": "Cybex",
+    "madeIn": "中國",
+    "notes": [],
+    "originCandidates": [
+     {
+      "label": "China",
+      "confidence": 0.8,
+      "source": "confirmed_coo",
+      "rating": "confirmed"
+     }
+    ],
+    "madeInBasis": "model",
+    "madeInSupport": "web"
+   },
+   "graph": {
+    "nodes": [
+     {
+      "id": "product",
+      "label": "Cybex Melio",
+      "kind": "product",
+      "region": "CN",
+      "chinaRelated": true
+     },
+     {
+      "id": "place:made:CN",
+      "label": "中國",
+      "kind": "place",
+      "region": "CN",
+      "chinaRelated": true
+     }
+    ],
+    "edges": [
+     {
+      "from": "product",
+      "to": "place:made:CN",
+      "label": "made in",
+      "type": "manufacturing",
+      "strength": "strong",
+      "chinaRelated": true
+     }
+    ]
+   },
+   "meta": {
+    "jobId": "example",
+    "degraded": true,
+    "searchProvider": "firecrawl",
+    "searchCoo": [
+     {
+      "country": "中國",
+      "basis": "model",
+      "status": "confirmed",
+      "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=1001",
+      "exactModel": true
+     },
+     {
+      "country": "China",
+      "basis": "model",
+      "status": "confirmed",
+      "url": "https://mamilove.com.tw/product/2002",
+      "exactModel": true
+     }
+    ],
+    "searchMatch": "model"
+   }
+  },
+  "provider": "firecrawl"
+ },
+ "rule3": {
+  "example": true,
+  "result": {
+   "schemaVersion": 1,
+   "relationTier": "unknown",
+   "title": "Cybex Melio",
+   "summary": "Final COO unconfirmed",
+   "confidence": 0.85,
+   "tierReasons": [
+    "insufficient"
+   ],
+   "caveats": [
+    "Final made-in unconfirmed — no barcode page, package label or exact-model match backs this made-in; other countries are candidates only.",
+    "Final COO unconfirmed — candidates below are queried signals, not a stamped made-in label."
+   ],
+   "regions": [],
+   "geoScope": "prc",
+   "disclaimerKey": "check.disclaimer",
+   "knowledgeBasis": "web_enriched",
+   "knowledgeCutoffNote": "Includes a live web research pass (Google Search via Gemini grounding) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.",
+   "sources": [
+    "Cybex Melio review — https://www.parenting.example.com/stroller-review"
+   ],
+   "product": {
+    "name": "Cybex Melio",
+    "brand": "Cybex",
+    "notes": [
+     "Final made-in unconfirmed — no barcode page, package label or exact-model match backs this made-in; other countries are candidates only."
+    ],
+    "originCandidates": [
+     {
+      "label": "China",
+      "confidence": 0.5,
+      "source": "model_memory",
+      "rating": "possible"
+     }
+    ]
+   },
+   "graph": {
+    "nodes": [
+     {
+      "id": "product",
+      "label": "Cybex Melio",
+      "kind": "product",
+      "region": "UNKNOWN",
+      "chinaRelated": false
+     }
+    ],
+    "edges": []
+   },
+   "meta": {
+    "jobId": "example",
+    "degraded": true,
+    "searchProvider": "firecrawl",
+    "searchCoo": [],
+    "searchMatch": "name"
+   }
+  },
+  "provider": "firecrawl"
+ },
+ "rule4": {
+  "example": true,
+  "result": {
+   "schemaVersion": 1,
+   "relationTier": "unknown",
+   "title": "Cybex Melio",
+   "summary": "Final COO unconfirmed · Candidates: China (likely 60% · web_name); Germany (likely 60% · web_name)",
+   "confidence": 0.85,
+   "tierReasons": [
+    "insufficient"
+   ],
+   "caveats": [
+    "Final made-in unconfirmed — no barcode page, package label or exact-model match backs this made-in; other countries are candidates only.",
+    "Final COO unconfirmed — candidates below are queried signals, not a stamped made-in label."
+   ],
+   "regions": [],
+   "geoScope": "prc",
+   "disclaimerKey": "check.disclaimer",
+   "knowledgeBasis": "web_enriched",
+   "knowledgeCutoffNote": "Includes a live web research pass (Google Search via Gemini grounding) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.",
+   "sources": [
+    "Cybex Melio 輕量嬰兒推車 — https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=1001",
+    "Cybex Melio Kinderwagen — https://www.babyhaus.example.de/cybex-melio"
+   ],
+   "product": {
+    "name": "Cybex Melio",
+    "brand": "Cybex",
+    "notes": [
+     "Final made-in unconfirmed — no barcode page, package label or exact-model match backs this made-in; other countries are candidates only."
+    ],
+    "originCandidates": [
+     {
+      "label": "China",
+      "confidence": 0.6,
+      "source": "web_name",
+      "rating": "likely"
+     },
+     {
+      "label": "Germany",
+      "confidence": 0.6,
+      "source": "web_name",
+      "rating": "likely"
+     }
+    ]
+   },
+   "graph": {
+    "nodes": [
+     {
+      "id": "product",
+      "label": "Cybex Melio",
+      "kind": "product",
+      "region": "UNKNOWN",
+      "chinaRelated": false
+     }
+    ],
+    "edges": []
+   },
+   "meta": {
+    "jobId": "example",
+    "degraded": true,
+    "searchProvider": "firecrawl",
+    "searchCoo": [
+     {
+      "country": "中國",
+      "basis": "name",
+      "status": "likely",
+      "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=1001",
+      "exactModel": true
+     },
+     {
+      "country": "Germany",
+      "basis": "name",
+      "status": "likely",
+      "url": "https://www.babyhaus.example.de/cybex-melio",
+      "exactModel": true
+     }
+    ],
+    "searchMatch": "name"
+   }
+  },
+  "provider": "firecrawl"
+ },
+ "rule5": {
+  "example": true,
+  "result": {
+   "schemaVersion": 1,
+   "relationTier": "unknown",
+   "title": "Cybex Melio",
+   "summary": "Final COO unconfirmed",
+   "confidence": 0.85,
+   "tierReasons": [
+    "insufficient"
+   ],
+   "caveats": [
+    "Final made-in unconfirmed — no barcode page, package label or exact-model match backs this made-in; other countries are candidates only.",
+    "Final COO unconfirmed — candidates below are queried signals, not a stamped made-in label."
+   ],
+   "regions": [],
+   "geoScope": "prc",
+   "disclaimerKey": "check.disclaimer",
+   "knowledgeBasis": "web_enriched",
+   "knowledgeCutoffNote": "Includes a live web research pass (Google Search via Gemini grounding) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.",
+   "sources": [
+    "Cybex Melio review — https://www.parenting.example.com/stroller-review"
+   ],
+   "product": {
+    "name": "Cybex Melio",
+    "brand": "Cybex",
+    "notes": [
+     "Final made-in unconfirmed — no barcode page, package label or exact-model match backs this made-in; other countries are candidates only."
+    ],
+    "originCandidates": [
+     {
+      "label": "China",
+      "confidence": 0.5,
+      "source": "model_memory",
+      "rating": "possible"
+     }
+    ]
+   },
+   "graph": {
+    "nodes": [
+     {
+      "id": "product",
+      "label": "Cybex Melio",
+      "kind": "product",
+      "region": "UNKNOWN",
+      "chinaRelated": false
+     }
+    ],
+    "edges": []
+   },
+   "meta": {
+    "jobId": "example",
+    "degraded": true,
+    "searchProvider": "firecrawl",
+    "searchCoo": [],
+    "searchMatch": "name",
+    "citedUnverified": [
+     {
+      "url": "https://www.cybex-melio-factory.example/made-in-china",
+      "title": "Cybex Melio factory",
+      "quote": "Made in China"
+     }
+    ]
+   }
+  },
+  "provider": "firecrawl"
+ },
+ "rule6": {
+  "example": true,
+  "result": {
+   "schemaVersion": 1,
+   "relationTier": "unknown",
+   "title": "Cybex Melio",
+   "summary": "Final COO unconfirmed · Candidates: China (likely 60% · web_name)",
+   "confidence": 0.85,
+   "tierReasons": [
+    "insufficient"
+   ],
+   "caveats": [
+    "Final COO unconfirmed — candidates below are queried signals, not a stamped made-in label."
+   ],
+   "regions": [],
+   "geoScope": "prc",
+   "disclaimerKey": "check.disclaimer",
+   "knowledgeBasis": "web_enriched",
+   "knowledgeCutoffNote": "Includes a live web research pass (Google Search via Gemini grounding) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.",
+   "sources": [
+    "Cybex Melio 輕量嬰兒推車 — https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=1001",
+    "Cybex Melio Carbon ベビーカー — https://shop.example.jp/cybex-melio-carbon"
+   ],
+   "product": {
+    "name": "Cybex Melio",
+    "brand": "Cybex",
+    "originCandidates": [
+     {
+      "label": "China",
+      "confidence": 0.6,
+      "source": "web_name",
+      "rating": "likely"
+     }
+    ]
+   },
+   "graph": {
+    "nodes": [
+     {
+      "id": "product",
+      "label": "Cybex Melio",
+      "kind": "product",
+      "region": "UNKNOWN",
+      "chinaRelated": false
+     }
+    ],
+    "edges": []
+   },
+   "meta": {
+    "jobId": "example",
+    "degraded": true,
+    "searchProvider": "firecrawl",
+    "searchCoo": [
+     {
+      "country": "中國",
+      "basis": "name",
+      "status": "likely",
+      "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=1001",
+      "exactModel": true
+     }
+    ],
+    "searchMatch": "name",
+    "searchExcluded": [
+     {
+      "url": "https://shop.example.jp/cybex-melio-carbon",
+      "model": "Melio Carbon",
+      "title": "Cybex Melio Carbon ベビーカー",
+      "country": "中国"
+     }
+    ]
+   }
+  },
+  "provider": "firecrawl"
+ }
+}

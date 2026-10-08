@@ -128,7 +128,9 @@ export type CheckResult = {
      * How the made-in was confirmed: a web page showing the barcode/JAN with a
      * made-in ('barcode'), or the package label photo ('label').
      */
-    madeInBasis?: 'barcode' | 'label';
+    madeInBasis?: 'barcode' | 'label' | 'model';
+    /** 依型號比對: 'web' = 2+ exact-model domains; 'ai_web' = AI answer + 1+ page. */
+    madeInSupport?: 'web' | 'ai_web';
   };
   company?: {
     name?: string;
@@ -206,14 +208,23 @@ export type CheckResult = {
     /** Search API requests made for this check (all providers tried). */
     searchRequests?: number;
     /** Strongest match basis among kept Brave/Firecrawl made-in claims. */
-    searchMatch?: 'barcode' | 'name';
+    searchMatch?: 'barcode' | 'model' | 'name';
     /** Gated Brave/Firecrawl made-in claims with their match basis. */
     searchCoo?: Array<{
       country: string;
-      basis: 'barcode' | 'name';
+      basis: 'barcode' | 'name' | 'model';
       status: 'confirmed' | 'likely';
+      /** On an exact-model page; no exact-model page disagrees. */
+      exactModel?: boolean;
+      /** An AI-cited page that passed the check ('search' match or 'fetched'). */
+      cited?: 'search' | 'fetched';
       url?: string;
     }>;
+    /** Pages about another model of that name: shown as 「型號不符（…），未計算」. */
+    searchExcluded?: Array<{ url: string; model: string; title?: string; country?: string }>;
+    /** AI-cited made-in pages that failed the check: shown as 「AI 引用，未能驗證」, never counted. */
+    citedUnverified?: Array<{ url: string; title?: string; quote?: string }>;
+    citedFetches?: number;
   };
 };
 

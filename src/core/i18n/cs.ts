@@ -64,19 +64,26 @@ export const cs = {
       reasonBrandOrigin: 'Původ značky: {place}.',
       madeInLineBarcode: 'Vyrobeno v: {place} (shoda čárového kódu, viz kartu „Vyrobeno v“ níže)',
       madeInLineLabel: 'Vyrobeno v: {place} (štítek obalu, viz kartu „Vyrobeno v“ níže)',
+      madeInLineModel: 'Vyrobeno v: {place} (shoda přesného modelu, viz kartu „Vyrobeno v“ níže)',
     },
     rc: {
       modelRef: 'Údaj modelu (nepotvrzeno)',
       modelRefHelp: 'Nepotvrdila to žádná webová stránka ani štítek na obalu; jde jen o odhad modelu. Řiďte se údajem na obalu.',
       moreInfo: 'Více informací',
-      notConfirmed: ' (nepotvrzeno)',
-      likelyNote: 'Shoda pouze podle názvu produktu – země výroby nepotvrzena. Nepovažujte ji za potvrzenou.',
       candidatesTitle: 'Nalezené kandidátské země výroby (nepotvrzeno)',
       noCandidates: 'Nebyli nalezeni žádní spolehliví kandidáti.',
-      noBarcodePage: 'Žádná stránka neukázala čárový kód se zemí výroby',
       sourceCount: 'Zdroje: {n}',
       sourceFirst: 'Zdroj 1: {label}',
       sourceNth: 'Zdroj {n}: {label}',
+      sourceAiAnswer: 'Odpověď AI',
+      citedUnverified: 'Citováno AI, nelze ověřit',
+      excludedOtherModel: 'Jiný model ({model}), nezapočteno',
+      reason: {
+        aiOnly: 'Jen odpověď AI, žádná stránka ji nepotvrzuje',
+        pagesDisagree: 'Webové stránky se neshodují',
+        aiCitedUnverified: 'Odkaz citovaný AI nelze ověřit',
+        onePageOnly: 'Zmiňuje to jen jedna stránka',
+      },
       sourceCountry: 'vyrobeno v: {country}',
       labelSource: 'Zdroj: fotografie štítku obalu',
       parent: 'Mateřská společnost',
@@ -94,6 +101,7 @@ export const cs = {
       barcode: 'Shoda podle čárového kódu',
       name: 'Shoda podle názvu produktu',
       label: 'Podle údaje na obalu',
+      model: 'Podle přesného modelu',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',
@@ -305,7 +313,7 @@ export const cs = {
       cooUnconfirmedNoLabel:
         'Konečná země původu nepotvrzena – na výrobku/štítku není země původu; žádná se nevymýšlí.',
       cooUnconfirmedNoBarcode:
-        'Konečná země původu nepotvrzena – žádná stránka neukázala čárový kód/JAN se zemí výroby; shody podle názvu jsou jen pravděpodobní kandidáti.',
+        'Konečná země výroby nepotvrzena – nepodporuje ji stránka s čárovým kódem, etiketa obalu ani shoda přesného modelu; ostatní země jsou jen kandidáti.',
       cooUnconfirmedCandidates:
         'Konečná země původu nepotvrzena – kandidáti níže jsou signály z vyhledávání, ne vytištěné „Made in“.',
       distributorOmitted:
@@ -616,7 +624,7 @@ export const cs = {
     evidenceTitle:
       'Kdy se země výroby počítá jako potvrzená',
     evidenceBody:
-      'Země výroby se zobrazí jako potvrzená (shoda čárového kódu) jen tehdy, když pochází z fotky etikety obalu, nebo když webová stránka ukazuje stejný čárový kód (JAN/EAN) vedle údaje o původu. Shoda jen podle názvu produktu je nanejvýš „pravděpodobná“ (shoda názvu) a stránka s více velikostmi nebo variantami zůstává nepotvrzená. Když živé vyhledávání na webu není k dispozici, výsledek vychází jen ze znalostí modelu a uvádí to.',
+      'Země výroby se zobrazí jako potvrzená třemi způsoby. Nejsilnější je fotka etikety obalu nebo webová stránka se stejným čárovým kódem (JAN/EAN) vedle údaje o původu (shoda čárového kódu). Dále shoda přesného modelu: odpověď AI a alespoň jedna stránka s přesnou značkou a modelem uvádějí stejnou zemi, nebo se shodnou dvě či více takových stránek z různých webů; odpověď AI je pak uvedena jako jeden ze zdrojů. V obou případech nesmí žádná stránka s přesným modelem uvádět jinou zemi. Samotná odpověď AI nikdy není potvrzením a zůstává odkazem modelu; když si stránky s přesným modelem odporují, země výroby zůstává nepotvrzená a kandidáti jsou uvedeni. Odkaz citovaný AI se počítá až po kontrole: jde o stránku, kterou vrátilo i webové vyhledávání, nebo se načte a uvádí přesný model a zemi; jinak je uveden jako „Citováno AI, nelze ověřit“ a nepočítá se. Volná shoda podle názvu produktu se uvádí jen jako kandidát pod nadpisem „Nepotvrzeno“ a stránka s více velikostmi nebo variantami zůstává nepotvrzená. Když živé vyhledávání na webu není k dispozici, výsledek vychází jen ze znalostí modelu a uvádí to.',
     flowWeb:
       'Vyhledávání na webu',
     flowWebDetail:

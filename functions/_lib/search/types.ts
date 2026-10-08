@@ -6,7 +6,7 @@
  * key are skipped. Nothing here records or logs the query text.
  */
 
-import type { WebCooClaim } from '../schema';
+import type { WebCooClaim, WebExcludedPage } from '../schema';
 import type { WebResearchEnv } from '../webResearch';
 
 export type SearchProviderId = 'gemini' | 'brave' | 'firecrawl';
@@ -50,6 +50,8 @@ export type SearchOutput = {
    * grounding Sources): basis 'barcode' → confirmed, 'name' → likely.
    */
   coo?: WebCooClaim[];
+  /** Pages about another model of that name (not counted, listed on the card). */
+  excluded?: WebExcludedPage[];
 };
 
 export interface SearchProvider {
@@ -61,6 +63,8 @@ export interface SearchProvider {
 /** One fetched page handed to the extractor. */
 export type FetchedPage = {
   url: string;
+  /** Landing URL after redirects (Gemini Sources are redirect links). */
+  finalUrl?: string;
   title: string;
   text: string;
   /**

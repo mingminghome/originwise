@@ -40,6 +40,7 @@ import { tierFromCodes } from './tierRules';
 import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS } from './countryLabel';
 import { SERVER_TEXT, webFailText } from './serverText';
 import { notesNameMadeIn, omittedPartNote } from './noteText';
+import { siteOf } from './search/extract';
 
 export type SynthesizeInput = {
   jobId: string;
@@ -351,6 +352,9 @@ function collectOriginCandidates(
     /** Model-only made-in (not confirmed by barcode page or label). */
     modelMadeIn?: string;
     hqCountry?: string;
+    /** How the made-in was confirmed; 'model' caps its confidence. */
+    madeInBasis?: MadeInBasis;
+    madeInSupport?: 'web' | 'ai_web';
   }
 ): OriginCandidate[] {
   if (!p && !opts.webLikely?.length) return [];
@@ -369,7 +373,13 @@ function collectOriginCandidates(
   const confirmed = confirmedOriginLabel(p.madeIn) || confirmedOriginLabel(p.manufacturedIn);
   if (confirmed) {
     const label = matchCountryLabel(confirmed) || confirmed;
-    pushCandidate(out, label, Math.min(0.95, base + 0.25 + webBoost), 'confirmed_coo', 'confirmed');
+    const cap =
+      opts.madeInBasis === 'model'
+        ? opts.madeInSupport === 'ai_web'
+          ? MODEL_AI_WEB_CONFIDENCE
+          : MODEL_MATCH_CONFIDENCE
+        : 0.95;
+    pushCandidate(out, label, Math.min(cap, base + 0.25 + webBoost), 'confirmed_coo', 'confirmed');
   }
 
   for (const part of p.parts ?? []) {
@@ -1300,7 +1310,17 @@ function sameCountry(a?: string, b?: string): boolean {
   return Boolean(la && lb && labelsMatch(la, lb));
 }
 
-export type MadeInBasis = 'barcode' | 'label';
+export type MadeInBasis = 'barcode' | 'label' | 'model';
+
+/**
+ * Made-in confidence cap for 依型號比對 (exact model on 2+ domains). Below a
+ * barcode page or the package label (up to 0.95): retailer pages often copy
+ * one spec sheet, and a model can be built in more than one country over its
+ * life, so two agreeing pages are strong but not proof for the unit in hand.
+ */
+export const MODEL_MATCH_CONFIDENCE = 0.8;
+/** AI answer + 1 exact-model page: one independent page fewer than 2 domains. */
+export const MODEL_AI_WEB_CONFIDENCE = 0.75;
 
 /** Confidence floor for a direct tier from China HQ / China-controlling parent. */
 export const COMPANY_DIRECT_MIN_CONFIDENCE = 0.75;
@@ -1312,33 +1332,75 @@ export function labelConfirmsMadeIn(madeIn: string | undefined, ocrText?: string
 }
 
 /**
- * Brave/Firecrawl made-in gate (code-enforced; exported for tests).
- * Keeps product madeIn / manufacturedIn only when a barcode-confirmed web claim
- * (or the package-label OCR) names the same country. Everything else is
- * stripped; name-only claims come back as 'likely' candidate labels.
+ * Web made-in gate (code-enforced; exported for tests). Order of strength:
+ *   1. barcode page (same JAN + made-in) or the package-label OCR,
+ *   2. 依型號比對 'web': 2+ exact-model pages on different domains agree
+ *      (claims arrive as basis 'model' / confirmed),
+ *   3. 依型號比對 'ai_web': the AI answer names X and 1+ exact-model page names
+ *      X, no exact-model page names another country (exactModel flags are
+ *      only set when they all agree).
+ * Anything else is stripped: an AI answer alone stays a model reference
+ * (#32), name-only pages come back as 'likely' candidate labels.
  */
 export function applyWebCooGate(
   p: ProductPartial | null | undefined,
   webCoo: WebCooClaim[],
   ocrText?: string
-): { product: ProductPartial | null | undefined; likely: string[]; madeInBasis?: MadeInBasis } {
+): {
+  product: ProductPartial | null | undefined;
+  likely: string[];
+  madeInBasis?: MadeInBasis;
+  madeInSupport?: 'web' | 'ai_web';
+} {
   const confirmed = webCoo.filter((c) => c.status === 'confirmed' && c.basis === 'barcode');
-  const likely = webCoo
-    .filter((c) => c.status === 'likely')
-    .map((c) => c.country)
-    .filter((c) => !confirmed.some((k) => sameCountry(k.country, c)));
-  if (!p) return { product: p, likely };
+  // 依型號比對 counts only when no barcode page confirmed anything (barcode outranks it).
+  let byModelClaims = confirmed.length
+    ? []
+    : webCoo.filter((c) => c.status === 'confirmed' && c.basis === 'model');
+  let exactPages = confirmed.length || byModelClaims.length
+    ? []
+    : webCoo.filter((c) => c.status === 'likely' && c.exactModel);
+  // Exact-model pages added after the page gate (AI-cited pages that passed
+  // the check) on 2+ domains, all agreeing: the same as 2 search pages.
+  if (
+    exactPages.length &&
+    exactPages.every((c) => sameCountry(c.country, exactPages[0]!.country)) &&
+    new Set(exactPages.map((c) => siteOf(c.url ?? '')).filter(Boolean)).size >= 2
+  ) {
+    byModelClaims = exactPages;
+    exactPages = [];
+  }
   const ocrClaims = extractCooClaimsFromText(ocrText || '');
   const byBarcode = (v: string) => confirmed.some((c) => sameCountry(c.country, v));
+  const byModel = (v: string) => byModelClaims.some((c) => sameCountry(c.country, v));
+  const byAiWeb = (v: string) =>
+    exactPages.length > 0 && exactPages.every((c) => sameCountry(c.country, v));
   const byOcr = (v: string) => ocrClaims.some((c) => sameCountry(c.label, v));
+  const likelyOf = (backed: string | undefined) =>
+    webCoo
+      .filter((c) => c.status === 'likely')
+      .map((c) => c.country)
+      .filter(
+        (c) =>
+          ![...confirmed, ...byModelClaims].some((k) => sameCountry(k.country, c)) &&
+          !(backed && sameCountry(backed, c))
+      );
+  if (!p) return { product: p, likely: likelyOf(undefined) };
   let madeIn = p.madeIn;
   let manufacturedIn = p.manufacturedIn;
   let madeInBasis: MadeInBasis | undefined;
+  let madeInSupport: 'web' | 'ai_web' | undefined;
   let stripped = false;
   if (madeIn && confirmedOriginLabel(madeIn)) {
     if (byBarcode(madeIn)) madeInBasis = 'barcode';
     else if (byOcr(madeIn)) madeInBasis = 'label';
-    else {
+    else if (byModel(madeIn)) {
+      madeInBasis = 'model';
+      madeInSupport = 'web';
+    } else if (byAiWeb(madeIn)) {
+      madeInBasis = 'model';
+      madeInSupport = 'ai_web';
+    } else {
       madeIn = undefined;
       stripped = true;
     }
@@ -1348,14 +1410,29 @@ export function applyWebCooGate(
     madeIn = confirmed[0]!.country;
     madeInBasis = 'barcode';
   }
+  // Two domains agreeing on the exact model fill an empty made-in, or replace
+  // an AI answer they contradict (that answer is kept as a candidate row).
+  if (!madeIn && byModelClaims.length) {
+    madeIn = byModelClaims[0]!.country;
+    madeInBasis = 'model';
+    madeInSupport = 'web';
+    stripped = false;
+  }
   if (manufacturedIn && confirmedOriginLabel(manufacturedIn)) {
-    if (!byBarcode(manufacturedIn) && !byOcr(manufacturedIn)) {
+    const ok =
+      byBarcode(manufacturedIn) ||
+      byOcr(manufacturedIn) ||
+      byModel(manufacturedIn) ||
+      (madeInSupport === 'ai_web' && byAiWeb(manufacturedIn));
+    if (!ok) {
       manufacturedIn = undefined;
       stripped = true;
     }
   }
+  // The AI-answer pages back the made-in now; they are sources, not candidates.
+  const likely = likelyOf(madeInSupport === 'ai_web' ? madeIn : undefined);
   if (!stripped && madeIn === p.madeIn && manufacturedIn === p.manufacturedIn) {
-    return { product: p, likely, madeInBasis };
+    return { product: p, likely, madeInBasis, madeInSupport };
   }
   const notes = [...(p.notes ?? [])];
   if (stripped) {
@@ -1367,6 +1444,7 @@ export function applyWebCooGate(
     product: { ...p, madeIn, manufacturedIn, notes: notes.slice(0, 8) },
     likely,
     madeInBasis,
+    madeInSupport,
   };
 }
 
@@ -1384,6 +1462,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     }) ?? input.partials.product;
   let webLikely: string[] = [];
   let madeInBasis: MadeInBasis | undefined;
+  let madeInSupport: 'web' | 'ai_web' | undefined;
   // What the model said before the web gate (the gate strips it silently).
   const modelSaid =
     confirmedOriginLabel(productSan?.madeIn) || confirmedOriginLabel(productSan?.manufacturedIn);
@@ -1392,6 +1471,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     productSan = gated.product;
     webLikely = gated.likely;
     madeInBasis = gated.madeInBasis;
+    madeInSupport = gated.madeInSupport;
   }
   // Package label photo names the same country → label-confirmed made-in
   // (also when web research was off for this check).
@@ -1405,6 +1485,9 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   if (productSan && !madeInBasis && modelSaid) {
     modelMadeIn = modelSaid;
     productSan = { ...productSan, madeIn: undefined, manufacturedIn: undefined };
+  } else if (madeInBasis === 'model' && modelSaid && !sameCountry(modelSaid, productSan?.madeIn)) {
+    // 2+ exact-model domains outvoted the AI answer: keep it as a candidate row.
+    modelMadeIn = modelSaid;
   }
   if (productSan?.parts?.length) {
     const partsCtx: PartsSanitizeCtx = {
@@ -1549,6 +1632,8 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     webLikely,
     modelMadeIn,
     hqCountry: c?.hqCountry,
+    madeInBasis,
+    madeInSupport,
   });
 
   if (p && !p.madeIn) {
@@ -1720,6 +1805,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
               }))
             : undefined,
           madeInBasis: madeInBasis && p.madeIn ? madeInBasis : undefined,
+          madeInSupport: madeInBasis === 'model' && p.madeIn ? madeInSupport : undefined,
         }
       : id
         ? { name: id.name, brand: id.brand, category: id.category }

@@ -10,7 +10,6 @@ import * as React from 'react';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { catalogs, createT } from '../core/i18n';
-import { localizeCountry } from '../core/i18n/countries';
 import type { CheckResult } from '../core/types';
 import { ChinaCard, LayersCard, MadeInCard } from './ResultCards';
 import { OriginLayers } from './OriginLayers';
@@ -108,14 +107,18 @@ describe('buildMadeInView', () => {
     const v = buildMadeInView(unconfirmed);
     assert.equal(v.state, 'unconfirmed');
     assert.deepEqual(v.candidates.map((c) => c.label), ['Vietnam']);
-    assert.equal(v.noBarcodePage, true);
+    // The old barcode-only reason chip is gone (Ming / Tester, item g).
+    assert.equal('noBarcodePage' in v, false);
   });
 
-  it('C: name-only match is "likely", never confirmed', () => {
+  it('C: name-only match is never confirmed and never the headline: 未確認 + Thailand as a candidate', () => {
     const v = buildMadeInView(likely);
-    assert.equal(v.state, 'likely');
-    assert.equal(v.country, 'Thailand');
-    assert.equal(v.basis, 'name');
+    assert.equal(v.state, 'unconfirmed');
+    assert.equal(v.country, undefined);
+    assert.equal(v.basis, undefined);
+    const th = v.candidates.find((c) => c.label === 'Thailand');
+    assert.equal(th?.rating, 'likely');
+    assert.equal(th?.sources?.length, 1);
   });
 });
 
@@ -159,10 +162,12 @@ describe('buildLayerRows', () => {
 const html = (el: ReturnType<typeof createElement>) => renderToStaticMarkup(el);
 
 describe('made-in card markup', () => {
-  it('C: 較可能 sits right next to 泰國（非確認） plus the do-not-treat-as-confirmed note', () => {
+  it('C: headline 未確認; 泰國 sits below as a candidate with its page; no 「非確認」', () => {
     const out = html(createElement(MadeInCard, { result: likely, t: zh }));
-    assert.match(out, /較可能<\/span> <span class="rc-headline-country">泰國（非確認）<\/span>/);
-    assert.ok(out.includes('僅依品名比對，尚未確認製造地，請勿當作已確認。'));
+    assert.match(out, /<p class="rc-headline is-unconfirmed">未確認<\/p>/);
+    assert.match(out, /<span class="rc-cand-name">泰國<\/span>.*<span class="rc-cand-meta">較可能 · 依品名比對的網頁<\/span>/);
+    assert.match(out, /<span class="rc-source-prefix">來源 1：<\/span><a [^>]*>Example page<\/a>/);
+    assert.ok(!out.includes('非確認'));
   });
 
   it('never carries a China verdict (no tier badge, chip or China-relation wording)', () => {
@@ -368,10 +373,10 @@ describe('China card fairness (real payloads)', () => {
     assert.ok(label.includes('製造地：中國（依包裝標示，見下方製造地卡）'));
   });
 
-  it('Cybex 製造地 candidates: 較可能（非確認） sits next to the rating word', () => {
+  it('Cybex 製造地 candidates: the rating word, no 「非確認」 suffix', () => {
     const out = html(createElement(MadeInCard, { result: cybex, t: zh }));
-    assert.ok(out.includes('較可能（非確認） · 零件／物料'), out);
-    assert.doesNotMatch(out, /(?:較可能|可能) · /);
+    assert.ok(out.includes('<span class="rc-cand-meta">較可能 · 零件／物料</span>'), out);
+    assert.ok(!out.includes('非確認'));
   });
 });
 
@@ -440,13 +445,13 @@ describe('model-only made-in (item 9)', () => {
     const [row] = liOf(out, true);
     assert.ok(row, out);
     assert.ok(!row.includes('rc-cand-meta'), row);
-    assert.doesNotMatch(row, /可能|（非確認）/);
+    assert.doesNotMatch(row, /可能|非確認/);
   });
 
   it('web row next to a model-only row keeps its grade', () => {
     const out = html(createElement(MadeInCard, { result: mixed, t: zh }));
     const [web] = liOf(out, false);
-    assert.ok(web?.includes('<span class="rc-cand-meta">較可能（非確認） · 零件／物料</span>'), out);
+    assert.ok(web?.includes('<span class="rc-cand-meta">較可能 · 零件／物料</span>'), out);
     const [model] = liOf(out, true);
     assert.ok(model && !model.includes('rc-cand-meta'), out);
   });
@@ -469,10 +474,9 @@ describe('model-only made-in (item 9)', () => {
       for (const k of ['possible', 'likely'] as const) {
         assert.ok(!rest.includes(`>${t(`check.candidateRating.${k}`)}`), `${lng} ${k}: ${row}`);
       }
-      assert.ok(!rest.includes(t('check.rc.notConfirmed')), `${lng}: ${row}`);
       const webs = liOf(out, false);
       assert.equal(webs.length, 1, lng);
-      assert.ok(webs[0]!.includes(`${t('check.candidateRating.likely')}${t('check.rc.notConfirmed')}`), `${lng}: ${webs[0]}`);
+      assert.ok(webs[0]!.includes(`>${t('check.candidateRating.likely')} · `), `${lng}: ${webs[0]}`);
     }
   });
 
@@ -498,7 +502,7 @@ describe('model-only made-in (item 9)', () => {
     assert.equal(rows[0]?.source, 'web_name');
     const out = html(createElement(MadeInCard, { result: merged, t: zh }));
     assert.ok(!out.includes('data-testid="model-ref"'));
-    assert.ok(out.includes('<span class="rc-cand-meta">可能（非確認） · '), out);
+    assert.ok(out.includes('<span class="rc-cand-meta">可能 · '), out);
   });
 });
 
@@ -680,7 +684,7 @@ describe('零件 rows: own grade + % OR 模型參考 + ⓘ, never neither, never
       ]
     );
     const row = layersPartsRow(mixed, zh);
-    assert.equal(textOf(row), '零件Bottle body · 日本可能（非確認） · 50%');
+    assert.equal(textOf(row), '零件Bottle body · 日本可能 · 50%');
   });
 
   it('no borrowing: without a 日本 candidate, Bottle body · 日本 is 模型參考 in both places', () => {
@@ -866,7 +870,7 @@ describe('製造地 card: parts candidates only the model named (closes #32 deci
       const [web] = lis(html(createElement(MadeInCard, { result: webParts, t })));
       assert.ok(!web!.startsWith('<li class="is-model"'), lng);
       assert.ok(
-        textOf(web!).includes(`${t('check.candidateRating.likely')}${t('check.rc.notConfirmed')} · ${t('check.candidateSource.parts')}`),
+        textOf(web!).includes(`${t('check.candidateRating.likely')} · ${t('check.candidateSource.parts')}`),
         `${lng}: ${web}`
       );
     }
@@ -877,7 +881,7 @@ describe('製造地 card: parts candidates only the model named (closes #32 deci
     assert.deepEqual(rows, [{ label: 'China', rating: 'possible', source: 'web_name' }]);
     const out = html(createElement(MadeInCard, { result: agree, t: zh }));
     assert.ok(!out.includes('data-testid="model-ref"'), out);
-    assert.ok(out.includes('<span class="rc-cand-meta">可能（非確認） · '), out);
+    assert.ok(out.includes('<span class="rc-cand-meta">可能 · '), out);
   });
 });
 
@@ -1018,11 +1022,12 @@ describe('製造地 sources: the count chip and the rows always match (Tester, #
     assert.equal(v.sourceRows[0]?.host, undefined);
   });
 
-  it('likely (name): rows are the likely hits for the shown country (タイ = Thailand), deduped', () => {
+  it('name-only (was likely): 未確認 headline; Thailand (タイ) is a candidate with its own deduped page rows', () => {
     const v = buildMadeInView(likelyThai);
-    assert.equal(v.state, 'likely');
-    assert.deepEqual(v.sourceRows.map((r) => r.url), ['https://r.example.jp/item/1']);
-    assert.equal(v.sourceCount, 1);
+    assert.equal(v.state, 'unconfirmed');
+    assert.equal(v.sourceCount, 0);
+    const th = v.candidates.find((c) => c.label === 'Thailand' || c.label === 'タイ');
+    assert.deepEqual(th?.sources?.map((r) => r.url), ['https://r.example.jp/item/1']);
   });
 
   it('label basis and unconfirmed: no web-source chip and no source rows', () => {
@@ -1111,7 +1116,7 @@ describe('製造地 sources: the count chip and the rows always match (Tester, #
     }
   });
 
-  it('likely: only pages backing the shown country become rows; chip == rows (some pages do not back it)', () => {
+  it('name-matched pages that disagree: 未確認, each country a neutral candidate with only its own pages', () => {
     const mixedLikely = base({
       sources: [
         'Retailer A タイ製 — https://a.example.jp/item/1',
@@ -1132,18 +1137,23 @@ describe('製造地 sources: the count chip and the rows always match (Tester, #
         ],
       },
     });
+    const v = buildMadeInView(mixedLikely);
+    assert.equal(v.state, 'unconfirmed');
+    assert.equal(v.reason, 'pagesDisagree');
+    const byLabel = (re: RegExp) => v.candidates.find((c) => re.test(c.label));
+    assert.deepEqual(byLabel(/Thailand|タイ|泰國/)?.sources?.map((r) => r.label), ['Retailer A タイ製', 'Retailer B']);
+    assert.deepEqual(byLabel(/Vietnam|ベトナム/)?.sources?.map((r) => r.label), ['Retailer C ベトナム製']);
+    assert.ok(v.candidates.every((c) => c.source !== 'web_name' || c.neutral));
     for (const lng of locales) {
       const t = createT(lng);
       const out = html(createElement(MadeInCard, { result: mixedLikely, t }));
       for (const markup of [out, stripUi(out)]) {
-        const rows = sourceLis(markup).map(textOf);
-        assert.equal(rows.length, 2, `${lng}: ${rows.join(' | ')}`);
-        assert.equal(chipN(markup, t), 2, lng);
-        assert.ok(rows[0]!.includes('Retailer A') && rows[1]!.includes('Retailer B'), rows.join(' | '));
-        // タイ / 泰國 on the pages → the locale's own name for Thailand on both rows.
-        const thai = t('check.rc.sourceCountry', { country: localizeCountry(t, 'Thailand') });
-        assert.ok(rows.every((r) => r.endsWith(thai)), `${lng}: ${rows.join(' | ')}`);
-        assert.ok(!markup.includes('Retailer C') && !markup.includes('d.example.jp'), lng);
+        // No counted-source chip or rows on a 未確認 headline; each candidate lists its own pages.
+        assert.equal(chipN(markup, t), 0, lng);
+        assert.equal(sourceLis(markup).length, 0, lng);
+        assert.ok(markup.includes('Retailer A') && markup.includes('Retailer B') && markup.includes('Retailer C'), lng);
+        assert.ok(!markup.includes('d.example.jp'), lng);
+        assert.ok(markup.includes(t('check.rc.reason.pagesDisagree')), lng);
       }
     }
   });

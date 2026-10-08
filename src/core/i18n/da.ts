@@ -64,19 +64,26 @@ export const da = {
       reasonBrandOrigin: 'Mærkets oprindelse: {place}.',
       madeInLineBarcode: 'Fremstillet i: {place} (stregkodematch, se kortet »Fremstillet i« nedenfor)',
       madeInLineLabel: 'Fremstillet i: {place} (emballageetiket, se kortet »Fremstillet i« nedenfor)',
+      madeInLineModel: 'Fremstillet i: {place} (match på præcis model, se kortet »Fremstillet i« nedenfor)',
     },
     rc: {
       modelRef: 'Modellens angivelse (ubekræftet)',
       modelRefHelp: 'Ikke bekræftet af nogen webside eller emballageetiket; det er kun modellens gæt. Gå efter etiketten på emballagen.',
       moreInfo: 'Mere info',
-      notConfirmed: ' (ikke bekræftet)',
-      likelyNote: 'Kun matchet via produktnavn – fremstillingsland ikke bekræftet. Behandl det ikke som bekræftet.',
       candidatesTitle: 'Fundne kandidater til fremstillingsland (ikke bekræftet)',
       noCandidates: 'Ingen pålidelige kandidater fundet.',
-      noBarcodePage: 'Ingen side viste stregkoden med fremstillingsland',
       sourceCount: 'Kilder: {n}',
       sourceFirst: 'Kilde 1: {label}',
       sourceNth: 'Kilde {n}: {label}',
+      sourceAiAnswer: 'AI-svar',
+      citedUnverified: 'Citeret af AI, kunne ikke bekræftes',
+      excludedOtherModel: 'Anden model ({model}), ikke talt med',
+      reason: {
+        aiOnly: 'Kun AI-svar, ingen webside bakker det op',
+        pagesDisagree: 'Websiderne er uenige',
+        aiCitedUnverified: 'Link citeret af AI kunne ikke bekræftes',
+        onePageOnly: 'Kun én webside nævner det',
+      },
       sourceCountry: 'fremstillet i {country}',
       labelSource: 'Kilde: foto af emballagens etiket',
       parent: 'Moderselskab',
@@ -94,6 +101,7 @@ export const da = {
       barcode: 'Matchet via stregkode',
       name: 'Matchet via produktnavn',
       label: 'Ifølge emballagens mærkning',
+      model: 'Match på præcis model',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',
@@ -305,7 +313,7 @@ export const da = {
       cooUnconfirmedNoLabel:
         'Endeligt oprindelsesland ubekræftet – intet oprindelsesland på produkt/etiket; der opfindes ikke et.',
       cooUnconfirmedNoBarcode:
-        'Endeligt oprindelsesland ubekræftet – ingen webside viste stregkoden/JAN sammen med et produktionsland; match på produktnavn er kun sandsynlige kandidater.',
+        'Endeligt produktionsland ubekræftet – ingen stregkodeside, emballageetiket eller match på præcis model understøtter det; andre lande er kun kandidater.',
       cooUnconfirmedCandidates:
         'Endeligt oprindelsesland ubekræftet – kandidaterne nedenfor er søgesignaler, ikke et trykt „Made in“.',
       distributorOmitted:
@@ -616,7 +624,7 @@ export const da = {
     evidenceTitle:
       'Hvornår et produktionsland tæller som bekræftet',
     evidenceBody:
-      'Et produktionsland vises kun som bekræftet (stregkodematch), hvis det kommer fra et foto af emballagens etiket, eller hvis en webside viser samme stregkode (JAN/EAN) ved siden af oprindelsesangivelsen. Et match kun på produktnavn er højst “sandsynligt” (navnematch), og en side med flere størrelser eller varianter forbliver ubekræftet. Hvis live websøgning ikke er tilgængelig, bygger resultatet kun på modelviden og siger det.',
+      'Et produktionsland vises som bekræftet på tre måder. Stærkest: et foto af emballagens etiket eller en webside, der viser samme stregkode (JAN/EAN) ved siden af oprindelsesangivelsen (stregkodematch). Dernæst match på præcis model: AI-svaret og mindst én webside med præcis mærke og model angiver samme land, eller to eller flere sådanne sider fra forskellige websteder er enige; AI-svaret vises så som en af kilderne. I begge tilfælde må ingen side med præcis model angive et andet land. AI-svaret alene er aldrig en bekræftelse og forbliver en modelreference; er sider med præcis model uenige, forbliver produktionslandet ubekræftet med kandidaterne vist. Et link, som AI’en citerer, tæller først efter et tjek: det er en side, websøgningen også fandt, eller den indlæses og nævner præcis model og land; ellers vises det som “Citeret af AI, kunne ikke bekræftes” og tæller ikke. Et løst match på produktnavn vises kun som kandidat under “Ikke bekræftet”, og en side med flere størrelser eller varianter forbliver ubekræftet. Hvis live websøgning ikke er tilgængelig, bygger resultatet kun på modelviden og siger det.',
     flowWeb:
       'Websøgning',
     flowWebDetail:

@@ -18,9 +18,18 @@ import { localizeCountry } from './i18n/countries';
 /** Summary fields whose value is a country name. */
 const COUNTRY_SUMMARY_KEYS = new Set(['madeIn', 'brandOrigin', 'hq']);
 
-const BY_TEXT = new Map<string, ServerTextKey>(
-  (Object.entries(SERVER_TEXT) as [ServerTextKey, string][]).map(([k, v]) => [v, k])
-);
+/** Older server wording still in cached results → today's key (and wording). */
+const LEGACY_TEXT: Array<[string, ServerTextKey]> = [
+  [
+    'Final COO unconfirmed — no web page showed the barcode/JAN with a made-in; product-name matches are likely candidates only.',
+    'cooUnconfirmedNoBarcode',
+  ],
+];
+
+const BY_TEXT = new Map<string, ServerTextKey>([
+  ...(Object.entries(SERVER_TEXT) as [ServerTextKey, string][]).map(([k, v]) => [v, k] as [string, ServerTextKey]),
+  ...LEGACY_TEXT,
+]);
 /** Longest first so a sentence never matches inside a longer one. */
 const SENTENCES = [...BY_TEXT.keys()].sort((a, b) => b.length - a.length);
 

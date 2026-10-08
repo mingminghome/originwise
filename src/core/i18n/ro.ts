@@ -64,19 +64,26 @@ export const ro = {
       reasonBrandOrigin: 'Originea mărcii: {place}.',
       madeInLineBarcode: 'Fabricat în: {place} (potrivire cod de bare, vezi cardul „Fabricat în” mai jos)',
       madeInLineLabel: 'Fabricat în: {place} (eticheta ambalajului, vezi cardul „Fabricat în” mai jos)',
+      madeInLineModel: 'Fabricat în: {place} (potrivire după modelul exact, vezi cardul „Fabricat în” mai jos)',
     },
     rc: {
       modelRef: 'Referință model (neconfirmată)',
       modelRefHelp: 'Nu este confirmat de nicio pagină web sau de eticheta ambalajului; este doar o presupunere a modelului. Luați în considerare eticheta de pe ambalaj.',
       moreInfo: 'Mai multe informații',
-      notConfirmed: ' (neconfirmat)',
-      likelyNote: 'Potrivire doar după numele produsului – țara de fabricație nu este confirmată. Nu o considerați confirmată.',
       candidatesTitle: 'Țări de fabricație candidate găsite (neconfirmate)',
       noCandidates: 'Nu s-au găsit candidați de încredere.',
-      noBarcodePage: 'Nicio pagină nu a arătat codul de bare cu țara de fabricație',
       sourceCount: 'Surse: {n}',
       sourceFirst: 'Sursa 1: {label}',
       sourceNth: 'Sursa {n}: {label}',
+      sourceAiAnswer: 'Răspunsul AI',
+      citedUnverified: 'Citat de AI, neverificat',
+      excludedOtherModel: 'Alt model ({model}), nu se ia în calcul',
+      reason: {
+        aiOnly: 'Doar răspunsul AI, nicio pagină web nu îl susține',
+        pagesDisagree: 'Paginile web se contrazic',
+        aiCitedUnverified: 'Linkul citat de AI nu a putut fi verificat',
+        onePageOnly: 'O singură pagină web îl menționează',
+      },
       sourceCountry: 'fabricat în {country}',
       labelSource: 'Sursă: fotografia etichetei ambalajului',
       parent: 'Companie-mamă',
@@ -94,6 +101,7 @@ export const ro = {
       barcode: 'Potrivire după codul de bare',
       name: 'Potrivire după numele produsului',
       label: 'Conform etichetei de pe ambalaj',
+      model: 'Potrivire după modelul exact',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',
@@ -305,7 +313,7 @@ export const ro = {
       cooUnconfirmedNoLabel:
         'Originea finală neconfirmată – nicio țară de origine pe produs/etichetă; nu se inventează una.',
       cooUnconfirmedNoBarcode:
-        'Originea finală neconfirmată – nicio pagină web nu arăta codul de bare/JAN împreună cu o țară de fabricație; potrivirile după nume sunt doar candidați probabili.',
+        'Țara de fabricație finală neconfirmată – nu o susține nicio pagină cu cod de bare, etichetă de ambalaj sau potrivire după modelul exact; celelalte țări sunt doar candidați.',
       cooUnconfirmedCandidates:
         'Originea finală neconfirmată – candidații de mai jos sunt semnale de căutare, nu un „Made in” tipărit.',
       distributorOmitted:
@@ -616,7 +624,7 @@ export const ro = {
     evidenceTitle:
       'Când o țară de fabricație contează ca fiind confirmată',
     evidenceBody:
-      'O țară de fabricație apare ca fiind confirmată (potrivire după codul de bare) doar dacă provine dintr-o fotografie a etichetei ambalajului sau dacă o pagină web arată același cod de bare (JAN/EAN) lângă mențiunea de origine. O potrivire doar după numele produsului este cel mult „probabilă” (potrivire după nume), iar o pagină cu mai multe mărimi sau variante rămâne neconfirmată. Dacă căutarea web live nu este disponibilă, rezultatul se bazează doar pe cunoștințele modelului și o spune.',
+      'O țară de fabricație apare ca fiind confirmată în trei moduri. Cel mai puternic: o fotografie a etichetei ambalajului sau o pagină web care arată același cod de bare (JAN/EAN) lângă mențiunea de origine (potrivire după codul de bare). Apoi, potrivirea după modelul exact: răspunsul AI și cel puțin o pagină web cu marca și modelul exacte indică aceeași țară, sau două ori mai multe astfel de pagini de pe site-uri diferite sunt de acord; răspunsul AI apare atunci ca una dintre surse. În ambele cazuri, nicio pagină cu modelul exact nu poate indica altă țară. Răspunsul AI singur nu confirmă niciodată și rămâne o referință a modelului; dacă paginile cu modelul exact se contrazic, țara rămâne neconfirmată, cu candidații enumerați. Un link citat de AI contează doar după o verificare: este o pagină returnată și de căutarea web, sau se încarcă și indică modelul exact și țara; altfel apare ca „Citat de AI, neverificat” și nu contează. O potrivire vagă după numele produsului apare doar ca candidat sub „Neconfirmat”, iar o pagină cu mai multe mărimi sau variante rămâne neconfirmată. Dacă căutarea web live nu este disponibilă, rezultatul se bazează doar pe cunoștințele modelului și o spune.',
     flowWeb:
       'Căutare web',
     flowWebDetail:

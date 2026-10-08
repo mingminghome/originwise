@@ -139,6 +139,7 @@ export async function runSearchChain(
         provider: id,
         model: out.model,
         coo: out.coo,
+        excluded: out.excluded,
         tried,
       };
     }

@@ -518,7 +518,8 @@ export function OriginLayers({
             model.finalCoo
               ? [
                   result.product?.madeInBasis === 'barcode' ||
-                  result.product?.madeInBasis === 'label'
+                  result.product?.madeInBasis === 'label' ||
+                  result.product?.madeInBasis === 'model'
                     ? `${localizeCountry(t, model.finalCoo)} · ${t(`check.matchBasis.${result.product.madeInBasis}`)}`
                     : localizeCountry(t, model.finalCoo),
                 ]

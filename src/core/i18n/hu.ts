@@ -64,19 +64,26 @@ export const hu = {
       reasonBrandOrigin: 'A márka eredete: {place}.',
       madeInLineBarcode: 'Gyártási hely: {place} (vonalkód-egyezés, lásd lent a „Gyártási hely” kártyát)',
       madeInLineLabel: 'Gyártási hely: {place} (csomagolási címke, lásd lent a „Gyártási hely” kártyát)',
+      madeInLineModel: 'Gyártási hely: {place} (pontos modell szerinti egyezés, lásd lent a „Gyártási hely” kártyát)',
     },
     rc: {
       modelRef: 'Modell szerinti adat (nem megerősített)',
       modelRefHelp: 'Sem weboldal, sem a csomagolás címkéje nem erősítette meg; ez csak a modell feltételezése. A csomagoláson lévő címke a mérvadó.',
       moreInfo: 'További információ',
-      notConfirmed: ' (nincs megerősítve)',
-      likelyNote: 'Csak terméknév alapján egyeztetve – a gyártási hely nincs megerősítve. Ne kezelje megerősítettként.',
       candidatesTitle: 'Talált gyártási hely jelöltek (nincs megerősítve)',
       noCandidates: 'Nem található megbízható jelölt.',
-      noBarcodePage: 'Egyik oldal sem mutatta a vonalkódot a gyártási hellyel',
       sourceCount: 'Források: {n}',
       sourceFirst: '1. forrás: {label}',
       sourceNth: '{n}. forrás: {label}',
+      sourceAiAnswer: 'MI-válasz',
+      citedUnverified: 'MI által idézett, nem ellenőrizhető',
+      excludedOtherModel: 'Másik modell ({model}), nem számít',
+      reason: {
+        aiOnly: 'Csak MI-válasz, egy weboldal sem támasztja alá',
+        pagesDisagree: 'A weboldalak ellentmondanak egymásnak',
+        aiCitedUnverified: 'Az MI által idézett link nem ellenőrizhető',
+        onePageOnly: 'Csak egy weboldal említi',
+      },
       sourceCountry: 'gyártási hely: {country}',
       labelSource: 'Forrás: a csomagolás címkéjének fotója',
       parent: 'Anyavállalat',
@@ -94,6 +101,7 @@ export const hu = {
       barcode: 'Vonalkód alapján egyeztetve',
       name: 'Terméknév alapján egyeztetve',
       label: 'A csomagolás felirata alapján',
+      model: 'Pontos modell szerinti egyezés',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',
@@ -305,7 +313,7 @@ export const hu = {
       cooUnconfirmedNoLabel:
         'A végső származási ország nincs megerősítve – a terméken/címkén nincs származási ország; nem találunk ki egyet.',
       cooUnconfirmedNoBarcode:
-        'A végső származási ország nincs megerősítve – egy weboldal sem mutatta a vonalkódot/JAN-t gyártási országgal együtt; a terméknév szerinti egyezések csak valószínű jelöltek.',
+        'A végső gyártási ország megerősítetlen – sem vonalkódos oldal, sem csomagolási címke, sem pontos modell szerinti egyezés nem támasztja alá; a többi ország csak jelölt.',
       cooUnconfirmedCandidates:
         'A végső származási ország nincs megerősítve – az alábbi jelöltek keresési jelek, nem nyomtatott „Made in” felirat.',
       distributorOmitted:
@@ -616,7 +624,7 @@ export const hu = {
     evidenceTitle:
       'Mikor számít megerősítettnek a gyártási ország',
     evidenceBody:
-      'A gyártási ország csak akkor jelenik meg megerősítettként (vonalkód-egyezés), ha a csomagolás címkéjéről készült fotóból származik, vagy ha egy weboldal ugyanazt a vonalkódot (JAN/EAN) mutatja a származási adat mellett. A csak terméknév szerinti egyezés legfeljebb „valószínű” (névegyezés), a több méretet vagy változatot felsoroló oldal pedig megerősítetlen marad. Ha az élő webes keresés nem érhető el, az eredmény csak a modell tudására épül, és ezt jelzi.',
+      'A gyártási ország háromféleképpen jelenhet meg megerősítettként. A legerősebb a csomagolás címkéjéről készült fotó, vagy egy weboldal, amely ugyanazt a vonalkódot (JAN/EAN) mutatja a származási adat mellett (vonalkód-egyezés). Ezután a pontos modell szerinti egyezés: az MI-válasz és legalább egy, a pontos márkát és modellt megnevező weboldal ugyanazt az országot adja, vagy két vagy több ilyen oldal különböző webhelyekről egyezik; ilyenkor az MI-válasz az egyik forrásként jelenik meg. Egyik esetben sem nevezhet meg egyetlen pontos modelles oldal sem más országot. Az MI-válasz önmagában soha nem megerősítés, modellhivatkozás marad; ha a pontos modelles oldalak ellentmondanak egymásnak, a gyártási ország megerősítetlen marad, és a jelöltek listázva vannak. Az MI által idézett link csak ellenőrzés után számít: a webes keresés is visszaadta az oldalt, vagy betölt, és megnevezi a pontos modellt és az országot; különben „MI által idézett, nem ellenőrizhető” jelöléssel jelenik meg, és nem számít. A laza terméknév szerinti egyezés csak jelöltként jelenik meg a „Nincs megerősítve” alatt, a több méretet vagy változatot felsoroló oldal pedig megerősítetlen marad. Ha az élő webes keresés nem érhető el, az eredmény csak a modell tudására épül, és ezt jelzi.',
     flowWeb:
       'Webes keresés',
     flowWebDetail:
