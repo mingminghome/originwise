@@ -501,12 +501,23 @@ function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' 
           })
           .filter((d) => d.pages > 0)
       : [];
-  // Two explicit made-in claims in one label field (「產地：中國 日本製」).
+  // Two made-in claims in one label field (「產地：中國 日本製」「產地：德國 中國」):
+  // merged with any page 爭議, each country once with each of its sources, label first.
   const labelSides = p?.labelDispute ?? [];
-  const dispute: DisputeSide[] =
-    pageDispute.length >= 2 || labelSides.length < 2
-      ? pageDispute
-      : labelSides.map((country) => ({ country, pages: 0, exactPages: 0, label: true }));
+  let dispute: DisputeSide[] = pageDispute;
+  if (labelSides.length >= 2) {
+    const merged: DisputeSide[] = labelSides.map((country) => {
+      const hits = likelyHits.filter((h) => sameCountryLabel(h.country, country));
+      return {
+        country,
+        pages: new Set(hits.map((h) => h.url ?? '')).size,
+        exactPages: new Set(hits.filter((h) => h.exactModel).map((h) => h.url ?? '')).size,
+        label: true,
+      };
+    });
+    for (const d of pageDispute) if (!merged.some((x) => sameCountryLabel(x.country, d.country))) merged.push(d);
+    dispute = merged;
+  }
   return {
     state: 'unconfirmed',
     // No basis / confidence / source-count chip on a 未確認 headline.

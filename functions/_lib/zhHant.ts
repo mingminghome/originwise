@@ -8,6 +8,8 @@
  * English sentences are left alone (the client translates them by exact match).
  */
 
+import { countryNameZhHant } from './countryNames';
+
 const PHRASES: [string, string][] = [
   ['硅胶', '矽膠'],
   ['硅膠', '矽膠'],
@@ -75,7 +77,9 @@ export function zhCountry(name: string): string {
   const key = Object.keys(COUNTRY_ZH).find(
     (k) => k.toLowerCase() === name.replace(/\s+/g, ' ').toLowerCase()
   );
-  return key ? COUNTRY_ZH[key] : name;
+  // Exact value only, from the full made-in country list (Chad, Georgia … are
+  // never translated inside a sentence).
+  return key ? COUNTRY_ZH[key] : (countryNameZhHant(name) ?? name);
 }
 
 /**

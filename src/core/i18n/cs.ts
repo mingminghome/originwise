@@ -82,6 +82,7 @@ export const cs = {
       disputeSideMixed: '{country} (stránky: {n}, s přesně tímto modelem: {e})',
       disputeSidePages: '{country} (stránky: {n})',
       disputeSideLabel: '{country} (štítek na obalu)',
+      disputeSideLabelPages: '{country} (štítek na obalu; stránky: {n})',
       disputeSep: '; ',
       designInfo: 'Doplňující informace: návrh / vývoj podle značky: {country}. Nejde o místo výroby.',
       brandInfo: 'Doplňující informace: původ značky podle uvedení: {country}. Nejde o místo výroby.',

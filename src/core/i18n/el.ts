@@ -82,6 +82,7 @@ export const el = {
       disputeSideMixed: '{country} (σελίδες: {n}, με ακριβώς αυτό το μοντέλο: {e})',
       disputeSidePages: '{country} (σελίδες: {n})',
       disputeSideLabel: '{country} (ετικέτα συσκευασίας)',
+      disputeSideLabelPages: '{country} (ετικέτα συσκευασίας· σελίδες: {n})',
       disputeSep: '; ',
       designInfo: 'Επιπλέον πληροφορία: σχεδιασμός / μηχανική σύμφωνα με τη μάρκα: {country}. Δεν είναι ο τόπος κατασκευής.',
       brandInfo: 'Επιπλέον πληροφορία: προέλευση της μάρκας όπως αναφέρεται: {country}. Δεν είναι ο τόπος κατασκευής.',

@@ -14,6 +14,7 @@
 import { isSearchResultUrl } from '../sourceLine';
 import { MADE_IN_CODE_LABEL, canonicalCountry, madeInCodeMatches } from '../countryLabel';
 import { isKnownCountryLabel, normalizeCooLabel, settleCooFields } from '../cooPriority';
+import { COUNTRY_LIST_LATIN } from '../countryNames';
 import { designMentions, quoteBacksCountry, stripDesignPhrases } from '../designOrigin';
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
@@ -1001,8 +1002,11 @@ export type CooClaim = {
   sourceType: 'retailer' | 'manufacturer' | 'label';
 };
 
-const MADE_IN_NAME_ANY_CASE =
-  /(?<!\b(?:not|never)[ \t])\b(?:(?:made|manufactured|assembled|produced)[\s-]+in|country\s+of\s+origin|coo(?=\s*[:：]))\s*[:：]?\s*(?:the\s+)?(mainland china|p\.\s?r\.\s*china|new zealand|china|taiwan|japan|viet\s?nam|thailand|indonesia|malaysia|philippines|india|south korea|korea|hong kong|germany|france|italy|spain|portugal|poland|turkey|mexico|united kingdom|great britain|united states|usa|cambodia|bangladesh|netherlands|sri lanka|czech republic|canada|australia|brazil)\b/gi;
+// Full country list (countryNames.ts), right after the cue only.
+const MADE_IN_NAME_ANY_CASE = new RegExp(
+  `(?<!\\b(?:not|never)[ \\t])\\b(?:(?:made|manufactured|assembled|produced)[\\s-]+in|country\\s+of\\s+origin|coo(?=\\s*[:：]))\\s*[:：]?\\s*(?:the\\s+)?(${COUNTRY_LIST_LATIN})(?![A-Za-z-])`,
+  'gi'
+);
 
 /** Deterministic fallback when the extraction model is unavailable. */
 export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {

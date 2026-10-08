@@ -401,8 +401,48 @@ describe('a pure country list in one 產地 field: 未確認 + 爭議, sourced t
   });
 });
 
+describe('label 爭議 card layout and merging with a page 爭議', () => {
+  const HEAD = zh('check.rc.candidatesTitle');
+  it(`a label 爭議 with no candidate rows hides the empty 「${HEAD}」 heading`, () => {
+    for (const ocr of ['產地：中國 日本製', '產地：德國 中國']) {
+      const r = runPages({ ocrText: `CYBEX Melio\n${ocr}`, pages: [] });
+      const t = text(r);
+      assert.ok(t.includes('爭議：') && !t.includes(HEAD) && !t.includes(zh('check.rc.noCandidates')), t);
+    }
+    // No 爭議: heading and empty-state text still show.
+    const t = text(runPages({ pages: [] }));
+    assert.ok(t.includes(HEAD) && t.includes(zh('check.rc.noCandidates')), t);
+  });
+  it('label China/Japan + page China/Vietnam → one merged 爭議 line, each country once, label first', () => {
+    const r = runPages({
+      ocrText: 'CYBEX Melio\n產地：中國 日本製',
+      pages: [page(URLS.mami, 'Cybex Melio 嬰兒推車 | MamiLove', '商品規格\n產地：中國、越南\n重量：5.9 kg')],
+    });
+    const v = buildMadeInView(r);
+    assert.deepEqual(
+      v.dispute?.map((d) => [d.label ?? false, d.pages]),
+      [
+        [true, 1],
+        [true, 0],
+        [false, 1],
+      ],
+      JSON.stringify(v.dispute)
+    );
+    const t = text(r);
+    assert.match(t, /爭議：中國（包裝標示、1 個網頁）；日本（包裝標示）；越南（1 個(型號相符的)?網頁）/, t);
+    assert.ok(!t.includes('%'), t);
+  });
+  it('the merged line in English names both sources', () => {
+    const r = runPages({
+      ocrText: 'CYBEX Melio\n產地：中國 日本製',
+      pages: [page(URLS.mami, 'Cybex Melio 嬰兒推車 | MamiLove', '商品規格\n產地：中國、越南\n重量：5.9 kg')],
+    });
+    assert.match(text(r, en), /China \(package label; pages: 1\)/);
+  });
+});
+
 describe('dispute / design wording in all 16 locales', () => {
-  const KEYS = ['dispute', 'disputeSideExact', 'disputeSideMixed', 'disputeSidePages', 'disputeSideLabel', 'designInfo', 'brandInfo', 'infoSource'];
+  const KEYS = ['dispute', 'disputeSideExact', 'disputeSideMixed', 'disputeSidePages', 'disputeSideLabel', 'disputeSideLabelPages', 'designInfo', 'brandInfo', 'infoSource'];
   it('every locale has its own wording, soft, never 非確認', () => {
     for (const lng of locales) {
       const t = createT(lng);

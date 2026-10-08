@@ -170,10 +170,14 @@ function infoSourcePrefix(t: TFunction): { before: string; after: string } {
   return { before, after };
 }
 
-/** One 爭議 side: 「中國（1 個型號相符的網頁）」. */
+/** One 爭議 side: 「中國（1 個型號相符的網頁）」「中國（包裝標示）」「中國（包裝標示、1 個網頁）」. */
 function disputeSide(t: TFunction, d: DisputeSide): string {
   const country = localizeCountry(t, d.country);
-  if (d.label) return t('check.rc.disputeSideLabel', { country });
+  if (d.label) {
+    return d.pages
+      ? t('check.rc.disputeSideLabelPages', { country, n: d.pages })
+      : t('check.rc.disputeSideLabel', { country });
+  }
   if (!d.exactPages) return t('check.rc.disputeSidePages', { country, n: d.pages });
   if (d.exactPages >= d.pages) return t('check.rc.disputeSideExact', { country, n: d.exactPages });
   return t('check.rc.disputeSideMixed', { country, n: d.pages, e: d.exactPages });
@@ -319,7 +323,8 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
           </ul>
         ) : null}
 
-        {!confirmed || view.candidates.length ? (
+        {view.candidates.length || (!confirmed && !view.dispute?.length) ? (
+          // Under a 爭議 line with nothing below it, the empty heading is hidden too.
           <div className="rc-candidates">
             <p className="rc-sub">{t('check.rc.candidatesTitle')}</p>
             {view.candidates.length ? (

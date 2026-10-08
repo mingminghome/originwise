@@ -35,6 +35,7 @@ import {
   type GeoScope,
   type RegionCode,
 } from './regions';
+import { countryNameLabel } from './countryNames';
 import { applyCooPriority, blankVerbFormMakers, cooFieldDisputes, extractCooClaimsFromText } from './cooPriority';
 import { hqFoldedIntoParent } from './chinaChip';
 import { tierFromCodes } from './tierRules';
@@ -289,6 +290,8 @@ function matchCountryLabel(token: string): string | undefined {
  */
 const LOWER_PART_CODES = new Set(['cn', 'tw', 'vn', 'th', 'jp', 'kr', 'hk']);
 
+const FREE_TEXT_TURKEY = /\b(?:Turkey|TURKEY)\b(?!-)|[Tt]ürkiye|TÜRKIYE|土耳其/;
+
 function extractCountryLabelsFromText(blob: string, opts: { codes?: boolean } = {}): string[] {
   if (!blob || !blob.trim()) return [];
   const found: string[] = [];
@@ -300,7 +303,10 @@ function extractCountryLabelsFromText(blob: string, opts: { codes?: boolean } = 
     }
   };
   for (const row of COUNTRY_NAME_PATTERNS) {
-    if (row.pattern.test(blob)) add(row.label);
+    // Free text: "turkey" is also a word ("Turkey-shaped silicone mould"); only the
+    // capitalised name not joined to a hyphen, Türkiye or 土耳其 counts.
+    const pattern = row.label === 'Turkey' ? FREE_TEXT_TURKEY : row.pattern;
+    if (pattern.test(blob)) add(row.label);
   }
   if (!opts.codes) return found;
   // componentsOrigin lists only: "Often CN / TH / VN (unconfirmed)". Upper-case
@@ -1643,7 +1649,10 @@ export function synthesize(input: SynthesizeInput): CheckResult {
 
   const designInfo = collectDesignInfo(p, input.webEnriched ? input.webDesign : undefined, input.ocrText);
   // 「產地：中國 日本製」「產地：德國 中國」: two made-in claims in one label field → 爭議 line.
-  const labelDispute = (cooFieldDisputes(input.ocrText ?? '')[0] ?? []).slice(0, 4);
+  // Sides as English labels (中國 → China) so every locale shows its own name.
+  const labelDispute = (cooFieldDisputes(input.ocrText ?? '')[0] ?? [])
+    .slice(0, 4)
+    .map((c) => canonicalCountry(c) ?? countryNameLabel(c) ?? c);
 
   const originCandidates = collectOriginCandidates(p, {
     webEnriched: input.webEnriched,

@@ -82,6 +82,7 @@ export const sv = {
       disputeSideMixed: '{country} (sidor: {n}, med exakt denna modell: {e})',
       disputeSidePages: '{country} (sidor: {n})',
       disputeSideLabel: '{country} (förpackningsetikett)',
+      disputeSideLabelPages: '{country} (förpackningsetikett; sidor: {n})',
       disputeSep: '; ',
       designInfo: 'Extra info: design / konstruktion enligt varumärket: {country}. Det är inte tillverkningslandet.',
       brandInfo: 'Extra info: varumärkets ursprung enligt uppgift: {country}. Det är inte tillverkningslandet.',

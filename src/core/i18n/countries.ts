@@ -3,6 +3,7 @@
  * country fields in English ("China", "Germany"); the UI shows them in the
  * locale of `t` (zh-Hant: 中國 / 德國 / 泰國, others via Intl region names).
  */
+import { countryNameIso } from '../../../functions/_lib/countryNames';
 import { zhCountryText } from '../../../functions/_lib/zhHant';
 import { localeOfT, type TFunction } from './index';
 import { localeTag } from './locales';
@@ -45,7 +46,7 @@ export function localizeCountry(t: TFunction, value: string | undefined | null):
   const locale = localeOfT(t);
   if (locale === 'en') return s;
   if (locale === 'zh-Hant') return zhCountryText(s);
-  const code = ISO[s.toLowerCase().replace(/\s+/g, ' ').replace(/’/g, "'")];
+  const code = ISO[s.toLowerCase().replace(/\s+/g, ' ').replace(/’/g, "'")] ?? countryNameIso(s);
   if (!code) return s;
   const name = regionNames(localeTag(locale))?.of(code);
   return name && name !== code ? name : s;
