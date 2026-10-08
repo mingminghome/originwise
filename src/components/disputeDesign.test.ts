@@ -308,6 +308,26 @@ describe('upper-case codes after a made-in cue: 95% from a label, 較可能 from
   });
 });
 
+describe('display name: a label "Made in Viet Nam" shows 越南, never "Viet Nam"', () => {
+  for (const ocr of ['Made in Viet Nam', 'MADE IN VIET NAM', 'Made in Vietnam']) {
+    it(ocr, () => {
+      for (const madeIn of [undefined, 'Vietnam']) {
+        const r = runPages({ ocrText: `CYBEX Melio\n${ocr}`, pages: [], ...(madeIn ? { madeIn } : {}) });
+        const v = buildMadeInView(r);
+        assert.equal(v.basis, 'label');
+        const t = text(r);
+        assert.ok(t.includes('越南') && !/Viet Nam/i.test(t), t);
+        assert.match(text(r, en), /Vietnam/);
+      }
+    });
+  }
+  it('a page "Made in Viet Nam" candidate also shows 越南', () => {
+    const r = runPages({ pages: [page(URLS.mami, 'Cybex Melio 嬰兒推車 | MamiLove', 'Made in Viet Nam')] });
+    const t = text(r);
+    assert.ok(t.includes('越南') && !/Viet Nam/i.test(t), t);
+  });
+});
+
 describe('dispute / design wording in all 16 locales', () => {
   const KEYS = ['dispute', 'disputeSideExact', 'disputeSideMixed', 'disputeSidePages', 'designInfo', 'brandInfo', 'infoSource'];
   it('every locale has its own wording, soft, never 非確認', () => {

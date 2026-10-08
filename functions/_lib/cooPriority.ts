@@ -10,7 +10,8 @@
  */
 
 import { MADE_IN_CODE_LABEL, madeInCodeMatches } from './countryLabel';
-import { stripDesignPhrases } from './designOrigin';
+import { NOT_MADE_TAIL, stripDesignPhrases } from './designOrigin';
+import { canonicalCountry } from './countryLabel';
 import { normalizeRegion, type RegionCode } from './regions';
 import {
   cooConflictChinaText,
@@ -69,7 +70,7 @@ const CJK_COUNTRY_TOKEN =
 
 /** Suffix form on labels: 「日本製」「中国工場製」「タイ製」. */
 const COO_LINE = new RegExp(
-  `(?:(?:製造|制造|生產|生产|生産|組裝|组装|產|产|製|制)(?:於|于|在)|(?:製造地|生產地|生产地|製造|制造|生產|生产|生産)(?=\\s*[:：])|(?<!brand\\s)origin(?=\\s*[:：])|made[\\s-]?in|manufactured[\\s-]?in|produced[\\s-]?in|assembled[\\s-]?in|country\\s+of\\s+origin|country\\s+of\\s+publication|coo|製造国|製造國|原産国名?|原產國|产地|產地|生产地|生產地|生産(?:[・･/／]組み?立て?)?|組み?立て?|組裝|组装)\\s*[:：]?\\s*(?:the\\s+)?(${CJK_COUNTRY_TOKEN}|${COUNTRY_TOKEN})`,
+  `(?:(?:製造|制造|生產|生产|生産|組裝|组装|產|产|製|制)(?:於|于|在)|生產國|生产国|生産国|生產国|(?:製造地|生產地|生产地|製造|制造|生產|生产|生産)(?=\\s*[:：])|(?<!brand\\s)origin(?=\\s*[:：])|made[\\s-]?in|manufactured[\\s-]?in|produced[\\s-]?in|assembled[\\s-]?in|country\\s+of\\s+origin|country\\s+of\\s+publication|coo|製造国|製造國|原産国名?|原產國|产地|產地|生产地|生產地|生産(?:[・･/／]組み?立て?)?|組み?立て?|組裝|组装)\\s*[:：]?\\s*(?:the\\s+)?(${CJK_COUNTRY_TOKEN}|${COUNTRY_TOKEN})`,
   'gi'
 );
 
@@ -77,13 +78,14 @@ const SUFFIX_COUNTRY = `(?:${CJK_COUNTRY_TOKEN}|德國|德国|ドイツ|法國|�
 
 /**
  * 「中國製造」「台灣製」「中國生產」「日本産」「越南工廠生產」「中國組裝」: country,
- * then a made word. Not 製造商 / 生產商 / 製造廠商 (a manufacturer: brand info;
- * 「德國製造商品」 is ambiguous and also skipped, fail-safe). Not when 於 / 于 /
+ * then a made word. Not 製造商 / 生產商 / 製造廠商 / 製商 (a maker: brand info)
+ * unless 品 follows (「中國製造商品」 = goods made in China; 商品牌 stays a maker),
+ * and not 製造業 / 生產業 (industry). Shared helper: NOT_MADE_TAIL. Not when 於 / 于 /
  * 在 plus a country follows: 「德國製造於中國」 is the verb form 製造於 X, so X
  * is read (COO_LINE). 「日本製 在庫あり」「中國製造於2023年」 still read.
  */
 const COO_SUFFIX = new RegExp(
-  `(${CJK_COUNTRY_TOKEN}|德國|德国|ドイツ|法國|法国|フランス|義大利|意大利|イタリア|英國|英国|イギリス|美國|美国|アメリカ)(?:工場|工廠|工厂|廠|厂)?(?:製造|制造|製|生產|生产|生産|組裝|组装|產(?![品業])|产(?![品业])|産(?![品業]))(?!造?\\s*[於于在]\\s*${SUFFIX_COUNTRY})(?!造?(?:商|廠商|厂商))`,
+  `(${CJK_COUNTRY_TOKEN}|德國|德国|ドイツ|法國|法国|フランス|義大利|意大利|イタリア|英國|英国|イギリス|美國|美国|アメリカ)(?:工場|工廠|工厂|廠|厂)?(?:製造|制造|製|生產|生产|生産|組裝|组装|產(?![品業])|产(?![品业])|産(?![品業]))(?!造?\\s*[於于在]\\s*${SUFFIX_COUNTRY})${NOT_MADE_TAIL}`,
   'g'
 );
 
@@ -138,6 +140,22 @@ function classifySource(window: string): CooClaimSource {
  * Extract COO claims from free text (web brief, OCR, notes).
  * Source rank is inferred from nearby wording — no SKU/retailer allowlists.
  */
+/** Field-style cues (a value follows): 產地：, 原産国：, 生產國：, COO:, Origin: … */
+const FIELD_CUE = /產地|产地|原產|原産|原产|生產國|生产国|生産国|生產国|製造国|製造國|生產地|生产地|製造地|製造\s*[:：]|生產\s*[:：]|origin|\bcoo\b/i;
+const ANY_COUNTRY = new RegExp(`${SUFFIX_COUNTRY}|${COUNTRY_TOKEN}`, 'gi');
+
+/** The rest of this field value names another country. */
+function fieldHasOtherCountry(after: string, label: string): boolean {
+  // The value ends at a line / sentence break or the next "名稱：" field.
+  const stop = /[\n。；;|]|[\u4e00-\u9fffA-Za-z]{2,6}\s*[:：]/.exec(after);
+  const value = stop ? after.slice(0, stop.index) : after.slice(0, 30);
+  for (const m of value.matchAll(ANY_COUNTRY)) {
+    const other = CJK_TO_LABEL[m[0]] ?? m[0];
+    if (canonCountry(other) !== canonCountry(label)) return true;
+  }
+  return false;
+}
+
 export function extractCooClaimsFromText(text: string): CooClaim[] {
   // Design / brand wording is never a COO claim ("Designed in Germany, made in China" → China).
   const raw = stripDesignPhrases(String(text || ''));
@@ -147,9 +165,14 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
   COO_LINE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = COO_LINE.exec(raw)) !== null) {
-    const label = CJK_TO_LABEL[m[1].trim()] ?? m[1].trim();
+    const found = CJK_TO_LABEL[m[1].trim()] ?? m[1].trim();
+    // Latin names shown as the card's own name: "Viet Nam" → Vietnam (越南).
+    const label = /^[A-Za-z][A-Za-z .'-]{3,}$/.test(found) ? (canonicalCountry(found) ?? found) : found;
     const region = normalizeRegion(label);
     if (region === 'UNKNOWN') continue;
+    // A field with two untagged countries (「產地：德國 中國」) is a conflict, not
+    // first-wins. Tagged values (德國（品牌）) are already blanked as brand info.
+    if (FIELD_CUE.test(m[0]) && fieldHasOtherCountry(raw.slice(m.index + m[0].length), label)) continue;
     const start = Math.max(0, m.index - 80);
     const end = Math.min(raw.length, m.index + m[0].length + 80);
     const window = raw.slice(start, end);

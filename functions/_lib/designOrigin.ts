@@ -98,11 +98,26 @@ const FORWARD_CUES = new RegExp(
   'gi'
 );
 
+/**
+ * Maker words (shared with cooPriority so the two cannot drift): 製造商 /
+ * 生產商 / 製造廠商 / 製商 are a manufacturer (brand / HQ info), but not when
+ * 品 follows (「中國製造商品」 = goods made in China), except 商品牌
+ * (「德國製造商品牌」 = a maker's brand).
+ */
+export const MAKER_TAIL = '(?:廠|厂)?商(?!品(?!牌))';
+/** After a made word (製 / 製造 / 生產 …): not a maker, not an industry (製造業). */
+export const NOT_MADE_TAIL = `(?!造?(?:${MAKER_TAIL}|[業业]))`;
+const MAKER_WORD = `(?:製造|制造|生產|生产|生産|製|制)${MAKER_TAIL}`;
+
 /** Place, then the cue ("German engineering", 德國設計): the phrase is the match. */
 const PREFIX_CUES = new RegExp(
   [
     `\\b(?:${EN_COUNTRY})[\\s-]+(?:engineering|engineered|design|designed|designs|brand|brands|company|technology|heritage|developed|innovation|r\\s*&\\s*d)\\b`,
-    `(?:${CJK_COUNTRY})(?:的)?(?:設計|设计|研發|研发|工程|工藝|工艺|技術|技术|品牌|廠牌|厂牌|製造廠商|制造厂商|生產廠商|生产厂商|製造商|制造商|生產商|生产商|廠商|厂商|公司|企業|企业|血統|血统|デザイン|ブランド|メーカー|發源|发源)`,
+    `(?:${CJK_COUNTRY})(?:的)?(?:設計|设计|研發|研发|工程|工藝|工艺|技術|技术|品牌|廠牌|厂牌|廠商|厂商|公司|企業|企业|血統|血统|デザイン|ブランド|メーカー|發源|发源)`,
+    `(?:${CJK_COUNTRY})(?:的)?${MAKER_WORD}`,
+    // A value tagged as brand / design: 「產地：德國（品牌）中國（製造）」, "Germany (brand)".
+    `(?:${CJK_COUNTRY})\\s*[（(]\\s*(?:品牌|設計|设计|研發|研发|brand|design(?:ed)?)\\s*[）)]`,
+    `\\b(?:${EN_COUNTRY})\\s*[（(]\\s*(?:brand|design(?:ed)?)\\s*[）)]`,
   ].join('|'),
   'gi'
 );
@@ -118,7 +133,7 @@ const PHRASE_HARD_END =
 const PHRASE_SOFT_END = /[,，、（(]/;
 const PHRASE_MAX = 80;
 
-const BRAND_CUE = /brand|company|headquarter|based|founded|established|品牌|廠牌|厂牌|廠商|厂商|製造商|制造商|生產商|生产商|公司|企業|企业|ブランド|メーカー|總部|总部|源自|來自|来自|源於|源于|發源|发源|創立|创立|成立|創辦|创办|創建|创建|血統|血统|heritage/i;
+const BRAND_CUE = /brand|company|headquarter|based|founded|established|品牌|廠牌|厂牌|廠商|厂商|製造商|制造商|生產商|生产商|製商|制商|公司|企業|企业|ブランド|メーカー|總部|总部|源自|來自|来自|源於|源于|發源|发源|創立|创立|成立|創辦|创办|創建|创建|血統|血统|heritage/i;
 
 type Span = { start: number; end: number; prefix: boolean };
 
@@ -130,7 +145,7 @@ type Span = { start: number; end: number; prefix: boolean };
 const MADE_WORD =
   '(?:工場|工廠|工厂|廠|厂)?(?:製造|制造|製|制|生產|生产|生産|組裝|组装|產(?![品業])|产(?![品业])|産(?![品業]))' +
   // Not a field name: 「德國 產地：中國」「製造国：中国」「製造：中國」 (the field's value is the made-in).
-  '(?![地國国:：造])';
+  '(?![地國国:：造業业])';
 const MADE_COUNTRY = new RegExp(
   `(?:${CJK_COUNTRY})\\s*${MADE_WORD}|\\b(?:${EN_COUNTRY})[\\s-]+made\\b(?!\\s+in\\b)`,
   'gi'

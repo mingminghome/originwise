@@ -1000,6 +1000,9 @@ export type CooClaim = {
   sourceType: 'retailer' | 'manufacturer' | 'label';
 };
 
+const MADE_IN_NAME_ANY_CASE =
+  /\b(?:made|manufactured|assembled|produced)[\s-]+in\s*[:：]?\s*(?:the\s+)?(mainland china|china|taiwan|japan|viet\s?nam|thailand|indonesia|malaysia|philippines|india|south korea|korea|hong kong|germany|france|italy|spain|portugal|poland|turkey|mexico|united kingdom|great britain|united states|usa|cambodia|bangladesh|netherlands|sri lanka|czech republic|canada|australia|brazil)\b/gi;
+
 /** Deterministic fallback when the extraction model is unavailable. */
 export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
   const out: CooClaim[] = [];
@@ -1011,6 +1014,9 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
       /(?:原産国|生産国|製造国|原産地|生産地|原產地|原產國|生產國|生產地|產地|製造地)(?:名)?\s*[:：・／/]?\s*([^\s:：、。,，|/／()（）<>[\]]{1,12})/g,
       // 「製造：中國」「生產：越南」: the field name needs its colon.
       /(?:製造|制造|生產|生产|生産)\s*[:：]\s*([^\s:：、。,，|/／()（）<>[\]]{1,12})/g,
+      // "Made In China" / "made in china": any case, full country names only
+      // (lower-case codes such as "made in cn" stay rejected).
+      MADE_IN_NAME_ANY_CASE,
     ];
     // Upper-case short forms only right after an explicit cue ("MADE IN CN",
     // "COO: VN", "Made in the UK"); never IT / DE / my, never in prose.
@@ -1019,7 +1025,9 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
     const found: Array<{ 0: string; 1?: string }> = [...patterns.flatMap((re) => [...t.matchAll(re)]), ...codeMatches];
     for (const m of found) {
       const raw = (m[1] || '').trim();
-      const country = MADE_IN_CODE_LABEL[raw] ?? raw;
+      const named = MADE_IN_CODE_LABEL[raw] ?? raw;
+      // Latin names as the card's own name: "Viet Nam" / "china" → Vietnam / China.
+      const country = /^[A-Za-z][A-Za-z .'-]{3,}$/.test(named) ? (canonicalCountry(named) ?? named) : named;
       if (!country || /^(不明|なし|-|—|unknown)$/i.test(country)) continue;
       // A bare code the table does not list (產地：DE / IT) is no claim.
       if (/^[A-Za-z]{2}$/.test(country)) continue;
