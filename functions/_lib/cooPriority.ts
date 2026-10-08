@@ -317,26 +317,50 @@ const EU_IN_VALUE = /(?<![A-Za-z.])(?:E\.U\.|EU)(?![A-Za-z])/g;
 const US_JOIN_AFTER = new RegExp(`^[ \\t]*(,|，|&|\\band\\b|\\bor\\b)[ \\t]*(?:the[ \\t]+)?(${VALUE_COUNTRY_TOKEN}|E\\.U\\.|EU(?![A-Za-z]))`, 'i');
 /**
  * A US address right after a US-town-list country: ", <US state name or upper-case
- * code>" that ends the claim — an optional ZIP, then . ; ) or a newline, the end of
- * the text, or ", USA" ("Made in USA, Lebanon, TN", "USA, Panama City, FL",
- * "USA, Mexico, NY 10001", "USA, Lebanon, TN, USA"). Never another word after the
- * state ("USA, Lebanon, OR Mexico", "USA, Vietnam, CA PROP 65"). Georgia is a
- * country too, so it is no address state here ("USA, Mexico, Georgia" is 爭議).
+ * code>" that ends the claim — an optional ZIP, then . ; ), the end of the text,
+ * ", USA", or a newline before a line that is no further place ("Made in USA,
+ * Lebanon, TN", "USA, Panama City, FL", "USA, Mexico, NY 10001", "USA, Lebanon, TN,
+ * USA", "USA, Mexico, NY\nWeight: 2kg"). Never another word after the state ("USA,
+ * Lebanon, OR Mexico", "USA, Vietnam, CA PROP 65"). A period ends the claim, so a
+ * code that is also an English word is a state before it ("MADE IN USA, MEXICO,
+ * OR." is Mexico, Oregon; "PERU, IN." Peru, Indiana — accepted). Georgia / GA is a
+ * country too, so it is no address state here ("USA, Mexico, Georgia" / "GA" are 爭議).
  */
 const US_ADDRESS_STATE = US_STATES.filter((n) => n !== 'georgia')
   .sort((a, b) => b.length - a.length)
   .map((n) => n.replace(/\./g, '\\.').replace(/ /g, '\\s+'))
   .join('|');
+const US_ADDRESS_ABBR = US_STATE_ABBR.split('|').filter((c) => c !== 'GA').join('|');
 const US_ADDRESS_AFTER = new RegExp(
-  `^(?:[ \\t]+city)?[ \\t]*,[ \\t]*(${US_ADDRESS_STATE}|${US_STATE_ABBR})(?:[ \\t]+\\d{5}(?:-\\d{4})?)?(?=[ \\t]*(?:[.;)）。]|\\r?\\n|$|,[ \\t]*(?:united\\s+states(?:\\s+of\\s+america)?|u\\.s\\.a\\.?|usa)(?![A-Za-z])))`,
+  `^(?:[ \\t]+city)?[ \\t]*,[ \\t]*(${US_ADDRESS_STATE}|${US_ADDRESS_ABBR})(?:[ \\t]+\\d{5}(?:-\\d{4})?)?(?![A-Za-z0-9])`,
   'i'
 );
+const US_ADDRESS_END = /^[ \t]*(?:[.;)）。]|$|,[ \t]*(?:united\s+states(?:\s+of\s+america)?|u\.s\.a\.?|usa)(?![A-Za-z]))/i;
+/**
+ * The next non-empty line after an address carries on the place list when it starts
+ * — past whitespace, punctuation and joiners (& / - ( AND OR AND/OR 和 及 或 、) — with
+ * a country, a part word, PARTS or FROM ("…, OR\nCHINA", "…, IN\nPARTS FROM CHINA",
+ * "…, OR\n& CHINA"). "Made in China" / 「中國製造」 on the next line is its own claim.
+ */
+const NEXT_LINE_JOINERS = /^(?:[\s\p{P}\p{S}]|(?:and\/or|and|or)(?![A-Za-z])|[和及或、])*/iu;
+// Built on first use: PART_WORD is declared further down.
+let nextLinePlaceRe: RegExp | undefined;
+const nextLinePlace = () => (nextLinePlaceRe ??= new RegExp(`^(?:${VALUE_COUNTRY_TOKEN}|E\\.U\\.|EU(?![A-Za-z])|${PART_WORD}|parts?(?![A-Za-z])|from(?![A-Za-z]))`, 'i'));
 function usAddressAfter(second: string, rest: string): boolean {
   if (!US_TOWN_COUNTRIES.has(canonCountry(second))) return false;
   const m = US_ADDRESS_AFTER.exec(rest);
   if (!m) return false;
   // A short state code only in upper case ("…, Mexico, ny" is no state).
-  return !/^[A-Za-z]{2}$/.test(m[1]!) || m[1] === m[1]!.toUpperCase();
+  if (/^[A-Za-z]{2}$/.test(m[1]!) && m[1] !== m[1]!.toUpperCase()) return false;
+  const after = rest.slice(m[0].length);
+  if (US_ADDRESS_END.test(after)) return true;
+  const wrap = /^[ \t]*\r?\n/.exec(after);
+  if (!wrap) return false;
+  const lines = after.slice(wrap[0].length);
+  // A next line that is its own made-in claim (「中國製造」) ends the address, as "Made in China" does.
+  const line = /^\s*([^\n]*)/.exec(lines)![1]!;
+  if (NEXT_CLAUSE_CJK.test(line)) return true;
+  return !nextLinePlace().test(lines.replace(NEXT_LINE_JOINERS, ''));
 }
 /**
  * Country names that are also US towns: one FIRST, with a bare USA second, keeps
