@@ -11,7 +11,9 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { catalogs, createT } from '../core/i18n';
 import type { CheckResult } from '../core/types';
-import { ChinaCard, MadeInCard } from './ResultCards';
+import { ChinaCard, LayersCard, MadeInCard } from './ResultCards';
+import { OriginLayers } from './OriginLayers';
+import { CAPTURE_UI_SELECTOR, sectionShareCapture } from '../core/util/sectionImage';
 import { ResultPanel } from './ResultPanel';
 import { buildLayerRows, buildMadeInView } from './resultCards.model';
 
@@ -493,5 +495,178 @@ describe('model-only made-in (item 9)', () => {
     const out = html(createElement(MadeInCard, { result: merged, t: zh }));
     assert.ok(!out.includes('data-testid="model-ref"'));
     assert.ok(out.includes('<span class="rc-cand-meta">可能（非確認） · '), out);
+  });
+});
+
+describe('產地分層 / 零件: model-only parts rows (Chief, folded into #32)', () => {
+  // Web parts evidence: Thailand (web) + China (model made-in guess) + a web part line.
+  const mixedParts = base({
+    relationTier: 'unknown',
+    knowledgeBasis: 'web_enriched',
+    partsEvidence: 'web',
+    sources: ['Shop — https://shop.example.jp/p/1'],
+    product: {
+      name: 'Bottle',
+      originCandidates: [
+        { label: 'Thailand', confidence: 0.55, source: 'parts', rating: 'likely' },
+        { label: 'China', confidence: 0.5, source: 'model_memory', rating: 'possible' },
+      ],
+      parts: [{ name: 'Bottle body', kind: 'part', madeIn: 'Japan' }],
+    },
+    company: { name: 'Example', hqCountry: 'Japan' },
+  });
+  // Model + web agree on China → one web row (keeps grade / %).
+  const mergedParts = base({
+    knowledgeBasis: 'web_enriched',
+    partsEvidence: 'web',
+    sources: ['Shop — https://shop.example.jp/p/1'],
+    product: {
+      name: 'Bottle',
+      originCandidates: [
+        { label: 'China', confidence: 0.55, source: 'parts', rating: 'likely' },
+        { label: '中國', confidence: 0.5, source: 'model_memory', rating: 'possible' },
+      ],
+    },
+  });
+  // Every part country from the model only.
+  const modelParts = base({
+    knowledgeBasis: 'model_memory',
+    partsEvidence: 'model',
+    product: {
+      name: 'Bottle',
+      originCandidates: [{ label: 'Thailand', confidence: 0.55, source: 'parts', rating: 'likely' }],
+      parts: [{ name: 'Nipple', kind: 'part', madeIn: 'Thailand' }],
+    },
+  });
+
+  const partsSection = (out: string) => {
+    const i = out.indexOf('origin-layer--parts');
+    assert.ok(i > -1, out);
+    return out.slice(i);
+  };
+  const lis = (out: string) => [...out.matchAll(/<li(?: class="is-model")?>.*?<\/li>/g)].map((m) => m[0]);
+  const isModelLi = (li: string) => li.startsWith('<li class="is-model"');
+  const textOf = (frag: string) => frag.replace(/<[^>]+>/g, '');
+  const locales = Object.keys(catalogs) as Array<Parameters<typeof createT>[0]>;
+
+  /** What the Save path removes (stripCaptureUi): ⓘ, tooltips, toolbars. */
+  function stripCapture(markup: string): string {
+    assert.equal(CAPTURE_UI_SELECTOR, '[data-section-share="ui"], [role="tooltip"]');
+    let out = markup;
+    for (;;) {
+      const m = /<(\w+)\b[^>]*(?:data-section-share="ui"|role="tooltip")[^>]*>/.exec(out);
+      if (!m) return out;
+      const tag = m[1]!;
+      const re = new RegExp(`<${tag}\\b[^>]*>|</${tag}>`, 'g');
+      re.lastIndex = m.index + m[0].length;
+      let depth = 1;
+      let end = out.length;
+      for (let x = re.exec(out); x; x = re.exec(out)) {
+        depth += x[0].startsWith('</') ? -1 : 1;
+        if (depth === 0) {
+          end = x.index + x[0].length;
+          break;
+        }
+      }
+      out = out.slice(0, m.index) + out.slice(end);
+    }
+  }
+
+  it('model-only parts row: country + 模型參考 + ⓘ, no grade, no % (zh-Hant)', () => {
+    const out = partsSection(html(createElement(OriginLayers, { result: mixedParts, t: zh, detailOnly: true })));
+    const rows = lis(out);
+    const model = rows.filter(isModelLi);
+    assert.equal(model.length, 1, out);
+    assert.match(
+      model[0]!,
+      /<span class="origin-model-row"><span>中國<\/span><span class="rc-cand-label" data-testid="model-ref" title="[^"]+">模型參考（未經確認）<\/span><span class="rc-info" data-section-share="ui">/
+    );
+    assert.doesNotMatch(textOf(model[0]!), /\d+\s*%|較可能|· 可能|模型記憶/);
+    // ⓘ is a real button with the shared tooltip wiring.
+    assert.match(model[0]!, /<button type="button" class="rc-info-btn" aria-label="說明"[^>]*aria-expanded="false"/);
+    assert.ok(model[0]!.includes('role="tooltip"'));
+    const web = rows.filter((li) => !isModelLi(li));
+    assert.ok(web.some((li) => /泰國 · 較可能 · 55% · /.test(textOf(li))), out);
+    assert.ok(web.some((li) => textOf(li).startsWith('Bottle body')), out);
+  });
+
+  it('no locale shows a grade or % on a model-only parts row; web rows keep both (all 16)', () => {
+    assert.equal(locales.length, 16);
+    for (const lng of locales) {
+      const t = createT(lng);
+      const out = partsSection(html(createElement(OriginLayers, { result: mixedParts, t, detailOnly: true })));
+      const rows = lis(out);
+      const model = rows.filter(isModelLi);
+      assert.equal(model.length, 1, `${lng}: ${out}`);
+      const rest = textOf(model[0]!)
+        .split(t('check.rc.modelRef')).join('')
+        .split(t('check.rc.modelRefHelp')).join('');
+      assert.ok(model[0]!.includes(t('check.rc.modelRef')), lng);
+      assert.doesNotMatch(rest, /\d\s*%/, `${lng}: ${rest}`);
+      for (const k of ['possible', 'likely'] as const) {
+        assert.ok(!rest.includes(` · ${t(`check.candidateRating.${k}`)}`), `${lng} ${k}: ${rest}`);
+      }
+      assert.ok(!rest.includes(t('check.candidateSource.model_memory')), `${lng}: ${rest}`);
+      const web = rows.filter((li) => !isModelLi(li)).map(textOf);
+      assert.ok(
+        web.some((x) => x.includes(` · ${t('check.candidateRating.likely')} · 55% · `)),
+        `${lng}: ${web.join(' | ')}`
+      );
+    }
+  });
+
+  it('model + web on the same parts country → one web row with grade and %', () => {
+    for (const lng of locales) {
+      const t = createT(lng);
+      const out = partsSection(html(createElement(OriginLayers, { result: mergedParts, t, detailOnly: true })));
+      const rows = lis(out);
+      assert.equal(rows.length, 1, `${lng}: ${out}`);
+      assert.ok(!isModelLi(rows[0]!), lng);
+      assert.ok(!rows[0]!.includes('data-testid="model-ref"'), lng);
+      assert.ok(textOf(rows[0]!).includes(` · ${t('check.candidateRating.likely')} · 55% · `), `${lng}: ${rows[0]}`);
+    }
+  });
+
+  it('all-model parts: every country row carries 模型參考, none a grade or %; 產地分層 row drops its tag', () => {
+    const out = partsSection(html(createElement(OriginLayers, { result: modelParts, t: zh, detailOnly: true })));
+    const rows = lis(out);
+    assert.equal(rows.length, 2, out);
+    for (const li of rows) {
+      assert.ok(isModelLi(li), li);
+      assert.doesNotMatch(textOf(li), /\d\s*%|較可能/);
+    }
+    const card = html(createElement(LayersCard, { result: modelParts, t: zh }));
+    const row = card.match(/<div class="rc-row rc-layer-row is-model">.*?<\/div>/)?.[0] ?? '';
+    assert.ok(row.includes('<dt class="rc-row-label">零件／物料</dt>') || row.includes('Nipple'), card);
+    assert.ok(row.includes('模型參考（未經確認）') && row.includes('rc-info-btn'), row);
+    assert.ok(!row.includes('rc-tag'), row);
+    assert.doesNotMatch(textOf(row), /有提及|較可能|\d\s*%/);
+    // Web parts keep their 較可能（非確認） tag.
+    const webCard = html(createElement(LayersCard, { result: mixedParts, t: zh }));
+    assert.ok(!webCard.includes('rc-layer-row is-model'), webCard);
+    assert.ok(webCard.includes('較可能（非確認）'), webCard);
+  });
+
+  it('780px save: no model-only %, no ⓘ, no tooltip in 產地分層 / 零件', () => {
+    assert.equal(sectionShareCapture.phoneCssPx * sectionShareCapture.pixelRatio, 780);
+    for (const lng of locales) {
+      const t = createT(lng);
+      const help = t('check.rc.modelRefHelp');
+      for (const result of [mixedParts, modelParts]) {
+        const saved = stripCapture(
+          partsSection(html(createElement(OriginLayers, { result, t, detailOnly: true })))
+        );
+        assert.ok(!saved.includes('ⓘ'), `${lng}: ${saved}`);
+        // (the label's native title attribute is not painted; visible text only)
+        assert.ok(!saved.includes('role="tooltip"') && !textOf(saved).includes(help), `${lng}: ${saved}`);
+        assert.ok(!saved.includes('section-share-toolbar'), lng);
+        for (const li of lis(saved).filter(isModelLi)) {
+          assert.ok(li.includes(t('check.rc.modelRef')), `${lng}: ${li}`);
+          assert.doesNotMatch(textOf(li), /\d\s*%/, `${lng}: ${li}`);
+        }
+        const card = stripCapture(html(createElement(LayersCard, { result, t })));
+        assert.ok(!card.includes('ⓘ') && !textOf(card).includes(help), `${lng}: ${card}`);
+      }
+    }
   });
 });

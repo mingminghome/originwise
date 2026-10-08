@@ -51,10 +51,55 @@ function sameLabel(a?: string, b?: string): boolean {
 
 type CandRow = MadeInView['candidates'][number];
 
-function sameCountryLabel(a: string, b: string): boolean {
+/** Same country, by label or normalized region (中國 = China = PRC). */
+export function sameCountryLabel(a: string, b: string): boolean {
   if (sameLabel(a, b)) return true;
   const ra = normalizeRegion(a);
   return ra !== 'UNKNOWN' && ra === normalizeRegion(b);
+}
+
+/** Candidate sources that name a part / component country. */
+const PART_SOURCES = new Set(['parts', 'components_line', 'notes']);
+
+/**
+ * Part countries came from the model only: no package label photo and no
+ * grounded web page. Older results without partsEvidence fall back to the
+ * knowledge basis.
+ */
+export function partsFromModel(result: Pick<CheckResult, 'partsEvidence' | 'knowledgeBasis'>): boolean {
+  if (result.partsEvidence) return result.partsEvidence === 'model';
+  return result.knowledgeBasis === 'model_memory';
+}
+
+/**
+ * 產地分層 / 零件 candidate that only the model named (shows 模型參考 + ⓘ,
+ * never a grade or %). A model made-in guess (model_memory) is always
+ * model-only; part / components / notes candidates are when the parts
+ * evidence is model-only. Web-name rows never are.
+ */
+export function modelOnlyPartCandidate(
+  result: Pick<CheckResult, 'partsEvidence' | 'knowledgeBasis'>,
+  c: Pick<Candidate, 'source'>
+): boolean {
+  if (c.source === 'model_memory' || c.source === 'confirmed_coo') return true;
+  return PART_SOURCES.has(String(c.source)) && partsFromModel(result);
+}
+
+/**
+ * Same rule as the 製造地 card: when the model and a web/label row agree on
+ * the country, the web row absorbs the model row (it keeps its grade/%).
+ */
+export function absorbModelRows<T>(
+  rows: T[],
+  isModel: (row: T) => boolean,
+  country: (row: T) => string | undefined
+): T[] {
+  const backed = rows.filter((r) => !isModel(r)).map(country).filter(Boolean) as string[];
+  return rows.filter((r) => {
+    if (!isModel(r)) return true;
+    const c = country(r);
+    return !c || !backed.some((b) => sameCountryLabel(b, c));
+  });
 }
 
 const RATING_RANK: Record<string, number> = { confirmed: 4, likely: 3, possible: 2, mentioned: 1 };
@@ -187,12 +232,15 @@ export type LayerRowView = {
   /** Country part of the value (localized by the view). */
   country?: string;
   tag: LayerTag;
+  /** Model-only parts: shown with 模型參考（未經確認） + ⓘ instead of a tag. */
+  modelRef?: boolean;
 };
 
 /**
  * 產地分層 rows. Tags say how far the value is backed:
  * web-searched company facts → 確認; model memory → 有提及; label-read parts
- * → 確認; web parts → 較可能; model parts → 有提及; nothing → 未確認.
+ * → 確認; web parts → 較可能; model parts → 模型參考（未經確認） + ⓘ (no tag);
+ * nothing → 未確認.
  */
 export function buildLayerRows(result: CheckResult): LayerRowView[] {
   const p = result.product;
@@ -233,6 +281,7 @@ export function buildLayerRows(result: CheckResult): LayerRowView[] {
       value: partWithCountry.name,
       country: cleanValue(partWithCountry.madeIn) || cleanValue(partWithCountry.originCountry),
       tag,
+      ...(result.partsEvidence !== 'label' && partsFromModel(result) ? { modelRef: true } : {}),
     });
   } else {
     rows.push({ key: 'parts', value: '', tag: 'unconfirmed' });

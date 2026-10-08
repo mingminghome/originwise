@@ -12,6 +12,8 @@ import type { TFunction } from '../core/i18n';
 import { SectionShare } from './SectionShare';
 import { localizeServerText } from '../core/localizeServerText';
 import { localizeCountry } from '../core/i18n/countries';
+import { ModelRefLabel } from './ModelRef';
+import { absorbModelRows, modelOnlyPartCandidate, partsFromModel } from './resultCards.model';
 
 /** Ownership-class chinaRelations types (aligned with server STRONG_REL + minority). */
 const OWNERSHIP_REL_TYPES = new Set([
@@ -67,6 +69,8 @@ export type PartsLine =
       rating: string;
       confidence: number;
       source: string;
+      /** Only the model named it: 模型參考 + ⓘ, no grade, no %. */
+      modelOnly?: boolean;
     }
   | {
       kind: 'part';
@@ -75,6 +79,8 @@ export type PartsLine =
       where?: string;
       chinaRelated?: boolean;
       note?: string;
+      /** Country came from the model only: 模型參考 + ⓘ after the line. */
+      modelOnly?: boolean;
     };
 
 export type OriginLayersModel = {
@@ -239,18 +245,28 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
       rating: cand.rating,
       confidence: cand.confidence,
       source: cand.source,
+      modelOnly: modelOnlyPartCandidate(result, cand),
     });
   }
+  const partsModel = result.partsEvidence !== 'label' && partsFromModel(result);
   for (const part of p?.parts ?? []) {
+    const where = part.madeIn || part.originCountry || undefined;
     parts.push({
       kind: 'part',
       name: part.name,
       partKind: part.kind,
-      where: part.madeIn || part.originCountry || undefined,
+      where,
       chinaRelated: part.chinaRelated,
       note: part.note?.trim() || undefined,
+      modelOnly: Boolean(where) && partsModel,
     });
   }
+  // Model + web agree on a country → the web row stays (keeps grade / %).
+  const partsLines = absorbModelRows(
+    parts,
+    (l) => l.kind !== 'components' && Boolean(l.modelOnly),
+    (l) => (l.kind === 'candidate' ? l.label : l.kind === 'part' ? l.where : undefined)
+  );
 
   // Label-photo (OCR) parts are packaging evidence, not a model guess.
   const partsModelOnly =
@@ -262,7 +278,7 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
       ? cleanSources(result.sources, 8)
       : [];
 
-  return { brandOps, ownership, finalCoo, parts, partsModelOnly, partsSources };
+  return { brandOps, ownership, finalCoo, parts: partsLines, partsModelOnly, partsSources };
 }
 
 function formatBrandOps(line: BrandOpsLine, t: TFunction): string {
@@ -316,6 +332,8 @@ function formatParts(line: PartsLine, t: TFunction): string {
     case 'components':
       return `${t('check.componentsOrigin')}: ${line.value}`;
     case 'candidate': {
+      // Model-only: country only; the 模型參考 label is added by the row.
+      if (line.modelOnly) return localizeCountry(t, line.label);
       const ratingKey = `check.candidateRating.${line.rating}`;
       const rating = t(ratingKey);
       const srcKey = `check.candidateSource.${line.source}`;
@@ -337,6 +355,15 @@ function formatParts(line: PartsLine, t: TFunction): string {
   }
 }
 
+type LayerItem = { text: string; modelRef?: boolean };
+
+function partsItem(line: PartsLine, t: TFunction): LayerItem {
+  return {
+    text: formatParts(line, t),
+    modelRef: line.kind !== 'components' && Boolean(line.modelOnly),
+  };
+}
+
 function LayerRow({
   label,
   hint,
@@ -347,7 +374,7 @@ function LayerRow({
 }: {
   label: string;
   hint?: string;
-  items: string[];
+  items: Array<string | LayerItem>;
   empty?: string;
   variant: 'brand' | 'ownership' | 'coo' | 'parts';
   t: TFunction;
@@ -360,9 +387,19 @@ function LayerRow({
       </div>
       {items.length ? (
         <ul className="origin-layer-list">
-          {items.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
+          {items.map((raw, i) => {
+            const item = typeof raw === 'string' ? { text: raw } : raw;
+            return item.modelRef ? (
+              <li key={`${i}-${item.text}`} className="is-model">
+                <span className="origin-model-row">
+                  <span>{item.text}</span>
+                  <ModelRefLabel t={t} />
+                </span>
+              </li>
+            ) : (
+              <li key={`${i}-${item.text}`}>{item.text}</li>
+            );
+          })}
         </ul>
       ) : empty ? (
         <p className="muted origin-layer-empty">{empty}</p>
@@ -390,7 +427,7 @@ export function OriginLayers({
 
   const brandItems = model.brandOps.map((l) => formatBrandOps(l, t));
   const ownershipItems = model.ownership.map((l) => formatOwnership(l, t));
-  const partsItems = model.parts.map((l) => formatParts(l, t));
+  const partsItems = model.parts.map((l) => partsItem(l, t));
   const notice = webQuotaNotice(result);
   const searchQuotaUsedUp = notice === 'searchQuotaUsedUp';
   const aiCreditsUsedUp = notice === 'aiCreditsUsedUp';
@@ -398,7 +435,7 @@ export function OriginLayers({
   if (detailOnly) {
     // No China verdict here: part rows show their country only.
     const detailParts = model.parts.map((l) =>
-      formatParts(l.kind === 'part' ? { ...l, chinaRelated: false } : l, t)
+      partsItem(l.kind === 'part' ? { ...l, chinaRelated: false } : l, t)
     );
     return (
       <div className="origin-layers origin-layers--detail" data-testid="origin-layers">

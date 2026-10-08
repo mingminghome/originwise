@@ -20,7 +20,7 @@ import {
   cleanValue,
   type LayerTag,
 } from './resultCards.model';
-import { InfoTip } from './InfoTip';
+import { ModelRefLabel } from './ModelRef';
 import { SectionShare } from './SectionShare';
 
 function pct(n?: number): number | null {
@@ -214,18 +214,7 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
                       {/* Country + model label share one cell; the label may wrap inside it, never apart. */}
                       <span className={`rc-cand-country${model ? ' is-model' : ''}`}>
                         <span className="rc-cand-name">{localizeCountry(t, c.label)}</span>
-                        {model ? (
-                          <>
-                            <span
-                              className="rc-cand-label"
-                              data-testid="model-ref"
-                              title={t('check.rc.modelRefHelp')}
-                            >
-                              {t('check.rc.modelRef')}
-                            </span>
-                            <InfoTip label={t('check.rc.moreInfo')} text={t('check.rc.modelRefHelp')} />
-                          </>
-                        ) : null}
+                        {model ? <ModelRefLabel t={t} /> : null}
                       </span>
                       {/* A model-only guess carries its 模型參考 label only: no likelihood
                           grade, since nothing weighed it (web/label rows keep theirs). */}
@@ -281,13 +270,23 @@ export function LayersCard({ result, t }: { result: CheckResult; t: TFunction })
             const country = r.country ? localizeCountry(t, r.country) : '';
             const value = [r.value, country].filter(Boolean).join(' · ') || '—';
             return (
-              <div key={r.key} className="rc-row rc-layer-row">
+              <div key={r.key} className={`rc-row rc-layer-row${r.modelRef ? ' is-model' : ''}`}>
                 <dt className="rc-row-label">{t(LAYER_LABEL[r.key])}</dt>
-                <dd className="rc-row-value">{value}</dd>
-                <span className={`rc-tag is-${r.tag}`}>
-                  {t(TAG_KEY[r.tag])}
-                  {r.tag === 'likely' ? t('check.rc.notConfirmed') : null}
-                </span>
+                {r.modelRef ? (
+                  // Model-only parts: value + 模型參考 + ⓘ in one cell, no tag/grade.
+                  <dd className="rc-row-value rc-layer-model">
+                    <span>{value}</span>
+                    <ModelRefLabel t={t} />
+                  </dd>
+                ) : (
+                  <>
+                    <dd className="rc-row-value">{value}</dd>
+                    <span className={`rc-tag is-${r.tag}`}>
+                      {t(TAG_KEY[r.tag])}
+                      {r.tag === 'likely' ? t('check.rc.notConfirmed') : null}
+                    </span>
+                  </>
+                )}
               </div>
             );
           })}

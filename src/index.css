@@ -5274,6 +5274,21 @@ p {
 .rc-info-text[hidden] {
   display: none;
 }
+/* 產地分層 / 零件 model-only rows: text + 模型參考 + ⓘ share one line that
+   may wrap; the open tip drops under it (never floats, never cut). */
+.origin-model-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.4rem;
+  row-gap: 0.1rem;
+  max-width: 100%;
+}
+.rc-layer-row.is-model .rc-layer-model {
+  grid-column: 2 / -1;
+  align-items: baseline;
+  column-gap: 0.4rem;
+}
 .rc-cand-meta {
   flex: 0 0 auto;
   font-weight: 500;
