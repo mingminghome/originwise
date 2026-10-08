@@ -61,13 +61,15 @@ export function CleanDataPanel({ t, summary, onClean, onCleaned }: Props) {
           <ul className="muted" style={{ margin: 0, paddingLeft: '1.1rem' }}>
             <li>{t('settings.dataHistory', { n: summary.checkCount })}</li>
             <li>
-              {t('settings.dataSettings')}:{' '}
+              {t('settings.dataSettings')}
+              {t('common.labelSep')}
               {summary.hasCustomSettings
                 ? t('common.present')
                 : t('common.missing')}
             </li>
             <li>
-              {t('settings.dataDisclaimer')}:{' '}
+              {t('settings.dataDisclaimer')}
+              {t('common.labelSep')}
               {summary.hasDisclaimer
                 ? t('common.present')
                 : t('common.missing')}

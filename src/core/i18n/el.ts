@@ -11,6 +11,8 @@ export const el = {
   },
   common: {
     present: 'Ναι',
+    /** Separator after a short label (full-width in CJK). */
+    labelSep: ': ',
     missing: 'Όχι',
     cancel: 'Ακύρωση',
     confirm: 'Επιβεβαίωση',

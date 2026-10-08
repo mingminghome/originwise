@@ -5,28 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>OriginWise — Privacy Policy</title>
     <style>
+      :root {
+        color-scheme: light;
+        --bg: #ffffff;
+        --fg: #111111;
+        --muted: #555555;
+      }
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --bg: #161616;
+        --fg: #ececec;
+        --muted: #a0a0a0;
+      }
       body {
-        font-family: system-ui, sans-serif;
+        font-family: system-ui, -apple-system, 'PingFang TC', 'Noto Sans TC',
+          'Microsoft JhengHei', sans-serif;
         max-width: 40rem;
         margin: 0 auto;
         padding: 2rem 1.25rem;
         line-height: 1.65;
-        color: #111111;
+        background: var(--bg);
+        color: var(--fg);
       }
       h1 {
         font-size: 1.5rem;
       }
       a {
-        color: #111111;
+        color: var(--fg);
+      }
+      em,
+      .lang-switch {
+        color: var(--muted);
+      }
+      [data-lang] {
+        display: none;
+      }
+      :root[data-lang-show='en'] [data-lang='en'],
+      :root[data-lang-show='zh-Hant'] [data-lang='zh-Hant'] {
+        display: block;
       }
     </style>
+    <script>
+      // Follow the app's own language and theme (same-origin settings), with
+      // ?lang= override. No data leaves the page.
+      (function () {
+        var root = document.documentElement;
+        var s = {};
+        try {
+          s = JSON.parse(localStorage.getItem('originwise_v1_settings') || '{}') || {};
+        } catch (e) {}
+        var q = new URLSearchParams(location.search).get('lang');
+        var nav = (navigator.language || '').toLowerCase();
+        var lang = q || s.locale || (nav.indexOf('zh') === 0 ? 'zh-Hant' : 'en');
+        lang = lang === 'zh-Hant' ? 'zh-Hant' : 'en';
+        root.setAttribute('data-lang-show', lang);
+        root.lang = lang;
+        var theme = s.theme || 'system';
+        if (theme === 'system') {
+          theme = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        root.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
+      })();
+    </script>
   </head>
   <body>
+    <main data-lang="en" lang="en">
     <h1>OriginWise Privacy Policy</h1>
+    <p class="lang-switch"><a href="?lang=zh-Hant">繁體中文</a></p>
     <p><em>Last updated: 2026-10-08</em></p>
     <p>
-      OriginWise is a local-first web app. We design the product so personal
-      check history stays on your device whenever possible.
+      OriginWise is a product origin checker that runs in your browser. Your
+      check history and settings stay on your device; checks themselves are
+      processed on our server as described below.
     </p>
     <h2>Data stored on your device</h2>
     <ul>
@@ -51,10 +101,13 @@
       When live web search is on, the product name and any barcode (JAN/EAN),
       including one read from your label photo, are sent to a search service so
       we can find pages that state where the product is made. The services are
-      Google Search (through Gemini), Brave Search and Firecrawl, tried in that
-      order: the next one is used only if the previous one fails or finds
-      nothing, so a check may reach one or more of them. Our server then fetches a few of the result pages directly to
-      check the made-in line and barcode. Each search service handles queries
+      Google Search (through Gemini), Brave Search and Firecrawl. They are tried
+      one at a time, Gemini first; the next one is used only if the previous one
+      fails or finds nothing, and a service with no key on this deployment is
+      skipped. A check may therefore reach one or more of them. Our server then
+      fetches a few of the product pages found directly to check the made-in
+      line and barcode (search-results listing pages are never used as
+      evidence). Each search service handles queries
       under its own privacy policy and may keep its own records of them. Your
       photo is not sent to search services.
     </p>
@@ -101,5 +154,52 @@
       Open an issue on the project repository for privacy questions.
     </p>
     <p><a href="/">← Back to OriginWise</a></p>
+    </main>
+    <main data-lang="zh-Hant" lang="zh-Hant">
+    <h1>OriginWise 隱私權政策</h1>
+    <p class="lang-switch"><a href="?lang=en">English</a></p>
+    <p><em>最後更新：2026-10-08</em></p>
+    <p>
+      OriginWise 是在瀏覽器中使用的產品產地查詢工具。查詢紀錄與設定只留在你的裝置；查詢本身會依下文說明，經我們的伺服器處理。
+    </p>
+    <h2>儲存在你裝置上的資料</h2>
+    <ul>
+      <li>設定（語言、主題、地區範圍、查詢項目）</li>
+      <li>過往查詢結果（文字摘要，不含完整照片）</li>
+      <li>同意免責聲明的時間</li>
+    </ul>
+    <p>你可以隨時在「設定 → 刪除本機資料」中刪除這些資料。</p>
+    <h2>傳送到我們伺服器的資料</h2>
+    <p>
+      進行查詢時，產品名稱／文字及（如有）壓縮後的照片，會傳送到我們的 Cloudflare Pages Function，再以我們的伺服器金鑰呼叫 AI 服務（例如 Google Gemini、OpenAI、xAI、Anthropic）。AI 服務依其自身條款處理請求。請求設有頻率限制。我們不建立使用者帳號，也不在伺服器保存你的查詢紀錄。
+    </p>
+    <h2>即時網路搜尋</h2>
+    <p>
+      開啟即時網路搜尋時，產品名稱及條碼（JAN/EAN，包括從標籤照片讀到的條碼）會傳送給搜尋服務，用來尋找標示產地的網頁。可用的服務包括 Google 搜尋（經 Gemini）、Brave Search 與 Firecrawl：每次只使用一個，Gemini 優先；前一個失敗或找不到結果時才改用下一個，本站未設定金鑰的服務會略過。因此一次查詢可能傳送給其中一個或多個服務。之後，我們的伺服器會直接讀取搜尋找到的少數幾個商品網頁，核對產地標示與條碼（搜尋結果列表頁不會當作依據）。各搜尋服務依其自身隱私權政策處理查詢，並可能自行保留紀錄。你的照片不會傳送給搜尋服務。
+    </p>
+    <h2>結果快取與伺服器日誌</h2>
+    <p>
+      為節省額度，純文字查詢的結果可能存放在 Cloudflare 邊緣快取最多 7 天，以查詢內容、語言與設定的雜湊值作為索引，不會連結到你本人或你的 IP 位址。其他人進行相同查詢時，可能會取得這份快取結果。含照片的查詢不會快取。
+    </p>
+    <p>
+      伺服器日誌只記錄工作 ID、以每日更換的鹽值雜湊後的 IP，以及查詢結果（分級或錯誤代碼），不會記錄你查詢的產品名稱、照片或結果內容。
+    </p>
+    <h2>網站託管</h2>
+    <p>
+      本 App 託管於 Cloudflare Pages。與大多數網站一樣，託管服務可能為了安全與營運記錄一般請求資料（例如 IP 位址、網址與瀏覽器資訊）。這與你的查詢紀錄無關，查詢紀錄只留在你的裝置。
+    </p>
+    <h2>分析工具</h2>
+    <p>
+      若部署時設定了容器 ID（建置環境變數 <code>VITE_GTM_ID</code>），我們可能使用 Google Tag Manager；未設定時不會載入 GTM。
+    </p>
+    <p>
+      啟用 GTM 時，App 只會傳送畫面名稱（查詢、紀錄、設定、關於、如何運作），以及開始或完成查詢、錯誤代碼、支援連結點擊等匿名操作。產品名稱、照片、結果內容與錯誤訊息都不會傳送給分析工具。
+    </p>
+    <h2>Cookie</h2>
+    <p>本 App 本身不需要登入 Cookie。第三方分析工具可能依其政策設定 Cookie。</p>
+    <h2>聯絡我們</h2>
+    <p>如有隱私相關問題，請到專案的 GitHub 儲存庫開 Issue。</p>
+    <p><a href="/">← 返回 OriginWise</a></p>
+    </main>
   </body>
 </html>

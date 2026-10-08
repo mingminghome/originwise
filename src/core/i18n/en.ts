@@ -14,6 +14,8 @@ export const en: MessageTree = {
   },
   common: {
     present: 'Yes',
+    /** Separator after a short label (full-width in CJK). */
+    labelSep: ': ',
     missing: 'No',
     cancel: 'Cancel',
     confirm: 'Confirm',

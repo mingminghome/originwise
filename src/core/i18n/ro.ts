@@ -11,6 +11,8 @@ export const ro = {
   },
   common: {
     present: 'Da',
+    /** Separator after a short label (full-width in CJK). */
+    labelSep: ': ',
     missing: 'Nu',
     cancel: 'Anulează',
     confirm: 'Confirmă',

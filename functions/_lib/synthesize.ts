@@ -3,6 +3,7 @@
  * Owns final relationTier via decision table. LLMs must not set overall tier.
  */
 
+import { cleanSources } from './sourceLine';
 import {
   ALT_CAP,
   DEFAULT_DISCLAIMER_KEY,
@@ -1712,16 +1713,16 @@ export function synthesize(input: SynthesizeInput): CheckResult {
       (partials.company == null && !input.companySkipped && !input.productSkipped)
   );
 
-  const groundingSources = (
+  const rawGroundingSources = (
     input.webEnriched
       ? (input.sources?.length
           ? input.sources
           : parseSourcesFromBrief(input.webBrief))
       : []
   )
-    .map((s) => String(s).trim().slice(0, 240))
-    .filter(Boolean)
-    .slice(0, 8);
+    .map((s) => String(s).trim())
+    .filter(Boolean);
+  const groundingSources = cleanSources(rawGroundingSources, 8);
 
   return {
     schemaVersion: 1,

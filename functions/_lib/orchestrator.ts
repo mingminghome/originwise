@@ -24,13 +24,23 @@ import {
 } from './llm';
 import type { CheckDimension, CheckResult, WebCooClaim } from './schema';
 import type { GeoScope } from './regions';
+import { normalizeLocale } from './locale';
+import { SERVER_TEXT, SUMMARY_PREFIX } from './serverText';
 import { synthesize } from './synthesize';
+import { fixZhHantDeep } from './zhHant';
 import {
   isSearchEnabled,
   runSearchChain,
   type SearchEnv,
   type SearchProviderId,
 } from './search';
+
+/** Server lines the client translates by exact match; never rewritten. */
+const ZH_KEEP_SERVER_TEXT = [
+  ...Object.values(SERVER_TEXT),
+  ...Object.values(SUMMARY_PREFIX),
+] as string[];
+const ZH_SKIP_KEYS = new Set(['sources', 'meta', 'jobId', 'schemaVersion']);
 
 export type ProgressEvent = {
   type: 'progress';
@@ -390,6 +400,13 @@ async function runQuery(
       alternatives: parts.alternatives,
     },
   });
+  if (normalizeLocale(locale) === 'zh-Hant') {
+    // Model text sometimes slips into Simplified or leaves English words.
+    Object.assign(
+      result,
+      fixZhHantDeep(result, ZH_KEEP_SERVER_TEXT, ZH_SKIP_KEYS)
+    );
+  }
   result.meta.agents = agents;
   if (web.provider) {
     result.meta.searchProvider = web.provider;

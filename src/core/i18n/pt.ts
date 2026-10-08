@@ -11,6 +11,8 @@ export const pt = {
   },
   common: {
     present: 'Sim',
+    /** Separator after a short label (full-width in CJK). */
+    labelSep: ': ',
     missing: 'Não',
     cancel: 'Cancelar',
     confirm: 'Confirmar',

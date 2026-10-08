@@ -11,6 +11,8 @@ export const zhHant = {
   },
   common: {
     present: '有',
+    /** Separator after a short label (full-width in CJK). */
+    labelSep: '：',
     missing: '無',
     cancel: '取消',
     confirm: '確認',
@@ -203,7 +205,7 @@ export const zhHant = {
     companyFacts: '公司',
     brand: '品牌',
     madeIn: '產地（本機／最終原產地）',
-    madeInUnconfirmed: '未確認最終產地——請參考零件／全球產線候選（並非確認的 made-in）',
+    madeInUnconfirmed: '未確認最終產地——請參考零件／全球產線候選（並非已確認的產地標示）',
     originLayersTitle: '產地分層',
     originLayersIntro:
       '分開顯示品牌／營運、所有權、最終產地與零件。',
@@ -478,7 +480,7 @@ export const zhHant = {
       '執行查詢時，名稱或照片只用於取得該次回答。我們不會把包裝當成產品目錄保存。',
     privacyBullet5: '照片會先在裝置上壓縮再上傳，不會當成伺服器紀錄保存。',
     privacyBullet6:
-      '開啟即時網路搜尋時，產品名稱（及標籤文字）也會傳送一次給搜尋服務：優先使用 Gemini 的 Google 搜尋，失敗時才改用 Brave Search 或 Firecrawl。查詢進度與結果都會標明實際使用的服務。我們不會記錄搜尋內容。',
+      '開啟即時網路搜尋時，產品名稱（及標籤文字）也會傳送一次給搜尋服務：優先使用 Gemini 的 Google 搜尋，失敗時才改用 Brave Search 或 Firecrawl。查詢進度與結果都會標明實際使用的服務。我們不會記錄你查詢的內容。',
     privacyPolicyLink: '隱私權政策',
     termsLink: '使用條款',
     designTitle: '它怎麼運作',

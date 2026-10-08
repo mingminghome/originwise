@@ -2,7 +2,7 @@
 
 ## Summary
 
-OriginWise is a local-first SPA on Cloudflare Pages with a stateless Pages Function AI proxy (`/api/check`).
+OriginWise is a single-page app on Cloudflare Pages (history and settings stay in the browser) with a stateless Pages Function AI proxy (`/api/check`).
 
 | Area | Approach |
 |------|----------|

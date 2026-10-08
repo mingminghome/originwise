@@ -11,6 +11,7 @@
  * Privacy: nothing here logs or stores the query or page text.
  */
 
+import { isSearchResultUrl } from '../sourceLine';
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
 import type { FetchedPage, PageBlock, SearchEnv, SearchOutput } from './types';
@@ -403,6 +404,10 @@ export async function fetchSourcePage(
     },
     PAGE_FETCH_MS
   );
+  // A redirect that lands on a search-results page is not product evidence.
+  if (res && res.url && isSearchResultUrl(res.url)) {
+    return { url, title, text: '', blocks: [] };
+  }
   let body = '';
   let blocks: PageBlock[] | undefined;
   if (res && res.ok) {
@@ -443,7 +448,10 @@ export function cooClaimsFromSourcePages(
   ocrText: string | undefined,
   pages: FetchedPage[]
 ): WebCooClaim[] {
-  const usable = pages.filter((p) => p.url && p.text.trim());
+  // Search-result pages list many products, so they are never evidence.
+  const usable = pages.filter(
+    (p) => p.url && p.text.trim() && !isSearchResultUrl(p.url)
+  );
   if (!usable.length) return [];
   const jans = findJans(entity, ocrText);
   const tokens = variantTokens(entity);
@@ -684,7 +692,9 @@ export async function extractBriefFromPages(opts: {
   t0: number;
 }): Promise<SearchOutput> {
   const { providerId, entity, ocrText, env, requests, t0 } = opts;
-  const pages = opts.pages.filter((p) => p.url && p.text.trim());
+  const pages = opts.pages.filter(
+    (p) => p.url && p.text.trim() && !isSearchResultUrl(p.url)
+  );
   const sources = pages.map((p) => (p.title ? `${p.title.slice(0, 120)} — ${p.url}` : p.url));
   if (!pages.length) {
     return {

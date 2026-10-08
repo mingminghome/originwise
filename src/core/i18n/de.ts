@@ -11,6 +11,8 @@ export const de = {
   },
   common: {
     present: 'Ja',
+    /** Separator after a short label (full-width in CJK). */
+    labelSep: ': ',
     missing: 'Nein',
     cancel: 'Abbrechen',
     confirm: 'Bestätigen',
