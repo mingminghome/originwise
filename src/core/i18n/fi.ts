@@ -42,6 +42,7 @@ export const fi = {
     accept: 'Selvä — aloita tarkistus',
   },
   check: {
+    identifiedAs: 'Tunnistettu: {name}',
     chinaLink: {
       title: 'Yhteys Kiinaan',
       chinaCompany: 'Kiinalainen yritys',
@@ -54,6 +55,8 @@ export const fi = {
       china: 'Kiina',
       unconfirmed: 'Vahvistamaton',
       partsChina: 'Osa osista valmistettu Kiinassa',
+      hqParentNote: 'Vastauksen Kiinan pääkonttori kuuluu emoyhtiölle',
+      madeInBelow: 'Valmistusmaa ratkaistaan vain Valmistusmaa-kortissa (viivakoodi tai pakkausmerkintä).',
     },
     matchBasis: {
       barcode: 'Täsmätty viivakoodilla',

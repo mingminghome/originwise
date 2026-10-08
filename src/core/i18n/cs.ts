@@ -42,6 +42,7 @@ export const cs = {
     accept: 'Rozumím — začít kontrolovat',
   },
   check: {
+    identifiedAs: 'Rozpoznáno jako: {name}',
     chinaLink: {
       title: 'Vazba na Čínu',
       chinaCompany: 'Čínská společnost',
@@ -54,6 +55,8 @@ export const cs = {
       china: 'Čína',
       unconfirmed: 'Nepotvrzeno',
       partsChina: 'Některé díly vyrobeny v Číně',
+      hqParentNote: 'Sídlo v Číně uvedené v odpovědi patří mateřské společnosti',
+      madeInBelow: 'Země výroby se určuje pouze v kartě „Vyrobeno v“ (čárový kód nebo štítek obalu).',
     },
     matchBasis: {
       barcode: 'Shoda podle čárového kódu',

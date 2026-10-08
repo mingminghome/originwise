@@ -1,5 +1,5 @@
 import type { CheckResult } from '../core/types';
-import { ChinaLink, displayTier } from './ChinaLink';
+import { ChinaLink, chinaCardReasons, companyView, displayTier } from './ChinaLink';
 import type { TFunction } from '../core/i18n';
 import { formatTierReason } from '../core/i18n/tierReasons';
 import { AlternativeCards } from './AlternativeCards';
@@ -8,6 +8,7 @@ import { OriginMap } from './OriginMap';
 import { RelationGraph } from './RelationGraph';
 import { TierBadge } from './TierBadge';
 import { localizeServerText } from '../core/localizeServerText';
+import { resultTitle } from '../core/resultTitle';
 
 function agentLabel(id: string, t: TFunction): string {
   const key = `check.agent.${id}`;
@@ -106,11 +107,14 @@ export function ResultPanel({
   result,
   provider,
   cached,
+  query,
   t,
 }: {
   result: CheckResult;
   provider?: string | null;
   cached?: boolean;
+  /** What the user typed; shown as the headline (see resultTitle). */
+  query?: string | null;
   t: TFunction;
 }) {
   const agents = result.meta?.agents ?? [];
@@ -133,13 +137,20 @@ export function ResultPanel({
       .filter(Boolean) ?? [];
   const searchName = searchProviderLabel(result.meta?.searchProvider, t);
   const shown = displayTier(result);
+  const reasons = chinaCardReasons(result.tierReasons);
+  const title = resultTitle(result, query);
   const searchRequests = result.meta?.searchRequests;
 
   return (
     <div className="ask-result" role="status">
       <header className="result-verdict">
         <div className="ask-result-head">
-          <h2 className="ask-result-title">{result.title}</h2>
+          <h2 className="ask-result-title">{title.title}</h2>
+          {title.modelName ? (
+            <p className="muted ask-result-identified" data-testid="identified-as">
+              {t('check.identifiedAs', { name: title.modelName })}
+            </p>
+          ) : null}
           <p className="ask-result-meta muted">
             {[
               provider
@@ -171,13 +182,16 @@ export function ResultPanel({
 
       <ChinaLink result={result} t={t} />
 
-      {result.tierReasons?.length ? (
+      {reasons.shown.length || reasons.madeInHidden ? (
         <section className="result-why">
           <h3 className="result-section-title">{t('check.reasons')}</h3>
           <ul className="tier-reasons-list">
-            {result.tierReasons.map((r) => (
-              <li key={r}>{formatTierReason(r, t, result)}</li>
+            {reasons.shown.map((r) => (
+              <li key={r}>{formatTierReason(r, t, companyView(result))}</li>
             ))}
+            {reasons.madeInHidden ? (
+              <li key="made-in-below">{t('check.chinaLink.madeInBelow')}</li>
+            ) : null}
           </ul>
         </section>
       ) : null}

@@ -42,6 +42,7 @@ export const hu = {
     accept: 'Értem — kezdjük az ellenőrzést',
   },
   check: {
+    identifiedAs: 'Felismerve: {name}',
     chinaLink: {
       title: 'Kapcsolat Kínával',
       chinaCompany: 'Kínai vállalat',
@@ -54,6 +55,8 @@ export const hu = {
       china: 'Kína',
       unconfirmed: 'Nincs megerősítve',
       partsChina: 'Egyes alkatrészek Kínában készültek',
+      hqParentNote: 'A válaszban szereplő kínai székhely az anyavállalaté',
+      madeInBelow: 'A gyártási helyet csak a „Gyártási hely” kártya határozza meg (vonalkód vagy csomagolási címke).',
     },
     matchBasis: {
       barcode: 'Vonalkód alapján egyeztetve',

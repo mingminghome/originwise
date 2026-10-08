@@ -42,6 +42,7 @@ export const es = {
     accept: 'Entendido — empezar',
   },
   check: {
+    identifiedAs: 'Identificado como: {name}',
     chinaLink: {
       title: 'Vínculo con China',
       chinaCompany: 'Empresa china',
@@ -54,6 +55,8 @@ export const es = {
       china: 'China',
       unconfirmed: 'Sin confirmar',
       partsChina: 'Algunas piezas fabricadas en China',
+      hqParentNote: 'La sede en China de la respuesta es la de la empresa matriz',
+      madeInBelow: 'El país de fabricación se decide solo en la tarjeta «Fabricado en» (código de barras o etiqueta).',
     },
     matchBasis: {
       barcode: 'Coincidencia por código de barras',

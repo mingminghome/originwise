@@ -5,7 +5,23 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { CheckResult } from '../core/types';
-import { buildChinaLinks, displayTier, isChinaCountry } from './ChinaLink';
+import { readFileSync } from 'node:fs';
+import { synthesize } from '../../functions/_lib/synthesize';
+import { formatTierReason } from '../core/i18n/tierReasons';
+import { createT } from '../core/i18n';
+import {
+  brandHqFolded,
+  buildChinaLinks,
+  chinaCardReasons,
+  companyView,
+  displayTier,
+  isChinaCountry,
+} from './ChinaLink';
+
+/** Trimmed real /api/check payload for "Cybex Melio" (2026-10-08). */
+const CYBEX_LIVE = JSON.parse(
+  readFileSync(new URL('./fixtures/cybex-melio-live.json', import.meta.url), 'utf8')
+) as { query: string; result: CheckResult };
 
 function base(partial: Partial<CheckResult> = {}): CheckResult {
   return { schemaVersion: 1, relationTier: 'unknown', title: 'X', summary: '', ...partial };
@@ -41,7 +57,8 @@ describe('buildChinaLinks chip rule', () => {
       value: 'China',
       detail: 'Anker Innovations',
     });
-    assert.equal(rows.find((r) => r.key === 'madeIn')?.status, 'unconfirmed');
+    // Made-in is never a China-card row (decided only in the 製造地 card).
+    assert.equal(rows.some((r) => (r.key as string) === 'madeIn'), false);
   });
 
   it('Cybex (HQ Germany, Goodbaby majority in China) → 中資控股, not 中國公司', () => {
@@ -119,5 +136,114 @@ describe('displayTier', () => {
       base({ relationTier: 'none', confidence: 0.6, company: { hqCountry: 'Japan' } })
     );
     assert.deepEqual(shown, { tier: 'none', confidence: 0.6 });
+  });
+});
+
+describe('folded parent HQ (real Cybex payload)', () => {
+  const r = CYBEX_LIVE.result;
+
+  it('is the live answer: company "Goodbaby International / Cybex", HQ 中國, brand origin 德國', () => {
+    assert.equal(r.company?.name, 'Goodbaby International / Cybex');
+    assert.equal(r.company?.hqCountry, '中國');
+    assert.equal(r.product?.originCountry, '德國');
+  });
+
+  it('chip is 中資控股, never 中國公司', () => {
+    const { chip, rows, hqFolded } = buildChinaLinks(r);
+    assert.equal(chip, 'chinaControlled');
+    assert.equal(hqFolded, true);
+    // 總部 row does not claim a China HQ for the brand…
+    assert.equal(rows.find((x) => x.key === 'hq')?.status, 'unconfirmed');
+    // …the China HQ is shown as the parent's.
+    const owner = rows.find((x) => x.key === 'owner');
+    assert.equal(owner?.status, 'china');
+    assert.match(owner?.detail ?? '', /Goodbaby/);
+  });
+
+  it('server agrees: parent_majority_cn (not hq_cn), direct, ≥ 0.75', () => {
+    const out = synthesize({
+      jobId: 'cybex-live',
+      geoScope: 'prc',
+      partials: {
+        product: { ...r.product, confidence: 0.6 } as never,
+        company: { ...r.company, confidence: 0.9 } as never,
+      },
+    });
+    assert.equal(out.relationTier, 'direct');
+    assert.ok(out.tierReasons.includes('parent_majority_cn'));
+    assert.ok(!out.tierReasons.includes('hq_cn'));
+    assert.ok(out.confidence >= 0.75);
+  });
+
+  it('folds on name alone when the parent has no country', () => {
+    const res: CheckResult = {
+      ...r,
+      company: {
+        name: 'Goodbaby International / Cybex',
+        hqCountry: 'China',
+        parents: [{ name: 'Goodbaby International Holdings Ltd.', control: 'unknown' }],
+      },
+    };
+    assert.equal(brandHqFolded(res), true);
+    assert.equal(buildChinaLinks(res).chip, 'chinaControlled');
+  });
+
+  it('Anker / Tapo (brand origin China, HQ China) stay 中國公司', () => {
+    for (const origin of ['China', '中國']) {
+      const res: CheckResult = {
+        schemaVersion: 1,
+        relationTier: 'direct',
+        title: 'Tapo C200',
+        summary: '',
+        product: { brand: 'TP-Link', originCountry: origin },
+        company: {
+          name: 'TP-Link',
+          hqCountry: '中國',
+          parents: [{ name: 'TP-Link Holdings', country: 'China', control: 'wholly' }],
+        },
+      };
+      assert.equal(buildChinaLinks(res).chip, 'chinaCompany', origin);
+      assert.equal(brandHqFolded(res), false);
+    }
+  });
+
+  it('unknown brand origin keeps the HQ as the brand\'s', () => {
+    const res: CheckResult = {
+      ...r,
+      product: { ...r.product, originCountry: undefined },
+    };
+    assert.equal(buildChinaLinks(res).chip, 'chinaCompany');
+  });
+});
+
+describe('China card reasons (no made-in lines)', () => {
+  it('drops made-in / manufacturer / product-origin / parts reasons', () => {
+    const { shown, madeInHidden } = chinaCardReasons([
+      'made_in_cn',
+      'manufacturer_cn',
+      'origin_cn',
+      'component_cn',
+      'hq_cn',
+      'parent_majority_cn',
+      'explicit_non_cn_geo',
+    ]);
+    assert.deepEqual(shown, ['hq_cn', 'parent_majority_cn', 'explicit_non_cn_geo']);
+    assert.equal(madeInHidden, true);
+    assert.deepEqual(chinaCardReasons(['hq_cn']), { shown: ['hq_cn'], madeInHidden: false });
+  });
+
+  it('outside-China places list company places only, never the made-in', () => {
+    const zh = createT('zh-Hant');
+    const res: CheckResult = {
+      schemaVersion: 1,
+      relationTier: 'none',
+      title: 'X',
+      summary: '',
+      product: { madeIn: 'Thailand', manufacturerCountry: 'Vietnam', originCountry: 'Japan' },
+      company: { hqCountry: 'Japan' },
+    };
+    const line = formatTierReason('explicit_non_cn_geo', zh, companyView(res));
+    assert.ok(line.includes('日本'), line);
+    assert.ok(!/泰國|越南/.test(line), line);
   });
 });

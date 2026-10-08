@@ -35,6 +35,7 @@ import {
   type RegionCode,
 } from './regions';
 import { applyCooPriority, extractCooClaimsFromText } from './cooPriority';
+import { hqFoldedIntoParent } from './chinaChip';
 import { SERVER_TEXT, webFailText } from './serverText';
 
 export type SynthesizeInput = {
@@ -196,7 +197,19 @@ function extractFactors(
   const F_MADE_IN_CN = inScope(madeIn, geoScope);
   const F_ORIGIN_CN = inScope(origin, geoScope);
   const F_MFG_CN = inScope(mfg, geoScope);
-  const F_HQ_CN = inScope(hq, geoScope);
+  // A China HQ folded in from a Chinese parent (brand origin elsewhere) is the
+  // parent's HQ: count it as a China-controlling parent, not a China HQ.
+  const hqFolded = hqFoldedIntoParent(
+    {
+      brandOrigin: p.originCountry,
+      hqCountry: c.hqCountry,
+      companyName: c.name,
+      parents: c.parents,
+    },
+    geoScope
+  );
+  if (hqFolded) F_PARENT_CN_MAJORITY = true;
+  const F_HQ_CN = inScope(hq, geoScope) && !hqFolded;
   const F_COMPONENT_CN =
     (inScope(component, geoScope) || F_PART_CN) &&
     !F_MADE_IN_CN &&

@@ -42,6 +42,7 @@ export const ro = {
     accept: 'Am înțeles — începe verificarea',
   },
   check: {
+    identifiedAs: 'Identificat ca: {name}',
     chinaLink: {
       title: 'Legătura cu China',
       chinaCompany: 'Companie chineză',
@@ -54,6 +55,8 @@ export const ro = {
       china: 'China',
       unconfirmed: 'Neconfirmat',
       partsChina: 'Unele componente fabricate în China',
+      hqParentNote: 'Sediul din China din răspuns aparține companiei-mamă',
+      madeInBelow: 'Țara de fabricație se stabilește doar în cardul „Fabricat în” (cod de bare sau etichetă).',
     },
     matchBasis: {
       barcode: 'Potrivire după codul de bare',

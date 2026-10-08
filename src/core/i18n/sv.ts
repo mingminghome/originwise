@@ -42,6 +42,7 @@ export const sv = {
     accept: 'Uppfattat — börja kolla',
   },
   check: {
+    identifiedAs: 'Identifierad som: {name}',
     chinaLink: {
       title: 'Koppling till Kina',
       chinaCompany: 'Kinesiskt företag',
@@ -54,6 +55,8 @@ export const sv = {
       china: 'Kina',
       unconfirmed: 'Ej bekräftat',
       partsChina: 'Vissa delar tillverkade i Kina',
+      hqParentNote: 'Huvudkontoret i Kina i svaret tillhör moderbolaget',
+      madeInBelow: 'Tillverkningslandet avgörs bara i kortet ”Tillverkad i” (streckkod eller förpackningsetikett).',
     },
     matchBasis: {
       barcode: 'Matchad via streckkod',

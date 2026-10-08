@@ -54,6 +54,8 @@ export function CheckScreen({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CheckResult | null>(null);
   const [lastProvider, setLastProvider] = useState<string | null>(null);
+  /** Text the user typed for the result on screen (headline). */
+  const [resultQuery, setResultQuery] = useState('');
   const [cached, setCached] = useState(false);
   const [progress, setProgress] = useState<ProgressStep[]>([]);
   const [dropping, setDropping] = useState(false);
@@ -257,6 +259,7 @@ export function CheckScreen({
           return;
         }
         setLastProvider(out.provider ?? null);
+        setResultQuery(question);
         setCached(Boolean(out.cached));
         setResult(out.result);
         trackEvent({
@@ -685,6 +688,13 @@ export function CheckScreen({
             result={display}
             provider={lastProvider}
             cached={cached}
+            query={
+              result
+                ? resultQuery
+                : activeResult && activeResult.query !== t('check.unnamedPhoto')
+                  ? activeResult.query
+                  : undefined
+            }
             t={t}
           />
           {canRecheck ? (

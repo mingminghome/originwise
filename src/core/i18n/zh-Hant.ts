@@ -42,6 +42,7 @@ export const zhHant = {
     accept: '知道了 — 開始查',
   },
   check: {
+    identifiedAs: '辨識為：{name}',
     chinaLink: {
       title: '與中國的關係',
       chinaCompany: '中國公司',
@@ -54,6 +55,8 @@ export const zhHant = {
       china: '中國',
       unconfirmed: '未確認',
       partsChina: '部分零件在中國製造',
+      hqParentNote: '回答中的中國總部屬於母公司',
+      madeInBelow: '製造地只在下方「製造地」卡依條碼或包裝標示判斷。',
     },
     matchBasis: {
       barcode: '依條碼比對',
