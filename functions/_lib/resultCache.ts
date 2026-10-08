@@ -84,6 +84,22 @@ export async function getCachedResult(
   }
 }
 
+/**
+ * The JSON stored in the result cache. The cache is keyed by product query,
+ * so the stored copy must not carry anything tied to the person who ran the
+ * first check: the job ID is dropped (a cache hit gets the new job's ID in
+ * check.ts), along with any request-level fields.
+ */
+export function cacheEntryBody(result: CheckResult, cachedAt: string): string {
+  const { jobId: _jobId, cached: _cached, cachedAt: _prev, ...meta } =
+    (result.meta ?? {}) as CheckResult['meta'] & Record<string, unknown>;
+  delete (meta as Record<string, unknown>).ipHash;
+  const stored = { ...result, meta } as Record<string, unknown>;
+  delete stored.jobId;
+  delete stored.ipHash;
+  return JSON.stringify({ result: stored, cachedAt });
+}
+
 export async function putCachedResult(
   parts: CacheLookupKey,
   result: CheckResult,
@@ -93,10 +109,7 @@ export async function putCachedResult(
   try {
     const hash = await cacheKeyHash(parts);
     const ttl = Math.max(60, Math.min(ttlSec, 604800));
-    const body = JSON.stringify({
-      result,
-      cachedAt: new Date().toISOString(),
-    });
+    const body = cacheEntryBody(result, new Date().toISOString());
     await caches.default.put(
       cacheRequest(hash),
       new Response(body, {

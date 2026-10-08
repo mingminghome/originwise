@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { isServableCachedResult } from './resultCache';
+import { cacheEntryBody, isServableCachedResult } from './resultCache';
 import type { CheckResult } from './schema';
 
 function base(partial: Partial<CheckResult> & { product?: CheckResult['product']; meta?: CheckResult['meta'] }): CheckResult {
@@ -105,5 +105,36 @@ describe('isServableCachedResult', () => {
       ),
       true
     );
+  });
+});
+
+describe('cacheEntryBody', () => {
+  it('stores no job ID or IP in the cached copy', () => {
+    const r = base({
+      product: { name: 'X', madeIn: '泰國' },
+      meta: {
+        jobId: 'job-abc123',
+        cached: true,
+        cachedAt: '2026-01-01T00:00:00.000Z',
+        searchProvider: 'firecrawl',
+        ipHash: 'iphash-xyz',
+      } as CheckResult['meta'],
+    });
+    (r as unknown as Record<string, unknown>).jobId = 'job-abc123';
+    const body = cacheEntryBody(r, '2026-10-08T09:00:00.000Z');
+    assert.equal(body.includes('job-abc123'), false);
+    assert.equal(body.includes('iphash-xyz'), false);
+    assert.equal(/"jobId"|"ipHash"/.test(body), false);
+    const parsed = JSON.parse(body);
+    assert.equal(parsed.cachedAt, '2026-10-08T09:00:00.000Z');
+    assert.equal(parsed.result.meta.searchProvider, 'firecrawl');
+    assert.equal(parsed.result.meta.cached, undefined);
+    assert.equal(parsed.result.product.madeIn, '泰國');
+  });
+
+  it('keeps a stored entry servable', () => {
+    const r = base({ product: { name: 'X', madeIn: '泰國' } });
+    const parsed = JSON.parse(cacheEntryBody(r, 'now'));
+    assert.equal(isServableCachedResult(parsed.result), true);
   });
 });
