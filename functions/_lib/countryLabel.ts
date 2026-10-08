@@ -171,7 +171,7 @@ export function madeInCodeMatches(text: string): Array<{ code: string; index: nu
     const code = m[1] ?? m[2];
     // "Not made in USA" / "never made in UK" / "isn't made in CN" (same line): no claim.
     const at = m.index ?? 0;
-    if (/(?:\bnot|\bnever|n['’]t)[ \t]+$/i.test(s.slice(s.lastIndexOf('\n', at - 1) + 1, at))) continue;
+    if (/(?:\bnot|\bnever|n['’]t)[ \t\u00a0]+$/i.test(s.slice(s.lastIndexOf('\n', at - 1) + 1, at))) continue;
     if (code && MADE_IN_CODE_LABEL[code]) out.push({ code, index: at, length: m[0].length });
   }
   return out;

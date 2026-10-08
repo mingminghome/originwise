@@ -9,7 +9,7 @@ import {
   sameSide,
   settleCooFields,
 } from './cooPriority';
-import { COUNTRY_NAME_PATTERNS, MADE_IN_CODE_LABEL, canonicalCountry } from './countryLabel';
+import { COUNTRY_NAME_PATTERNS, MADE_IN_CODE_LABEL, canonicalCountry, madeInCodeMatches } from './countryLabel';
 import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN, countryNameLabel } from './countryNames';
 import { applyWebCooGate, labelConfirmsMadeIn, synthesize } from './synthesize';
 
@@ -272,5 +272,14 @@ describe('round 21: dedupe keys, the final check and the Korea names', () => {
     // A single-side 爭議 is no 爭議 either.
     const chars2 = text.split('');
     assert.deepEqual(keepRealDisputes([{ sides: ['Germany'], start: 0, end: 15 }], chars2, text), []);
+  });
+});
+
+describe('round 22: a negation before made-in takes any run of spaces, tabs or NBSP, on its line only', () => {
+  it('made-in codes', () => {
+    for (const s of ['Not made in USA', 'Not  made in USA', 'Not\u00a0\u00a0made in USA', 'Never\u00a0made in UK', 'Isn’t \t made in CN', 'NOT  MADE IN USA']) {
+      assert.deepEqual(madeInCodeMatches(s), [], s);
+    }
+    for (const s of ['Not.\u00a0Made in USA', 'Not\nMade in USA', 'Made in USA']) assert.equal(madeInCodeMatches(s).length, 1, s);
   });
 });

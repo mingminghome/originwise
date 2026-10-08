@@ -553,6 +553,11 @@ export type FieldDispute = {
    * the page quotes; null for a bare CJK 〜製 side, which the page never reads.
    */
   spans?: Array<{ start: number; end: number } | null>;
+  /**
+   * The English+CJK 爭議 of every whole-product claim (no spans: the page quotes the
+   * whole range, as before). Like a spanned 爭議, no part claim left over headlines it.
+   */
+  wholeClaims?: true;
 };
 type FieldPass = { text: string; disputes: FieldDispute[] };
 
@@ -594,7 +599,7 @@ const PART_BRACKET = new RegExp(`^\\s*[（(【\\[][^）)】\\]]*${PART_WORD}[^�
  * Blanking keeps the length, so offsets stay.
  */
 /** "Not made in" / "never made in" / "is not made in" / "isn't made in": a negated claim, on its line. */
-const NEGATED_EN_BEFORE = /(?:\bnot|\bnever|n['’]t)[ \t]+$/i;
+const NEGATED_EN_BEFORE = /(?:\bnot|\bnever|n['’]t)[ \t\u00a0]+$/i;
 
 function resolveFieldValues(input: string): FieldPass {
   const text = usPlacesAsUsa(input);
@@ -768,7 +773,7 @@ function resolveFieldValues(input: string): FieldPass {
       }
       all.sort((x, y) => x.start - y.start);
       for (const c of all) blank(c.start, c.end);
-      disputes.push({ sides: sides(all.map((c) => c.country)), start: all[0]!.start, end: Math.max(...all.map((c) => c.end)) });
+      disputes.push({ sides: sides(all.map((c) => c.country)), start: all[0]!.start, end: Math.max(...all.map((c) => c.end)), wholeClaims: true });
     }
   }
   // Repeated made-in fields, adjacent or not (「產地：中國\n重量：5kg\n產地：日本」): two
@@ -864,7 +869,8 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
   const pass = resolveFieldValues(stripDesignPhrases(String(text || '')));
   // Two whole-product claims disagree: that 爭議 is the answer; a part claim left over
   // ("Made in USA\n電池：中國製\nMade in Mexico") never headlines it.
-  if (pass.disputes.some((d) => d.spans)) return [];
+  // ('Made in China\nBattery: Made in Japan\n德國製造' is 中國 / 德國; the battery is no side.)
+  if (pass.disputes.some((d) => d.spans || d.wholeClaims)) return [];
   const raw = pass.text;
   if (!raw.trim()) return [];
   const out: CooClaim[] = [];
