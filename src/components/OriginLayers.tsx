@@ -19,7 +19,7 @@ const OWNERSHIP_REL_TYPES = new Set([
   'minority_stake',
 ]);
 
-const UNKNOWN_MADE_IN = /^(unknown|n\/?a|未知|不明|不詳)$/i;
+const UNKNOWN_MADE_IN = /^(unknown|n\/?a|na|none|null|unclear|未知|不明|不詳|不清楚)$/i;
 
 export type OriginCandidateRow = NonNullable<
   NonNullable<CheckResult['product']>['originCandidates']
@@ -214,8 +214,9 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
   const finalCoo = isConfirmedMadeIn(p?.madeIn);
 
   const parts: PartsLine[] = [];
-  if (p?.componentsOrigin?.trim()) {
-    parts.push({ kind: 'components', value: p.componentsOrigin.trim() });
+  const components = isConfirmedMadeIn(p?.componentsOrigin);
+  if (components) {
+    parts.push({ kind: 'components', value: components });
   }
   // Label-read parts already answer it; queried
   // candidates (e.g. "Japan · likely 55% · parts") would only add noise.
@@ -224,6 +225,8 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
     if (isOwnershipCandidate(cand)) continue;
     // confirmed_coo mirrors Final COO — keep out of parts to avoid “made in” confusion
     if (cand.source === 'confirmed_coo') continue;
+    // Manufacturer country only echoes the HQ (older cached results).
+    if (cand.source === 'manufacturer') continue;
     parts.push({
       kind: 'candidate',
       label: cand.label,

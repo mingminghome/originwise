@@ -309,6 +309,15 @@ function confirmedOriginLabel(raw?: string | null): string | undefined {
   return String(raw).trim().slice(0, 80);
 }
 
+/** Schema field names the model sometimes echoes into prose, e.g. "(madeIn)". */
+const SCHEMA_KEY_RE =
+  /\s*[(（]\s*(?:madeIn|manufacturedIn|originCountry|componentsOrigin|manufacturerCountry|hqCountry|chinaRelated)\s*[)）]/g;
+
+/** Strip echoed schema keys from model prose (notes, part notes). */
+export function stripSchemaKeys(text: string): string {
+  return String(text).replace(SCHEMA_KEY_RE, '').replace(/\s{2,}/g, ' ').trim();
+}
+
 
 /** Name/CJK patterns for whole-string scan (avoid short codes that match English words). */
 const COUNTRY_NAME_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
@@ -507,7 +516,7 @@ function collectOriginCandidates(
     }
   }
 
-  if (p.componentsOrigin) {
+  if (!isVagueOriginLabel(p.componentsOrigin)) {
     for (const label of extractCountryLabelsFromText(String(p.componentsOrigin))) {
       // Do not promote to confirmed — components line is candidate only
       if (out.get(label)?.rating === 'confirmed') continue;
@@ -528,13 +537,10 @@ function collectOriginCandidates(
     }
   }
 
-  const mfg = confirmedOriginLabel(p.manufacturerCountry);
-  if (mfg) {
-    const label = matchCountryLabel(mfg) || mfg;
-    if (out.get(label)?.rating !== 'confirmed') {
-      pushCandidate(out, label, Math.min(0.65, 0.4 + webBoost), 'manufacturer', 'possible');
-    }
-  }
+  // Manufacturer / HQ country is never a made-in candidate on its own: it is
+  // where the company sits, not where this product is made (HQ echo, e.g.
+  // "Japan · possible 50% · manufacturer" on Pigeon). Only parts, the
+  // components line, notes or web/label claims name candidate countries.
 
   return [...out.values()]
     .sort((a, b) => {
@@ -1617,8 +1623,10 @@ export function synthesize(input: SynthesizeInput): CheckResult {
       summaryParts.push(`Candidates: ${candBits.join('; ')}`);
     }
   }
-  if (p?.originCountry) summaryParts.push(`Brand origin: ${p.originCountry}`);
-  if (p?.componentsOrigin) {
+  if (p && !isVagueOriginLabel(p.originCountry)) {
+    summaryParts.push(`Brand origin: ${p.originCountry}`);
+  }
+  if (p && !isVagueOriginLabel(p.componentsOrigin)) {
     summaryParts.push(`Components/global line: ${String(p.componentsOrigin).slice(0, 80)}`);
   }
   const resultParts = sanitizeParts(p?.parts, {
@@ -1636,7 +1644,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
         .join(', ')}`
     );
   }
-  if (c?.hqCountry) summaryParts.push(`HQ: ${c.hqCountry}`);
+  if (c && !isVagueOriginLabel(c.hqCountry)) summaryParts.push(`HQ: ${c.hqCountry}`);
   if (c?.name) summaryParts.push(`Company: ${c.name}`);
   if (!summaryParts.length) {
     summaryParts.push(
@@ -1747,12 +1755,15 @@ export function synthesize(input: SynthesizeInput): CheckResult {
           manufacturer: p.manufacturer,
           manufacturerCountry: p.manufacturerCountry,
           category: p.category,
-          componentsOrigin: p.componentsOrigin
+          componentsOrigin: !isVagueOriginLabel(p.componentsOrigin)
             ? String(p.componentsOrigin).slice(0, 160)
             : undefined,
           parts: resultParts.length ? resultParts : undefined,
           notes: Array.isArray(p.notes)
-            ? p.notes.map((n) => String(n).slice(0, 220)).filter(Boolean).slice(0, 5)
+            ? p.notes
+                .map((n) => stripSchemaKeys(String(n)).slice(0, 220))
+                .filter(Boolean)
+                .slice(0, 5)
             : undefined,
           originCandidates: originCandidates.length
             ? originCandidates.map((c) => ({
