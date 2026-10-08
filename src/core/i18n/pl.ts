@@ -76,6 +76,7 @@ export const pl = {
       noBarcodePage: 'Żadna strona nie pokazała kodu kreskowego z krajem produkcji',
       sourceCount: 'Źródła: {n}',
       sourceFirst: 'Źródło 1: {label}',
+      sourceNth: 'Źródło {n}: {label}',
       sourceCountry: 'wyprodukowano w: {country}',
       labelSource: 'Źródło: zdjęcie etykiety opakowania',
       parent: 'Spółka matka',

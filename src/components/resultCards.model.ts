@@ -12,6 +12,7 @@ import {
 import type { CheckResult } from '../core/types';
 import { normalizeRegion } from '../../functions/_lib/regions';
 import { zhCountryText } from '../../functions/_lib/zhHant';
+import { canonicalCountry } from '../../functions/_lib/countryLabel';
 import { brandHqFolded, companyFactsSourced, confirmedMadeIn, pickOwner } from './ChinaLink';
 
 const VAGUE_RE =
@@ -34,9 +35,14 @@ export type MadeInView = {
   basis?: MadeInBasis;
   /** 0–1, for the confidence chip. */
   confidence?: number;
+  /** Number of source rows shown (the chip and the rows always match). */
   sourceCount: number;
-  /** First source backing the headline ("aeonretail.com"), when known. */
-  source?: { label: string; url?: string; country?: string };
+  /**
+   * One row per distinct page URL among the searchCoo hits that back the
+   * headline country with the shown basis (barcode/confirmed or
+   * name/likely), at most MAX_SOURCE_ROWS. Label basis: none.
+   */
+  sourceRows: SourceRow[];
   /** B only: queried candidates, not confirmed. */
   candidates: Array<{ label: string; rating: Candidate['rating']; source: Candidate['source'] }>;
   /** Web research ran but no page showed the barcode with a made-in. */
@@ -61,7 +67,10 @@ export function sameCountryLabel(a: string, b: string): boolean {
   // CN / HK / TW / MO compare by region code (中國（含港澳） = China).
   if (greater(ra) || greater(rb)) return ra === rb;
   // Every other country is 'OTHER' there, so compare names instead
-  // (Thailand = 泰國, but never Thailand = Japan).
+  // (Thailand = 泰國 = タイ, but never Thailand = Japan).
+  const ca = canonicalCountry(a);
+  const cb = canonicalCountry(b);
+  if (ca && cb) return ca === cb;
   const za = zhCountryText(a.trim()).toLowerCase();
   return Boolean(za) && za === zhCountryText(b.trim()).toLowerCase();
 }
@@ -206,6 +215,99 @@ function candidateRows(result: CheckResult, candidates: Candidate[], unconfirmed
     .slice(0, 4);
 }
 
+/** host: the page's domain, shown when the title is not already the domain. */
+export type SourceRow = {
+  label: string;
+  url?: string;
+  host?: string;
+  /**
+   * Short URL part ("/…/01050000006850") shown after the domain when another
+   * row has the same domain and the same (or a truncated) title, so two
+   * pages never read as the same page twice.
+   */
+  pathHint?: string;
+  country?: string;
+};
+
+/** Rows (and the count chip) stop here; the chip never claims more than shown. */
+export const MAX_SOURCE_ROWS = 3;
+
+type CooHit = NonNullable<NonNullable<CheckResult['meta']>['searchCoo']>[number];
+
+/** Supporting hits → deduped (by URL) rows titled from the matching Source line. */
+function supportingRows(
+  hits: CooHit[],
+  sources: string[],
+  match: (h: CooHit) => boolean
+): SourceRow[] {
+  const rows: SourceRow[] = [];
+  const seen = new Set<string>();
+  for (const h of hits) {
+    const url = h.url?.trim();
+    if (!url || !match(h) || seen.has(url)) continue;
+    seen.add(url);
+    const parts = splitSourceLine(sources.find((s) => s.includes(url)) ?? url);
+    const host = sourceLabel({ title: '', url: parts.url ?? url });
+    const label = sourceLabel(parts) || host || url;
+    // Canonical country (中国 / タイ → China / Thailand) so every locale names it.
+    rows.push({
+      label,
+      url: parts.url ?? url,
+      host: host && host !== label ? host : undefined,
+      country: canonicalCountry(h.country) ?? h.country,
+    });
+    if (rows.length === MAX_SOURCE_ROWS) break;
+  }
+  return withPathHints(rows);
+}
+
+/** Title key for "nearly the same": no spaces / ellipses, case-folded. */
+function titleKey(label: string): string {
+  return label.replace(/\s+|…|\.\.\./g, '').toLowerCase();
+}
+
+function urlHost(url?: string): string {
+  try {
+    return url ? new URL(url).hostname.replace(/^www\./, '') : '';
+  } catch {
+    return '';
+  }
+}
+
+/** First URL path segment (or the query) that differs from the other URLs. */
+function distinguishingPart(url: string, others: string[]): string {
+  const split = (u: string) => {
+    try {
+      const x = new URL(u);
+      return { segs: x.pathname.split('/').filter(Boolean), query: x.search };
+    } catch {
+      return { segs: [] as string[], query: '' };
+    }
+  };
+  const me = split(url);
+  const them = others.map(split);
+  const short = (v: string) => (v.length > 20 ? `${v.slice(0, 19)}…` : v);
+  for (let i = 0; i < me.segs.length; i++) {
+    if (them.some((o) => o.segs[i] !== me.segs[i])) return `/${i ? '…/' : ''}${short(me.segs[i]!)}`;
+  }
+  return me.query ? short(me.query) : '';
+}
+
+function withPathHints(rows: SourceRow[]): SourceRow[] {
+  return rows.map((row, i) => {
+    const host = urlHost(row.url);
+    const key = titleKey(row.label);
+    const twins = rows.filter((o, j) => {
+      if (j === i || !o.url || urlHost(o.url) !== host) return false;
+      const k = titleKey(o.label);
+      return k === key || k.startsWith(key) || key.startsWith(k);
+    });
+    if (!host || !row.url || !twins.length) return row;
+    const hint = distinguishingPart(row.url, twins.map((o) => o.url!));
+    return hint ? { ...row, host: row.host ?? (row.label === host ? undefined : host), pathHint: hint } : row;
+  });
+}
+
 export function buildMadeInView(result: CheckResult): MadeInView {
   const p = result.product;
   const meta = result.meta;
@@ -215,29 +317,26 @@ export function buildMadeInView(result: CheckResult): MadeInView {
   const madeIn = cleanValue(p?.madeIn);
   const webRan = result.knowledgeBasis === 'web_enriched';
 
-  const firstSource = (url?: string, country?: string) => {
-    const line = url ? sources.find((s) => s.includes(url)) ?? url : sources[0];
-    if (!line) return undefined;
-    const parts = splitSourceLine(line);
-    const label = sourceLabel(parts);
-    return label ? { label, url: parts.url, country } : undefined;
-  };
-
   const made = confirmedMadeIn(result);
   if (made) {
     const basis: MadeInBasis = made.basis;
     const confirmed = candidates.find((c) => c.rating === 'confirmed');
-    const barcodeHit = searchCoo.find((c) => c.status === 'confirmed' && c.basis === 'barcode');
+    // Label basis: the package photo, no web rows, so no web-source chip.
+    const sourceRows =
+      basis === 'label'
+        ? []
+        : supportingRows(
+            searchCoo,
+            sources,
+            (h) => h.status === 'confirmed' && h.basis === 'barcode' && sameCountryLabel(h.country, madeIn)
+          );
     return {
       state: 'confirmed',
       country: madeIn,
       basis,
       confidence: confirmed?.confidence ?? result.confidence,
-      sourceCount: Math.max(sources.length, searchCoo.length),
-      source:
-        basis === 'label'
-          ? undefined
-          : firstSource(barcodeHit?.url, barcodeHit?.country),
+      sourceCount: sourceRows.length,
+      sourceRows,
       candidates: [],
       noBarcodePage: false,
     };
@@ -256,16 +355,18 @@ export function buildMadeInView(result: CheckResult): MadeInView {
       : undefined);
   const hadBarcode = searchCoo.some((c) => c.basis === 'barcode');
   if (nameLikely) {
-    const hit = searchCoo.find(
-      (c) => c.status === 'likely' && sameLabel(c.country, nameLikely.label)
+    const sourceRows = supportingRows(
+      searchCoo,
+      sources,
+      (h) => h.status === 'likely' && h.basis === 'name' && sameCountryLabel(h.country, nameLikely.label)
     );
     return {
       state: 'likely',
       country: nameLikely.label,
       basis: 'name',
       confidence: nameLikely.confidence,
-      sourceCount: Math.max(sources.length, searchCoo.length),
-      source: firstSource(hit?.url, hit?.country),
+      sourceCount: sourceRows.length,
+      sourceRows,
       candidates: [],
       noBarcodePage: webRan && !hadBarcode,
     };
@@ -275,7 +376,9 @@ export function buildMadeInView(result: CheckResult): MadeInView {
   return {
     state: 'unconfirmed',
     basis: rows.some((c) => c.source === 'web_name') ? 'name' : undefined,
-    sourceCount: Math.max(sources.length, searchCoo.length),
+    // B: no source-count chip, no source rows.
+    sourceCount: 0,
+    sourceRows: [],
     candidates: rows,
     noBarcodePage: webRan && !hadBarcode,
   };

@@ -76,6 +76,7 @@ export const zhHant = {
       noBarcodePage: '沒有網頁同時顯示條碼及產地',
       sourceCount: '{n} 個來源',
       sourceFirst: '來源 1：{label}',
+      sourceNth: '來源 {n}：{label}',
       sourceCountry: '生產國 {country}',
       labelSource: '來源：包裝標示照片',
       parent: '母公司',

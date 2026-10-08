@@ -76,6 +76,7 @@ export const el = {
       noBarcodePage: 'Καμία σελίδα δεν έδειξε τον γραμμωτό κώδικα με τον τόπο κατασκευής',
       sourceCount: 'Πηγές: {n}',
       sourceFirst: 'Πηγή 1: {label}',
+      sourceNth: 'Πηγή {n}: {label}',
       sourceCountry: 'κατασκευή: {country}',
       labelSource: 'Πηγή: φωτογραφία της ετικέτας συσκευασίας',
       parent: 'Μητρική εταιρεία',

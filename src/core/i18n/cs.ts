@@ -76,6 +76,7 @@ export const cs = {
       noBarcodePage: 'Žádná stránka neukázala čárový kód se zemí výroby',
       sourceCount: 'Zdroje: {n}',
       sourceFirst: 'Zdroj 1: {label}',
+      sourceNth: 'Zdroj {n}: {label}',
       sourceCountry: 'vyrobeno v: {country}',
       labelSource: 'Zdroj: fotografie štítku obalu',
       parent: 'Mateřská společnost',

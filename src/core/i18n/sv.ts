@@ -76,6 +76,7 @@ export const sv = {
       noBarcodePage: 'Ingen sida visade streckkoden med tillverkningsland',
       sourceCount: 'Källor: {n}',
       sourceFirst: 'Källa 1: {label}',
+      sourceNth: 'Källa {n}: {label}',
       sourceCountry: 'tillverkad i {country}',
       labelSource: 'Källa: foto av förpackningens etikett',
       parent: 'Moderbolag',

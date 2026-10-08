@@ -76,6 +76,7 @@ export const it = {
       noBarcodePage: 'Nessuna pagina mostra il codice a barre con il paese di produzione',
       sourceCount: 'Fonti: {n}',
       sourceFirst: 'Fonte 1: {label}',
+      sourceNth: 'Fonte {n}: {label}',
       sourceCountry: 'prodotto in {country}',
       labelSource: 'Fonte: foto dell’etichetta della confezione',
       parent: 'Società madre',

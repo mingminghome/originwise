@@ -10,6 +10,7 @@ import * as React from 'react';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { catalogs, createT } from '../core/i18n';
+import { localizeCountry } from '../core/i18n/countries';
 import type { CheckResult } from '../core/types';
 import { ChinaCard, LayersCard, MadeInCard } from './ResultCards';
 import { OriginLayers } from './OriginLayers';
@@ -89,8 +90,10 @@ describe('buildMadeInView', () => {
     assert.equal(v.country, '中國');
     assert.equal(v.basis, 'barcode');
     assert.equal(v.confidence, 0.95);
-    assert.equal(v.source?.label, 'Sheer 240ml');
-    assert.equal(v.source?.country, '中国');
+    assert.equal(v.sourceRows.length, 1);
+    assert.equal(v.sourceCount, 1);
+    assert.equal(v.sourceRows[0]?.label, 'Sheer 240ml');
+    assert.equal(v.sourceRows[0]?.country, 'China'); // searchCoo said 中国
   });
 
   it('A: label basis from the package photo', () => {
@@ -875,5 +878,291 @@ describe('製造地 card: parts candidates only the model named (closes #32 deci
     const out = html(createElement(MadeInCard, { result: agree, t: zh }));
     assert.ok(!out.includes('data-testid="model-ref"'), out);
     assert.ok(out.includes('<span class="rc-cand-meta">可能（非確認） · '), out);
+  });
+});
+
+describe('製造地 sources: the count chip and the rows always match (Tester, #33)', () => {
+  const sheerLive = (
+    JSON.parse(readFileSync(new URL('./fixtures/sheer-live.json', import.meta.url), 'utf8')) as {
+      result: CheckResult;
+    }
+  ).result;
+  const locales = Object.keys(catalogs) as Array<Parameters<typeof createT>[0]>;
+  const textOf = (frag: string) => frag.replace(/<[^>]+>/g, '');
+  const sourceLis = (out: string) =>
+    [...(out.match(/<ol class="rc-sources"[^>]*>.*?<\/ol>/)?.[0] ?? '').matchAll(/<li class="rc-source">.*?<\/li>/g)].map(
+      (m) => m[0]
+    );
+  const chipN = (out: string, t: ReturnType<typeof createT>) => {
+    const tpl = t('check.rc.sourceCount', { n: '§' });
+    const [pre, post] = tpl.split('§') as [string, string];
+    const chips = [...out.matchAll(/<span class="rc-chip">(.*?)<\/span>/g)].map((m) => m[1]!);
+    const hit = chips.find((c) => c.startsWith(pre) && c.endsWith(post));
+    return hit == null ? 0 : Number(hit.slice(pre.length, hit.length - post.length));
+  };
+  /** Save path: drop data-section-share="ui" / role="tooltip" elements. */
+  const stripUi = (markup: string) => {
+    assert.equal(CAPTURE_UI_SELECTOR, '[data-section-share="ui"], [role="tooltip"]');
+    let out = markup;
+    for (;;) {
+      const m = /<(\w+)\b[^>]*(?:data-section-share="ui"|role="tooltip")[^>]*>/.exec(out);
+      if (!m) return out;
+      const re = new RegExp(`<${m[1]}\\b[^>]*>|</${m[1]}>`, 'g');
+      re.lastIndex = m.index + m[0].length;
+      let depth = 1;
+      let end = out.length;
+      for (let x = re.exec(out); x; x = re.exec(out)) {
+        depth += x[0].startsWith('</') ? -1 : 1;
+        if (!depth) {
+          end = x.index + x[0].length;
+          break;
+        }
+      }
+      out = out.slice(0, m.index) + out.slice(end);
+    }
+  };
+
+  const hit = (url: string, country = '中国', basis: 'barcode' | 'name' = 'barcode', status: 'confirmed' | 'likely' = 'confirmed') => ({
+    country,
+    basis,
+    status,
+    url,
+  });
+  const confirmedMany = base({
+    relationTier: 'direct',
+    sources: [
+      'Shop A — https://a.example.jp/p/1',
+      'Shop B — https://b.example.jp/p/2',
+      'Shop C — https://c.example.jp/p/3',
+      'Shop D — https://d.example.jp/p/4',
+      'Unrelated — https://x.example.jp/blog',
+    ],
+    product: { name: 'Bottle', madeIn: '中國', madeInBasis: 'barcode' },
+    meta: {
+      searchCoo: [
+        hit('https://a.example.jp/p/1'),
+        hit('https://a.example.jp/p/1'), // duplicate URL
+        hit('https://b.example.jp/p/2', 'タイ'), // other country: excluded
+        hit('https://c.example.jp/p/3', 'China', 'name', 'likely'), // wrong basis: excluded
+        hit('https://d.example.jp/p/4', 'China'),
+      ],
+    },
+  });
+  const capped = base({
+    product: { name: 'Bottle', madeIn: 'China', madeInBasis: 'barcode' },
+    meta: { searchCoo: [1, 2, 3, 4, 5].map((n) => hit(`https://s${n}.example.jp/p`, 'China')) },
+  });
+  const likelyThai = base({
+    sources: ['Retailer — https://r.example.jp/item/1'],
+    product: {
+      name: 'Bottle',
+      originCandidates: [{ label: 'Thailand', confidence: 0.55, source: 'web_name', rating: 'likely' }],
+    },
+    meta: {
+      searchCoo: [
+        hit('https://r.example.jp/item/1', 'タイ', 'name', 'likely'),
+        hit('https://r.example.jp/item/1', 'タイ', 'name', 'likely'),
+        hit('https://v.example.jp/item/2', 'ベトナム', 'name', 'likely'),
+      ],
+    },
+  });
+  const labelBasis = base({
+    sources: ['Shop — https://a.example.jp/p/1', 'Shop — https://b.example.jp/p/2'],
+    product: { name: 'Bottle', madeIn: 'Japan', madeInBasis: 'label' },
+    meta: { searchCoo: [hit('https://a.example.jp/p/1', 'Japan')] },
+  });
+  const unconfirmedWeb = base({
+    sources: ['Shop — https://a.example.jp/p/1'],
+    product: {
+      name: 'Bottle',
+      originCandidates: [{ label: 'Vietnam', confidence: 0.4, source: 'parts', rating: 'possible' }],
+    },
+    meta: { searchCoo: [] },
+  });
+  const ALL = { sheerLive, confirmedMany, capped, likelyThai, labelBasis, unconfirmedWeb };
+
+  it('real Sheer payload: exactly three AEON rows, chip 3, on screen and in the 780 save', () => {
+    assert.equal(sectionShareCapture.phoneCssPx * sectionShareCapture.pixelRatio, 780);
+    const out = html(createElement(MadeInCard, { result: sheerLive, t: zh }));
+    for (const markup of [out, stripUi(out)]) {
+      const rows = sourceLis(markup).map(textOf);
+      assert.equal(rows.length, 3, markup);
+      assert.equal(chipN(markup, zh), 3);
+      assert.match(rows[0]!, /^來源 1：ピジョン 母乳実感 Sheer PPSU .* · aeonretail\.com · 生產國 中國$/);
+      assert.match(rows[1]!, /^來源 2：おうちでイオン .* · shop\.aeon\.com · 生產國 中國$/);
+      assert.match(rows[2]!, /^來源 3：【3ヶ月頃～】ピジョン .* · shop\.aeon\.com · 生產國 中國$/);
+    }
+    const urls = buildMadeInView(sheerLive).sourceRows.map((r) => r.url);
+    assert.equal(new Set(urls).size, 3);
+    assert.ok(urls.every((u) => /aeonretail\.com|shop\.aeon\.com/.test(u ?? '')));
+  });
+
+  it('dedupe by URL; other-country and wrong-basis hits excluded; titles from Sources', () => {
+    const v = buildMadeInView(confirmedMany);
+    assert.deepEqual(
+      v.sourceRows.map((r) => [r.label, r.url]),
+      [
+        ['Shop A', 'https://a.example.jp/p/1'],
+        ['Shop D', 'https://d.example.jp/p/4'],
+      ]
+    );
+    assert.equal(v.sourceCount, 2);
+  });
+
+  it('more than three supporting pages: three rows and the chip says 3 (capped to what is shown)', () => {
+    const v = buildMadeInView(capped);
+    assert.equal(v.sourceRows.length, 3);
+    assert.equal(v.sourceCount, 3);
+    // No title line → the domain is the title, not repeated.
+    assert.equal(v.sourceRows[0]?.label, 's1.example.jp');
+    assert.equal(v.sourceRows[0]?.host, undefined);
+  });
+
+  it('likely (name): rows are the likely hits for the shown country (タイ = Thailand), deduped', () => {
+    const v = buildMadeInView(likelyThai);
+    assert.equal(v.state, 'likely');
+    assert.deepEqual(v.sourceRows.map((r) => r.url), ['https://r.example.jp/item/1']);
+    assert.equal(v.sourceCount, 1);
+  });
+
+  it('label basis and unconfirmed: no web-source chip and no source rows', () => {
+    for (const r of [labelBasis, unconfirmedWeb]) {
+      const v = buildMadeInView(r);
+      assert.equal(v.sourceCount, 0);
+      assert.deepEqual(v.sourceRows, []);
+      const out = html(createElement(MadeInCard, { result: r, t: zh }));
+      assert.equal(chipN(out, zh), 0, out);
+      assert.equal(sourceLis(out).length, 0);
+    }
+    assert.ok(html(createElement(MadeInCard, { result: labelBasis, t: zh })).includes('rc-source'));
+  });
+
+  it('real Sheer: the two shop.aeon.com rows read as different pages (titles differ, no path hint needed)', () => {
+    const rows = buildMadeInView(sheerLive).sourceRows;
+    const key = (x: string) => x.replace(/\s+|…|\.\.\./g, '').toLowerCase();
+    const aeon = rows.filter((r) => r.host === 'shop.aeon.com');
+    assert.equal(aeon.length, 2);
+    assert.notEqual(key(aeon[0]!.label), key(aeon[1]!.label));
+    assert.ok(!key(aeon[0]!.label).startsWith(key(aeon[1]!.label)) && !key(aeon[1]!.label).startsWith(key(aeon[0]!.label)));
+    assert.ok(rows.every((r) => !r.pathHint));
+    const texts = sourceLis(html(createElement(MadeInCard, { result: sheerLive, t: zh }))).map((li) =>
+      textOf(li).replace(/^來源 \d：/, '')
+    );
+    assert.equal(new Set(texts).size, 3);
+  });
+
+  it('same domain + same (or truncated) title → a short distinguishing URL part after the domain', () => {
+    const twins = base({
+      product: { name: 'Bottle', madeIn: 'China', madeInBasis: 'barcode' },
+      sources: [
+        'Pigeon Sheer 240ml — https://shop.aeon.com/netsuper/01050000006850/0105000000685049.html',
+        'Pigeon Sheer 240ml — https://shop.aeon.com/netsuper/01050000010610/0105000001061049.html',
+        'Pigeon Sheer ... — https://shop.aeon.com/netsuper/01050000099999/x.html',
+      ],
+      meta: {
+        searchCoo: [
+          hit('https://shop.aeon.com/netsuper/01050000006850/0105000000685049.html', 'China'),
+          hit('https://shop.aeon.com/netsuper/01050000010610/0105000001061049.html', 'China'),
+          hit('https://shop.aeon.com/netsuper/01050000099999/x.html', 'China'),
+        ],
+      },
+    });
+    const rows = buildMadeInView(twins).sourceRows;
+    assert.deepEqual(
+      rows.map((r) => r.pathHint),
+      ['/…/01050000006850', '/…/01050000010610', '/…/01050000099999']
+    );
+    const texts = sourceLis(html(createElement(MadeInCard, { result: twins, t: zh }))).map((li) =>
+      textOf(li).replace(/^來源 \d：/, '')
+    );
+    assert.equal(new Set(texts).size, 3, texts.join(' | '));
+    assert.ok(texts[0]!.includes('shop.aeon.com/…/01050000006850 · 生產國 中國'), texts[0]);
+  });
+
+  it('label basis (Softouch-style label photo): 依包裝標示, no source chip, no empty chip, no web rows', () => {
+    const softouch = base({
+      relationTier: 'none',
+      confidence: 0.9,
+      partsEvidence: 'label',
+      sources: ['Amazon JP Softouch — https://amazon.co.jp/dp/B01CCLDEM0'],
+      product: {
+        name: 'Pigeon Softouch glass 240ml',
+        madeIn: 'Japan',
+        madeInBasis: 'label',
+        parts: [
+          { name: 'びん', kind: 'part', madeIn: 'Japan' },
+          { name: '乳首', kind: 'part', madeIn: 'China' },
+          { name: 'キャップ', kind: 'part', madeIn: 'Thailand' },
+        ],
+      },
+      meta: { searchCoo: [hit('https://amazon.co.jp/dp/B01CCLDEM0', 'Japan', 'name', 'likely')] },
+    });
+    for (const lng of locales) {
+      const t = createT(lng);
+      const out = html(createElement(MadeInCard, { result: softouch, t }));
+      for (const markup of [out, stripUi(out)]) {
+        assert.ok(markup.includes(`rc-chip rc-chip--solid">${t('check.matchBasis.label')}<`), `${lng}: ${markup}`);
+        assert.equal(chipN(markup, t), 0, lng);
+        assert.doesNotMatch(markup, /<span class="rc-chip[^"]*">\s*<\/span>/);
+        assert.equal(sourceLis(markup).length, 0);
+        assert.ok(!markup.includes('amazon.co.jp'), lng);
+        assert.ok(markup.includes(t('check.rc.labelSource')), lng);
+      }
+    }
+  });
+
+  it('likely: only pages backing the shown country become rows; chip == rows (some pages do not back it)', () => {
+    const mixedLikely = base({
+      sources: [
+        'Retailer A タイ製 — https://a.example.jp/item/1',
+        'Retailer B — https://b.example.jp/item/2',
+        'Retailer C ベトナム製 — https://c.example.jp/item/3',
+        'Blog — https://d.example.jp/post',
+      ],
+      product: {
+        name: 'Bottle',
+        originCandidates: [{ label: 'Thailand', confidence: 0.55, source: 'web_name', rating: 'likely' }],
+      },
+      meta: {
+        searchCoo: [
+          hit('https://a.example.jp/item/1', 'タイ', 'name', 'likely'),
+          hit('https://c.example.jp/item/3', 'ベトナム', 'name', 'likely'),
+          hit('https://b.example.jp/item/2', '泰國', 'name', 'likely'),
+          hit('https://d.example.jp/post', 'Thailand', 'barcode', 'confirmed'),
+        ],
+      },
+    });
+    for (const lng of locales) {
+      const t = createT(lng);
+      const out = html(createElement(MadeInCard, { result: mixedLikely, t }));
+      for (const markup of [out, stripUi(out)]) {
+        const rows = sourceLis(markup).map(textOf);
+        assert.equal(rows.length, 2, `${lng}: ${rows.join(' | ')}`);
+        assert.equal(chipN(markup, t), 2, lng);
+        assert.ok(rows[0]!.includes('Retailer A') && rows[1]!.includes('Retailer B'), rows.join(' | '));
+        // タイ / 泰國 on the pages → the locale's own name for Thailand on both rows.
+        const thai = t('check.rc.sourceCountry', { country: localizeCountry(t, 'Thailand') });
+        assert.ok(rows.every((r) => r.endsWith(thai)), `${lng}: ${rows.join(' | ')}`);
+        assert.ok(!markup.includes('Retailer C') && !markup.includes('d.example.jp'), lng);
+      }
+    }
+  });
+
+  it('16 locales, screen and 780 save: chip number == rows shown, rows numbered 1..n', () => {
+    assert.equal(locales.length, 16);
+    for (const lng of locales) {
+      const t = createT(lng);
+      for (const [name, r] of Object.entries(ALL)) {
+        const out = html(createElement(MadeInCard, { result: r, t }));
+        for (const markup of [out, stripUi(out)]) {
+          const rows = sourceLis(markup).map(textOf);
+          assert.equal(chipN(markup, t), rows.length, `${lng}/${name}: ${markup}`);
+          rows.forEach((row, i) => {
+            const head = t('check.rc.sourceNth', { n: i + 1, label: '§' }).split('§')[0]!;
+            assert.ok(row.startsWith(head), `${lng}/${name}: ${row} !~ ${head}`);
+          });
+        }
+      }
+    }
   });
 });

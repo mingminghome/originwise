@@ -109,3 +109,15 @@ describe('capture excludes on-screen UI (ⓘ tips, open tooltips)', () => {
     assert.deepEqual(removed, ['share', 'info', 'tip']);
   });
 });
+
+describe('capture keeps exact font sizes (#33 Sheer row-2 band)', () => {
+  it('copies the computed font shorthand last, after the rounded font-size', async () => {
+    const { captureStyleProperties } = await import('./sectionImage');
+    const props = captureStyleProperties(['color', 'font-size', 'height', 'font', 'line-height']);
+    assert.equal(props.at(-1), 'font');
+    assert.equal(props.filter((p) => p === 'font').length, 1);
+    // font-size stays as the fallback when Chrome cannot serialize `font`.
+    assert.ok(props.indexOf('font-size') > -1 && props.indexOf('font-size') < props.indexOf('font'));
+    assert.ok(props.includes('height'));
+  });
+});

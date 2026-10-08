@@ -76,6 +76,7 @@ export const fi = {
       noBarcodePage: 'Mikään sivu ei näyttänyt viivakoodia ja valmistusmaata',
       sourceCount: 'Lähteet: {n}',
       sourceFirst: 'Lähde 1: {label}',
+      sourceNth: 'Lähde {n}: {label}',
       sourceCountry: 'valmistusmaa {country}',
       labelSource: 'Lähde: valokuva pakkausmerkinnästä',
       parent: 'Emoyhtiö',
