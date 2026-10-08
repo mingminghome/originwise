@@ -173,6 +173,7 @@ function infoSourcePrefix(t: TFunction): { before: string; after: string } {
 /** One 爭議 side: 「中國（1 個型號相符的網頁）」. */
 function disputeSide(t: TFunction, d: DisputeSide): string {
   const country = localizeCountry(t, d.country);
+  if (d.label) return t('check.rc.disputeSideLabel', { country });
   if (!d.exactPages) return t('check.rc.disputeSidePages', { country, n: d.pages });
   if (d.exactPages >= d.pages) return t('check.rc.disputeSideExact', { country, n: d.exactPages });
   return t('check.rc.disputeSideMixed', { country, n: d.pages, e: d.exactPages });

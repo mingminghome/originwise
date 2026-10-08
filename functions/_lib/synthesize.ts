@@ -35,7 +35,7 @@ import {
   type GeoScope,
   type RegionCode,
 } from './regions';
-import { applyCooPriority, blankVerbFormMakers, extractCooClaimsFromText } from './cooPriority';
+import { applyCooPriority, blankVerbFormMakers, cooFieldDisputes, extractCooClaimsFromText } from './cooPriority';
 import { hqFoldedIntoParent } from './chinaChip';
 import { tierFromCodes } from './tierRules';
 import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
@@ -1642,6 +1642,8 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     'Result';
 
   const designInfo = collectDesignInfo(p, input.webEnriched ? input.webDesign : undefined, input.ocrText);
+  // 「產地：中國 日本製」: two explicit made-in claims in one label field → 爭議 line.
+  const labelDispute = (cooFieldDisputes(input.ocrText ?? '')[0] ?? []).slice(0, 2);
 
   const originCandidates = collectOriginCandidates(p, {
     webEnriched: input.webEnriched,
@@ -1824,6 +1826,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
           madeInBasis: madeInBasis && p.madeIn ? madeInBasis : undefined,
           madeInSupport: madeInBasis === 'model' && p.madeIn ? madeInSupport : undefined,
           designInfo: designInfo.length ? designInfo : undefined,
+          labelDispute: labelDispute.length >= 2 ? labelDispute : undefined,
         }
       : id
         ? { name: id.name, brand: id.brand, category: id.category }

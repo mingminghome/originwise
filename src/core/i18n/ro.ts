@@ -81,6 +81,7 @@ export const ro = {
       disputeSideExact: '{country} (pagini cu modelul exact: {n})',
       disputeSideMixed: '{country} (pagini: {n}, cu modelul exact: {e})',
       disputeSidePages: '{country} (pagini: {n})',
+      disputeSideLabel: '{country} (eticheta ambalajului)',
       disputeSep: '; ',
       designInfo: 'Informații suplimentare: design / inginerie conform mărcii: {country}. Nu este locul de fabricație.',
       brandInfo: 'Informații suplimentare: originea mărcii conform descrierii: {country}. Nu este locul de fabricație.',

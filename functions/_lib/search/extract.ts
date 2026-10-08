@@ -13,6 +13,7 @@
 
 import { isSearchResultUrl } from '../sourceLine';
 import { MADE_IN_CODE_LABEL, canonicalCountry, madeInCodeMatches } from '../countryLabel';
+import { normalizeCooLabel, settleCooFields } from '../cooPriority';
 import { designMentions, quoteBacksCountry, stripDesignPhrases } from '../designOrigin';
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
@@ -969,7 +970,7 @@ export function mapSearchHttpError(status: number, body: string): string {
 
 /** A quote must look like a COO statement (Made in / 原産国 / 〜製 …). */
 const COO_CUE =
-  /made\s*in|manufactured\s*in|assembled\s*in|country\s*of\s*origin|origin|\bcoo\b|原産|原產|生産|生產|製|産地|產地/i;
+  /made\s*in|manufactured\s*in|assembled\s*in|country\s*of\s*origin|origin|\bcoo\b|原産|原產|原产|生産|生產|生产|製|制造|産地|產地|产地/i;
 
 /** Notes that look like a made-in claim are dropped (they skipped the JAN check). */
 const NOTE_COO_CUE =
@@ -1001,35 +1002,52 @@ export type CooClaim = {
 };
 
 const MADE_IN_NAME_ANY_CASE =
-  /\b(?:made|manufactured|assembled|produced)[\s-]+in\s*[:：]?\s*(?:the\s+)?(mainland china|china|taiwan|japan|viet\s?nam|thailand|indonesia|malaysia|philippines|india|south korea|korea|hong kong|germany|france|italy|spain|portugal|poland|turkey|mexico|united kingdom|great britain|united states|usa|cambodia|bangladesh|netherlands|sri lanka|czech republic|canada|australia|brazil)\b/gi;
+  /(?<!\b(?:not|never)\s)\b(?:(?:made|manufactured|assembled|produced)[\s-]+in|country\s+of\s+origin)\s*[:：]?\s*(?:the\s+)?(mainland china|china|taiwan|japan|viet\s?nam|thailand|indonesia|malaysia|philippines|india|south korea|korea|hong kong|germany|france|italy|spain|portugal|poland|turkey|mexico|united kingdom|great britain|united states|usa|cambodia|bangladesh|netherlands|sri lanka|czech republic|canada|australia|brazil)\b/gi;
 
 /** Deterministic fallback when the extraction model is unavailable. */
 export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
   const out: CooClaim[] = [];
   pages.forEach((p, idx) => {
-    // Design / brand wording is blanked first ("Designed in Germany, made in China" → China).
-    const t = stripDesignPhrases(nfkc(p.text));
+    // Design / brand wording is blanked first ("Designed in Germany, made in China" → China);
+    // then a field value with a second country is settled: 「產地：德國 中國」 and
+    // 「產地：中國 日本製」 give nothing, 「原産国：中国（日本企画）」 gives China.
+    const t = settleCooFields(stripDesignPhrases(nfkc(p.text)));
     const patterns: RegExp[] = [
-      /\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|[Cc]ountry of [Oo]rigin\s*[:：]?|(?<![Bb]rand\s|BRAND\s)(?:[Oo]rigin|ORIGIN)\s*[:：])\s*(?:[Tt]he\s+|THE\s+)?([A-Z][A-Za-z]{2,}(?: [A-Z][a-z]+)?)/g,
-      /(?:原産国|生産国|製造国|原産地|生産地|原產地|原產國|生產國|生產地|產地|製造地)(?:名)?\s*[:：・／/]?\s*([^\s:：、。,，|/／()（）<>[\]]{1,12})/g,
+      // "Made In China" / "MADE IN HONG KONG" / "COUNTRY OF ORIGIN\nCHINA": any case,
+      // full country names only (lower-case codes such as "made in cn" stay
+      // rejected). First, so a longer name wins over a one-word fragment.
+      MADE_IN_NAME_ANY_CASE,
+      /(?<![Nn]ot\s|NOT\s|[Nn]ever\s|NEVER\s)\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|[Cc]ountry of [Oo]rigin\s*[:：]?|(?<![Bb]rand\s|BRAND\s)(?:[Oo]rigin|ORIGIN)\s*[:：])\s*(?:[Tt]he\s+|THE\s+)?([A-Z][A-Za-z]{2,}(?: [A-Z][a-z]+| [A-Z]{2,}(?![a-z]))?)/g,
+      /(?:原産国|生産国|製造国|製造國|制造国|原産地|生産地|原產地|原產國|生產國|生產国|生產地|產地|製造地|原产国|原产地|生产国|生产地|产地)(?:名)?\s*[:：・／/]?\s*([^\s:：、。,，|/／()（）<>[\]]{1,12})/g,
       // 「製造：中國」「生產：越南」: the field name needs its colon.
       /(?:製造|制造|生產|生产|生産)\s*[:：]\s*([^\s:：、。,，|/／()（）<>[\]]{1,12})/g,
-      // "Made In China" / "made in china": any case, full country names only
-      // (lower-case codes such as "made in cn" stay rejected).
-      MADE_IN_NAME_ANY_CASE,
     ];
     // Upper-case short forms only right after an explicit cue ("MADE IN CN",
     // "COO: VN", "Made in the UK"); never IT / DE / my, never in prose.
-    const codeMatches = madeInCodeMatches(t).map((c) => ({ 0: t.slice(c.index, c.index + c.length), 1: c.code }));
+    const codeMatches = madeInCodeMatches(t).map((c) => ({
+      0: t.slice(c.index, c.index + c.length),
+      1: c.code,
+      index: c.index,
+    }));
     const seen = new Set<string>();
-    const found: Array<{ 0: string; 1?: string }> = [...patterns.flatMap((re) => [...t.matchAll(re)]), ...codeMatches];
+    // One claim per made-in cue: "MADE IN HONG KONG" is Hong Kong, not also "HONG".
+    const cueAt = new Set<number>();
+    const found: Array<{ 0: string; 1?: string; index?: number }> = [
+      ...patterns.flatMap((re) => [...t.matchAll(re)]),
+      ...codeMatches,
+    ];
     for (const m of found) {
+      if (m.index !== undefined) {
+        if (cueAt.has(m.index)) continue;
+        cueAt.add(m.index);
+      }
       const raw = (m[1] || '').trim();
-      const named = MADE_IN_CODE_LABEL[raw] ?? raw;
-      // Latin names as the card's own name: "Viet Nam" / "china" → Vietnam / China.
-      const country = /^[A-Za-z][A-Za-z .'-]{3,}$/.test(named) ? (canonicalCountry(named) ?? named) : named;
-      if (!country || /^(不明|なし|-|—|unknown)$/i.test(country)) continue;
       // A bare code the table does not list (產地：DE / IT) is no claim.
+      if (/^[A-Za-z]{2}$/.test(raw) && !MADE_IN_CODE_LABEL[raw]) continue;
+      // Names as the card's own name: "Viet Nam" / "china" / ベトナム / "SRI LANKA"
+      // → Vietnam / China / Vietnam / Sri Lanka (越南 / 中國 / 越南 / 斯里蘭卡).
+      const country = normalizeCooLabel(MADE_IN_CODE_LABEL[raw] ?? raw);
+      if (!country || /^(不明|なし|-|—|unknown)$/i.test(country)) continue;
       if (/^[A-Za-z]{2}$/.test(country)) continue;
       // "Made in USA" read by name and by code: one claim per page and country.
       const key = canonicalCountry(country) ?? country.toLowerCase();

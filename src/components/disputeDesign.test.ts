@@ -328,8 +328,43 @@ describe('display name: a label "Made in Viet Nam" shows 越南, never "Viet Nam
   });
 });
 
+describe('label field with a second explicit made-in claim: 未確認 + 爭議 (both from the package label)', () => {
+  for (const [ocr, a, b] of [
+    ['產地：中國 日本製', '中國', '日本'],
+    ['原産国：中国 MADE IN JAPAN', '中國', '日本'],
+    ['產地：中國（日本製造）', '中國', '日本'],
+  ] as const) {
+    for (const madeIn of [undefined, 'China', 'Japan']) {
+      it(`「${ocr}」${madeIn ? ` (AI ${madeIn})` : ''} → 未確認, 爭議：${a}（包裝標示）；${b}（包裝標示）`, () => {
+        const r = runPages({ ocrText: `CYBEX Melio\n${ocr}`, pages: [], ...(madeIn ? { madeIn } : {}) });
+        const v = buildMadeInView(r);
+        assert.equal(v.state, 'unconfirmed', JSON.stringify(v));
+        assert.equal(v.dispute?.length, 2, JSON.stringify(v));
+        const t = text(r);
+        assert.ok(t.includes(`${a}（包裝標示）；${b}（包裝標示）`), t);
+        assert.ok(!t.includes('95%'), t);
+      });
+    }
+  }
+  for (const [ocr, made] of [
+    ['原産国：ベトナム（日本製生地使用）', '越南'],
+    ['原産国：中国（日本企画）', '中國'],
+    ['產地：中國 香港出貨', '中國'],
+    ['Origin: China (fabric made in Japan)', '中國'],
+  ] as const) {
+    it(`「${ocr}」 → ${made} 95% from the label, no 爭議`, () => {
+      const r = runPages({ ocrText: `CYBEX Melio\n${ocr}`, pages: [] });
+      const v = buildMadeInView(r);
+      assert.equal(v.state, 'confirmed', JSON.stringify(v));
+      assert.equal(v.basis, 'label');
+      const t = text(r);
+      assert.ok(t.includes(made) && t.includes('95%') && !t.includes('爭議'), t);
+    });
+  }
+});
+
 describe('dispute / design wording in all 16 locales', () => {
-  const KEYS = ['dispute', 'disputeSideExact', 'disputeSideMixed', 'disputeSidePages', 'designInfo', 'brandInfo', 'infoSource'];
+  const KEYS = ['dispute', 'disputeSideExact', 'disputeSideMixed', 'disputeSidePages', 'disputeSideLabel', 'designInfo', 'brandInfo', 'infoSource'];
   it('every locale has its own wording, soft, never 非確認', () => {
     for (const lng of locales) {
       const t = createT(lng);

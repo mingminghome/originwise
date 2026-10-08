@@ -81,6 +81,7 @@ export const it = {
       disputeSideExact: '{country} (pagine con il modello esatto: {n})',
       disputeSideMixed: '{country} (pagine: {n}, con il modello esatto: {e})',
       disputeSidePages: '{country} (pagine: {n})',
+      disputeSideLabel: '{country} (etichetta della confezione)',
       disputeSep: '; ',
       designInfo: 'Informazioni aggiuntive: progettazione / ingegneria secondo il marchio: {country}. Non è il luogo di produzione.',
       brandInfo: 'Informazioni aggiuntive: origine del marchio indicata: {country}. Non è il luogo di produzione.',

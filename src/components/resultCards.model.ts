@@ -88,7 +88,8 @@ export type MadeInView = {
   citedRows: SourceRow[];
 };
 
-export type DisputeSide = { country: string; pages: number; exactPages: number };
+/** One 爭議 side; `label` = a claim on the package label (no page count). */
+export type DisputeSide = { country: string; pages: number; exactPages: number; label?: boolean };
 
 export type DesignRow = { country: string; kind: 'design' | 'brand'; source?: SourceRow };
 
@@ -486,7 +487,7 @@ function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' 
           ? 'onePageOnly'
           : undefined;
   // 爭議: every side of the disagreement with its page counts.
-  const dispute: DisputeSide[] =
+  const pageDispute: DisputeSide[] =
     reason === 'pagesDisagree'
       ? rows
           .filter((r) => r.source === 'web_name')
@@ -500,6 +501,12 @@ function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' 
           })
           .filter((d) => d.pages > 0)
       : [];
+  // Two explicit made-in claims in one label field (「產地：中國 日本製」).
+  const labelSides = p?.labelDispute ?? [];
+  const dispute: DisputeSide[] =
+    pageDispute.length >= 2 || labelSides.length < 2
+      ? pageDispute
+      : labelSides.map((country) => ({ country, pages: 0, exactPages: 0, label: true }));
   return {
     state: 'unconfirmed',
     // No basis / confidence / source-count chip on a 未確認 headline.
