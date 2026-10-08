@@ -84,3 +84,19 @@ describe('tier reasons in 繁中', () => {
     assert.ok(formatTierReason('hq_cn', en, result).includes('China'));
   });
 });
+
+describe('explicit_non_cn_geo never lists China', () => {
+  it('drops 中國 / China from the outside-China places (CJK values from the model)', () => {
+    const r: CheckResult = {
+      schemaVersion: 1,
+      relationTier: 'direct',
+      title: 'Sheer',
+      summary: '',
+      product: { madeIn: '中國', originCountry: '日本' },
+      company: { hqCountry: '日本' },
+    };
+    const line = formatTierReason('explicit_non_cn_geo', zh, r);
+    assert.ok(line.includes('日本'), line);
+    assert.ok(!/：.*中國/.test(line), line);
+  });
+});

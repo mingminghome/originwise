@@ -5,6 +5,7 @@
 
 import type { CheckResult } from '../types';
 import { localeOfT, type TFunction } from './index';
+import { inScope, normalizeRegion } from '../../../functions/_lib/regions';
 import { localizeCountry } from './countries';
 
 const KNOWN = new Set([
@@ -24,8 +25,6 @@ const KNOWN = new Set([
   'ownership_not_assessed',
 ]);
 
-const CN_PLACE =
-  /\b(china|prc|mainland\s*china|people'?s\s*republic|中國|中国|中國大陸|中国大陆)\b/i;
 
 function uniquePlaces(result: CheckResult): string[] {
   const raw = [
@@ -40,9 +39,17 @@ function uniquePlaces(result: CheckResult): string[] {
   return [...new Set(raw)];
 }
 
-/** Places outside mainland China wording (for "non-CN geo" reason bullets). */
+/**
+ * Places outside the China scope (for "non-CN geo" reason bullets).
+ * Same region rules as the server tier, so 中國 / 中国 never land here
+ * (the old \b regex missed CJK names). Taiwan always counts as outside.
+ */
 function uniqueNonCnPlaces(result: CheckResult): string[] {
-  return uniquePlaces(result).filter((p) => !CN_PLACE.test(p));
+  const scope = result.geoScope === 'greater_china' ? 'greater_china' : 'prc';
+  return uniquePlaces(result).filter((p) => {
+    const r = normalizeRegion(p);
+    return r !== 'UNKNOWN' && !inScope(r, scope);
+  });
 }
 
 function humanizeCode(code: string): string {
