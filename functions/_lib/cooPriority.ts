@@ -130,7 +130,7 @@ const CJK_US_PLACE = new RegExp(
  * A US place after a made-in cue or in a made-in field; the place becomes one
  * "USA" / 美國 value (same length, so offsets and page quotes stay):
  * - a US state name before USA: 「Made in Georgia, USA」 "Georgia (USA)" "Georgia/USA"
- *   "Georgia and USA" "Texas & USA"
+ *   "Georgia and USA" "Texas & USA" (and / & only for a state name: "Wales and USA" is no US place)
  *   "Origin: Georgia, USA" "Origin: Texas, USA" "COO: California, USA";
  * - a listed town (or "<town> City") before a US state name or upper-case code,
  *   comma only: 「Made in Jordan, Minnesota」「Made in Mexico, NY」「Made in Panama City, Florida」;
@@ -151,6 +151,8 @@ export function usPlacesAsUsa(text: string): string {
       if (!TOWNS_NOT_COUNTRIES.includes(place) && !US_STATES.includes(place)) return all;
       // "US" only in upper case ("Made in Georgia, us …").
       if (/^u\.?s\.?$/i.test(where) && where !== where.toUpperCase()) return all;
+      // and / & link only a real US state name ("Georgia and USA"; not "Wales and USA").
+      if (/\band\b|&/i.test(sep) && !US_STATES.includes(place)) return all;
     } else {
       if (!/,/.test(sep)) return all;
       const base = place.replace(/\s+city$/, '');
@@ -307,16 +309,30 @@ const PAIR_AFTER = new RegExp(`^[ \\t]*[-–—/／][ \\t]*(${VALUE_COUNTRY_TOKE
 const EU_FIRST = /(?:\b(?:made|manufactured|produced|assembled)[\s-]+in[ \t]+|(?<!(?:brand|design)\s+(?:of\s+)?)((?:country\s+of\s+)?origin|\bcoo)[ \t]*[:：][ \t]*)(?:the[ \t]+)?(?:E\.U\.|EU)(?![A-Za-z])/gi;
 /** A field's second place after the EU: any list joiner. */
 const EU_FIELD_PAIR = new RegExp(`^[ \\t]*(?:[-–—/／,，、&+]|\\band\\b|\\bor\\b)[ \\t]*(${VALUE_COUNTRY_TOKEN})`, 'i');
+/** Prose "EU and USA", "EU & USA", "EU or USA": a USA second joined like "China and USA". */
+const EU_US_JOIN = new RegExp(`^[ \\t]*(?:&|\\band\\b|\\bor\\b)[ \\t]*(?:the[ \\t]+)?(${VALUE_COUNTRY_TOKEN})`, 'i');
 /** The EU named in a field value ("China / EU"); upper case only. */
 const EU_IN_VALUE = /(?<![A-Za-z.])(?:E\.U\.|EU)(?![A-Za-z])/g;
 /** USA, then a second country after a comma, and, & or or ("Made in USA, China"). */
 const US_JOIN_AFTER = new RegExp(`^[ \\t]*(,|，|&|\\band\\b|\\bor\\b)[ \\t]*(?:the[ \\t]+)?(${VALUE_COUNTRY_TOKEN}|E\\.U\\.|EU(?![A-Za-z]))`, 'i');
 /**
- * A US address right after a town name: ", <US state name or upper-case code>"
- * ("Made in USA, Lebanon, TN", "USA, Panama City, FL").
+ * A US address right after a US-town-list country: ", <US state name or upper-case
+ * code>" that ends the claim — an optional ZIP, then . ; ) or a newline, the end of
+ * the text, or ", USA" ("Made in USA, Lebanon, TN", "USA, Panama City, FL",
+ * "USA, Mexico, NY 10001", "USA, Lebanon, TN, USA"). Never another word after the
+ * state ("USA, Lebanon, OR Mexico", "USA, Vietnam, CA PROP 65"). Georgia is a
+ * country too, so it is no address state here ("USA, Mexico, Georgia" is 爭議).
  */
-const US_ADDRESS_AFTER = new RegExp(`^(?:[ \\t]+city)?[ \\t]*,[ \\t]*(${US_STATE_NAME}|${US_STATE_ABBR})(?![A-Za-z])`, 'i');
-function usAddressAfter(rest: string): boolean {
+const US_ADDRESS_STATE = US_STATES.filter((n) => n !== 'georgia')
+  .sort((a, b) => b.length - a.length)
+  .map((n) => n.replace(/\./g, '\\.').replace(/ /g, '\\s+'))
+  .join('|');
+const US_ADDRESS_AFTER = new RegExp(
+  `^(?:[ \\t]+city)?[ \\t]*,[ \\t]*(${US_ADDRESS_STATE}|${US_STATE_ABBR})(?:[ \\t]+\\d{5}(?:-\\d{4})?)?(?=[ \\t]*(?:[.;)）。]|\\r?\\n|$|,[ \\t]*(?:united\\s+states(?:\\s+of\\s+america)?|u\\.s\\.a\\.?|usa)(?![A-Za-z])))`,
+  'i'
+);
+function usAddressAfter(second: string, rest: string): boolean {
+  if (!US_TOWN_COUNTRIES.has(canonCountry(second))) return false;
   const m = US_ADDRESS_AFTER.exec(rest);
   if (!m) return false;
   // A short state code only in upper case ("…, Mexico, ny" is no state).
@@ -334,7 +350,8 @@ const isUs = (x: string) => canonCountry(x) === 'united states';
  * - the same country twice ("China / PRC") is one;
  * - a part / material word after the second ("Made in USA, China parts") makes it a component;
  * - USA with a US state ("Made in USA/Georgia", "USA, Texas") is the US;
- * - USA, then a town with a US state after it ("Made in USA, Lebanon, TN") is a US address;
+ * - USA, then a US-town-list country with a US state ending the claim ("Made in USA,
+ *   Lebanon, TN") is a US address (see usAddressAfter);
  * - the EU counts as a second place ("Made in USA, EU" is 爭議, as "EU / China");
  * - a town-list country first, bare USA second ("Made in Mexico/USA") keeps the country;
  * - a bare ", USA" tag after any country ("Made in China, USA", "Mexico, USA and
@@ -354,7 +371,7 @@ function proseSecond(first: string, tail: string): { second: string; length: num
   if (canonCountry(second) === canonCountry(first)) return undefined;
   if (new RegExp(`^[ \\t]*${PART_WORD}`, 'i').test(tail.slice(hit[0].length))) return undefined;
   if (isUs(first) && US_STATES.includes(second.toLowerCase())) return undefined;
-  if (isUs(first) && usAddressAfter(tail.slice(hit[0].length))) return undefined;
+  if (isUs(first) && usAddressAfter(second, tail.slice(hit[0].length))) return undefined;
   if (isUs(second) && US_TOWN_COUNTRIES.has(canonCountry(first)) && (slash || /^[,，]$/.test(join![1]!))) return undefined;
   if (join) {
     if (!isUs(first) && !isUs(second)) return undefined;
@@ -562,7 +579,12 @@ function resolveFieldValues(input: string): FieldPass {
     if (!/E\.?U\.?$/.test(e[0])) continue;
     const at = e.index!;
     if (chars.slice(at, at + e[0].length).join('').trim() !== e[0].trim()) continue;
-    const pair = (e[1] ? EU_FIELD_PAIR : PAIR_AFTER).exec(text.slice(at + e[0].length));
+    const after = text.slice(at + e[0].length);
+    let pair = (e[1] ? EU_FIELD_PAIR : PAIR_AFTER).exec(after);
+    if (!pair && !e[1]) {
+      const join = EU_US_JOIN.exec(after);
+      if (join && isUs(pairLabel(join[1]!)) && !new RegExp(`^[ \\t]*${PART_WORD}`, 'i').test(after.slice(join[0].length))) pair = join;
+    }
     if (!pair) continue;
     const second = pairLabel(pair[1]!);
     if (second === 'European Union') continue;
