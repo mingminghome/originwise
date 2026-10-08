@@ -13,7 +13,7 @@
 
 import { isSearchResultUrl } from '../sourceLine';
 import { MADE_IN_CODE_LABEL, canonicalCountry, madeInCodeMatches } from '../countryLabel';
-import { isKnownCountryLabel, normalizeCooLabel, settleCooFields } from '../cooPriority';
+import { madeInValueCountry, settleCooFields } from '../cooPriority';
 import { COUNTRY_LIST_LATIN } from '../countryNames';
 import { designMentions, quoteBacksCountry, stripDesignPhrases } from '../designOrigin';
 import { extractJsonObject } from '../jsonExtract';
@@ -1024,7 +1024,7 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
       // full country names only (lower-case codes such as "made in cn" stay
       // rejected). First, so a longer name wins over a one-word fragment.
       MADE_IN_NAME_ANY_CASE,
-      /(?<![Nn]ot[ \t]|NOT[ \t]|[Nn]ever[ \t]|NEVER[ \t])\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|[Cc]ountry of [Oo]rigin\s*[:：]?|(?<![Bb]rand\s|BRAND\s)(?:[Oo]rigin|ORIGIN)\s*[:：])\s*(?:[Tt]he\s+|THE\s+)?([A-Z][A-Za-z]{2,}(?: [A-Z][a-z]+| [A-Z]{2,}(?![a-z]))?)/g,
+      /(?<![Nn]ot[ \t]|NOT[ \t]|[Nn]ever[ \t]|NEVER[ \t])\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|[Cc]ountry of [Oo]rigin\s*[:：]?|(?<![Bb]rand\s|BRAND\s)(?:[Oo]rigin|ORIGIN)\s*[:：])\s*(?:[Tt]he\s+|THE\s+)?([A-Z][A-Za-z]{2,}(?: [A-Z][a-z]+| [A-Z]{2,}(?![a-z]))?)(?![A-Za-z]|-(?!made\b)[A-Za-z])/g,
       /(?:原産国|生産国|製造国|製造國|制造国|原産地|生産地|原產地|原產國|生產國|生產国|生產地|產地|製造地|原产国|原产地|生产国|生产地|产地)(?:名)?\s*[:：・／/]?\s*([^\s:：、。,，|/／()（）<>[\]]{1,12})/g,
       // 「製造：中國」「生產：越南」: the field name needs its colon.
       /(?:製造|制造|生產|生产|生産)\s*[:：]\s*([^\s:：、。,，|/／()（）<>[\]]{1,12})/g,
@@ -1057,18 +1057,20 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
       if (/^[A-Za-z]{2}$/.test(raw) && !MADE_IN_CODE_LABEL[raw]) continue;
       // Names as the card's own name: "Viet Nam" / "china" / ベトナム / "SRI LANKA"
       // → Vietnam / China / Vietnam / Sri Lanka (越南 / 中國 / 越南 / 斯里蘭卡).
-      const country = normalizeCooLabel(MADE_IN_CODE_LABEL[raw] ?? raw);
-      if (!country || /^(不明|なし|-|—|unknown)$/i.test(country)) continue;
-      if (/^[A-Za-z]{2}$/.test(country)) continue;
-      // Only a country we know: "COUNTRY OF ORIGIN:\nIMPORTER: XX" is no candidate.
-      if (!isKnownCountryLabel(country)) continue;
+      // Only a value that starts with a listed country (the label reader's rule):
+      // "COUNTRY OF ORIGIN:\nIMPORTER: XX", 「內蒙古」「沿海地區」 are no candidate;
+      // 「柬埔寨王國」 is Cambodia.
+      const country = madeInValueCountry(MADE_IN_CODE_LABEL[raw] ?? raw);
+      if (!country) continue;
       // "Made in USA" read by name and by code: one claim per page and country.
       const key = canonicalCountry(country) ?? country.toLowerCase();
       if (seen.has(key)) continue;
       seen.add(key);
       out.push({
         country,
-        quote: m[0].trim().slice(0, 80),
+        // Quoted from the page text as written (field values may be settled /
+        // "Made in Georgia, USA" read as USA in t; same offsets).
+        quote: (m.index !== undefined ? pre.slice(m.index, m.index + m[0].length) : m[0]).trim().slice(0, 80),
         page: idx + 1,
         sourceType: 'retailer',
       });

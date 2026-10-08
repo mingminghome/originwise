@@ -96,6 +96,7 @@ export const en: MessageTree = {
       reason: {
         aiOnly: 'AI answer only, no web page backs it',
         pagesDisagree: 'Web pages disagree',
+        sourcesDisagree: 'Sources disagree',
         aiCitedUnverified: 'AI-cited link could not be verified',
         onePageOnly: 'Only one web page mentions it',
       },

@@ -93,6 +93,7 @@ export const fi = {
       reason: {
         aiOnly: 'Vain tekoälyn vastaus, mikään verkkosivu ei tue sitä',
         pagesDisagree: 'Verkkosivut ovat ristiriidassa',
+        sourcesDisagree: 'Lähteet ovat ristiriidassa',
         aiCitedUnverified: 'Tekoälyn lainaamaa linkkiä ei voitu vahvistaa',
         onePageOnly: 'Vain yksi verkkosivu mainitsee sen',
       },

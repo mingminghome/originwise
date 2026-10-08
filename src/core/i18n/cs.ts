@@ -93,6 +93,7 @@ export const cs = {
       reason: {
         aiOnly: 'Jen odpověď AI, žádná stránka ji nepotvrzuje',
         pagesDisagree: 'Webové stránky se neshodují',
+        sourcesDisagree: 'Zdroje se neshodují',
         aiCitedUnverified: 'Odkaz citovaný AI nelze ověřit',
         onePageOnly: 'Zmiňuje to jen jedna stránka',
       },

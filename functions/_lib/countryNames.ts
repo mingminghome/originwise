@@ -4,7 +4,7 @@
  * Chinese). Shared by the label reader, the page reader and the display name.
  *
  * Several names are also ordinary words or US states (Turkey, Jordan, Chad,
- * Georgia, Niger, Guinea, Togo, Chile, Panama, Mali). This list is only used
+ * Georgia, Niger, Guinea, Togo, Chile, Panama, Mali, Cuba). This list is only used
  * right after a made-in cue or as a made-in field value (產地 / 原産国 / COO /
  * Origin / Country of origin), never on free text or notes, which keep the
  * shorter COUNTRY_NAME_PATTERNS table in countryLabel.ts. Japanese names that
@@ -19,7 +19,7 @@ const ROWS: readonly Row[] = [
   ['Taiwan', 'TW', ['taiwan'], ['台湾'], ['台灣', '臺灣'], ['台湾']],
   ['Japan', 'JP', ['japan'], ['日本'], ['日本'], ['日本']],
   ['South Korea', 'KR', ['south korea', 'korea', 'republic of korea'], ['韓国', '大韓民国'], ['韓國', '南韓'], ['韩国']],
-  ['North Korea', 'KP', ['north korea'], ['北朝鮮'], ['北韓'], ['朝鲜']],
+  ['North Korea', 'KP', ['north korea', 'dprk', 'd.p.r.k.', "democratic people's republic of korea"], ['北朝鮮'], ['北韓', '朝鮮民主主義人民共和國'], ['朝鲜', '北韩']],
   ['Vietnam', 'VN', ['vietnam', 'viet nam'], ['ベトナム'], ['越南'], ['越南']],
   ['Thailand', 'TH', ['thailand'], ['タイ'], ['泰國'], ['泰国']],
   ['Cambodia', 'KH', ['cambodia'], ['カンボジア'], ['柬埔寨'], ['柬埔寨']],
@@ -69,6 +69,7 @@ const ROWS: readonly Row[] = [
   ['Niger', 'NE', ['niger'], ['ニジェール'], ['尼日'], ['尼日尔']],
   ['Mali', 'ML', ['mali'], [], ['馬利'], ['马里']],
   ['Guinea', 'GN', ['guinea'], ['ギニア'], ['幾內亞'], ['几内亚']],
+  ['Guinea-Bissau', 'GW', ['guinea-bissau', 'guinea bissau'], ['ギニアビサウ'], ['幾內亞比索'], ['几内亚比绍']],
   ['Togo', 'TG', ['togo'], ['トーゴ'], ['多哥'], ['多哥']],
   ['Germany', 'DE', ['germany'], ['ドイツ'], ['德國'], ['德国']],
   ['France', 'FR', ['france'], ['フランス'], ['法國'], ['法国']],
@@ -122,6 +123,7 @@ const ROWS: readonly Row[] = [
   ['Costa Rica', 'CR', ['costa rica'], ['コスタリカ'], ['哥斯大黎加'], ['哥斯达黎加']],
   ['Panama', 'PA', ['panama'], ['パナマ'], ['巴拿馬'], ['巴拿马']],
   ['Dominican Republic', 'DO', ['dominican republic'], ['ドミニカ共和国'], ['多明尼加'], ['多米尼加']],
+  ['Cuba', 'CU', ['cuba'], ['キューバ'], ['古巴'], ['古巴']],
   ['Haiti', 'HT', ['haiti'], ['ハイチ'], ['海地'], ['海地']],
   ['Jamaica', 'JM', ['jamaica'], ['ジャマイカ'], ['牙買加'], ['牙买加']],
   ['Colombia', 'CO', ['colombia'], ['コロンビア'], ['哥倫比亞'], ['哥伦比亚']],

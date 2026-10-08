@@ -36,7 +36,13 @@ import {
   type RegionCode,
 } from './regions';
 import { countryNameLabel } from './countryNames';
-import { applyCooPriority, blankVerbFormMakers, cooFieldDisputes, extractCooClaimsFromText } from './cooPriority';
+import {
+  applyCooPriority,
+  blankVerbFormMakers,
+  cooFieldDisputes,
+  extractCooClaimsFromText,
+  usPlacesAsUsa,
+} from './cooPriority';
 import { hqFoldedIntoParent } from './chinaChip';
 import { tierFromCodes } from './tierRules';
 import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
@@ -292,8 +298,10 @@ const LOWER_PART_CODES = new Set(['cn', 'tw', 'vn', 'th', 'jp', 'kr', 'hk']);
 
 const FREE_TEXT_TURKEY = /\b(?:Turkey|TURKEY)\b(?!-)|[Tt]ürkiye|TÜRKIYE|土耳其/;
 
-function extractCountryLabelsFromText(blob: string, opts: { codes?: boolean } = {}): string[] {
-  if (!blob || !blob.trim()) return [];
+function extractCountryLabelsFromText(input: string, opts: { codes?: boolean } = {}): string[] {
+  if (!input || !input.trim()) return [];
+  // 「Made in Mexico, Missouri」 is a US town: no Mexico mention.
+  const blob = usPlacesAsUsa(input);
   const found: string[] = [];
   const seen = new Set<string>();
   const add = (label: string) => {
@@ -1373,11 +1381,15 @@ export function applyWebCooGate(
   // AI-cited pages): if any names another country, nothing confirms by model
   // (未確認 · 網頁說法不一), whatever the AI answer or its cited pages say.
   const conflict = exactModelConflict(webCoo);
+  // Two made-in claims on the package label (「產地：中國 日本製」): label evidence
+  // outranks web pages, so no page agreement replaces the 爭議 (only a barcode
+  // page does); the pages stay candidates and join the 爭議 line.
+  const labelDisputed = cooFieldDisputes(ocrText || '').length > 0;
   // 依型號比對 counts only when no barcode page confirmed anything (barcode outranks it).
-  let byModelClaims = confirmed.length || conflict
+  let byModelClaims = confirmed.length || conflict || labelDisputed
     ? []
     : webCoo.filter((c) => c.status === 'confirmed' && c.basis === 'model' && !c.evidenceOnly);
-  let exactPages = confirmed.length || byModelClaims.length || conflict
+  let exactPages = confirmed.length || byModelClaims.length || conflict || labelDisputed
     ? []
     : webCoo.filter((c) => c.status === 'likely' && c.exactModel && !c.evidenceOnly);
   // Exact-model pages added after the page gate (AI-cited pages that passed
@@ -1398,7 +1410,7 @@ export function applyWebCooGate(
   const byOcr = (v: string) => ocrClaims.some((c) => sameCountry(c.label, v));
   const likelyOf = (backed: string | undefined) =>
     webCoo
-      .filter((c) => c.status === 'likely' || (conflict && c.basis === 'model'))
+      .filter((c) => c.status === 'likely' || ((conflict || labelDisputed) && c.basis === 'model'))
       .map((c) => c.country)
       .filter(
         (c) =>

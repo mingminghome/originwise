@@ -67,7 +67,7 @@ const COUNTRY_TOKEN =
 
 /** CJK country names as written on Japanese / Chinese packaging. */
 const CJK_COUNTRY_TOKEN =
-  '(?:中華人民共和国|中華人民共和國|中国|中國|日本|韓国|韓國|韩国|台湾|台灣|タイ|泰國|泰国|ベトナム|越南|インドネシア|印尼|マレーシア|馬來西亞|马来西亚|フィリピン|菲律賓|菲律宾|インド|印度|香港)';
+  '(?:中華人民共和国|中華人民共和國|中国|中國|日本|北朝鮮|北韓|北韩|韓国|韓國|韩国|台湾|台灣|タイ|泰國|泰国|ベトナム|越南|インドネシア|印尼|マレーシア|馬來西亞|马来西亚|フィリピン|菲律賓|菲律宾|インド|印度|香港)';
 
 /**
  * A made-in VALUE (right after a made-in cue or in a 產地 / 原産国 / COO / Origin
@@ -75,14 +75,74 @@ const CJK_COUNTRY_TOKEN =
  * plus the short forms above. Never used on free text: Turkey / Jordan / Chad /
  * Georgia … are ordinary words there.
  */
-// A list-only Latin name never runs into a hyphenated word ("Made in Ukraine-style").
-const VALUE_COUNTRY_TOKEN = `(?:${COUNTRY_LIST_CJK}|${COUNTRY_TOKEN}|(?:${COUNTRY_LIST_LATIN})(?![A-Za-z-]))`;
+// A Latin name never runs into a hyphenated word ("Made in Ukraine-style",
+// "Made in Georgia-Pacific", "Turkey-shaped"); "Japan-made" and "China-Japan" still read.
+const HYPHEN_WORD_GUARD = `(?![A-Za-z]|-(?!made\\b|(?:${COUNTRY_LIST_LATIN})(?![A-Za-z]))[A-Za-z])`;
+const VALUE_COUNTRY_TOKEN = `(?:${COUNTRY_LIST_CJK}|(?:${COUNTRY_TOKEN}|${COUNTRY_LIST_LATIN})${HYPHEN_WORD_GUARD})`;
+
+/** Made-in cues (made in / 產地 / 原産国 / COO / Origin …) that a country value follows. */
+const COO_CUE_SRC = `(?:(?:製造|制造|生產|生产|生産|組裝|组装|產|产|製|制)(?:於|于|在)|生產國|生产国|生産国|生產国|(?:製造地|生產地|生产地|製造|制造|生產|生产|生産)(?=\\s*[:：])|(?<!brand\\s)origin(?=\\s*[:：])|made[\\s-]?in|manufactured[\\s-]?in|produced[\\s-]?in|assembled[\\s-]?in|country\\s+of\\s+origin|country\\s+of\\s+publication|coo|製造国|製造國|原産国名?|原產國|产地|產地|生产地|生產地|生産(?:[・･/／]組み?立て?)?|組み?立て?|組裝|组装)`;
 
 /** Made-in cue, then the country value. */
-const COO_LINE = new RegExp(
-  `(?:(?:製造|制造|生產|生产|生産|組裝|组装|產|产|製|制)(?:於|于|在)|生產國|生产国|生産国|生產国|(?:製造地|生產地|生产地|製造|制造|生產|生产|生産)(?=\\s*[:：])|(?<!brand\\s)origin(?=\\s*[:：])|made[\\s-]?in|manufactured[\\s-]?in|produced[\\s-]?in|assembled[\\s-]?in|country\\s+of\\s+origin|country\\s+of\\s+publication|coo|製造国|製造國|原産国名?|原產國|产地|產地|生产地|生產地|生産(?:[・･/／]組み?立て?)?|組み?立て?|組裝|组装)\\s*[:：]?\\s*(?:the\\s+)?(${VALUE_COUNTRY_TOKEN})`,
+const COO_LINE = new RegExp(`${COO_CUE_SRC}\\s*[:：]?\\s*(?:the\\s+)?(${VALUE_COUNTRY_TOKEN})`, 'gi');
+
+/** US states (and DC), longest first. Abbreviations only in upper case after a comma. */
+const US_STATES = [
+  'alabama', 'alaska', 'arizona', 'arkansas', 'california', 'colorado', 'connecticut', 'delaware',
+  'florida', 'georgia', 'hawaii', 'idaho', 'illinois', 'indiana', 'iowa', 'kansas', 'kentucky',
+  'louisiana', 'maine', 'maryland', 'massachusetts', 'michigan', 'minnesota', 'mississippi',
+  'missouri', 'montana', 'nebraska', 'nevada', 'new hampshire', 'new jersey', 'new mexico',
+  'new york', 'north carolina', 'north dakota', 'ohio', 'oklahoma', 'oregon', 'pennsylvania',
+  'rhode island', 'south carolina', 'south dakota', 'tennessee', 'texas', 'utah', 'vermont',
+  'virginia', 'washington', 'west virginia', 'wisconsin', 'wyoming', 'district of columbia',
+  'washington d.c.', 'washington dc',
+];
+const US_STATE_ABBR =
+  'AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC';
+const US_STATE_NAME = US_STATES.slice()
+  .sort((a, b) => b.length - a.length)
+  .map((n) => n.replace(/\./g, '\\.').replace(/ /g, '\\s+'))
+  .join('|');
+const US_NAME = 'united\\s+states(?:\\s+of\\s+america)?|u\\.s\\.a\\.?|usa|u\\.s\\.|us';
+/**
+ * Country names that are also US towns (Georgia, Jordan MN, Lebanon TN, Peru IN,
+ * Mexico MO …). Kept short and explicit: only these, followed by a US state or
+ * USA, are read as a US place ("Made in Jordan, Minnesota"); "Made in China, USA"
+ * and "Made in Vietnam, Texas" still mean China / Vietnam.
+ */
+const US_TOWN_NAMES = ['georgia', 'jordan', 'lebanon', 'peru', 'mexico', 'panama', 'cuba', 'poland', 'wales', 'chile', 'canton'];
+const US_PLACE = new RegExp(
+  `(${COO_CUE_SRC}\\s*[:：]?\\s*(?:the\\s+)?)((?:${US_STATE_NAME}|${US_TOWN_NAMES.join('|')})\\s*,\\s*(?:the\\s+)?)(${US_NAME}|${US_STATE_NAME}|${US_STATE_ABBR})(?![A-Za-z])`,
   'gi'
 );
+/**
+ * 「Made in Georgia, USA」「Made in Jordan, Minnesota」「Made in Texas, USA」: a US
+ * place. The town and state become one "USA" value (same length, so offsets and
+ * page quotes stay). A US state name itself counts only before USA.
+ */
+export function usPlacesAsUsa(text: string): string {
+  return text.replace(US_PLACE, (all, cue: string, town: string, where: string) => {
+    const name = town.replace(/\s*,\s*(?:the\s+)?$/i, '').toLowerCase().replace(/\s+/g, ' ');
+    if (!US_TOWN_NAMES.includes(name) && !new RegExp(`^(?:${US_NAME})$`, 'i').test(where)) return all;
+    // A short state code or "US" only in upper case ("Made in Georgia, in …" is no state).
+    if (/^[A-Za-z]{2}$/.test(where) && where !== where.toUpperCase()) return all;
+    if (/^u\.?s\.?$/i.test(where) && where !== where.toUpperCase()) return all;
+    const rest = town.length + where.length;
+    return `${cue}${' '.repeat(rest - 3)}USA`;
+  });
+}
+
+/** A US value with a later ambiguous name ("USA, Georgia", "USA (Jordan)"): a location detail. */
+function usLocationDetail(first: string, other: string): boolean {
+  return canonCountry(first) === 'united states' && US_TOWN_NAMES.includes(other.toLowerCase());
+}
+
+/** "US-made" / "UK-made" / "EU-made": short forms in the 'X-made' claim form only. */
+const SHORT_X_MADE = /(?<![A-Za-z.])(U\.S\.A\.|U\.S\.|U\.K\.|USA|US|UK|EU)(?=[\s-]made\b)/g;
+const SHORT_X_LABEL: Record<string, string> = {
+  'U.S.A.': 'United States', 'U.S.': 'United States', USA: 'United States', US: 'United States',
+  'U.K.': 'United Kingdom', UK: 'United Kingdom', EU: 'European Union',
+};
 
 const SUFFIX_COUNTRY = `(?:${CJK_COUNTRY_TOKEN}|德國|德国|ドイツ|法國|法国|フランス|義大利|意大利|イタリア|英國|英国|イギリス|美國|美国|アメリカ)`;
 
@@ -124,7 +184,7 @@ export function canonCountry(label: string | undefined): string {
 const CJK_TO_LABEL: Record<string, string> = {
   中華人民共和国: '中国', 中華人民共和國: '中國', 中國大陸: '中國', 中国大陆: '中国', タイ: 'Thailand', ベトナム: 'Vietnam',
   インドネシア: 'Indonesia', マレーシア: 'Malaysia', フィリピン: 'Philippines',
-  インド: 'India', 韓国: '韓國',
+  インド: 'India', 韓国: '韓國', 北韓: 'North Korea', 北韩: 'North Korea', 北朝鮮: 'North Korea',
 };
 
 function classifySource(window: string): CooClaimSource {
@@ -164,7 +224,8 @@ const WHOLE_PRODUCT_CJK = '(?:本商品|本產品|本产品|本製品|本貨品|
 const CLAUSE_SEP = '[\\s（(\\[【「,，、/／;；.。:：–—-]';
 const CLAUSE_SEP_NO_SPACE = '[（(\\[【「,，、/／;；.。:：–—-]';
 /** A made word right after a later country: 「日本製」「日本製造」「日本生產」「日本組裝」. */
-const MADE_WORD_AT = /^\s*(?:国内|國內)?(?:工場|工廠|工厂|廠|厂)?(?:製造|制造|生產|生产|生産|組裝|组装|組立|製|制|產|产|産)/;
+// 製品 has one meaning: 「日本製品」 is a made-in claim (「日本製品牌」 is a brand).
+const MADE_WORD_AT = /^\s*(?:国内|國內)?(?:工場|工廠|工厂|廠|厂)?(?:製品(?!牌)|製造|制造|生產|生产|生産|組裝|组装|組立|製|制|產|产|産)/;
 /**
  * A CJK claim ends here: end of value, a space (「日本製 保固一年」) or punctuation,
  * after an optional です / である. A noun attached with no space (日本製モーター,
@@ -191,11 +252,16 @@ const EN_CLAUSE_START = new RegExp(`(?:^|${CLAUSE_SEP_NO_SPACE})\\s*$`);
 const EN_X_MADE = /^[\s-]*made\b/i;
 /** The whole next clause / line is one standalone made-in claim (「日本製」 "Made in Japan"). */
 const NEXT_CLAUSE_CJK = new RegExp(
-  `^\\s*${WHOLE_PRODUCT_CJK}?(?:は|為|为|是)?(?:全|在|由|於|于)?(${VALUE_COUNTRY_TOKEN})(?:国内|國內)?(?:工場|工廠|工厂|廠|厂)?(?:製造|制造|生產|生产|生産|組裝|组装|組立|製|制|產|产|産)(?:です|である)?\\s*$`,
+  `^\\s*${WHOLE_PRODUCT_CJK}?(?:は|為|为|是)?(?:全|在|由|於|于)?(${VALUE_COUNTRY_TOKEN})(?:国内|國內)?(?:工場|工廠|工厂|廠|厂)?(?:製品|製造|制造|生產|生产|生産|組裝|组装|組立|製|制|產|产|産)(?:です|である)?\\s*$`,
   'i'
 );
 const NEXT_CLAUSE_EN = new RegExp(
   `^\\s*${EN_LEAD}${EN_MADE_IN}(${VALUE_COUNTRY_TOKEN})\\s*[.!]?\\s*$|^\\s*(${VALUE_COUNTRY_TOKEN})[\\s-]made\\s*[.!]?\\s*$`,
+  'i'
+);
+/** The next line is one more made-in field with its own country (「產地：日本」 "Origin: Japan"). */
+const NEXT_CLAUSE_FIELD = new RegExp(
+  `^\\s*(?:country\\s+of\\s+origin|origin|coo|產地|产地|原産国名?|原產國|原产国|製造国|製造國|生產國|生产国|生産国|生產地|生产地|製造地)\\s*[:：]\\s*(?:the\\s+)?(${VALUE_COUNTRY_TOKEN})\\s*[.!]?\\s*$`,
   'i'
 );
 /** Part / material words: a later country tied to one is a component, not a made-in. */
@@ -225,13 +291,20 @@ export function normalizeCooLabel(found: string): string {
     : cjk;
 }
 
-/** A page value is a country name we know (not "Importer" / "See Package"). */
-export function isKnownCountryLabel(label: string): boolean {
-  const s = label.trim();
-  if (!s) return false;
-  if (countryNameLabel(s) || canonicalCountry(s) || /^european\s+union$/i.test(s)) return true;
-  // CJK values may carry a region (「中國廣東」): a listed name inside counts.
-  return !/^[A-Za-z]/.test(s) && new RegExp(ANY_COUNTRY.source, 'i').test(s);
+const LEADING_COUNTRY = new RegExp(`^\\s*(?:the\\s+)?(${VALUE_COUNTRY_TOKEN})`, 'i');
+
+/**
+ * The country a made-in value names, as the card shows it, or undefined. The one
+ * validator for page values, with the same country token the label reader uses
+ * after a cue (COO_LINE): the value must start with a listed country.
+ * 「柬埔寨王國」 → Cambodia, 「中國廣東」 → 中國; 「內蒙古」「沿海地區」, "Importer",
+ * "See Package" → undefined.
+ */
+export function madeInValueCountry(value: string): string | undefined {
+  const s = value.trim();
+  if (/^european\s+union$/i.test(s)) return 'European Union';
+  const m = LEADING_COUNTRY.exec(s);
+  return m ? normalizeCooLabel(m[1]!) : undefined;
 }
 
 export type FieldDispute = { sides: string[]; start: number; end: number };
@@ -253,6 +326,11 @@ function secondClaim(value: string, o: RegExpMatchArray): boolean {
   return Boolean(xMade && EN_CLAUSE_START.test(head) && EN_CLAUSE_END.test(tail.slice(xMade[0].length)));
 }
 
+/** One country in a field value as the card names it (short 'X-made' forms included). */
+function labelOf(found: string): string {
+  return SHORT_X_LABEL[found] ?? normalizeCooLabel(found);
+}
+
 /** The country before a bracket holding a part / material word (「日本（部品）」 "Japan (parts)"). */
 const PART_BRACKET = new RegExp(`^\\s*[（(【\\[][^）)】\\]]*${PART_WORD}[^）)】\\]]*[）)】\\]]`, 'i');
 
@@ -269,7 +347,8 @@ const PART_BRACKET = new RegExp(`^\\s*[（(【\\[][^）)】\\]]*${PART_WORD}[^�
  *   is never read.
  * Blanking keeps the length, so offsets stay.
  */
-function resolveFieldValues(text: string): FieldPass {
+function resolveFieldValues(input: string): FieldPass {
+  const text = usPlacesAsUsa(input);
   const chars = text.split('');
   const disputes: FieldDispute[] = [];
   const blank = (a: number, b: number) => {
@@ -294,24 +373,29 @@ function resolveFieldValues(text: string): FieldPass {
     const stop = /[\n。；;|]|[\u4e00-\u9fffA-Za-z]{2,6}\s*[:：]/.exec(after);
     const value = stop ? after.slice(0, stop.index) : after.slice(0, 40);
     const valueEnd = valueStart + value.length;
-    // 「產地：中國。日本製」「COO: China; Made in Japan」「產地：中國\n日本製」: the next
-    // clause / line counts only when it is one standalone made-in claim.
+    // 「產地：中國。日本製」「COO: China; Made in Japan」「產地：中國\n日本製」
+    // 「產地：中國\n產地：日本」: the next clause / line counts only when it is one
+    // standalone made-in claim or one more made-in field.
     let next: { country: string; end: number } | undefined;
     if (stop && /^[\n。；;]$/.test(stop[0])) {
       const nextStart = valueEnd + 1;
       const rest = text.slice(nextStart);
       const nextStop = /[\n。；;|]/.exec(rest);
       const clause = nextStop ? rest.slice(0, nextStop.index) : rest;
-      const hit = NEXT_CLAUSE_CJK.exec(clause) ?? NEXT_CLAUSE_EN.exec(clause);
+      const hit = NEXT_CLAUSE_CJK.exec(clause) ?? NEXT_CLAUSE_EN.exec(clause) ?? NEXT_CLAUSE_FIELD.exec(clause);
       const found = hit && (hit[1] ?? hit[2]);
       if (found && canonCountry(normalizeCooLabel(found)) !== canonCountry(first)) {
         next = { country: normalizeCooLabel(found), end: nextStart + clause.length };
       }
     }
-    // A country followed by a part / material bracket (「日本（部品）」) is a component.
-    const others = [...value.matchAll(ANY_COUNTRY)].filter(
+    // A country followed by a part / material bracket (「日本（部品）」) is a component;
+    // an ambiguous name after USA ("USA, Georgia", "USA (Jordan)") is a US location.
+    // Short forms count only as 'X-made' ("China, US-made").
+    const found: RegExpMatchArray[] = [...value.matchAll(ANY_COUNTRY), ...value.matchAll(SHORT_X_MADE)];
+    const others = found.filter(
       (o) =>
-        canonCountry(normalizeCooLabel(o[0])) !== canonCountry(first) &&
+        canonCountry(labelOf(o[0])) !== canonCountry(first) &&
+        !usLocationDetail(first, labelOf(o[0])) &&
         !PART_BRACKET.test(value.slice(o.index! + o[0].length))
     );
     const dispute = (list: string[], end: number) => {
@@ -332,12 +416,12 @@ function resolveFieldValues(text: string): FieldPass {
     // a part / material bracket was settled above.
     const listed = value.replace(/[（([【][^）)\]】]*[）)\]】]/g, (b) => (hasCountry.test(b) ? b : ''));
     const rest = listed.replace(ANY_COUNTRY, '').replace(LIST_JOINERS, '');
-    const otherLabels = others.map((o) => normalizeCooLabel(o[0]));
+    const otherLabels = others.map((o) => labelOf(o[0]));
     if (!rest) {
       dispute(next ? [...otherLabels, next.country] : otherLabels, next ? next.end : valueEnd);
       continue;
     }
-    const claims = others.filter((o) => secondClaim(value, o)).map((o) => normalizeCooLabel(o[0]));
+    const claims = others.filter((o) => secondClaim(value, o)).map((o) => labelOf(o[0]));
     if (claims.length || next) {
       dispute(next ? [...claims, next.country] : claims, next ? next.end : valueEnd);
     } else {

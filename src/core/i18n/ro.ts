@@ -93,6 +93,7 @@ export const ro = {
       reason: {
         aiOnly: 'Doar răspunsul AI, nicio pagină web nu îl susține',
         pagesDisagree: 'Paginile web se contrazic',
+        sourcesDisagree: 'Sursele nu concordă',
         aiCitedUnverified: 'Linkul citat de AI nu a putut fi verificat',
         onePageOnly: 'O singură pagină web îl menționează',
       },

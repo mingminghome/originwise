@@ -93,6 +93,7 @@ export const de = {
       reason: {
         aiOnly: 'Nur KI-Antwort, keine Webseite belegt sie',
         pagesDisagree: 'Webseiten widersprechen sich',
+        sourcesDisagree: 'Quellen widersprechen sich',
         aiCitedUnverified: 'KI-zitierter Link nicht überprüfbar',
         onePageOnly: 'Nur eine Webseite nennt es',
       },

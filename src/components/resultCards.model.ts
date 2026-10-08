@@ -29,7 +29,7 @@ type Candidate = NonNullable<NonNullable<CheckResult['product']>['originCandidat
 export type MadeInBasis = 'barcode' | 'label' | 'model' | 'name';
 
 /** Why a made-in stays 未確認 (one chip; replaces the old barcode-only reason). */
-export type UnconfirmedReason = 'pagesDisagree' | 'aiCitedUnverified' | 'aiOnly' | 'onePageOnly';
+export type UnconfirmedReason = 'pagesDisagree' | 'sourcesDisagree' | 'aiCitedUnverified' | 'aiOnly' | 'onePageOnly';
 
 export type MadeInView = {
   /**
@@ -441,7 +441,13 @@ function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' 
   // Not confirmed: the headline is 未確認 and every country is a candidate
   // row underneath, web ones with their own source rows.
   let rows = candidateRows(result, candidates, madeIn);
-  const likelyHits = searchCoo.filter((c) => c.status === 'likely');
+  // Two made-in claims on the package label: label evidence outranks pages, so
+  // exact-model pages that agreed (依型號比對) are only one more 爭議 side.
+  const labelSides = p?.labelDispute ?? [];
+  const labelDisputed = labelSides.length >= 2;
+  const likelyHits = searchCoo.filter(
+    (c) => c.status === 'likely' || (labelDisputed && c.status === 'confirmed' && c.basis === 'model')
+  );
   for (const h of likelyHits) {
     if (!rows.some((r) => sameCountryLabel(r.label, h.country))) {
       rows.push({ label: canonicalCountry(h.country) ?? h.country, rating: 'likely', source: 'web_name' });
@@ -453,8 +459,10 @@ function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' 
   }
   // Pages that disagree (exact-model ones, or name-matched ones): neutral rows.
   const exactCountries = searchCoo.filter((c) => c.exactModel).map((c) => c.country);
-  const disagree =
+  const pagesDisagree =
     exactCountries.some((c) => !sameCountryLabel(c, exactCountries[0]!)) || webCountries.length >= 2;
+  // Every country is a 爭議 side (ungraded) when pages disagree or the label does.
+  const disagree = pagesDisagree || labelDisputed;
   rows = rows.map((r) => {
     if (r.source !== 'web_name') return r;
     const srcRows = supportingRows(
@@ -477,7 +485,10 @@ function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' 
   const webPages = new Set(likelyHits.map((h) => h.url).filter(Boolean)).size;
   const aiSaid = [madeIn, ...candidates.filter((c) => c.source === 'model_memory').map((c) => c.label)].filter(Boolean);
   const aiBacks = (label: string) => aiSaid.some((a) => sameCountryLabel(a, label));
-  const reason: UnconfirmedReason | undefined = disagree
+  // 「網頁說法不一」 only when every side is a web page; with the label as a side 「來源說法不一」.
+  const reason: UnconfirmedReason | undefined = labelDisputed
+    ? 'sourcesDisagree'
+    : pagesDisagree
     ? 'pagesDisagree'
     : (meta?.citedUnverified ?? []).length
       ? 'aiCitedUnverified'
@@ -488,7 +499,7 @@ function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' 
           : undefined;
   // 爭議: every side of the disagreement with its page counts.
   const pageDispute: DisputeSide[] =
-    reason === 'pagesDisagree'
+    disagree
       ? rows
           .filter((r) => r.source === 'web_name')
           .map((r) => {
@@ -502,10 +513,9 @@ function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' 
           .filter((d) => d.pages > 0)
       : [];
   // Two made-in claims in one label field (「產地：中國 日本製」「產地：德國 中國」):
-  // merged with any page 爭議, each country once with each of its sources, label first.
-  const labelSides = p?.labelDispute ?? [];
+  // merged with every page country, each country once with each of its sources, label first.
   let dispute: DisputeSide[] = pageDispute;
-  if (labelSides.length >= 2) {
+  if (labelDisputed) {
     const merged: DisputeSide[] = labelSides.map((country) => {
       const hits = likelyHits.filter((h) => sameCountryLabel(h.country, country));
       return {

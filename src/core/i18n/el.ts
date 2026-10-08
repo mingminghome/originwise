@@ -93,6 +93,7 @@ export const el = {
       reason: {
         aiOnly: 'Μόνο απάντηση AI, καμία ιστοσελίδα δεν τη στηρίζει',
         pagesDisagree: 'Οι ιστοσελίδες διαφωνούν',
+        sourcesDisagree: 'Οι πηγές διαφωνούν',
         aiCitedUnverified: 'Ο σύνδεσμος που παρέθεσε η AI δεν επαληθεύτηκε',
         onePageOnly: 'Μόνο μία ιστοσελίδα το αναφέρει',
       },

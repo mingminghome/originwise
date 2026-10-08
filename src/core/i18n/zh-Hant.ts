@@ -93,6 +93,7 @@ export const zhHant = {
       reason: {
         aiOnly: '只有 AI 回答，未有網頁佐證',
         pagesDisagree: '網頁說法不一',
+        sourcesDisagree: '來源說法不一',
         aiCitedUnverified: 'AI 引用未能驗證',
         onePageOnly: '只有一個網頁提及',
       },

@@ -299,7 +299,7 @@ describe('製造地 rule cases (example fixture madein-rules.json)', () => {
     const en = createT('en');
     for (const lng of locales) {
       const t = createT(lng);
-      for (const k of ['aiOnly', 'pagesDisagree', 'aiCitedUnverified', 'onePageOnly']) {
+      for (const k of ['aiOnly', 'pagesDisagree', 'sourcesDisagree', 'aiCitedUnverified', 'onePageOnly']) {
         const v = t(`check.rc.reason.${k}`);
         assert.ok(v && v !== `check.rc.reason.${k}`, `${lng} ${k}`);
         if (lng !== 'en') assert.notEqual(v, en(`check.rc.reason.${k}`), `${lng} ${k}`);

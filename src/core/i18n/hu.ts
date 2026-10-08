@@ -93,6 +93,7 @@ export const hu = {
       reason: {
         aiOnly: 'Csak MI-válasz, egy weboldal sem támasztja alá',
         pagesDisagree: 'A weboldalak ellentmondanak egymásnak',
+        sourcesDisagree: 'A források eltérnek',
         aiCitedUnverified: 'Az MI által idézett link nem ellenőrizhető',
         onePageOnly: 'Csak egy weboldal említi',
       },

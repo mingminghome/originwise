@@ -93,6 +93,7 @@ export const fr = {
       reason: {
         aiOnly: 'Réponse de l’IA seule, aucune page web ne l’appuie',
         pagesDisagree: 'Les pages web se contredisent',
+        sourcesDisagree: 'Les sources divergent',
         aiCitedUnverified: 'Lien cité par l’IA non vérifiable',
         onePageOnly: 'Une seule page web le mentionne',
       },

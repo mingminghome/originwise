@@ -93,6 +93,7 @@ export const sv = {
       reason: {
         aiOnly: 'Bara AI-svaret, ingen webbsida stöder det',
         pagesDisagree: 'Webbsidorna säger emot varandra',
+        sourcesDisagree: 'Källorna är oense',
         aiCitedUnverified: 'AI-citerad länk kunde inte verifieras',
         onePageOnly: 'Bara en webbsida nämner det',
       },

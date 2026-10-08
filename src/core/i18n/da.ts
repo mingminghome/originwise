@@ -93,6 +93,7 @@ export const da = {
       reason: {
         aiOnly: 'Kun AI-svar, ingen webside bakker det op',
         pagesDisagree: 'Websiderne er uenige',
+        sourcesDisagree: 'Kilderne er uenige',
         aiCitedUnverified: 'Link citeret af AI kunne ikke bekræftes',
         onePageOnly: 'Kun én webside nævner det',
       },

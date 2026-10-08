@@ -10,7 +10,9 @@ export const COUNTRY_NAME_PATTERNS: Array<{ label: string; pattern: RegExp }> = 
   { label: 'Taiwan', pattern: /\btaiwan\b|台灣|台湾|臺灣/i },
   { label: 'Macau', pattern: /\bmacau\b|\bmacao\b|澳門|澳门/i },
   { label: 'Japan', pattern: /\bjapan\b|日本/i },
-  { label: 'South Korea', pattern: /south\s*korea|\bkorea\b|韓國|韩国/i },
+  // North Korea first, and never inside South Korea's pattern ("Made in North Korea" is not 韓國).
+  { label: 'North Korea', pattern: /north[\s-]*korea|\bdprk\b|\bd\.p\.r\.k\b|北韓|北韩|北朝鮮|朝鮮民主|朝鲜民主/i },
+  { label: 'South Korea', pattern: /south\s*korea|(?<!north[\s-]*)\bkorea\b|韓國|韩国/i },
   { label: 'Vietnam', pattern: /\bviet\s?nam\b|越南/i },
   { label: 'Thailand', pattern: /\bthailand\b|泰國|泰国|タイ/i },
   { label: 'Indonesia', pattern: /\bindonesia\b|印尼|印度尼西亞/i },

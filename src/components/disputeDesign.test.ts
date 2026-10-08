@@ -441,6 +441,101 @@ describe('label 爭議 card layout and merging with a page 爭議', () => {
   });
 });
 
+describe('label 爭議 outranks web pages: matching-model pages never replace it (only a barcode wins)', () => {
+  const L = 'CYBEX Melio\n產地：中國 日本製';
+  const A = (t: string) => page(URLS.mami, 'Cybex Melio 嬰兒推車 | MamiLove', t);
+  const B = (t: string) => page(URLS.shopDe, 'Cybex Melio Kinderwagen', t);
+  const sides = (v: ReturnType<typeof buildMadeInView>) =>
+    v.dispute?.map((d) => [d.country, d.label ?? false, d.pages, d.exactPages ?? 0]);
+  it('label 中國 日本製 + 2 matching pages Vietnam → 未確認, 爭議：中國（包裝標示）；日本（包裝標示）；越南（2 個型號相符的網頁）', () => {
+    const r = runPages({ ocrText: L, pages: [A('Made in Vietnam'), B('Made in Vietnam')] });
+    const v = buildMadeInView(r);
+    assert.equal(v.state, 'unconfirmed', JSON.stringify(v));
+    assert.deepEqual(sides(v), [['China', true, 0, 0], ['Japan', true, 0, 0], ['Vietnam', false, 2, 2]], JSON.stringify(v.dispute));
+    const t = text(r);
+    assert.ok(t.includes('爭議：中國（包裝標示）；日本（包裝標示）；越南（2 個型號相符的網頁）'), t);
+    assert.ok(!t.includes('%') && !t.includes('80'), t);
+  });
+  it('label 中國 日本製 + 2 matching pages China → 未確認, China lists both sources', () => {
+    const r = runPages({ ocrText: L, pages: [A('Made in China'), B('Made in China')] });
+    const v = buildMadeInView(r);
+    assert.equal(v.state, 'unconfirmed', JSON.stringify(v));
+    assert.deepEqual(sides(v), [['China', true, 2, 2], ['Japan', true, 0, 0]], JSON.stringify(v.dispute));
+    const t = text(r);
+    assert.ok(t.includes('爭議：中國（包裝標示、2 個網頁）；日本（包裝標示）'), t);
+    assert.ok(!t.includes('%'), t);
+  });
+  it('label 中國 日本製 + 1 page Vietnam → the page side is merged in', () => {
+    const r = runPages({ ocrText: L, pages: [A('Made in Vietnam')] });
+    const t = text(r);
+    assert.match(t, /爭議：中國（包裝標示）；日本（包裝標示）；越南（1 個(型號相符的)?網頁）/, t);
+  });
+  it('label 中國 日本製 + AI Vietnam + 1 matching page Vietnam → still 未確認 + 爭議', () => {
+    const r = runPages({ ocrText: L, madeIn: 'Vietnam', pages: [A('Made in Vietnam')] });
+    const v = buildMadeInView(r);
+    assert.equal(v.state, 'unconfirmed', JSON.stringify(v));
+    assert.ok(text(r).includes('爭議：中國（包裝標示）；日本（包裝標示）；越南'), text(r));
+  });
+  it('label 中國 日本製 + barcode page China → China 95% from the barcode (unchanged)', () => {
+    const r = runPages({
+      ocrText: `${L}\nJAN ${JAN}`,
+      pages: [page(URLS.jan, `Cybex Melio 嬰兒推車 ${JAN}`, `條碼：${JAN}\nMade in China`)],
+    });
+    const v = buildMadeInView(r);
+    assert.equal(v.state, 'confirmed', JSON.stringify(v));
+    assert.equal(v.basis, 'barcode');
+    assert.equal(v.country, 'China');
+  });
+  it('a single label claim + 2 matching pages that disagree → the label 95% still wins (unchanged)', () => {
+    for (const n of [1, 2]) {
+      const pages = [A('Made in Vietnam'), B('Made in Vietnam')].slice(0, n);
+      const v = buildMadeInView(runPages({ ocrText: 'CYBEX Melio\nMade in China', pages }));
+      assert.equal(v.state, 'confirmed', JSON.stringify(v));
+      assert.equal(v.basis, 'label');
+      assert.equal(v.country, 'China');
+      assert.ok(!v.dispute, JSON.stringify(v));
+    }
+  });
+});
+
+describe('爭議 subtitle: 「來源說法不一」 when the label is a side, 「網頁說法不一」 only when every side is a web page', () => {
+  const reasonChip = (r: Parameters<typeof MadeInCard>[0]['result'], t = zh) =>
+    /data-testid="madein-reason"[^>]*>([^<]*)</.exec(card(r, t))?.[1];
+  const A = (t: string) => page(URLS.mami, 'Cybex Melio 嬰兒推車 | MamiLove', t);
+  it('label-only 爭議 → 來源說法不一 / Sources disagree', () => {
+    const r = runPages({ ocrText: 'CYBEX Melio\n產地：中國 日本製', pages: [] });
+    assert.equal(reasonChip(r), '來源說法不一');
+    assert.equal(reasonChip(r, en), 'Sources disagree');
+  });
+  it('label 爭議 merged with a page 爭議 → 來源說法不一', () => {
+    const r = runPages({ ocrText: 'CYBEX Melio\n產地：中國 日本製', pages: [A('商品規格\n產地：中國、越南\n重量：5.9 kg')] });
+    assert.equal(reasonChip(r), '來源說法不一');
+    assert.ok(!card(r).includes('網頁說法不一'));
+  });
+  it('label 爭議 + pages that agree with each other → 來源說法不一', () => {
+    const r = runPages({
+      ocrText: 'CYBEX Melio\n產地：中國 日本製',
+      pages: [A('Made in Vietnam'), page(URLS.shopDe, 'Cybex Melio Kinderwagen', 'Made in Vietnam')],
+    });
+    assert.equal(reasonChip(r), '來源說法不一');
+  });
+  it('every side a web page → 網頁說法不一 / Web pages disagree', () => {
+    const r = runPages({ pages: [A('商品規格\n產地：德國 中國\n重量：5.9 kg')] });
+    assert.equal(reasonChip(r), '網頁說法不一');
+    assert.equal(reasonChip(r, en), 'Web pages disagree');
+    const r3 = DISPUTE_CASES.dispute3();
+    assert.equal(reasonChip(r3), '網頁說法不一');
+  });
+  it('「來源說法不一」 has its own wording in all 16 locales', () => {
+    for (const lng of locales) {
+      const s = createT(lng)('check.rc.reason.sourcesDisagree');
+      assert.ok(s && !s.startsWith('check.rc.'), lng);
+      if (lng !== 'en') assert.notEqual(s, en('check.rc.reason.sourcesDisagree'), lng);
+      assert.notEqual(s, createT(lng)('check.rc.reason.pagesDisagree'), lng);
+    }
+  });
+});
+
 describe('dispute / design wording in all 16 locales', () => {
   const KEYS = ['dispute', 'disputeSideExact', 'disputeSideMixed', 'disputeSidePages', 'disputeSideLabel', 'disputeSideLabelPages', 'designInfo', 'brandInfo', 'infoSource'];
   it('every locale has its own wording, soft, never 非確認', () => {

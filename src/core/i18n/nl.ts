@@ -93,6 +93,7 @@ export const nl = {
       reason: {
         aiOnly: 'Alleen het AI-antwoord, geen webpagina steunt het',
         pagesDisagree: 'Webpagina’s spreken elkaar tegen',
+        sourcesDisagree: 'Bronnen zijn het oneens',
         aiCitedUnverified: 'Door AI geciteerde link niet te controleren',
         onePageOnly: 'Slechts één webpagina noemt het',
       },

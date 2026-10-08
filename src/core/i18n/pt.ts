@@ -93,6 +93,7 @@ export const pt = {
       reason: {
         aiOnly: 'Só a resposta da IA, nenhuma página web a apoia',
         pagesDisagree: 'As páginas web não concordam',
+        sourcesDisagree: 'As fontes divergem',
         aiCitedUnverified: 'Não foi possível verificar o link citado pela IA',
         onePageOnly: 'Só uma página web o menciona',
       },

@@ -6,6 +6,10 @@
  * - parts: the text as the model's componentsOrigin field (parts code list)
  * - pagecard: the page path, but the candidates as the zh-Hant card shows them
  *   (越南, 斯里蘭卡), so a raw page label (ベトナム, Viet Nam) fails the row
+ * - pagecard-de: the same in German (Intl names through the shared country list)
+ * - labelcard: the label path, the confirmed country as the zh-Hant card shows it
+ * - labelraw: the label path, the confirmed made-in value exactly as stored (the
+ *   English card prints it as is, so 中國大陸 must be stored as 中國)
  * Each run is reduced to one comparable summary.
  */
 import { canonicalCountry } from '../../functions/_lib/countryLabel';
@@ -22,7 +26,7 @@ import { localizeCountry } from '../core/i18n/countries';
 import type { CheckResult } from '../core/types';
 import { buildMadeInView } from './resultCards.model';
 
-export type RegPath = 'label' | 'page' | 'pagecard' | 'note' | 'parts';
+export type RegPath = 'label' | 'labelcard' | 'labelraw' | 'page' | 'pagecard' | 'pagecard-de' | 'note' | 'parts';
 export type RegSummary = {
   /** Confirmed country, or the candidate countries (comma list), or null. */
   country: string | null;
@@ -40,8 +44,9 @@ const ENT = 'Cybex Melio';
 const base = { jobId: 'reg', geoScope: 'prc', locale: 'zh-Hant', sources: [] as string[] };
 const canon = (l: string) => canonicalCountry(l) ?? l;
 const zh = createT('zh-Hant');
+const de = createT('de');
 
-function run(path: Exclude<RegPath, 'pagecard'>, text: string): CheckResult {
+function run(path: 'label' | 'page' | 'note' | 'parts', text: string): CheckResult {
   if (path === 'label') {
     return synthesize({
       ...base,
@@ -90,11 +95,18 @@ function run(path: Exclude<RegPath, 'pagecard'>, text: string): CheckResult {
 }
 
 export function summarize(path: RegPath, text: string): RegSummary {
-  const v = buildMadeInView(run(path === 'pagecard' ? 'page' : path, text));
-  const shown = path === 'pagecard' ? (l: string) => localizeCountry(zh, l) : canon;
+  const v = buildMadeInView(
+    run(path === 'pagecard' || path === 'pagecard-de' ? 'page' : path === 'labelcard' || path === 'labelraw' ? 'label' : path, text)
+  );
+  const shown =
+    path === 'pagecard' || path === 'labelcard'
+      ? (l: string) => localizeCountry(zh, l)
+      : path === 'pagecard-de'
+        ? (l: string) => localizeCountry(de, l)
+        : canon;
   const design = (v.designRows ?? []).map((d) => `${d.kind[0]}:${canon(d.country)}`).join(',') || null;
   if (v.state === 'confirmed' && v.country) {
-    return { country: canon(v.country), grade: `${v.basis} ${Math.round((v.confidence ?? 0) * 100)}%`, design };
+    return { country: path === 'labelcard' ? shown(v.country) : path === 'labelraw' ? v.country : canon(v.country), grade: `${v.basis} ${Math.round((v.confidence ?? 0) * 100)}%`, design };
   }
   const c = v.candidates;
   const sides = (v.dispute ?? []).map((d) => shown(d.country)).join(',');
