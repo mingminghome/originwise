@@ -40,7 +40,7 @@ import { tierFromCodes } from './tierRules';
 import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS } from './countryLabel';
 import { SERVER_TEXT, webFailText } from './serverText';
 import { notesNameMadeIn, omittedPartNote } from './noteText';
-import { siteOf } from './search/extract';
+import { exactModelConflict, siteOf } from './search/extract';
 
 export type SynthesizeInput = {
   jobId: string;
@@ -1206,11 +1206,7 @@ function sanitizeAlternative(
 
   if (madeInCn || hqInCn) {
     // Manufacturing/HQ in scope → at least indirect; pure made-in CN → direct
-    if (
-      madeRegion === 'CN' ||
-      textSaysCn ||
-      (hqRegion === 'CN' && madeRegion === 'CN')
-    ) {
+    if (madeRegion === 'CN' || textSaysCn) {
       tier = 'direct';
     } else if (tier === 'none' || tier === 'unknown') {
       tier = 'indirect';
@@ -1264,7 +1260,8 @@ function isHighChinaAlt(x: SanitizedAlt, geoScope: GeoScope): boolean {
     return true;
   }
   const blob = [x.madeIn, x.note, x.originCountry].filter(Boolean).join(' ');
-  if (CN_TEXT.test(blob) && (made === 'CN' || made === 'UNKNOWN')) return true;
+  // made === 'CN' already returned above.
+  if (CN_TEXT.test(blob) && made === 'UNKNOWN') return true;
   return false;
 }
 
@@ -1353,13 +1350,17 @@ export function applyWebCooGate(
   madeInSupport?: 'web' | 'ai_web';
 } {
   const confirmed = webCoo.filter((c) => c.status === 'confirmed' && c.basis === 'barcode');
+  // Every piece of exact-model evidence (search pages, dropped lines, verified
+  // AI-cited pages): if any names another country, nothing confirms by model
+  // (未確認 · 網頁說法不一), whatever the AI answer or its cited pages say.
+  const conflict = exactModelConflict(webCoo);
   // 依型號比對 counts only when no barcode page confirmed anything (barcode outranks it).
-  let byModelClaims = confirmed.length
+  let byModelClaims = confirmed.length || conflict
     ? []
-    : webCoo.filter((c) => c.status === 'confirmed' && c.basis === 'model');
-  let exactPages = confirmed.length || byModelClaims.length
+    : webCoo.filter((c) => c.status === 'confirmed' && c.basis === 'model' && !c.evidenceOnly);
+  let exactPages = confirmed.length || byModelClaims.length || conflict
     ? []
-    : webCoo.filter((c) => c.status === 'likely' && c.exactModel);
+    : webCoo.filter((c) => c.status === 'likely' && c.exactModel && !c.evidenceOnly);
   // Exact-model pages added after the page gate (AI-cited pages that passed
   // the check) on 2+ domains, all agreeing: the same as 2 search pages.
   if (
@@ -1378,7 +1379,7 @@ export function applyWebCooGate(
   const byOcr = (v: string) => ocrClaims.some((c) => sameCountry(c.label, v));
   const likelyOf = (backed: string | undefined) =>
     webCoo
-      .filter((c) => c.status === 'likely')
+      .filter((c) => c.status === 'likely' || (conflict && c.basis === 'model'))
       .map((c) => c.country)
       .filter(
         (c) =>

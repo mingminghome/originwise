@@ -22,6 +22,7 @@ import {
   modelTokens,
   needsMadeInFollowup,
   regexCooClaims,
+  settleExactConflict,
   siteOf,
 } from './search/extract';
 import type { FetchedPage } from './search/types';
@@ -53,12 +54,66 @@ describe('exact-model matching (brand + model, variant-safe)', () => {
   });
 
   it('Melio and Melio Carbon are different models; a page naming both is not exact', () => {
-    assert.deepEqual(modelMentions('Cybex Melio Carbon', ENTITY), { exact: 0, variant: 1, variants: ['carbon'] });
+    assert.deepEqual(modelMentions('Cybex Melio Carbon', ENTITY), { exact: 0, variant: 1, variants: ['Carbon'] });
     assert.equal(exactModelPage('Cybex Melio Carbon', ENTITY), false);
     assert.equal(exactModelPage('Cybex Melio and Cybex Melio Carbon', ENTITY), false);
     assert.equal(exactModelPage('Cybex Melio 2', ENTITY), false);
     // A model of another brand is not this model.
     assert.equal(exactModelPage('Joie Melio', ENTITY), false);
+  });
+
+  // Tester / Ming (11:57): both directions; descriptive, category words, years allowed.
+  const MELIO = 'Cybex Melio';
+  for (const t of [
+    'Cybex Melio 輕量嬰兒推車',
+    'CYBEX MELIO 推車 規格',
+    'Cybex Melio ベビーカー',
+    'Cybex Melio stroller review',
+    'Cybex Melio (2024)',
+    'Cybex Melio 2024',
+    'CYBEX MELIO stroller',
+    'Cybex Melio pushchair price',
+    'Cybex Melio Kinderwagen Test',
+    'Cybex Melio – specs, buy online',
+    'Cybex Melio™ 嬰兒推車',
+    'Cybex Melio\nHergestellt in China',
+  ]) {
+    it(`counts as exact Melio: ${JSON.stringify(t)}`, () => {
+      assert.equal(exactModelPage(t, MELIO), true, JSON.stringify(modelMentions(t, MELIO)));
+    });
+  }
+  for (const t of [
+    'Cybex Melio Carbon',
+    'Cybex Melio Eezy',
+    'Cybex Melio V2',
+    'Cybex Melio (Carbon)',
+    'Cybex Melio Mk2',
+    'Cybex Melio Gen 3',
+    'Cybex Melio S',
+    'Cybex Melio Pro',
+    'Cybex Melio Plus',
+    'Cybex Melio Lux',
+    'Cybex Melio Air',
+    'Cybex Melio Street',
+    'CYBEX MELIO CARBON',
+    'cybex-melio-carbon',
+    'Cybex Melio®Carbon',
+    'Cybex Melio 2',
+  ]) {
+    it(`does NOT count as exact Melio: ${JSON.stringify(t)}`, () => {
+      assert.equal(exactModelPage(t, MELIO), false, JSON.stringify(modelMentions(t, MELIO)));
+    });
+  }
+  it("'Liberty 4 NC' is not 'Liberty 4'; 'Liberty 4' itself and with a category word is", () => {
+    assert.equal(exactModelPage('Anker Liberty 4 NC', 'Anker Liberty 4'), false);
+    assert.equal(exactModelPage('Soundcore Liberty 4 NC earbuds', 'Soundcore Liberty 4'), false);
+    assert.equal(exactModelPage('Anker Liberty 4 earbuds review', 'Anker Liberty 4'), true);
+    assert.equal(exactModelPage('Anker Liberty 4（2023）藍牙耳機', 'Anker Liberty 4'), true);
+  });
+  it('the excluded row names the other variant as written (Melio Carbon, Melio V2, Liberty 4 NC)', () => {
+    assert.deepEqual(modelMentions('Cybex Melio (Carbon)', MELIO).variants, ['Carbon']);
+    assert.deepEqual(modelMentions('Cybex Melio V2', MELIO).variants, ['V2']);
+    assert.deepEqual(modelMentions('Anker Liberty 4 NC', 'Anker Liberty 4').variants, ['NC']);
   });
 
   it('domains: subdomains and second-level suffixes are one site', () => {
@@ -279,6 +334,76 @@ describe('made-in gate: the AI answer is one source, the web verifies it', () =>
     });
     assert.equal(r.product?.madeInBasis, 'model');
     assert.notEqual(r.tier, 'none');
+  });
+});
+
+describe('disagreement over ALL exact-model evidence (Tester #35 blocker 2)', () => {
+  const DE = page('https://de.example.de/melio', 'Cybex Melio Kinderwagen\nMade in Germany');
+  // Exact-model page with China, dropped by the page gate (lists several sizes).
+  const CN_MULTI = page('https://shop.example.jp/melio-sizes', 'Cybex Melio ベビーカー 原産国：中国 60ml 120ml 240ml');
+  const CITED_CN: WebCooClaim = {
+    country: 'China', basis: 'name', status: 'likely', url: 'https://other.example.org/melio', exactModel: true, cited: 'fetched',
+  };
+
+  it('a dropped exact-model claim still counts for disagreement: the kept page is flagged, the dropped line comes along as evidence only', () => {
+    const kept = gate([DE, CN_MULTI], 'Cybex Melio');
+    const de = kept.find((k) => k.country === 'Germany');
+    const cn = kept.find((k) => /China|中国/.test(k.country));
+    assert.equal(de?.exactModel, true);
+    assert.equal(cn?.evidenceOnly, true);
+    assert.equal(cn?.exactModel, true);
+  });
+
+  it('Tester: AI China + fetched cited China page, while an exact page says Germany (China was dropped) → 未確認, not 中國 75%', () => {
+    const pages = [DE, CN_MULTI];
+    const kept = gateClaims('Cybex Melio', [], pages, regexCooClaims(pages)).kept;
+    const coo: WebCooClaim[] = settleExactConflict([
+      ...kept.map((k) => ({
+        country: k.country, basis: k.basis, status: k.status, url: pages[k.page - 1]!.url,
+        ...(k.exactModel ? { exactModel: true } : {}), ...(k.evidenceOnly ? { evidenceOnly: true } : {}),
+      })),
+      CITED_CN,
+    ]);
+    const g = applyWebCooGate({ madeIn: 'China' }, coo);
+    assert.equal(g.product?.madeIn, undefined);
+    assert.equal(g.madeInBasis, undefined);
+    assert.equal(g.madeInSupport, undefined);
+    assert.ok(g.likely.includes('Germany'));
+  });
+
+  it('Tester probe g4: exact search page Germany + fetched cited China → 未確認 (the AI cannot confirm past it)', () => {
+    const g = applyWebCooGate({ madeIn: 'China' }, [
+      { country: 'Germany', basis: 'name', status: 'likely', exactModel: true, url: 'https://de.example.de/melio' },
+      CITED_CN,
+    ]);
+    assert.equal(g.product?.madeIn, undefined);
+    assert.equal(g.madeInSupport, undefined);
+  });
+
+  it('two domains agreeing on China + a verified cited page for Germany → the 2-domain match is undone: 未確認', () => {
+    const coo = settleExactConflict([
+      { country: 'China', basis: 'model', status: 'confirmed', exactModel: true, url: 'https://www.momoshop.com.tw/goods/1' },
+      { country: 'China', basis: 'model', status: 'confirmed', exactModel: true, url: 'https://mamilove.com.tw/p/2' },
+      { ...CITED_CN, country: 'Germany', url: 'https://de.example.de/x' },
+    ]);
+    assert.ok(coo.every((c) => c.basis !== 'model'));
+    const g = applyWebCooGate({ madeIn: 'Germany' }, coo);
+    assert.equal(g.product?.madeIn, undefined);
+    assert.equal(g.madeInBasis, undefined);
+  });
+
+  it('evidence-only lines never count toward a made-in; barcode still outranks', () => {
+    const only = applyWebCooGate({ madeIn: 'China' }, [
+      { country: 'China', basis: 'name', status: 'likely', exactModel: true, evidenceOnly: true, url: 'https://a.example.com/x' },
+    ]);
+    assert.equal(only.product?.madeIn, undefined);
+    const bc = applyWebCooGate({ madeIn: 'Japan' }, [
+      { country: 'Japan', basis: 'barcode', status: 'confirmed', url: 'https://a.jp/x' },
+      { country: 'Germany', basis: 'name', status: 'likely', exactModel: true, url: 'https://de.example.de/melio' },
+      CITED_CN,
+    ]);
+    assert.equal(bc.product?.madeIn, 'Japan');
+    assert.equal(bc.madeInBasis, 'barcode');
   });
 });
 

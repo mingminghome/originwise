@@ -133,8 +133,12 @@ export function modelOnlyPartCandidate(
 
 const RATING_RANK: Record<string, number> = { confirmed: 4, likely: 3, possible: 2, mentioned: 1 };
 
-/** Candidate sources the 零件 list never shows (ownership / made-in / HQ echo). */
-const PARTS_LIST_SKIP = new Set(['ownership', 'confirmed_coo', 'manufacturer']);
+/**
+ * Candidate sources the 零件 list never shows: ownership / HQ echo, and the
+ * made-in candidates (product-name web pages, the model's made-in guess),
+ * which belong to the 製造地 card only.
+ */
+const PARTS_LIST_SKIP = new Set(['ownership', 'confirmed_coo', 'manufacturer', 'web_name', 'model_memory']);
 
 /**
  * A 'notes' candidate that only echoes the HQ / manufacturer / brand-origin

@@ -56,7 +56,7 @@ export const da = {
       unconfirmed: 'Ikke bekræftet',
       partsChina: 'Nogle dele fremstillet i Kina',
       hqParentNote: 'Hovedsædet i Kina i svaret tilhører moderselskabet',
-      madeInBelow: 'Fremstillingslandet afgøres kun i kortet »Fremstillet i« (stregkode eller emballageetiket).',
+      madeInBelow: 'Fremstillingslandet afgøres kun i kortet »Fremstillet i« (stregkode, emballageetiket eller modelmatch).',
       madeInChina: 'Fremstillet i Kina',
       footnote: 'Dette kort beskriver kun, hvor virksomheden har hjemme, hvem der ejer den, og hvor produktet fremstilles. Det er ikke en vurdering af produktets kvalitet eller sikkerhed eller af virksomheden.',
       controlling: 'Kontrol',
@@ -77,6 +77,7 @@ export const da = {
       sourceNth: 'Kilde {n}: {label}',
       sourceAiAnswer: 'AI-svar',
       oneExactModelPage: '1 side med præcis denne model',
+      foldUnconfirmed: 'Endeligt fremstillingsland ikke bekræftet: {reason}. Andre lande er kun kandidater.',
       citedUnverified: 'Citeret af AI, kunne ikke bekræftes',
       excludedOtherModel: 'Anden model ({model}), ikke talt med',
       reason: {
@@ -314,7 +315,7 @@ export const da = {
       cooUnconfirmedNoLabel:
         'Endeligt oprindelsesland ubekræftet – intet oprindelsesland på produkt/etiket; der opfindes ikke et.',
       cooUnconfirmedNoBarcode:
-        'Endeligt produktionsland ubekræftet – ingen stregkodeside, emballageetiket eller match på præcis model understøtter det; andre lande er kun kandidater.',
+        'Endeligt fremstillingsland ikke bekræftet; andre lande er kun kandidater.',
       cooUnconfirmedCandidates:
         'Endeligt oprindelsesland ubekræftet – kandidaterne nedenfor er søgesignaler, ikke et trykt „Made in“.',
       distributorOmitted:
@@ -625,7 +626,7 @@ export const da = {
     evidenceTitle:
       'Hvornår et produktionsland tæller som bekræftet',
     evidenceBody:
-      'Et produktionsland vises som bekræftet på tre måder. Stærkest: et foto af emballagens etiket eller en webside, der viser samme stregkode (JAN/EAN) ved siden af oprindelsesangivelsen (stregkodematch). Dernæst match på præcis model: AI-svaret og mindst én webside med præcis mærke og model angiver samme land, eller to eller flere sådanne sider fra forskellige websteder er enige; AI-svaret vises så som en af kilderne. I begge tilfælde må ingen side med præcis model angive et andet land. AI-svaret alene er aldrig en bekræftelse og forbliver en modelreference; er sider med præcis model uenige, forbliver produktionslandet ubekræftet med kandidaterne vist. Et link, som AI’en citerer, tæller først efter et tjek: det er en side, websøgningen også fandt, eller den indlæses og nævner præcis model og land; ellers vises det som “Citeret af AI, kunne ikke bekræftes” og tæller ikke. Et løst match på produktnavn vises kun som kandidat under “Ikke bekræftet”, og en side med flere størrelser eller varianter forbliver ubekræftet. Hvis live websøgning ikke er tilgængelig, bygger resultatet kun på modelviden og siger det.',
+      'Et produktionsland vises som bekræftet på tre måder. Stærkest: et foto af emballagens etiket eller en webside, der viser samme stregkode (JAN/EAN) ved siden af oprindelsesangivelsen (stregkodematch). Dernæst match på præcis model: AI-svaret og mindst én webside med præcis mærke og model angiver samme land, eller to eller flere sådanne sider fra forskellige websteder er enige; AI-svaret vises så som en af kilderne. I begge tilfælde må ingen side med præcis model angive et andet land. AI-svaret alene er aldrig en bekræftelse og forbliver en modelreference; er sider med præcis model uenige, forbliver produktionslandet ubekræftet med kandidaterne vist. Et link, som AI’en citerer, tæller først efter et tjek: siden (fundet af websøgningen eller indlæst) skal nævne præcis model og samme land og må ikke være frasorteret som en anden model; ellers vises det som “Citeret af AI, kunne ikke bekræftes” og tæller ikke. Et løst match på produktnavn vises kun som kandidat under “Ikke bekræftet”, og en side med flere størrelser eller varianter forbliver ubekræftet. Hvis live websøgning ikke er tilgængelig, bygger resultatet kun på modelviden og siger det.',
     flowWeb:
       'Websøgning',
     flowWebDetail:

@@ -56,7 +56,7 @@ export const pl = {
       unconfirmed: 'Niepotwierdzone',
       partsChina: 'Część elementów wyprodukowana w Chinach',
       hqParentNote: 'Siedziba w Chinach z odpowiedzi należy do spółki matki',
-      madeInBelow: 'Kraj produkcji ustala się tylko w karcie „Wyprodukowano w” (kod kreskowy lub etykieta).',
+      madeInBelow: 'Kraj produkcji ustala się tylko w karcie „Wyprodukowano w” (kod kreskowy, etykieta lub zgodność modelu).',
       madeInChina: 'Wyprodukowano w Chinach',
       footnote: 'Ta karta opisuje tylko, gdzie firma ma siedzibę, kto jest jej właścicielem i gdzie produkt jest wytwarzany. Nie jest oceną jakości ani bezpieczeństwa produktu ani samej firmy.',
       controlling: 'Kontrola',
@@ -77,6 +77,7 @@ export const pl = {
       sourceNth: 'Źródło {n}: {label}',
       sourceAiAnswer: 'Odpowiedź AI',
       oneExactModelPage: '1 strona z dokładnie tym modelem',
+      foldUnconfirmed: 'Ostateczny kraj produkcji niepotwierdzony: {reason}. Pozostałe kraje to tylko kandydaci.',
       citedUnverified: 'Cytowane przez AI, nie udało się zweryfikować',
       excludedOtherModel: 'Inny model ({model}), nie liczy się',
       reason: {
@@ -314,7 +315,7 @@ export const pl = {
       cooUnconfirmedNoLabel:
         'Ostateczny kraj pochodzenia niepotwierdzony – brak kraju pochodzenia na produkcie/etykiecie; żaden nie jest zmyślany.',
       cooUnconfirmedNoBarcode:
-        'Ostateczny kraj produkcji niepotwierdzony – nie potwierdza go strona z kodem kreskowym, etykieta opakowania ani zgodność dokładnego modelu; inne kraje to tylko kandydaci.',
+        'Ostateczny kraj produkcji niepotwierdzony; pozostałe kraje to tylko kandydaci.',
       cooUnconfirmedCandidates:
         'Ostateczny kraj pochodzenia niepotwierdzony – poniżsi kandydaci to sygnały z wyszukiwania, nie nadrukowane „Made in”.',
       distributorOmitted:
@@ -625,7 +626,7 @@ export const pl = {
     evidenceTitle:
       'Kiedy kraj produkcji uznaje się za potwierdzony',
     evidenceBody:
-      'Kraj produkcji może zostać pokazany jako potwierdzony na trzy sposoby. Najsilniejszy: zdjęcie etykiety opakowania lub strona internetowa z tym samym kodem kreskowym (JAN/EAN) obok informacji o pochodzeniu (zgodność kodu kreskowego). Dalej zgodność dokładnego modelu: odpowiedź AI i co najmniej jedna strona z dokładną marką i modelem podają ten sam kraj albo zgadzają się co najmniej dwie takie strony z różnych serwisów; odpowiedź AI jest wtedy pokazana jako jedno ze źródeł. W obu przypadkach żadna strona z dokładnym modelem nie może podawać innego kraju. Sama odpowiedź AI nigdy nie jest potwierdzeniem i pozostaje odniesieniem modelu; gdy strony z dokładnym modelem są sprzeczne, kraj pozostaje niepotwierdzony, a kandydaci są wymienieni. Link cytowany przez AI liczy się dopiero po sprawdzeniu: to strona, którą zwróciło też wyszukiwanie, albo wczytuje się i podaje dokładny model i kraj; w przeciwnym razie jest oznaczony jako „Cytowane przez AI, nie udało się zweryfikować” i się nie liczy. Luźne dopasowanie po nazwie produktu jest pokazywane tylko jako kandydat pod „Niepotwierdzone”, a strona z kilkoma rozmiarami lub wariantami pozostaje niepotwierdzona. Gdy wyszukiwanie w sieci na żywo jest niedostępne, wynik opiera się wyłącznie na wiedzy modelu i jest tak oznaczony.',
+      'Kraj produkcji może zostać pokazany jako potwierdzony na trzy sposoby. Najsilniejszy: zdjęcie etykiety opakowania lub strona internetowa z tym samym kodem kreskowym (JAN/EAN) obok informacji o pochodzeniu (zgodność kodu kreskowego). Dalej zgodność dokładnego modelu: odpowiedź AI i co najmniej jedna strona z dokładną marką i modelem podają ten sam kraj albo zgadzają się co najmniej dwie takie strony z różnych serwisów; odpowiedź AI jest wtedy pokazana jako jedno ze źródeł. W obu przypadkach żadna strona z dokładnym modelem nie może podawać innego kraju. Sama odpowiedź AI nigdy nie jest potwierdzeniem i pozostaje odniesieniem modelu; gdy strony z dokładnym modelem są sprzeczne, kraj pozostaje niepotwierdzony, a kandydaci są wymienieni. Link cytowany przez AI liczy się dopiero po sprawdzeniu: strona (zwrócona przez wyszukiwanie albo wczytana) musi podawać dokładny model i ten sam kraj i nie może być odrzucona jako inny model; w przeciwnym razie jest oznaczony jako „Cytowane przez AI, nie udało się zweryfikować” i się nie liczy. Luźne dopasowanie po nazwie produktu jest pokazywane tylko jako kandydat pod „Niepotwierdzone”, a strona z kilkoma rozmiarami lub wariantami pozostaje niepotwierdzona. Gdy wyszukiwanie w sieci na żywo jest niedostępne, wynik opiera się wyłącznie na wiedzy modelu i jest tak oznaczony.',
     flowWeb:
       'Wyszukiwanie w sieci',
     flowWebDetail:

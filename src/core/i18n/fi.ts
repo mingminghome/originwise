@@ -56,7 +56,7 @@ export const fi = {
       unconfirmed: 'Vahvistamaton',
       partsChina: 'Osa osista valmistettu Kiinassa',
       hqParentNote: 'Vastauksen Kiinan pääkonttori kuuluu emoyhtiölle',
-      madeInBelow: 'Valmistusmaa ratkaistaan vain Valmistusmaa-kortissa (viivakoodi tai pakkausmerkintä).',
+      madeInBelow: 'Valmistusmaa ratkaistaan vain Valmistusmaa-kortissa (viivakoodi, pakkausmerkintä tai mallivastaavuus).',
       madeInChina: 'Valmistettu Kiinassa',
       footnote: 'Tämä kortti kertoo vain, missä yritys toimii, kuka sen omistaa ja missä tuote valmistetaan. Se ei ole arvio tuotteen laadusta tai turvallisuudesta eikä yrityksestä.',
       controlling: 'Määräysvalta',
@@ -77,6 +77,7 @@ export const fi = {
       sourceNth: 'Lähde {n}: {label}',
       sourceAiAnswer: 'Tekoälyn vastaus',
       oneExactModelPage: '1 sivu täsmälleen tällä mallilla',
+      foldUnconfirmed: 'Lopullista valmistusmaata ei ole vahvistettu: {reason}. Muut maat ovat vain ehdokkaita.',
       citedUnverified: 'Tekoälyn lähde, ei voitu vahvistaa',
       excludedOtherModel: 'Eri malli ({model}), ei laskettu',
       reason: {
@@ -314,7 +315,7 @@ export const fi = {
       cooUnconfirmedNoLabel:
         'Lopullinen alkuperämaa vahvistamatta – tuotteessa/etiketissä ei ole alkuperämaata; sitä ei keksitä.',
       cooUnconfirmedNoBarcode:
-        'Lopullinen valmistusmaa vahvistamatta – sitä ei tue viivakoodisivu, pakkausmerkintä eikä täsmällinen mallivastaavuus; muut maat ovat vain ehdokkaita.',
+        'Lopullista valmistusmaata ei ole vahvistettu; muut maat ovat vain ehdokkaita.',
       cooUnconfirmedCandidates:
         'Lopullinen alkuperämaa vahvistamatta – alla olevat ehdokkaat ovat hakusignaaleja, eivät painettu ”Made in”.',
       distributorOmitted:
@@ -625,7 +626,7 @@ export const fi = {
     evidenceTitle:
       'Milloin valmistusmaa lasketaan vahvistetuksi',
     evidenceBody:
-      'Valmistusmaa näkyy vahvistettuna kolmella tavalla. Vahvin on pakkausetiketin kuva tai verkkosivu, jolla on sama viivakoodi (JAN/EAN) alkuperämerkinnän vieressä (viivakoodivastaavuus). Seuraavana täsmällinen mallivastaavuus: tekoälyn vastaus ja vähintään yksi verkkosivu, jolla on täsmälleen sama merkki ja malli, nimeävät saman maan, tai kaksi tai useampi tällainen sivu eri sivustoilta on samaa mieltä; tekoälyn vastaus näkyy silloin yhtenä lähteistä. Kummassakaan tapauksessa mikään saman mallin sivu ei saa nimetä toista maata. Pelkkä tekoälyn vastaus ei koskaan vahvista mitään, vaan jää mallin viitteeksi; jos saman mallin sivut ovat ristiriidassa, valmistusmaa jää vahvistamattomaksi ja ehdokkaat luetellaan. Tekoälyn lainaama linkki lasketaan vasta tarkistuksen jälkeen: se on sivu, jonka myös verkkohaku palautti, tai se latautuu ja mainitsee täsmällisen mallin ja maan; muuten se näytetään merkinnällä ”Tekoälyn lähde, ei voitu vahvistaa” eikä sitä lasketa. Löyhä tuotenimen vastaavuus näkyy vain ehdokkaana otsikon ”Vahvistamaton” alla, ja sivu, jolla on useita kokoja tai versioita, jää vahvistamattomaksi. Jos reaaliaikainen verkkohaku ei ole käytettävissä, tulos perustuu vain mallin tietoihin ja kertoo sen.',
+      'Valmistusmaa näkyy vahvistettuna kolmella tavalla. Vahvin on pakkausetiketin kuva tai verkkosivu, jolla on sama viivakoodi (JAN/EAN) alkuperämerkinnän vieressä (viivakoodivastaavuus). Seuraavana täsmällinen mallivastaavuus: tekoälyn vastaus ja vähintään yksi verkkosivu, jolla on täsmälleen sama merkki ja malli, nimeävät saman maan, tai kaksi tai useampi tällainen sivu eri sivustoilta on samaa mieltä; tekoälyn vastaus näkyy silloin yhtenä lähteistä. Kummassakaan tapauksessa mikään saman mallin sivu ei saa nimetä toista maata. Pelkkä tekoälyn vastaus ei koskaan vahvista mitään, vaan jää mallin viitteeksi; jos saman mallin sivut ovat ristiriidassa, valmistusmaa jää vahvistamattomaksi ja ehdokkaat luetellaan. Tekoälyn lainaama linkki lasketaan vasta tarkistuksen jälkeen: sivun (verkkohaun palauttama tai ladattu) on mainittava täsmällinen malli ja sama maa, eikä se saa olla toisena mallina pois jätetty; muuten se näytetään merkinnällä ”Tekoälyn lähde, ei voitu vahvistaa” eikä sitä lasketa. Löyhä tuotenimen vastaavuus näkyy vain ehdokkaana otsikon ”Vahvistamaton” alla, ja sivu, jolla on useita kokoja tai versioita, jää vahvistamattomaksi. Jos reaaliaikainen verkkohaku ei ole käytettävissä, tulos perustuu vain mallin tietoihin ja kertoo sen.',
     flowWeb:
       'Verkkohaku',
     flowWebDetail:

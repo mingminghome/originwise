@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { afterEach, describe, it, mock } from 'node:test';
 import {
   CITED_FETCH_MS,
+  CITED_MAX_REDIRECTS,
   FIRECRAWL_SCRAPE_ENDPOINT,
   MAX_CITED_SOURCES,
   citedFetcher,
@@ -17,6 +18,9 @@ import { CHECK_SECTIONS, readMadeInSources, readQueryPartials } from './checkQue
 import { PRODUCT_FACT_RULES } from './prompts';
 import { runCheckOrchestrator } from './orchestrator';
 import type { WebCooClaim } from './schema';
+import type { FetchedPage } from './search/types';
+import { gateClaims } from './search/extract';
+import { applyWebCooGate } from './synthesize';
 
 const ENTITY = 'Cybex Melio';
 const html = (body: string, status = 200) =>
@@ -44,6 +48,9 @@ function routes(table: Record<string, () => Response | Promise<Response>>) {
 const plain = citedFetcher('brave', {});
 const check = (cited: Array<{ url: string; title?: string; quote?: string }>, opts: Partial<{
   searchUrls: string[];
+  searchPages: FetchedPage[];
+  droppedUrls: string[];
+  excludedUrls: string[];
   searchCoo: WebCooClaim[];
   country: string;
 }> = {}) =>
@@ -52,18 +59,25 @@ const check = (cited: Array<{ url: string; title?: string; quote?: string }>, op
     country: opts.country ?? 'China',
     cited,
     searchUrls: opts.searchUrls ?? [],
+    searchPages: opts.searchPages ?? [],
+    droppedUrls: opts.droppedUrls ?? [],
+    excludedUrls: opts.excludedUrls ?? [],
     searchCoo: opts.searchCoo ?? [],
     fetchPage: plain,
   });
+const page = (url: string, text: string, title = ''): FetchedPage => ({ url, title, text });
 
 afterEach(() => mock.restoreAll());
 
 describe('AI-cited made-in pages: checked before they count', () => {
-  it('a cited URL that matches a search result (after normalising) counts, with no fetch', async () => {
+  it('a cited URL that matches a search result is checked on the text we already have (exact model + same country), no fetch', async () => {
     const asked = routes({});
     const out = await check(
       [{ url: 'http://WWW.momoshop.com.tw/goods/1/?utm_source=ai#spec', title: 'momo' }],
-      { searchUrls: ['https://momoshop.com.tw/goods/1'] }
+      {
+        searchUrls: ['https://momoshop.com.tw/goods/1'],
+        searchPages: [page('https://momoshop.com.tw/goods/1', 'Cybex Melio 輕量嬰兒推車\n產地：中國')],
+      }
     );
     assert.deepEqual(out.verified, [
       { country: 'China', basis: 'name', status: 'likely', url: 'https://momoshop.com.tw/goods/1', exactModel: true, cited: 'search' },
@@ -71,6 +85,73 @@ describe('AI-cited made-in pages: checked before they count', () => {
     assert.deepEqual(out.unverified, []);
     assert.equal(out.fetches, 0);
     assert.deepEqual(asked, []);
+  });
+
+  it('a search match is not accepted on the URL alone: no page text, no made-in line, or another model → unverified (no fetch)', async () => {
+    const asked = routes({});
+    const u1 = 'https://momoshop.com.tw/goods/1';
+    const u2 = 'https://mamilove.com.tw/product/2';
+    // URL in the search Sources but no text kept for it.
+    const noText = await check([{ url: u1 }], { searchUrls: [u1] });
+    assert.deepEqual(noText.verified, []);
+    assert.deepEqual(noText.unverified.map((u) => u.url), [u1]);
+    // Text names the exact model but has no made-in line (and no quote).
+    const noLine = await check([{ url: u2 }], { searchUrls: [u2], searchPages: [page(u2, 'Cybex Melio 推車 規格')] });
+    assert.deepEqual(noLine.verified, []);
+    // Text is about another model.
+    const other = await check([{ url: u2 }], { searchUrls: [u2], searchPages: [page(u2, 'Cybex Melio Carbon\n產地：中國')] });
+    assert.deepEqual(other.verified, []);
+    assert.deepEqual(asked, []);
+  });
+
+  it('Tester: AI says China and cites the excluded Melio Carbon search URL → unverified, does not confirm', async () => {
+    routes({});
+    const carbon = 'https://store.example.com/cybex-melio-carbon';
+    const pages = [page(carbon, 'Cybex Melio Carbon 嬰兒推車\n原産国：中国', 'Cybex Melio Carbon')];
+    // The real gate excludes the page (another model of that name).
+    const gate = gateClaims(ENTITY, [], pages, [{ page: 1, country: 'China', quote: '原産国：中国', sourceType: 'retailer' }]);
+    assert.deepEqual(gate.kept, []);
+    assert.deepEqual(gate.excluded.map((e) => e.model), ['Melio Carbon']);
+    const out = await check([{ url: carbon }], {
+      searchUrls: [carbon],
+      searchPages: pages,
+      excludedUrls: [carbon],
+    });
+    assert.deepEqual(out.verified, []);
+    assert.deepEqual(out.unverified.map((u) => u.url), [carbon]);
+    const g = applyWebCooGate({ madeIn: 'China' }, out.verified);
+    assert.equal(g.product?.madeIn, undefined);
+    assert.equal(g.madeInBasis, undefined);
+    // Even without the excluded list, the text check alone rejects it.
+    const textOnly = await check([{ url: carbon }], { searchUrls: [carbon], searchPages: pages });
+    assert.deepEqual(textOnly.verified, []);
+  });
+
+  it('Tester: two search URLs on two sites with no made-in line → nothing verified, never 80%', async () => {
+    routes({});
+    const p1 = 'https://shop.aeon.com/melio';
+    const p2 = 'https://aeonretail.com/listing?q=melio';
+    const out = await check([{ url: p1 }, { url: p2 }], {
+      searchUrls: [p1, p2],
+      searchPages: [page(p1, 'Cybex Melio ベビーカー'), page(p2, 'CYBEX MELIO stroller')],
+    });
+    assert.deepEqual(out.verified, []);
+    assert.equal(out.unverified.length, 2);
+    const g = applyWebCooGate({ madeIn: 'China' }, out.verified);
+    assert.equal(g.product?.madeIn, undefined);
+    assert.notEqual(g.madeInSupport, 'web');
+  });
+
+  it('a search URL whose made-in claim the gate dropped never counts', async () => {
+    routes({});
+    const u = 'https://momoshop.com.tw/goods/sizes';
+    const out = await check([{ url: u }], {
+      searchUrls: [u],
+      searchPages: [page(u, 'Cybex Melio\n產地：中國')],
+      droppedUrls: [u],
+    });
+    assert.deepEqual(out.verified, []);
+    assert.deepEqual(out.unverified.map((x) => x.url), [u]);
   });
 
   it('a cited URL the search did not return is fetched; loads + exact model + country → counts', async () => {
@@ -143,7 +224,10 @@ describe('AI-cited made-in pages: checked before they count', () => {
       [a]: () => html('<p>Cybex Melio 產地：中國</p>'),
       [b]: () => html('<p>Cybex Melio 產地：中國</p>'),
     });
-    const out = await check([{ url: a }, { url: b }, { url: s }], { searchUrls: [s] });
+    const out = await check([{ url: a }, { url: b }, { url: s }], {
+      searchUrls: [s],
+      searchPages: [page(s, 'Cybex Melio 輕量嬰兒推車\n產地：中國')],
+    });
     // The search match is checked first (no fetch), then one fetch; the third link is never fetched.
     assert.deepEqual(asked, [a]);
     assert.equal(out.fetches, 1);
@@ -198,6 +282,72 @@ describe('AI-cited made-in pages: checked before they count', () => {
     assert.ok(bodies.every((b) => b.storeInCache === false && Number(b.timeout) < CITED_FETCH_MS));
     assert.deepEqual(out.verified.map((v) => v.url), [ok]);
     assert.deepEqual(out.unverified.map((u) => u.url), [gone]);
+  });
+
+  it('a fetched page gets the same multi-variant and near-miss check as a search page', async () => {
+    const multi = 'https://shop.example.com/melio-colours';
+    const near = 'https://shop.example.com/melio-eezy';
+    routes({
+      [multi]: () => html('<h1>Cybex Melio</h1><p>產地：中國</p><p>Select a colour: Moon Black / Seashell Beige</p>'),
+      [near]: () => html('<h1>Cybex Melio</h1><p>Also see Cybex Melio Eezy</p><p>產地：中國</p>'),
+    });
+    const out = await check([{ url: multi }, { url: near }]);
+    assert.deepEqual(out.verified, []);
+    assert.equal(out.unverified.length, 2);
+  });
+
+  it(`plain fetch: ${CITED_FETCH_MS} ms timeout, every redirect hop re-checked, at most ${CITED_MAX_REDIRECTS} hops`, async () => {
+    assert.equal(CITED_FETCH_MS, 4000);
+    const start = 'https://short.example.com/r';
+    const hops: string[] = [];
+    mock.method(globalThis, 'fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      hops.push(url);
+      assert.equal(init?.redirect, 'manual');
+      if (url === start) return new Response(null, { status: 302, headers: { Location: 'http://169.254.169.254/latest/meta-data' } });
+      throw new Error('must not fetch ' + url);
+    });
+    const meta = await check([{ url: start }]);
+    assert.deepEqual(hops, [start]);
+    assert.deepEqual(meta.verified, []);
+    mock.restoreAll();
+    // A public redirect chain is followed and checked; too many hops fail.
+    const chain = (n: number) => `https://hop${n}.example.com/x`;
+    const seen: string[] = [];
+    mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
+      const url = String(input);
+      seen.push(url);
+      const n = Number(/hop(\d+)/.exec(url)?.[1] ?? 0);
+      return n < 10
+        ? new Response(null, { status: 301, headers: { Location: chain(n + 1) } })
+        : html('<h1>Cybex Melio</h1><p>產地：中國</p>');
+    });
+    const many = await check([{ url: chain(0) }]);
+    assert.deepEqual(many.verified, []);
+    assert.equal(seen.length, CITED_MAX_REDIRECTS + 1);
+    mock.restoreAll();
+    const two: string[] = [];
+    mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
+      const url = String(input);
+      two.push(url);
+      return url === chain(8)
+        ? new Response(null, { status: 302, headers: { Location: '/final' } })
+        : html('<h1>Cybex Melio</h1><p>產地：中國</p>');
+    });
+    const ok = await check([{ url: chain(8) }]);
+    assert.deepEqual(two, [chain(8), 'https://hop8.example.com/final']);
+    assert.equal(ok.verified.length, 1);
+  });
+
+  it('URL safety: IP forms, wildcard DNS, credentials and ports are refused', () => {
+    for (const u of [
+      'http://127.0.0.1/', 'http://0x7f.1/', 'http://2130706433/', 'http://127.1/', 'http://[::1]/',
+      'http://169.254.169.254/latest', 'http://127.0.0.1.nip.io/', 'http://10.0.0.1.sslip.io/',
+      'http://user:pw@shop.example.com/', 'http://shop.example.com:8080/', 'ftp://a.com/', 'http://foo.internal/',
+    ]) {
+      assert.equal(isPublicHttpUrl(u), false, u);
+    }
+    assert.equal(isPublicHttpUrl('https://www.momoshop.com.tw/goods/1'), true);
   });
 
   it('URL normalising: scheme, www, case of host, fragment, tracking params, trailing slash', () => {

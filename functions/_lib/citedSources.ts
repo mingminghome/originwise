@@ -1,14 +1,19 @@
 /**
  * AI-cited made-in pages (item h). The model may name up to
  * MAX_CITED_SOURCES pages behind its made-in answer. Model-cited URLs can be
- * invented, so none counts until it is checked:
+ * invented or point at the wrong page, so none counts until it passes the
+ * same check, whichever way we read it:
  *   1. same URL (normalised) as a page the web search already returned →
- *      counts, no fetch;
+ *      checked on the text we already have (no refetch). A page the gate
+ *      excluded (another model, e.g. Melio Carbon) or whose made-in claim it
+ *      dropped never counts;
  *   2. otherwise one fetch with the configured provider (Firecrawl scrape on
- *      Firecrawl runs, a plain page fetch otherwise), short timeout: the page
- *      must load, name the exact model (brand + model, variant-safe) and name
- *      the country in a made-in line (or carry the quoted made-in words).
- * Links that match a search result are checked first; at most
+ *      Firecrawl runs, a plain page fetch otherwise), 4 s timeout, public
+ *      http(s) only, every redirect hop re-checked.
+ * Either way the page must name the exact model (brand + model, no other
+ * variant, not a multi-variant listing) and the AI's country in a made-in
+ * line (or carry the quoted made-in words), and no made-in line for another
+ * country. Links that match a search result are checked first; at most
  * MAX_CITED_SOURCES are checked, so the worst case is MAX_CITED_SOURCES
  * extra fetches per check. A verified page becomes an exact-model web claim
  * (WebCooClaim.cited); a failed one is listed as 「AI 引用，未能驗證」 and never
@@ -21,6 +26,7 @@ import {
   exactModelPage,
   fetchSourcePage,
   fetchWithTimeout,
+  pageListsMultipleVariants,
   regexCooClaims,
   stripHtml,
 } from './search/extract';
@@ -70,6 +76,9 @@ export function citedPageConfirms(
 ): boolean {
   const text = page.text || '';
   if (!text.trim() || !exactModelPage(text, entity)) return false;
+  // Same rule as a search page: a page listing several sizes / variants
+  // cannot say which one is made where.
+  if (pageListsMultipleVariants(text, entity)) return false;
   const lines = regexCooClaims([page]);
   // A made-in line for another country on the page: not support.
   if (lines.some((c) => !sameCountry(c.country, country))) return false;
@@ -80,14 +89,25 @@ export function citedPageConfirms(
   return q.length >= 3 && compact(text).includes(compact(q)) && sameCountry(q, country);
 }
 
-/** http(s) on a public host name (no IP literals, localhost or .local / .internal). */
+/** Wildcard-DNS services that resolve any name to a chosen (often private) IP. */
+const WILDCARD_DNS = /(^|\.)(nip\.io|sslip\.io|xip\.io|traefik\.me|localtest\.me|lvh\.me|vcap\.me|lacolhost\.com)$/;
+
+/**
+ * http(s) on a public host name: no IP literals (dotted, hex, octal or
+ * integer forms), no localhost / .local / .internal style names, no
+ * wildcard-DNS hosts, no credentials, default port only.
+ */
 export function isPublicHttpUrl(raw: string): boolean {
   try {
     const u = new URL(raw);
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
-    const h = u.hostname.toLowerCase();
-    if (!h.includes('.') || h.startsWith('[') || /^[\d.]+$/.test(h)) return false;
-    return !/(^|\.)(localhost|local|internal|lan|home|arpa)$/.test(h);
+    if (u.username || u.password || u.port) return false;
+    const h = u.hostname.toLowerCase().replace(/\.$/, '');
+    if (!h.includes('.') || h.startsWith('[') || h.includes(':')) return false;
+    // Any label that is all digits / hex (0x7f.1, 127.1, 2130706433.x): an IP form.
+    if (h.split('.').every((l) => /^(0x[0-9a-f]*|\d+)$/.test(l))) return false;
+    if (WILDCARD_DNS.test(h)) return false;
+    return !/(^|\.)(localhost|local|internal|intranet|lan|home|corp|arpa)$/.test(h);
   } catch {
     return false;
   }
@@ -121,6 +141,9 @@ async function firecrawlScrape(key: string, url: string): Promise<FetchedPage | 
     const md = data.data?.markdown || '';
     const status = data.data?.metadata?.statusCode ?? 200;
     if (!data.success || status >= 400 || !md.trim()) return null;
+    // Firecrawl follows redirects itself: the landing URL must be public too.
+    const landed = data.data?.metadata?.url || data.data?.metadata?.sourceURL;
+    if (landed && !isPublicHttpUrl(landed)) return null;
     const title = stripHtml(data.data?.metadata?.title || '');
     return { url, title, text: [title, md].filter(Boolean).join('\n') };
   } catch {
@@ -128,9 +151,16 @@ async function firecrawlScrape(key: string, url: string): Promise<FetchedPage | 
   }
 }
 
-/** Plain page fetch (Brave / Gemini runs), short timeout; null when it does not load. */
+/** Redirect hops a cited fetch follows (each re-checked with isPublicHttpUrl). */
+export const CITED_MAX_REDIRECTS = 3;
+
+/** Plain page fetch (Brave / Gemini runs), 4 s timeout; null when it does not load. */
 async function plainFetch(url: string): Promise<FetchedPage | null> {
-  const page = await fetchSourcePage(url);
+  const page = await fetchSourcePage(url, '', '', {
+    ms: CITED_FETCH_MS,
+    allowHop: isPublicHttpUrl,
+    maxRedirects: CITED_MAX_REDIRECTS,
+  });
   // fetchSourcePage keeps the (empty) title on failure; no body → did not load.
   return page.text.trim() ? page : null;
 }
@@ -154,13 +184,18 @@ export type CitedCheck = {
 /**
  * Check the model's cited made-in pages. `country` is the model's own
  * made-in answer; `searchUrls` every page URL the web search returned;
- * `searchCoo` the gated claims from those pages.
+ * `searchPages` the text we already have for them; `searchCoo` the gated
+ * claims; `droppedUrls` pages whose made-in claim the gate dropped;
+ * `excludedUrls` pages about another model of that name.
  */
 export async function verifyCitedSources(opts: {
   entity: string;
   country: string | undefined;
   cited: CitedSource[] | undefined;
   searchUrls: string[];
+  searchPages?: FetchedPage[];
+  droppedUrls?: string[];
+  excludedUrls?: string[];
   searchCoo: WebCooClaim[];
   fetchPage: FetchCited;
 }): Promise<CitedCheck> {
@@ -173,32 +208,42 @@ export async function verifyCitedSources(opts: {
     out.unverified = cited.slice(0, MAX_CITED_SOURCES);
     return out;
   }
-  const searchByKey = new Map(opts.searchUrls.map((u) => [normalizeUrl(u), u]));
-  const claimByKey = new Map(
-    opts.searchCoo.filter((c) => c.url).map((c) => [normalizeUrl(c.url!), c])
-  );
+  const pageByKey = new Map<string, FetchedPage>();
+  for (const p of opts.searchPages ?? []) {
+    for (const u of [p.url, p.finalUrl]) if (u && !pageByKey.has(normalizeUrl(u))) pageByKey.set(normalizeUrl(u), p);
+  }
+  const searchKeys = new Set([...opts.searchUrls.map(normalizeUrl), ...pageByKey.keys()]);
+  const blocked = new Set([...(opts.droppedUrls ?? []), ...(opts.excludedUrls ?? [])].map(normalizeUrl));
   // Links that match a search result first; then the rest, in the model's order.
   const ordered = [...cited]
-    .map((c, i) => ({ c, i, hit: searchByKey.get(normalizeUrl(c.url)) }))
-    .sort((a, b) => Number(Boolean(b.hit)) - Number(Boolean(a.hit)) || a.i - b.i)
+    .map((c, i) => ({ c, i, key: normalizeUrl(c.url) }))
+    .map((x) => ({ ...x, hit: searchKeys.has(x.key) }))
+    .sort((a, b) => Number(b.hit) - Number(a.hit) || a.i - b.i)
     .slice(0, MAX_CITED_SOURCES);
-  for (const { c, hit } of ordered) {
+  for (const { c, key, hit } of ordered) {
     if (hit) {
-      const claim = claimByKey.get(normalizeUrl(hit));
-      if (claim && !sameCountry(claim.country, country)) {
+      // Excluded near-miss page, or the gate dropped its made-in claim: never counts.
+      if (blocked.has(key)) {
+        out.unverified.push(c);
+        continue;
+      }
+      const claims = opts.searchCoo.filter((k) => k.url && normalizeUrl(k.url) === key);
+      if (claims.some((k) => !sameCountry(k.country, country))) {
         // The search read another made-in on that page.
         out.unverified.push(c);
-      } else if (!claim) {
-        out.verified.push({
-          country,
-          basis: 'name',
-          status: 'likely',
-          url: hit,
-          exactModel: true,
-          cited: 'search',
-        });
+        continue;
       }
-      // Same country already claimed from that page: it already counts.
+      if (claims.some((k) => k.exactModel && !k.evidenceOnly && sameCountry(k.country, country))) {
+        // Already an exact-model page with this country: it already counts.
+        continue;
+      }
+      // Same check as a fetched page, on the text / snippet we already have.
+      const page = pageByKey.get(key);
+      if (page && citedPageConfirms(page, opts.entity, country, c.quote)) {
+        out.verified.push({ country, basis: 'name', status: 'likely', url: page.url, exactModel: true, cited: 'search' });
+      } else {
+        out.unverified.push(c);
+      }
       continue;
     }
     if (!isPublicHttpUrl(c.url) || isSearchResultUrl(c.url)) {

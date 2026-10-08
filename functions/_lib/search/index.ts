@@ -88,6 +88,10 @@ export type SearchChainResult = {
   model?: string;
   /** Gated made-in claims from the winning Brave/Firecrawl provider. */
   coo?: SearchOutput['coo'];
+  /** Pages about another model of that name (winning provider). */
+  excluded?: SearchOutput['excluded'];
+  /** Page text + dropped-claim URLs for the AI-cited check (winning provider). */
+  evidence?: SearchOutput['evidence'];
   tried: SearchAttempt[];
 };
 
@@ -140,6 +144,7 @@ export async function runSearchChain(
         model: out.model,
         coo: out.coo,
         excluded: out.excluded,
+        evidence: out.evidence,
         tried,
       };
     }

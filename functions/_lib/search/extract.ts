@@ -15,7 +15,7 @@ import { isSearchResultUrl } from '../sourceLine';
 import { canonicalCountry } from '../countryLabel';
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
-import type { FetchedPage, PageBlock, SearchEnv, SearchOutput } from './types';
+import type { FetchedPage, PageBlock, SearchEnv, SearchEvidence, SearchOutput } from './types';
 import type { WebCooClaim, WebExcludedPage } from '../schema';
 
 /** Analysis model for extraction (plain call, no grounding). */
@@ -404,21 +404,105 @@ export function mergePages(
 /* ---------- Exact-model match (依型號比對) ---------- */
 
 /**
- * Words that make "<brand> <model> X" a different model: Melio vs Melio
- * Carbon. A number or roman numeral right after the model does too.
+ * Lower-case words that always mark another edition, even in an all
+ * lower-case URL slug ("cybex-melio-carbon"). Capitalised, version and short
+ * suffix tokens are caught by shape (variantToken), so this is a backstop,
+ * not the rule.
  */
 const MODEL_EDITION_WORDS = new Set([
-  'carbon', 'plus', 'pro', 'max', 'mini', 'lite', 'light', 'ultra', 'air', 'neo',
-  'se', 'gt', 'gtx', 'evo', 'sport', 'street', 'edition', 'deluxe', 'premium',
-  'classic', 'xl', 'xs', 'duo', 'twin', 'double', 'travel', 'go', 'one', 'cot',
-  'lux', 'luxe', 'elite', 'prime', 'next', 'new', 'jr', 'junior', 'kids',
+  'carbon', 'plus', 'pro', 'max', 'mini', 'lite', 'ultra', 'air', 'neo', 'se', 'gt', 'gtx',
+  'evo', 'eezy', 'street', 'edition', 'deluxe', 'premium', 'xl', 'xs', 'duo', 'twin', 'lux',
+  'luxe', 'elite', 'prime', 'nc', 'anc',
 ]);
 
-function normModelText(s: string): string {
-  return nfkc(s || '')
-    .toLowerCase()
+/**
+ * Words allowed right after "<brand> <model>" (any case): product types,
+ * shop / review words and plain function words, in the app's languages.
+ * Anything else that looks like a name, a version or a model suffix is a
+ * different variant.
+ */
+const MODEL_GENERIC_WORDS = new Set([
+  // product types
+  'stroller', 'strollers', 'pushchair', 'pushchairs', 'pram', 'prams', 'buggy', 'buggies',
+  'pram', 'carriage', 'bottle', 'bottles', 'baby', 'infant', 'toddler', 'kids', 'child',
+  'earbuds', 'earphones', 'headphones', 'camera', 'cam', 'speaker', 'phone', 'case',
+  'kinderwagen', 'sportwagen', 'buggy', 'flasche', 'babyflasche', 'poussette', 'biberon',
+  'passeggino', 'carrozzina', 'biberon', 'cochecito', 'silla', 'carrito', 'carrinho',
+  'wózek', 'wozek', 'butelka', 'kočárek', 'kocarek', 'láhev', 'barnvagn', 'sittvagn',
+  'klapvogn', 'barnevogn', 'sutteflaske', 'nappflaska', 'rattaat', 'lastenrattaat',
+  'tuttipullo', 'babakocsi', 'cumisüveg', 'cărucior', 'carucior', 'biberon', 'kinderwagen',
+  'wandelwagen', 'zuigfles', 'καρότσι', 'μπιμπερό',
+  // shop / review / info words
+  'review', 'reviews', 'test', 'tested', 'specs', 'spec', 'specifications', 'specification',
+  'features', 'details', 'buy', 'shop', 'store', 'online', 'price', 'prices', 'sale', 'deal',
+  'deals', 'offer', 'manual', 'guide', 'vs', 'versus', 'official', 'site', 'new', 'used',
+  'compact', 'lightweight', 'light', 'travel', 'system', 'colour', 'color', 'colours',
+  'colors', 'black', 'white', 'grey', 'gray', 'blue', 'red', 'green', 'beige', 'pink', 'navy',
+  'test', 'erfahrungen', 'kaufen', 'preis', 'avis', 'prix', 'acheter', 'prezzo', 'recensione',
+  'precio', 'opiniones', 'opinie', 'cena', 'recenze', 'pris', 'hinta', 'ár', 'preço', 'preț',
+  'kopen', 'prijs', 'testbericht', 'erfahrung', 'bewertung', 'angebot', 'günstig', 'anleitung',
+  'datenblatt', 'technische', 'daten', 'fiche', 'technique', 'scheda', 'ficha', 'specificaties',
+  // function words
+  'the', 'a', 'an', 'is', 'are', 'was', 'by', 'for', 'from', 'in', 'on', 'at', 'of', 'to',
+  'with', 'and', 'or', 'made', 'und', 'mit', 'von', 'für', 'der', 'die', 'das', 'le', 'la',
+  'les', 'de', 'du', 'des', 'et', 'il', 'di', 'e', 'el', 'y', 'en', 'het', 'een', 'og', 'och',
+  'i', 'w', 'z', 'na', 'ja', 'és', 'si', 'și', 'em', 'do', 'da',
+]);
+
+/** "<brand> <model>" in text, case and spacing kept (so name-like tokens show). */
+function normModelTextKeepCase(s: string): string {
+  // Line breaks stay: a title line ends the model name ("Cybex Melio\nHergestellt in …").
+  // ™ / ® / © first: NFKC would turn ™ into "TM" glued to the model name.
+  return nfkc((s || '').replace(/[™®©℠]/g, ' '))
     .replace(/[-‐‑‒–—_·・/／]+/g, ' ')
-    .replace(/\s+/g, ' ');
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/ ?\n[\s]*/g, '\n');
+}
+
+function normModelText(s: string): string {
+  return normModelTextKeepCase(s).toLowerCase();
+}
+
+const YEAR_RE = /^(19|20)\d\d$/;
+
+/**
+ * What follows the matched "<brand> <model>": null when it is allowed (CJK
+ * text, punctuation, a generic word, a year), else the token that names
+ * another variant ("Carbon", "V2", "NC", "4", "(Carbon)").
+ */
+function variantAfter(rest: string): string | null {
+  const s = rest.replace(/^[ ®™©]+/, '');
+  if (!s || s.startsWith('\n')) return null;
+  // Bracketed: a year is fine ((2024)); Latin / digit content is an edition.
+  const br = /^[(（[［]\s*([^)）\]］]{1,24})\s*[)）\]］]/.exec(s);
+  if (br) {
+    const inner = br[1]!.trim();
+    if (YEAR_RE.test(inner)) return null;
+    const words = inner.split(/\s+/);
+    if (/[A-Za-z0-9]/.test(inner) && !words.every((w) => MODEL_GENERIC_WORDS.has(w.toLowerCase()))) {
+      return inner;
+    }
+    return null;
+  }
+  const m = /^([A-Za-z0-9][A-Za-z0-9+]*)/.exec(s);
+  // CJK, kana, punctuation or end: descriptive / category text, allowed.
+  if (!m) return null;
+  const w = m[1]!;
+  const lw = w.toLowerCase();
+  if (YEAR_RE.test(w)) return null;
+  // Version tokens: V2, Mk2, Gen 3, 2, II.
+  if (/^(v|mk|gen|ver)\d+$/i.test(w) || /^\d+$/.test(w) || /^(ii|iii|iv|vi)$/i.test(w)) return w;
+  if (/^(mk|gen|ver|version)$/i.test(w) && /^ ?\d/.test(s.slice(w.length))) {
+    return `${w} ${/^ ?(\d+)/.exec(s.slice(w.length))![1]}`;
+  }
+  if (MODEL_GENERIC_WORDS.has(lw)) return null;
+  if (MODEL_EDITION_WORDS.has(lw)) return w;
+  // Alphanumeric suffix (C2, 4K, X1) or a short all-caps token (NC, S).
+  if (/\d/.test(w) || /^[A-Z]{1,4}$/.test(w)) return w;
+  // A capitalised name-like token (Carbon, Eezy, Street, CARBON).
+  if (/^[A-Z]/.test(w)) return w;
+  // Lower-case running text ("cybex melio is …"): allowed.
+  return null;
 }
 
 /**
@@ -436,8 +520,10 @@ export function modelTokens(entity: string): string[] {
 
 /**
  * How often the page names the exact model, and how often the same words
- * run on into another model ("Cybex Melio Carbon", "Melio 2"). Case,
- * spacing and hyphens are normalised ("cybex-melio" = "Cybex Melio").
+ * run on into another model ("Cybex Melio Carbon", "Melio V2", "Liberty 4
+ * NC"). Case, spacing and hyphens are normalised ("cybex-melio" = "Cybex
+ * Melio"); descriptive / category words, years and punctuation after the
+ * model are allowed ("Cybex Melio 輕量嬰兒推車", "Cybex Melio (2024)").
  */
 export function modelMentions(
   text: string,
@@ -454,19 +540,19 @@ export function modelMentions(
   const first = tokens[0]!;
   const last = tokens[tokens.length - 1]!;
   const re = new RegExp(
-    `${latin(first[0]!) ? '(?<![a-z0-9])' : ''}${tokens.map(esc).join('\\s?')}${latin(last[last.length - 1]!) ? '(?![a-z0-9])' : ''}`,
-    'g'
+    `${latin(first[0]!) ? '(?<![A-Za-z0-9])' : ''}${tokens.map(esc).join('\\s?')}${latin(last[last.length - 1]!) ? '(?![A-Za-z0-9])' : ''}`,
+    'gi'
   );
-  const t = normModelText(text).slice(0, PAGE_TEXT_MAX);
+  const t = normModelTextKeepCase(text).slice(0, PAGE_TEXT_MAX);
   let exact = 0;
   let variant = 0;
   const variants: string[] = [];
   for (const m of t.matchAll(re)) {
     const end = (m.index ?? 0) + m[0].length;
-    const next = /^ ?([a-z0-9]+)/.exec(t.slice(end, end + 24))?.[1];
-    if (next && (MODEL_EDITION_WORDS.has(next) || /^\d+$/.test(next) || /^(ii|iii|iv|vi)$/.test(next))) {
+    const other = variantAfter(t.slice(end, end + 40));
+    if (other) {
       variant += 1;
-      if (!variants.includes(next)) variants.push(next);
+      if (!variants.some((v) => v.toLowerCase() === other.toLowerCase())) variants.push(other);
     } else {
       exact += 1;
     }
@@ -485,9 +571,11 @@ export function otherModelName(entity: string, edition: string): string {
     nfkc(entity)
       .split(/\s+/)
       .find((w) => w.toLowerCase() === last) ?? last;
-  const word = /^\d+$|^(ii|iii|iv|vi)$/.test(edition)
+  const word = /^(ii|iii|iv|vi)$/i.test(edition)
     ? edition.toUpperCase()
-    : edition.charAt(0).toUpperCase() + edition.slice(1);
+    : /[A-Z]/.test(edition)
+      ? edition
+      : edition.charAt(0).toUpperCase() + edition.slice(1);
   return `${orig} ${word}`.trim();
 }
 
@@ -592,21 +680,55 @@ export async function fetchWithTimeout(
 export async function fetchSourcePage(
   url: string,
   rawTitle = '',
-  rawSnippet = ''
+  rawSnippet = '',
+  opts: {
+    /** Timeout per request (default PAGE_FETCH_MS). */
+    ms?: number;
+    /**
+     * When set, redirects are followed by hand and every hop must pass this
+     * check (AI-cited pages: public http(s) only), at most `maxRedirects`.
+     */
+    allowHop?: (url: string) => boolean;
+    maxRedirects?: number;
+  } = {}
 ): Promise<FetchedPage> {
   const title = stripHtml(rawTitle);
   const snippet = stripHtml(rawSnippet);
-  const res = await fetchWithTimeout(
-    url,
-    {
-      headers: {
-        Accept: 'text/html,application/xhtml+xml,text/plain;q=0.8',
-        'User-Agent': 'OriginWise/1.0 (+https://originwise.pages.dev)',
-      },
-      redirect: 'follow',
-    },
-    PAGE_FETCH_MS
-  );
+  const ms = opts.ms ?? PAGE_FETCH_MS;
+  const headers = {
+    Accept: 'text/html,application/xhtml+xml,text/plain;q=0.8',
+    'User-Agent': 'OriginWise/1.0 (+https://originwise.pages.dev)',
+  };
+  let res: Response | null = null;
+  if (opts.allowHop) {
+    let at = url;
+    const max = opts.maxRedirects ?? 3;
+    for (let hop = 0; ; hop++) {
+      if (!opts.allowHop(at)) {
+        res = null;
+        break;
+      }
+      res = await fetchWithTimeout(at, { headers, redirect: 'manual' }, ms);
+      const loc = res && res.status >= 300 && res.status < 400 ? res.headers.get('location') : null;
+      if (!loc) break;
+      if (hop >= max) {
+        res = null;
+        break;
+      }
+      try {
+        at = new URL(loc, at).toString();
+      } catch {
+        res = null;
+        break;
+      }
+    }
+    if (res && res.ok && at !== url) {
+      // Record where it landed (Response.url is read-only).
+      Object.defineProperty(res, 'url', { value: at });
+    }
+  } else {
+    res = await fetchWithTimeout(url, { headers, redirect: 'follow' }, ms);
+  }
   // A redirect that lands on a search-results page is not product evidence.
   if (res && res.url && isSearchResultUrl(res.url)) {
     return { url, title, text: '', blocks: [] };
@@ -656,7 +778,8 @@ export function cooClaimsFromSourcePages(
   entity: string,
   ocrText: string | undefined,
   pages: FetchedPage[],
-  excludedOut?: WebExcludedPage[]
+  excludedOut?: WebExcludedPage[],
+  evidenceOut?: SearchEvidence
 ): WebCooClaim[] {
   // Search-result pages list many products, so they are never evidence.
   const usable = pages.filter(
@@ -664,14 +787,67 @@ export function cooClaimsFromSourcePages(
   );
   if (!usable.length) return [];
   const jans = findJans(entity, ocrText);
-  const { kept, excluded } = gateClaims(entity, jans, usable, regexCooClaims(usable));
+  const { kept, excluded, droppedPages } = gateClaims(entity, jans, usable, regexCooClaims(usable));
   excludedOut?.push(...excludedPages(excluded, usable));
+  if (evidenceOut) {
+    const ev = searchEvidence(usable, droppedPages);
+    evidenceOut.pages.push(...ev.pages);
+    evidenceOut.droppedUrls.push(...ev.droppedUrls);
+  }
+  return webCooFromKept(kept, usable);
+}
+
+/** Page text kept for the AI-cited check (search matches are checked on it, no refetch). */
+const EVIDENCE_TEXT_MAX = 40_000;
+
+/** Pages + dropped-claim URLs from one gate run, for the AI-cited check. */
+export function searchEvidence(pages: FetchedPage[], droppedPages: number[]): SearchEvidence {
+  return {
+    pages: pages.map((p) => ({
+      url: p.url,
+      ...(p.finalUrl ? { finalUrl: p.finalUrl } : {}),
+      title: p.title,
+      text: p.text.slice(0, EVIDENCE_TEXT_MAX),
+    })),
+    droppedUrls: droppedPages.map((n) => pages[n - 1]?.url).filter((u): u is string => Boolean(u)),
+  };
+}
+
+/** Exact-model evidence (search pages, dropped lines, verified AI-cited pages). */
+function exactEvidence(coo: WebCooClaim[]): WebCooClaim[] {
+  return coo.filter((c) => c.exactModel || (c.basis === 'model' && c.status === 'confirmed'));
+}
+
+/** Some exact-model evidence names a different country from the rest. */
+export function exactModelConflict(coo: WebCooClaim[]): boolean {
+  const keys = new Set(exactEvidence(coo).map((c) => claimCountryKey(c.country)));
+  return keys.size > 1;
+}
+
+/**
+ * After AI-cited pages join the search claims: when the exact-model evidence
+ * disagrees, nothing stays confirmed by model (2-domain matches go back to
+ * exact-model candidates), so the result is 未確認 · 網頁說法不一 whatever the
+ * AI answer or its cited pages say. Barcode claims are left alone.
+ */
+export function settleExactConflict(coo: WebCooClaim[]): WebCooClaim[] {
+  if (!exactModelConflict(coo)) return coo;
+  return coo.map((c) =>
+    c.basis === 'model' && c.status === 'confirmed'
+      ? { ...c, basis: 'name', status: 'likely', exactModel: true }
+      : c
+  );
+}
+
+/** Gate claims → the WebCooClaim rows the result carries. */
+export function webCooFromKept(kept: KeptCooClaim[], pages: FetchedPage[]): WebCooClaim[] {
   return kept.map((k) => ({
     country: k.country,
     basis: k.basis,
-      status: k.status,
-      url: usable[k.page - 1]!.url,
-      ...(k.exactModel ? { exactModel: true } : {}),
+    status: k.status,
+    url: pages[k.page - 1]!.url,
+    ...(k.exactModel ? { exactModel: true } : {}),
+    ...(k.evidenceOnly ? { evidenceOnly: true } : {}),
   }));
 }
 
@@ -806,13 +982,30 @@ export function promoteModelMatches(
   );
   if (!named.size) return kept;
   if (named.size > 1) {
-    // Exact-model pages disagree: flag the kept ones when they disagree too, so
-    // synthesize and the card see the conflict (未確認 + candidates); otherwise
-    // flag none (the dissenting page was dropped, so nothing may confirm).
-    const keptExact = kept.filter((k) => k.status === 'likely' && exact[k.page - 1]);
-    const keptCountries = new Set(keptExact.map((k) => claimCountryKey(k.country)));
-    if (keptCountries.size < 2) return kept;
-    return kept.map((k) => (keptExact.includes(k) ? { ...k, exactModel: true } : k));
+    // Exact-model evidence disagrees (dropped claims included): every kept
+    // exact-page claim is flagged, and each exact-page made-in line the page
+    // gate dropped comes along as evidence only, so synthesize, the cited
+    // check and the card all see the conflict (未確認 · 網頁說法不一) and
+    // nothing added later (AI answer, AI-cited page) can confirm past it.
+    const flagged = kept.map((k) => (k.status === 'likely' && exact[k.page - 1] ? { ...k, exactModel: true } : k));
+    const evidence: KeptCooClaim[] = [];
+    for (const c of claims) {
+      const page = pages[c.page - 1];
+      if (!exact[c.page - 1] || !page || !claimOnPage(c, page)) continue;
+      const key = claimCountryKey(c.country);
+      const has = (k: KeptCooClaim) => k.page === c.page && claimCountryKey(k.country) === key;
+      if (flagged.some(has) || evidence.some(has)) continue;
+      evidence.push({
+        ...c,
+        country: c.country.trim().slice(0, 40),
+        quote: c.quote.trim().slice(0, 80),
+        basis: 'name',
+        status: 'likely',
+        exactModel: true,
+        evidenceOnly: true,
+      });
+    }
+    return [...flagged, ...evidence];
   }
   const [country] = [...named];
   const backing = kept.filter(
@@ -844,6 +1037,8 @@ export function gateClaims(
   dropped: number;
   droppedMultiVariant: number;
   excluded: ExcludedPage[];
+  /** Pages with a made-in claim of which none passed the gate (1-based). */
+  droppedPages: number[];
 } {
   const tokens = variantTokens(entity);
   const mentions = pages.map((p) => modelMentions(p.text, entity));
@@ -866,7 +1061,11 @@ export function gateClaims(
     if (!claim) return;
     excluded.push({ page: i + 1, model: otherModelName(entity, m.variants[0]!), country: claim.country });
   });
-  return { ...out, kept: promoteModelMatches(out.kept, claims, pages, exact), excluded };
+  const keptPages = new Set(out.kept.map((k) => k.page));
+  const droppedPages = [...new Set(claims.map((c) => c.page))].filter(
+    (n) => n >= 1 && n <= pages.length && !keptPages.has(n)
+  );
+  return { ...out, kept: promoteModelMatches(out.kept, claims, pages, exact), excluded, droppedPages };
 }
 
 /** 'model' = two domains name the exact model with this made-in (依型號比對). */
@@ -875,6 +1074,11 @@ export type KeptCooClaim = CooClaim & {
   status: CooStatus;
   /** On a page naming the exact model, and no exact-model page disagrees. */
   exactModel?: boolean;
+  /**
+   * Exact-model made-in line the page gate dropped, kept only so a conflict
+   * is seen (never counts toward a made-in).
+   */
+  evidenceOnly?: boolean;
 };
 
 /**
@@ -1050,9 +1254,9 @@ export async function extractBriefFromPages(opts: {
     claims = regexCooClaims(pages);
   }
 
-  const { kept, dropped, droppedMultiVariant, excluded } = gateClaims(entity, jans, pages, claims);
+  const { kept, dropped, droppedMultiVariant, excluded, droppedPages } = gateClaims(entity, jans, pages, claims);
   const confirmed = kept.filter((k) => k.status === 'confirmed');
-  const likely = kept.filter((k) => k.status === 'likely');
+  const likely = kept.filter((k) => k.status === 'likely' && !k.evidenceOnly);
   // Notes must never smuggle a made-in claim past the barcode/name gate.
   const safeNotes = notes
     .filter((n) => !NOTE_COO_CUE.test(nfkc(n)))
@@ -1115,13 +1319,8 @@ export async function extractBriefFromPages(opts: {
     ms: Date.now() - t0,
     requests,
     model,
-    coo: kept.map((k) => ({
-      country: k.country,
-      basis: k.basis,
-      status: k.status,
-      url: pages[k.page - 1]!.url,
-      ...(k.exactModel ? { exactModel: true } : {}),
-    })),
+    coo: webCooFromKept(kept, pages),
     excluded: excludedPages(excluded, pages),
+    evidence: searchEvidence(pages, droppedPages),
   };
 }

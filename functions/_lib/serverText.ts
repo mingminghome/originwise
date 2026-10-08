@@ -24,7 +24,7 @@ export const SERVER_TEXT = {
   cooUnconfirmedNoLabel:
     'Final COO unconfirmed — no SKU/label country of origin; do not invent made-in.',
   cooUnconfirmedNoBarcode:
-    'Final made-in unconfirmed — no barcode page, package label or exact-model match backs this made-in; other countries are candidates only.',
+    'Final made-in unconfirmed; other countries are candidates only.',
   cooUnconfirmedCandidates:
     'Final COO unconfirmed — candidates below are queried signals, not a stamped made-in label.',
   distributorOmitted:

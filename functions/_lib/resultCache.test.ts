@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { cacheEntryBody, isServableCachedResult } from './resultCache';
+import { CACHE_KEY_VERSION, cacheEntryBody, cacheKeyHash, isServableCachedResult } from './resultCache';
+import { normalizeQuery } from './normalizeQuery';
 import type { CheckResult } from './schema';
 
 function base(partial: Partial<CheckResult> & { product?: CheckResult['product']; meta?: CheckResult['meta'] }): CheckResult {
@@ -136,5 +137,20 @@ describe('cacheEntryBody', () => {
     const r = base({ product: { name: 'X', madeIn: '泰國' } });
     const parsed = JSON.parse(cacheEntryBody(r, 'now'));
     assert.equal(isServableCachedResult(parsed.result), true);
+  });
+});
+
+describe('cache key version (result shape changed in #35)', () => {
+  it('is check:v9, and the key hashes v9 (old v8 entries are never served)', async () => {
+    assert.equal(CACHE_KEY_VERSION, 'check:v9');
+    const parts = { text: 'Cybex Melio', locale: 'zh-Hant', geoScope: 'prc' as const, dimensions: ['origin' as const] };
+    const hex = async (v: string) => {
+      const material = [v, normalizeQuery(parts.text), parts.locale, parts.geoScope, 'origin'].join('|');
+      const d = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(material)));
+      return Array.from(d.slice(0, 16), (b) => b.toString(16).padStart(2, '0')).join('');
+    };
+    const key = await cacheKeyHash(parts);
+    assert.equal(key, await hex('check:v9'));
+    assert.notEqual(key, await hex('check:v8'));
   });
 });

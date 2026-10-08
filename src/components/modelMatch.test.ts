@@ -13,7 +13,8 @@ import type { WebCooClaim } from '../../functions/_lib/schema';
 import { synthesize } from '../../functions/_lib/synthesize';
 import { buildChinaCard } from './ChinaLink';
 import { ChinaCard, MadeInCard, sourcePrefix } from './ResultCards';
-import { buildMadeInView } from './resultCards.model';
+import { buildMadeInView, partsListCandidates } from './resultCards.model';
+import { ResultPanel } from './ResultPanel';
 import { localizeCountry } from '../core/i18n/countries';
 
 (globalThis as { React?: unknown }).React = React;
@@ -368,5 +369,47 @@ describe('製造地 rule cases (example fixture madein-rules.json)', () => {
     }
     const html = renderToStaticMarkup(React.createElement(MadeInCard, { result: RULES.rule2.result, t: zhT }));
     assert.match(html, /<span class="rc-source-prefix">來源 2：<\/span><a [^>]*class="rc-source-title"[^>]*>CYBEX MELIO 推車 規格<\/a>/);
+  });
+});
+
+describe('產地說明 fold follows the 製造地 card (Tester #35 item 3)', () => {
+  const zhT = createT('zh-Hant');
+  const fold = (r: CheckResult, t = zhT) => {
+    const html = renderToStaticMarkup(React.createElement(ResultPanel, { result: r, t }));
+    const i = html.indexOf('data-testid="fold-notes"');
+    if (i < 0) return '';
+    const end = html.indexOf('</details>', i);
+    return html.slice(i, end).replace(/<[^>]+>/g, '');
+  };
+
+  it('case 4: the fold reason is 網頁說法不一 (the card\'s), no 零件 row for the made-in candidates, no grade or %', () => {
+    const out = fold(RULES.rule4.result);
+    assert.ok(out.includes('最終產地未確認：網頁說法不一；其他國家只列為候選。'), out);
+    assert.doesNotMatch(out, /較可能|60%|依品名比對|條碼/);
+    assert.ok(!out.includes(zhT('check.layerParts')), out);
+  });
+
+  it('case 6: the fold leads with the card reason 只有一個網頁提及; no 較可能 · 60% · 依品名比對的網頁 row', () => {
+    const out = fold(RULES.rule6.result);
+    assert.ok(out.includes('最終產地未確認：只有一個網頁提及；其他國家只列為候選。'), out);
+    assert.doesNotMatch(out, /較可能|60%|依品名比對/);
+  });
+
+  it('every unconfirmed case, every locale: the fold reason is the card reason; no barcode-only wording', () => {
+    for (const lng of locales) {
+      const t = createT(lng);
+      for (const r of CASES.slice(2)) {
+        const v = buildMadeInView(r);
+        const out = fold(r, t);
+        assert.ok(out.includes(t(`check.rc.reason.${v.reason}`)), `${lng} ${v.reason}: ${out}`);
+        assert.ok(!out.includes('沒有條碼網頁') && !/no barcode page/i.test(out), `${lng}: ${out}`);
+      }
+    }
+  });
+
+  it('made-in candidates (web_name, model_memory) never feed 零件 rows', () => {
+    for (const r of CASES) {
+      for (const c of partsListCandidates(r)) assert.ok(c.source !== 'web_name' && c.source !== 'model_memory', JSON.stringify(c));
+    }
   });
 });

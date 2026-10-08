@@ -90,6 +90,12 @@ export type WebCooClaim = {
    * model and the country). Counts as an exact-model page.
    */
   cited?: 'search' | 'fetched';
+  /**
+   * An exact-model made-in line the page gate dropped (e.g. a multi-size
+   * page), kept only when exact-model evidence disagrees so the conflict is
+   * seen. Never counts toward a made-in.
+   */
+  evidenceOnly?: boolean;
   url?: string;
 };
 

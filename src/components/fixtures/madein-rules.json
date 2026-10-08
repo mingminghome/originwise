@@ -187,7 +187,7 @@
     "insufficient"
    ],
    "caveats": [
-    "Final made-in unconfirmed — no barcode page, package label or exact-model match backs this made-in; other countries are candidates only.",
+    "Final made-in unconfirmed; other countries are candidates only.",
     "Final COO unconfirmed — candidates below are queried signals, not a stamped made-in label."
    ],
    "regions": [],
@@ -202,7 +202,7 @@
     "name": "Cybex Melio",
     "brand": "Cybex",
     "notes": [
-     "Final made-in unconfirmed — no barcode page, package label or exact-model match backs this made-in; other countries are candidates only."
+     "Final made-in unconfirmed; other countries are candidates only."
     ],
     "originCandidates": [
      {
@@ -247,7 +247,7 @@
     "insufficient"
    ],
    "caveats": [
-    "Final made-in unconfirmed — no barcode page, package label or exact-model match backs this made-in; other countries are candidates only.",
+    "Final made-in unconfirmed; other countries are candidates only.",
     "Final COO unconfirmed — candidates below are queried signals, not a stamped made-in label."
    ],
    "regions": [],
@@ -263,7 +263,7 @@
     "name": "Cybex Melio",
     "brand": "Cybex",
     "notes": [
-     "Final made-in unconfirmed — no barcode page, package label or exact-model match backs this made-in; other countries are candidates only."
+     "Final made-in unconfirmed; other countries are candidates only."
     ],
     "originCandidates": [
      {
@@ -329,7 +329,7 @@
     "insufficient"
    ],
    "caveats": [
-    "Final made-in unconfirmed — no barcode page, package label or exact-model match backs this made-in; other countries are candidates only.",
+    "Final made-in unconfirmed; other countries are candidates only.",
     "Final COO unconfirmed — candidates below are queried signals, not a stamped made-in label."
    ],
    "regions": [],
@@ -344,7 +344,7 @@
     "name": "Cybex Melio",
     "brand": "Cybex",
     "notes": [
-     "Final made-in unconfirmed — no barcode page, package label or exact-model match backs this made-in; other countries are candidates only."
+     "Final made-in unconfirmed; other countries are candidates only."
     ],
     "originCandidates": [
      {

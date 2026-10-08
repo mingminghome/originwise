@@ -56,7 +56,7 @@ export const it = {
       unconfirmed: 'Non confermato',
       partsChina: 'Alcuni componenti prodotti in Cina',
       hqParentNote: 'La sede in Cina indicata è quella della società madre',
-      madeInBelow: 'Il paese di produzione si stabilisce solo nella scheda «Prodotto in» (codice a barre o etichetta).',
+      madeInBelow: 'Il paese di produzione si stabilisce solo nella scheda «Prodotto in» (codice a barre, etichetta o corrispondenza del modello).',
       madeInChina: 'Prodotto in Cina',
       footnote: 'Questa scheda descrive solo dove ha sede l’azienda, chi la possiede e dove viene prodotto il prodotto. Non è un giudizio sulla qualità o sulla sicurezza del prodotto né sull’azienda.',
       controlling: 'Controllo',
@@ -77,6 +77,7 @@ export const it = {
       sourceNth: 'Fonte {n}: {label}',
       sourceAiAnswer: 'Risposta dell’IA',
       oneExactModelPage: '1 pagina con il modello esatto',
+      foldUnconfirmed: 'Paese di produzione finale non confermato: {reason}. Gli altri paesi sono solo candidati.',
       citedUnverified: 'Citato dall’IA, non verificato',
       excludedOtherModel: 'Altro modello ({model}), non conteggiato',
       reason: {
@@ -314,7 +315,7 @@ export const it = {
       cooUnconfirmedNoLabel:
         'Origine finale non confermata – nessun paese d’origine sul prodotto/etichetta; non ne viene inventato uno.',
       cooUnconfirmedNoBarcode:
-        'Paese di fabbricazione finale non confermato: nessuna pagina con codice a barre, etichetta della confezione o corrispondenza del modello esatto lo conferma; gli altri paesi sono solo candidati.',
+        'Paese di produzione finale non confermato; gli altri paesi sono solo candidati.',
       cooUnconfirmedCandidates:
         'Origine finale non confermata – i candidati qui sotto sono segnali di ricerca, non un «Made in» stampato.',
       distributorOmitted:
@@ -625,7 +626,7 @@ export const it = {
     evidenceTitle:
       'Quando un paese di fabbricazione è confermato',
     evidenceBody:
-      'Un paese di fabbricazione risulta confermato in tre modi. Il più forte: una foto dell’etichetta della confezione, o una pagina web che mostra lo stesso codice a barre (JAN/EAN) accanto all’indicazione di origine (corrispondenza del codice a barre). Poi la corrispondenza del modello esatto: la risposta dell’IA e almeno una pagina web con marca e modello esatti indicano lo stesso paese, oppure due o più pagine di questo tipo su siti diversi concordano; la risposta dell’IA compare allora come una delle fonti. In entrambi i casi nessuna pagina con il modello esatto deve indicare un altro paese. La sola risposta dell’IA non conferma mai e resta un riferimento del modello; se le pagine con il modello esatto non concordano, il paese resta non confermato con i candidati elencati. Un link citato dall’IA conta solo dopo un controllo: è una pagina restituita anche dalla ricerca web, oppure si carica e indica il modello esatto e il paese; altrimenti compare come «Citato dall’IA, non verificato» e non conta. Una corrispondenza generica sul nome del prodotto compare solo come candidato sotto «Non confermato», e una pagina con più taglie o varianti resta non confermata. Se la ricerca web in tempo reale non è disponibile, il risultato si basa solo sulle conoscenze del modello e lo indica.',
+      'Un paese di fabbricazione risulta confermato in tre modi. Il più forte: una foto dell’etichetta della confezione, o una pagina web che mostra lo stesso codice a barre (JAN/EAN) accanto all’indicazione di origine (corrispondenza del codice a barre). Poi la corrispondenza del modello esatto: la risposta dell’IA e almeno una pagina web con marca e modello esatti indicano lo stesso paese, oppure due o più pagine di questo tipo su siti diversi concordano; la risposta dell’IA compare allora come una delle fonti. In entrambi i casi nessuna pagina con il modello esatto deve indicare un altro paese. La sola risposta dell’IA non conferma mai e resta un riferimento del modello; se le pagine con il modello esatto non concordano, il paese resta non confermato con i candidati elencati. Un link citato dall’IA conta solo dopo un controllo: la pagina (restituita dalla ricerca web o caricata) deve indicare il modello esatto e lo stesso paese, e non essere stata esclusa come altro modello; altrimenti compare come «Citato dall’IA, non verificato» e non conta. Una corrispondenza generica sul nome del prodotto compare solo come candidato sotto «Non confermato», e una pagina con più taglie o varianti resta non confermata. Se la ricerca web in tempo reale non è disponibile, il risultato si basa solo sulle conoscenze del modello e lo indica.',
     flowWeb:
       'Ricerca web',
     flowWebDetail:

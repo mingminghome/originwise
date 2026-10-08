@@ -29,7 +29,8 @@ import { normalizeLocale } from './locale';
 import { SERVER_TEXT, SUMMARY_PREFIX } from './serverText';
 import { synthesize } from './synthesize';
 import { citedFetcher, verifyCitedSources, type CitedCheck } from './citedSources';
-import { parseSourceLine } from './search/extract';
+import { parseSourceLine, settleExactConflict } from './search/extract';
+import type { SearchEvidence } from './search/types';
 import { fixZhHantDeep } from './zhHant';
 import {
   isSearchEnabled,
@@ -109,6 +110,8 @@ type WebPass = {
   coo?: WebCooClaim[];
   /** Pages about another model of that name. */
   excluded?: WebExcludedPage[];
+  /** Page text + dropped-claim URLs for the AI-cited check (not stored). */
+  evidence?: SearchEvidence;
 };
 
 /**
@@ -171,6 +174,7 @@ async function maybeWebResearch(
       requests: wr.requests,
       coo: wr.coo,
       excluded: wr.excluded,
+      evidence: wr.evidence,
     };
   }
   const failCode = wr.error || 'empty_response';
@@ -385,7 +389,7 @@ async function runQuery(
 
   // AI-cited made-in pages: checked (search match, else ≤2 fetches) before they count.
   let webCoo = web.used ? web.coo ?? [] : undefined;
-  let sources = web.sources;
+  let sources = web.sources ?? [];
   let cited: CitedCheck | undefined;
   if (web.used && entity && parts.product?.madeInSources?.length) {
     cited = await verifyCitedSources({
@@ -393,13 +397,17 @@ async function runQuery(
       country: parts.product.madeIn,
       cited: parts.product.madeInSources,
       searchUrls: [
-        ...web.sources.map((l) => parseSourceLine(l)?.url ?? ''),
+        ...(web.sources ?? []).map((l) => parseSourceLine(l)?.url ?? ''),
         ...(web.coo ?? []).map((c) => c.url ?? ''),
       ].filter(Boolean),
+      searchPages: web.evidence?.pages ?? [],
+      droppedUrls: web.evidence?.droppedUrls ?? [],
+      excludedUrls: (web.excluded ?? []).map((e) => e.url),
       searchCoo: web.coo ?? [],
       fetchPage: citedFetcher(web.provider, env),
     });
-    webCoo = [...(webCoo ?? []), ...cited.verified];
+    // All exact-model evidence together: any disagreement → nothing confirms by model.
+    webCoo = settleExactConflict([...(webCoo ?? []), ...cited.verified]);
     const titles = new Map(parts.product.madeInSources.map((c) => [c.url, c.title]));
     sources = [
       ...sources,

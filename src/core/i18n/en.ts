@@ -59,7 +59,7 @@ export const en: MessageTree = {
       unconfirmed: 'Unconfirmed',
       partsChina: 'Some parts made in China',
       hqParentNote: 'The China HQ in the answer is the parent company\'s',
-      madeInBelow: 'Where it is made is decided only in the Made in card (barcode or package label).',
+      madeInBelow: 'Where it is made is decided only in the Made in card (barcode, package label or exact-model match).',
       madeInChina: 'Made in China',
       footnote: 'This card only describes where the company is based, who owns it and where the product is made. It is not a judgement of product quality, safety or the company.',
       controlling: 'Controlling',
@@ -80,6 +80,7 @@ export const en: MessageTree = {
       sourceNth: 'Source {n}: {label}',
       sourceAiAnswer: 'AI answer',
       oneExactModelPage: '1 exact-model page',
+      foldUnconfirmed: 'Final made-in unconfirmed: {reason}. Other countries are candidates only.',
       citedUnverified: 'AI-cited, could not verify',
       excludedOtherModel: 'Different model ({model}), not counted',
       reason: {
@@ -314,7 +315,7 @@ export const en: MessageTree = {
       cooUnconfirmedNoLabel:
         'Final COO unconfirmed — no SKU/label country of origin; do not invent made-in.',
       cooUnconfirmedNoBarcode:
-        'Final made-in unconfirmed — no barcode page, package label or exact-model match backs this made-in; other countries are candidates only.',
+        'Final made-in unconfirmed; other countries are candidates only.',
       cooUnconfirmedCandidates:
         'Final COO unconfirmed — candidates below are queried signals, not a stamped made-in label.',
       distributorOmitted:
@@ -625,7 +626,7 @@ export const en: MessageTree = {
     evidenceTitle:
       'When a made-in counts as confirmed',
     evidenceBody:
-      'A made-in shows as confirmed in three ways. Strongest: a package label photo, or a web page showing the same barcode (JAN/EAN) next to the made-in line (barcode match). Next, an exact-model match: the AI answer and at least one web page naming the exact brand and model give the same country, or two or more such pages on different websites agree; the AI answer then appears as one of the sources. Either way, no exact-model page may name a different country. The AI answer alone is never confirmed and stays a model reference; if exact-model pages disagree, the made-in stays unconfirmed with the candidates listed. A link the AI cites counts only after a check: it is a page the web search also returned, or it loads and names the exact model and the country; otherwise it is listed as “AI-cited, could not verify” and counts for nothing. A loose product-name match is listed only as a candidate under “Unconfirmed”, and a page listing several sizes or variants stays unconfirmed. If live web search is unavailable, the result relies on model knowledge only and says so.',
+      'A made-in shows as confirmed in three ways. Strongest: a package label photo, or a web page showing the same barcode (JAN/EAN) next to the made-in line (barcode match). Next, an exact-model match: the AI answer and at least one web page naming the exact brand and model give the same country, or two or more such pages on different websites agree; the AI answer then appears as one of the sources. Either way, no exact-model page may name a different country. The AI answer alone is never confirmed and stays a model reference; if exact-model pages disagree, the made-in stays unconfirmed with the candidates listed. A link the AI cites counts only after a check: the page (one the web search returned, or one that loads) must name the exact model and the same country, and must not be one left out as another model; otherwise it is listed as “AI-cited, could not verify” and counts for nothing. A loose product-name match is listed only as a candidate under “Unconfirmed”, and a page listing several sizes or variants stays unconfirmed. If live web search is unavailable, the result relies on model knowledge only and says so.',
     flowWeb:
       'Web search',
     flowWebDetail:

@@ -52,6 +52,18 @@ export type SearchOutput = {
   coo?: WebCooClaim[];
   /** Pages about another model of that name (not counted, listed on the card). */
   excluded?: WebExcludedPage[];
+  /** Page text and dropped-claim URLs for the AI-cited check (not stored). */
+  evidence?: SearchEvidence;
+};
+
+/**
+ * What the gate saw, for the AI-cited check: a cited URL that matches a
+ * search page is checked on this text (no refetch); a URL whose made-in claim
+ * was dropped never counts.
+ */
+export type SearchEvidence = {
+  pages: FetchedPage[];
+  droppedUrls: string[];
 };
 
 export interface SearchProvider {

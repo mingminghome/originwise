@@ -56,7 +56,7 @@ export const nl = {
       unconfirmed: 'Niet bevestigd',
       partsChina: 'Sommige onderdelen gemaakt in China',
       hqParentNote: 'Het hoofdkantoor in China uit het antwoord is dat van het moederbedrijf',
-      madeInBelow: 'Het productieland wordt alleen bepaald in de kaart ‘Gemaakt in’ (barcode of verpakkingslabel).',
+      madeInBelow: 'Het productieland wordt alleen bepaald in de kaart ‘Gemaakt in’ (barcode, verpakkingslabel of modelmatch).',
       madeInChina: 'Gemaakt in China',
       footnote: 'Deze kaart beschrijft alleen waar het bedrijf gevestigd is, wie de eigenaar is en waar het product wordt gemaakt. Het is geen oordeel over de kwaliteit of veiligheid van het product of over het bedrijf.',
       controlling: 'Zeggenschap',
@@ -77,6 +77,7 @@ export const nl = {
       sourceNth: 'Bron {n}: {label}',
       sourceAiAnswer: 'AI-antwoord',
       oneExactModelPage: '1 pagina met exact dit model',
+      foldUnconfirmed: 'Uiteindelijk productieland niet bevestigd: {reason}. Andere landen zijn alleen kandidaten.',
       citedUnverified: 'Door AI geciteerd, niet te controleren',
       excludedOtherModel: 'Ander model ({model}), niet meegeteld',
       reason: {
@@ -314,7 +315,7 @@ export const nl = {
       cooUnconfirmedNoLabel:
         'Uiteindelijke herkomst onbevestigd – geen land van herkomst op product/etiket; er wordt er geen verzonnen.',
       cooUnconfirmedNoBarcode:
-        'Uiteindelijk land van productie onbevestigd – geen pagina met streepjescode, verpakkingslabel of match op exact model ondersteunt het; andere landen zijn alleen kandidaten.',
+        'Uiteindelijk productieland niet bevestigd; andere landen zijn alleen kandidaten.',
       cooUnconfirmedCandidates:
         'Uiteindelijke herkomst onbevestigd – de kandidaten hieronder zijn zoeksignalen, geen gedrukte „Made in”.',
       distributorOmitted:
@@ -625,7 +626,7 @@ export const nl = {
     evidenceTitle:
       'Wanneer een land van productie als bevestigd telt',
     evidenceBody:
-      'Een land van productie geldt op drie manieren als bevestigd. Het sterkst: een foto van het verpakkingsetiket, of een webpagina die dezelfde streepjescode (JAN/EAN) naast de herkomstvermelding toont (streepjescode-match). Daarna de match op exact model: het AI-antwoord en minstens één webpagina met exact hetzelfde merk en model noemen hetzelfde land, of twee of meer van zulke pagina’s op verschillende websites zijn het eens; het AI-antwoord staat dan als een van de bronnen. In beide gevallen mag geen pagina met het exacte model een ander land noemen. Het AI-antwoord alleen bevestigt nooit iets en blijft een modelverwijzing; spreken pagina’s met het exacte model elkaar tegen, dan blijft het land onbevestigd en staan de kandidaten erbij. Een link die de AI aanhaalt telt pas na een controle: het is een pagina die de webzoekopdracht ook vond, of hij laadt en noemt het exacte model en het land; anders staat hij er als ‘Door AI geciteerd, niet te controleren’ en telt niet mee. Een losse match op productnaam staat alleen als kandidaat onder ‘Niet bevestigd’, en een pagina met meerdere maten of varianten blijft onbevestigd. Is live zoeken op het web niet beschikbaar, dan steunt het resultaat alleen op modelkennis en staat dat erbij.',
+      'Een land van productie geldt op drie manieren als bevestigd. Het sterkst: een foto van het verpakkingsetiket, of een webpagina die dezelfde streepjescode (JAN/EAN) naast de herkomstvermelding toont (streepjescode-match). Daarna de match op exact model: het AI-antwoord en minstens één webpagina met exact hetzelfde merk en model noemen hetzelfde land, of twee of meer van zulke pagina’s op verschillende websites zijn het eens; het AI-antwoord staat dan als een van de bronnen. In beide gevallen mag geen pagina met het exacte model een ander land noemen. Het AI-antwoord alleen bevestigt nooit iets en blijft een modelverwijzing; spreken pagina’s met het exacte model elkaar tegen, dan blijft het land onbevestigd en staan de kandidaten erbij. Een link die de AI aanhaalt telt pas na een controle: de pagina (gevonden door de webzoekopdracht of geladen) moet het exacte model en hetzelfde land noemen en mag niet als ander model zijn uitgesloten; anders staat hij er als ‘Door AI geciteerd, niet te controleren’ en telt niet mee. Een losse match op productnaam staat alleen als kandidaat onder ‘Niet bevestigd’, en een pagina met meerdere maten of varianten blijft onbevestigd. Is live zoeken op het web niet beschikbaar, dan steunt het resultaat alleen op modelkennis en staat dat erbij.',
     flowWeb:
       'Zoeken op het web',
     flowWebDetail:

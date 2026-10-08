@@ -56,7 +56,7 @@ export const cs = {
       unconfirmed: 'Nepotvrzeno',
       partsChina: 'Některé díly vyrobeny v Číně',
       hqParentNote: 'Sídlo v Číně uvedené v odpovědi patří mateřské společnosti',
-      madeInBelow: 'Země výroby se určuje pouze v kartě „Vyrobeno v“ (čárový kód nebo štítek obalu).',
+      madeInBelow: 'Země výroby se určuje pouze v kartě „Vyrobeno v“ (čárový kód, štítek obalu nebo shoda modelu).',
       madeInChina: 'Vyrobeno v Číně',
       footnote: 'Tato karta popisuje jen to, kde společnost sídlí, kdo ji vlastní a kde se výrobek vyrábí. Nejde o hodnocení kvality či bezpečnosti výrobku ani společnosti.',
       controlling: 'Ovládání',
@@ -77,6 +77,7 @@ export const cs = {
       sourceNth: 'Zdroj {n}: {label}',
       sourceAiAnswer: 'Odpověď AI',
       oneExactModelPage: '1 stránka s přesně tímto modelem',
+      foldUnconfirmed: 'Konečná země výroby nepotvrzena: {reason}. Ostatní země jsou jen kandidáti.',
       citedUnverified: 'Citováno AI, nelze ověřit',
       excludedOtherModel: 'Jiný model ({model}), nezapočteno',
       reason: {
@@ -314,7 +315,7 @@ export const cs = {
       cooUnconfirmedNoLabel:
         'Konečná země původu nepotvrzena – na výrobku/štítku není země původu; žádná se nevymýšlí.',
       cooUnconfirmedNoBarcode:
-        'Konečná země výroby nepotvrzena – nepodporuje ji stránka s čárovým kódem, etiketa obalu ani shoda přesného modelu; ostatní země jsou jen kandidáti.',
+        'Konečná země výroby nepotvrzena; ostatní země jsou jen kandidáti.',
       cooUnconfirmedCandidates:
         'Konečná země původu nepotvrzena – kandidáti níže jsou signály z vyhledávání, ne vytištěné „Made in“.',
       distributorOmitted:
@@ -625,7 +626,7 @@ export const cs = {
     evidenceTitle:
       'Kdy se země výroby počítá jako potvrzená',
     evidenceBody:
-      'Země výroby se zobrazí jako potvrzená třemi způsoby. Nejsilnější je fotka etikety obalu nebo webová stránka se stejným čárovým kódem (JAN/EAN) vedle údaje o původu (shoda čárového kódu). Dále shoda přesného modelu: odpověď AI a alespoň jedna stránka s přesnou značkou a modelem uvádějí stejnou zemi, nebo se shodnou dvě či více takových stránek z různých webů; odpověď AI je pak uvedena jako jeden ze zdrojů. V obou případech nesmí žádná stránka s přesným modelem uvádět jinou zemi. Samotná odpověď AI nikdy není potvrzením a zůstává odkazem modelu; když si stránky s přesným modelem odporují, země výroby zůstává nepotvrzená a kandidáti jsou uvedeni. Odkaz citovaný AI se počítá až po kontrole: jde o stránku, kterou vrátilo i webové vyhledávání, nebo se načte a uvádí přesný model a zemi; jinak je uveden jako „Citováno AI, nelze ověřit“ a nepočítá se. Volná shoda podle názvu produktu se uvádí jen jako kandidát pod nadpisem „Nepotvrzeno“ a stránka s více velikostmi nebo variantami zůstává nepotvrzená. Když živé vyhledávání na webu není k dispozici, výsledek vychází jen ze znalostí modelu a uvádí to.',
+      'Země výroby se zobrazí jako potvrzená třemi způsoby. Nejsilnější je fotka etikety obalu nebo webová stránka se stejným čárovým kódem (JAN/EAN) vedle údaje o původu (shoda čárového kódu). Dále shoda přesného modelu: odpověď AI a alespoň jedna stránka s přesnou značkou a modelem uvádějí stejnou zemi, nebo se shodnou dvě či více takových stránek z různých webů; odpověď AI je pak uvedena jako jeden ze zdrojů. V obou případech nesmí žádná stránka s přesným modelem uvádět jinou zemi. Samotná odpověď AI nikdy není potvrzením a zůstává odkazem modelu; když si stránky s přesným modelem odporují, země výroby zůstává nepotvrzená a kandidáti jsou uvedeni. Odkaz citovaný AI se počítá až po kontrole: stránka (ať ji vrátilo webové vyhledávání, nebo se načte) musí uvádět přesný model a tutéž zemi a nesmí být vyřazena jako jiný model; jinak je uveden jako „Citováno AI, nelze ověřit“ a nepočítá se. Volná shoda podle názvu produktu se uvádí jen jako kandidát pod nadpisem „Nepotvrzeno“ a stránka s více velikostmi nebo variantami zůstává nepotvrzená. Když živé vyhledávání na webu není k dispozici, výsledek vychází jen ze znalostí modelu a uvádí to.',
     flowWeb:
       'Vyhledávání na webu',
     flowWebDetail:

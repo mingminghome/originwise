@@ -56,7 +56,7 @@ export const de = {
       unconfirmed: 'Nicht bestätigt',
       partsChina: 'Einige Teile in China hergestellt',
       hqParentNote: 'Der China-Hauptsitz in der Antwort gehört zur Muttergesellschaft',
-      madeInBelow: 'Das Herstellungsland wird nur in der Karte „Hergestellt in“ bestimmt (Barcode oder Verpackungsetikett).',
+      madeInBelow: 'Das Herstellungsland wird nur in der Karte „Hergestellt in“ bestimmt (Barcode, Verpackungsetikett oder Modellabgleich).',
       madeInChina: 'Hergestellt in China',
       footnote: 'Diese Karte beschreibt nur, wo das Unternehmen sitzt, wem es gehört und wo das Produkt hergestellt wird. Sie ist keine Bewertung der Produktqualität, der Sicherheit oder des Unternehmens.',
       controlling: 'Beherrschend',
@@ -77,6 +77,7 @@ export const de = {
       sourceNth: 'Quelle {n}: {label}',
       sourceAiAnswer: 'KI-Antwort',
       oneExactModelPage: '1 Seite mit genau diesem Modell',
+      foldUnconfirmed: 'Endgültiges Herstellungsland nicht bestätigt: {reason}. Andere Länder sind nur Kandidaten.',
       citedUnverified: 'Von der KI zitiert, nicht überprüfbar',
       excludedOtherModel: 'Anderes Modell ({model}), nicht gezählt',
       reason: {
@@ -314,7 +315,7 @@ export const de = {
       cooUnconfirmedNoLabel:
         'Endgültiges Herkunftsland unbestätigt – kein Herkunftsland auf Produkt/Etikett; es wird keins erfunden.',
       cooUnconfirmedNoBarcode:
-        'Endgültiges Herstellungsland unbestätigt – weder eine Barcode-Seite noch das Verpackungsetikett noch ein Abgleich über das exakte Modell belegt es; andere Länder sind nur Kandidaten.',
+        'Endgültiges Herstellungsland nicht bestätigt; andere Länder sind nur Kandidaten.',
       cooUnconfirmedCandidates:
         'Endgültiges Herkunftsland unbestätigt – die Kandidaten unten sind Suchsignale, kein aufgedrucktes „Made in“.',
       distributorOmitted:
@@ -625,7 +626,7 @@ export const de = {
     evidenceTitle:
       'Wann ein Herstellungsland als bestätigt gilt',
     evidenceBody:
-      'Ein Herstellungsland gilt auf drei Wegen als bestätigt. Am stärksten: ein Foto des Verpackungsetiketts oder eine Webseite mit demselben Barcode (JAN/EAN) neben der Herkunftsangabe (Barcode-Abgleich). Danach der Abgleich über das exakte Modell: Die KI-Antwort und mindestens eine Webseite mit genau dieser Marke und diesem Modell nennen dasselbe Land, oder zwei oder mehr solcher Seiten von verschiedenen Websites stimmen überein; die KI-Antwort erscheint dann als eine der Quellen. In beiden Fällen darf keine Seite mit dem exakten Modell ein anderes Land nennen. Die KI-Antwort allein bestätigt nie etwas und bleibt eine Modellreferenz; widersprechen sich Seiten mit dem exakten Modell, bleibt das Herstellungsland unbestätigt und die Kandidaten werden aufgeführt. Ein von der KI zitierter Link zählt erst nach einer Prüfung: Die Seite kam auch in der Websuche vor, oder sie lädt und nennt das exakte Modell und das Land; sonst erscheint sie als „Von der KI zitiert, nicht überprüfbar“ und zählt nicht. Ein loser Treffer über den Produktnamen erscheint nur als Kandidat unter „Nicht bestätigt“, und eine Seite mit mehreren Größen oder Varianten bleibt unbestätigt. Ist die Live-Websuche nicht verfügbar, beruht das Ergebnis nur auf Modellwissen und wird so gekennzeichnet.',
+      'Ein Herstellungsland gilt auf drei Wegen als bestätigt. Am stärksten: ein Foto des Verpackungsetiketts oder eine Webseite mit demselben Barcode (JAN/EAN) neben der Herkunftsangabe (Barcode-Abgleich). Danach der Abgleich über das exakte Modell: Die KI-Antwort und mindestens eine Webseite mit genau dieser Marke und diesem Modell nennen dasselbe Land, oder zwei oder mehr solcher Seiten von verschiedenen Websites stimmen überein; die KI-Antwort erscheint dann als eine der Quellen. In beiden Fällen darf keine Seite mit dem exakten Modell ein anderes Land nennen. Die KI-Antwort allein bestätigt nie etwas und bleibt eine Modellreferenz; widersprechen sich Seiten mit dem exakten Modell, bleibt das Herstellungsland unbestätigt und die Kandidaten werden aufgeführt. Ein von der KI zitierter Link zählt erst nach einer Prüfung: Die Seite (aus der Websuche oder geladen) muss das exakte Modell und dasselbe Land nennen und darf nicht als anderes Modell aussortiert sein; sonst erscheint sie als „Von der KI zitiert, nicht überprüfbar“ und zählt nicht. Ein loser Treffer über den Produktnamen erscheint nur als Kandidat unter „Nicht bestätigt“, und eine Seite mit mehreren Größen oder Varianten bleibt unbestätigt. Ist die Live-Websuche nicht verfügbar, beruht das Ergebnis nur auf Modellwissen und wird so gekennzeichnet.',
     flowWeb:
       'Websuche',
     flowWebDetail:

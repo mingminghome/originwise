@@ -218,6 +218,8 @@ export type CheckResult = {
       exactModel?: boolean;
       /** An AI-cited page that passed the check ('search' match or 'fetched'). */
       cited?: 'search' | 'fetched';
+      /** Exact-model made-in line the page gate dropped; only marks a conflict, never counts. */
+      evidenceOnly?: boolean;
       url?: string;
     }>;
     /** Pages about another model of that name: shown as 「型號不符（…），未計算」. */

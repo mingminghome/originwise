@@ -261,7 +261,7 @@ describe('China card: folded parent HQ (real Cybex payload)', () => {
     const out = renderToStaticMarkup(createElement(ChinaCard, { result: CYBEX.result, t: zh }));
     assert.ok(!out.includes('製造商地點'));
     assert.ok(!out.includes('產品來源標示為'));
-    assert.ok(out.includes('製造地只在下方「製造地」卡依條碼或包裝標示判斷。'));
+    assert.ok(out.includes('製造地只在下方「製造地」卡判斷（依條碼、包裝標示或型號比對）。'));
     assert.doesNotMatch(out, /公司總部位於[：:]?\s*中國/);
   });
 
@@ -679,7 +679,8 @@ describe('零件 rows: own grade + % OR 模型參考 + ⓘ, never neither, never
       rows.map(([m, x]) => [m, x.replace(/未經網頁.*$/, '')]),
       [
         [false, '泰國 · 較可能 · 55% · 零件／物料'],
-        [true, '中國模型參考（未經多重確認）ⓘ'],
+        // The model's made-in guess (中國 · model_memory) is a 製造地 candidate,
+        // never a 零件 row (Tester #35 item 3).
         [false, 'Bottle body · 零件 · 日本 · 可能 · 50%'],
       ]
     );

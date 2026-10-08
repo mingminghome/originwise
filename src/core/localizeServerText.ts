@@ -24,6 +24,10 @@ const LEGACY_TEXT: Array<[string, ServerTextKey]> = [
     'Final COO unconfirmed — no web page showed the barcode/JAN with a made-in; product-name matches are likely candidates only.',
     'cooUnconfirmedNoBarcode',
   ],
+  [
+    'Final made-in unconfirmed — no barcode page, package label or exact-model match backs this made-in; other countries are candidates only.',
+    'cooUnconfirmedNoBarcode',
+  ],
 ];
 
 const BY_TEXT = new Map<string, ServerTextKey>([
@@ -32,6 +36,11 @@ const BY_TEXT = new Map<string, ServerTextKey>([
 ]);
 /** Longest first so a sentence never matches inside a longer one. */
 const SENTENCES = [...BY_TEXT.keys()].sort((a, b) => b.length - a.length);
+
+/** The fixed server sentence key for a note (today's or older wording), if any. */
+export function serverTextKeyOf(text: string): ServerTextKey | undefined {
+  return BY_TEXT.get(String(text || '').trim());
+}
 
 function srv(t: TFunction, key: string, vars?: Record<string, string | number>): string {
   const full = `check.srv.${key}`;

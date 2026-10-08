@@ -23,11 +23,19 @@ function sortedDims(dims: CheckDimension[]): string {
   return [...dims].sort().join(',');
 }
 
+/**
+ * Bump when product/company prompts, web research, synthesize, COO rules or
+ * the result shape change.
+ * v8: one composed query (sections), not separate product/company/alternatives calls
+ * v9: 依型號比對 (madeInBasis 'model', madeInSupport), AI-cited sources
+ *     (citedUnverified / citedFetches), searchExcluded, exactModel /
+ *     evidenceOnly on searchCoo
+ */
+export const CACHE_KEY_VERSION = 'check:v9';
+
 export async function cacheKeyHash(parts: CacheLookupKey): Promise<string> {
   const material = [
-    // Bump when product/company prompts, web research, synthesize, or COO rules change
-    // v8: one composed query (sections), not separate product/company/alternatives calls
-    'check:v8',
+    CACHE_KEY_VERSION,
     normalizeQuery(parts.text),
     parts.locale,
     parts.geoScope,
