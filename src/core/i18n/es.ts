@@ -56,7 +56,7 @@ export const es = {
       unconfirmed: 'Sin confirmar',
       partsChina: 'Algunas piezas fabricadas en China',
       hqParentNote: 'La sede en China de la respuesta es la de la empresa matriz',
-      madeInBelow: 'El país de fabricación se decide solo en la tarjeta «Fabricado en» (código de barras o etiqueta).',
+      madeInBelow: 'El país de fabricación se decide solo en la tarjeta «Fabricado en» (código de barras, etiqueta o coincidencia de modelo).',
       madeInChina: 'Fabricado en China',
       footnote: 'Esta tarjeta solo describe dónde tiene su sede la empresa, quién es su propietario y dónde se fabrica el producto. No es un juicio sobre la calidad o la seguridad del producto ni sobre la empresa.',
       controlling: 'Control',
@@ -64,19 +64,28 @@ export const es = {
       reasonBrandOrigin: 'Origen de la marca: {place}.',
       madeInLineBarcode: 'Fabricado en: {place} (coincidencia del código de barras, ver la tarjeta «Fabricado en» abajo)',
       madeInLineLabel: 'Fabricado en: {place} (etiqueta del envase, ver la tarjeta «Fabricado en» abajo)',
+      madeInLineModel: 'Fabricado en: {place} (coincidencia de modelo exacto, ver la tarjeta «Fabricado en» abajo)',
     },
     rc: {
       modelRef: 'Referencia del modelo (sin confirmar)',
       modelRefHelp: 'No lo confirma ninguna página web ni la etiqueta del envase; es solo una suposición del modelo. Guíese por la etiqueta del envase.',
       moreInfo: 'Más información',
-      notConfirmed: ' (sin confirmar)',
-      likelyNote: 'Coincidencia solo por nombre del producto: país de fabricación sin confirmar. No lo trates como confirmado.',
       candidatesTitle: 'Países de fabricación candidatos (sin confirmar)',
       noCandidates: 'No se encontraron candidatos fiables.',
-      noBarcodePage: 'Ninguna página mostró el código de barras con el país de fabricación',
       sourceCount: 'Fuentes: {n}',
       sourceFirst: 'Fuente 1: {label}',
       sourceNth: 'Fuente {n}: {label}',
+      sourceAiAnswer: 'Respuesta de la IA',
+      oneExactModelPage: '1 página con el modelo exacto',
+      foldUnconfirmed: 'País de fabricación final sin confirmar: {reason}. Los demás países son solo candidatos.',
+      citedUnverified: 'Citado por la IA, no verificado',
+      excludedOtherModel: 'Otro modelo ({model}), no se cuenta',
+      reason: {
+        aiOnly: 'Solo la respuesta de la IA, sin página web que la respalde',
+        pagesDisagree: 'Las páginas web no coinciden',
+        aiCitedUnverified: 'No se pudo verificar el enlace citado por la IA',
+        onePageOnly: 'Solo una página web lo menciona',
+      },
       sourceCountry: 'fabricado en {country}',
       labelSource: 'Fuente: foto de la etiqueta del envase',
       parent: 'Empresa matriz',
@@ -94,6 +103,7 @@ export const es = {
       barcode: 'Coincidencia por código de barras',
       name: 'Coincidencia por nombre del producto',
       label: 'Según la etiqueta del envase',
+      model: 'Coincidencia de modelo exacto',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',
@@ -139,8 +149,16 @@ export const es = {
     agentsUsed: '{n} agentes',
     agentsTitle: 'Grupo de IA usado',
     agentsSummary: '{total} llamadas · {ok} ok · {fail} fallidas',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'vínculo fuerte',
+      moderate: 'vínculo moderado',
+      weak: 'vínculo débil',
+    },
     agentsHint:
       'Cada fila es una llamada de IA del servidor gratuito. Los fallos suelen ser cuota, acceso al modelo o tiempo de espera; seguimos probando otros o un respaldo. La web en vivo necesita Gemini Search grounding (no es lo mismo que el RPM de texto).',
+    agentsHintVia:
+      'Cada fila es una llamada de IA del servidor gratuito. Los fallos suelen ser cuota, acceso al modelo o tiempo de espera; seguimos probando otros o un respaldo. La búsqueda web en vivo se hizo con {provider}.',
     agentOk: 'OK',
     agentFail: 'Falló ({err})',
     agentSkipped: 'Omitido ({err})',
@@ -167,6 +185,7 @@ export const es = {
       monolith: 'Comprobación completa (una llamada)',
       dual_core: 'Producto + empresa',
       dual_alts: 'Alternativas con menor vínculo CN',
+      web: 'Búsqueda web',
       unknownProvider: 'IA desconocida',
     },
     provider: {
@@ -296,7 +315,7 @@ export const es = {
       cooUnconfirmedNoLabel:
         'Origen final sin confirmar: no hay país de origen en el producto/etiqueta; no se inventa ninguno.',
       cooUnconfirmedNoBarcode:
-        'Origen final sin confirmar: ninguna página web mostraba el código de barras/JAN junto con un país de fabricación; las coincidencias por nombre son solo candidatos probables.',
+        'País de fabricación final sin confirmar; los demás países son solo candidatos.',
       cooUnconfirmedCandidates:
         'Origen final sin confirmar: los candidatos de abajo son señales de búsqueda, no un «Hecho en» impreso.',
       distributorOmitted:
@@ -607,7 +626,7 @@ export const es = {
     evidenceTitle:
       'Cuándo un país de fabricación cuenta como confirmado',
     evidenceBody:
-      'Un país de fabricación solo aparece como confirmado (coincidencia de código de barras) si viene de una foto de la etiqueta del envase, o si una página web muestra el mismo código de barras (JAN/EAN) junto a la indicación de origen. Una coincidencia solo por nombre de producto es, como mucho, «probable» (coincidencia de nombre), y una página con varias tallas o variantes queda sin confirmar. Si la búsqueda web en directo no está disponible, el resultado se basa solo en el conocimiento del modelo y lo indica.',
+      'Un país de fabricación aparece como confirmado de tres formas. La más fuerte: una foto de la etiqueta del envase, o una página web que muestra el mismo código de barras (JAN/EAN) junto a la indicación de origen (coincidencia de código de barras). Después, la coincidencia de modelo exacto: la respuesta de la IA y al menos una página web con la marca y el modelo exactos indican el mismo país, o dos o más de esas páginas de sitios distintos coinciden; la respuesta de la IA aparece entonces como una de las fuentes. En ambos casos, ninguna página con el modelo exacto puede indicar otro país. La respuesta de la IA por sí sola nunca confirma y queda como referencia del modelo; si las páginas con el modelo exacto no coinciden, el país queda sin confirmar con los candidatos listados. Un enlace citado por la IA solo cuenta tras una comprobación: la página (devuelta por la búsqueda web o cargada) debe mencionar el modelo exacto y el mismo país, y no puede ser una descartada como otro modelo; si no, aparece como «Citado por la IA, no verificado» y no cuenta. Una coincidencia vaga por nombre de producto solo aparece como candidato bajo «Sin confirmar», y una página con varias tallas o variantes queda sin confirmar. Si la búsqueda web en directo no está disponible, el resultado se basa solo en el conocimiento del modelo y lo indica.',
     flowWeb:
       'Búsqueda web',
     flowWebDetail:

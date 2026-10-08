@@ -29,7 +29,20 @@ const CHARS: Record<string, string> = {
   经: '經', 营: '營', 总: '總', 罗: '羅', 马: '馬', 尔: '爾', 兰: '蘭',
   泪: '淚', 读: '讀', 记: '記', 录: '錄', 数: '數', 据: '據', 显: '顯',
   仅: '僅', 视: '視', 觉: '覺',
+  动: '動', 电: '電', 车: '車', 长: '長', 开: '開', 从: '從', 对: '對', 过: '過',
+  还: '還', 让: '讓', 运: '運', 选: '選', 链: '鏈', 环: '環', 节: '節', 报: '報',
+  统: '統', 优: '優', 势: '勢', 广: '廣', 归: '歸', 适: '適', 终: '終', 获: '獲',
+  纪: '紀', 约: '約', 围: '圍', 稳: '穩', 观: '觀', 规: '規', 则: '則', 变: '變',
+  传: '傳', 样: '樣', 两: '兩', 难: '難', 预: '預', 试: '試', 验: '驗', 婴: '嬰',
+  胶: '膠',
 };
+
+/**
+ * 于 is also a Traditional surname, so it is not in CHARS. Right after
+ * another Han character it is the Simplified preposition 於 (設于 / 位于 /
+ * 由于 / 屬于 / 對于), which never occurs in correct Traditional text.
+ */
+const YU_PREPOSITION_RE = /(?<=[\u3400-\u9fff])于|^于是/g;
 
 export const COUNTRY_ZH: Record<string, string> = {
   Japan: '日本', China: '中國', 'Mainland China': '中國', PRC: '中國',
@@ -83,7 +96,9 @@ export function toTraditionalZh(text: string): string {
   if (!text || !CJK_RE.test(text)) return text;
   let out = text;
   for (const [a, b] of PHRASES) out = out.split(a).join(b);
-  return out.replace(/[\u3400-\u9fff]/g, (ch) => CHARS[ch] ?? ch);
+  return out
+    .replace(/[\u3400-\u9fff]/g, (ch) => CHARS[ch] ?? ch)
+    .replace(YU_PREPOSITION_RE, (m) => (m === '于' ? '於' : '於是'));
 }
 
 /**
@@ -124,4 +139,32 @@ export function fixZhHantDeep<T>(value: T, keep: readonly string[], skip: Readon
     return v;
   };
   return walk(value, 0) as T;
+}
+
+/** Result field names the model sometimes writes into zh text. */
+const FIELD = '(?:originCountry|madeIn|manufacturedIn|componentsOrigin|manufacturerCountry)';
+const FIELD_PAREN_RE = new RegExp(`\\s*[(（]\\s*${FIELD}\\s*[)）]`, 'g');
+const FIELD_LIST_RE = new RegExp(`${FIELD}(?:\\s*(?:與|和|及|、|/|and)\\s*${FIELD})*\\s*`, 'g');
+const KANA_RE = /[\u3040-\u30ff]/;
+/** A clause about a made-in / origin / country value. */
+const PLACE_CLAUSE_RE = /產地|製造地|原產|生產國|生產地|產國|國家|國別|made[- ]?in|\bCOO\b/i;
+
+/**
+ * Model text as the zh-Hant card shows it: Simplified slips fixed, field
+ * names dropped (「（madeIn）」, 「originCountry 與 madeIn」 → 產地), and 未知 /
+ * unknown said as 未確認 where it is about a made-in or country (the cards'
+ * own word for a place nobody confirmed).
+ */
+export function zhDisplayText(text: string): string {
+  if (!text || !CJK_RE.test(text)) return text;
+  return text
+    .replace(FIELD_PAREN_RE, '')
+    .replace(FIELD_LIST_RE, '產地')
+    .split(/(?<=[，。；！？])/)
+    .map((clause) => {
+      // Japanese (kana) is quoted as written: 生産国 stays 生産国.
+      const zh = KANA_RE.test(clause) ? clause : toTraditionalZh(clause);
+      return PLACE_CLAUSE_RE.test(zh) ? zh.replace(/未知|\bunknown\b/gi, '未確認') : zh;
+    })
+    .join('');
 }

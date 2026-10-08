@@ -10,6 +10,7 @@ import {
 import type { CheckResult } from '../core/types';
 import type { TFunction } from '../core/i18n';
 import { SectionShare } from './SectionShare';
+import { cleanOmittedPartNote } from '../../functions/_lib/noteText';
 import { localizeServerText } from '../core/localizeServerText';
 import { localizeCountry } from '../core/i18n/countries';
 import { ModelRefLabel } from './ModelRef';
@@ -303,17 +304,17 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
 function formatBrandOps(line: BrandOpsLine, t: TFunction): string {
   switch (line.kind) {
     case 'brand':
-      return `${t('check.brand')}: ${line.value}`;
+      return `${t('check.brand')}${t('common.labelSep')}${line.value}`;
     case 'company':
-      return `${t('check.company')}: ${line.value}`;
+      return `${t('check.company')}${t('common.labelSep')}${line.value}`;
     case 'hq':
-      return `${t('check.hq')}: ${localizeCountry(t, line.value)}`;
+      return `${t('check.hq')}${t('common.labelSep')}${localizeCountry(t, line.value)}`;
     case 'brandOrigin':
-      return `${t('check.brandOrigin')}: ${localizeCountry(t, line.value)}`;
+      return `${t('check.brandOrigin')}${t('common.labelSep')}${localizeCountry(t, line.value)}`;
     case 'manufacturer':
       return line.country
-        ? `${t('check.manufacturer')}: ${line.value} (${localizeCountry(t, line.country)})`
-        : `${t('check.manufacturer')}: ${line.value}`;
+        ? `${t('check.manufacturer')}${t('common.labelSep')}${line.value} (${localizeCountry(t, line.country)})`
+        : `${t('check.manufacturer')}${t('common.labelSep')}${line.value}`;
   }
 }
 
@@ -327,14 +328,18 @@ function formatOwnership(line: OwnershipLine, t: TFunction): string {
         const label = t(key);
         bits.push(label === key ? line.control : label);
       }
-      return `${t('check.parents')}: ${bits.join(' · ')}`;
+      return `${t('check.parents')}${t('common.labelSep')}${bits.join(' · ')}`;
     }
     case 'relation': {
       const typeKey = `check.graphEdge.${line.type}`;
       const typeLabel = t(typeKey);
       const bits = [typeLabel === typeKey ? line.type.replace(/_/g, ' ') : typeLabel];
       if (line.country) bits.push(localizeCountry(t, line.country));
-      if (line.strength) bits.push(line.strength);
+      if (line.strength) {
+        const k = `check.relStrength.${line.strength}`;
+        const label = t(k);
+        bits.push(label === k ? line.strength : label);
+      }
       if (line.note) bits.push(localizeServerText(t, line.note));
       return bits.join(' · ');
     }
@@ -358,7 +363,7 @@ function gradeBits(ev: PartEvidence | undefined, t: TFunction): string[] {
 function formatParts(line: PartsLine, t: TFunction): string {
   switch (line.kind) {
     case 'components':
-      return [`${t('check.componentsOrigin')}: ${line.value}`, ...gradeBits(line.evidence, t)].join(' · ');
+      return [`${t('check.componentsOrigin')}${t('common.labelSep')}${line.value}`, ...gradeBits(line.evidence, t)].join(' · ');
     case 'candidate': {
       // Model-only: country only; the 模型參考 label is added by the row.
       if (line.modelOnly) return localizeCountry(t, line.label);
@@ -377,7 +382,7 @@ function formatParts(line: PartsLine, t: TFunction): string {
       }
       if (line.where) bits.push(localizeCountry(t, line.where), ...gradeBits(line.evidence, t));
       if (line.chinaRelated) bits.push(t('check.graphChinaLinked'));
-      if (line.note) bits.push(localizeServerText(t, line.note));
+      if (line.note) bits.push(localizeServerText(t, cleanOmittedPartNote(line.note)));
       return bits.join(' · ');
     }
   }
@@ -513,7 +518,8 @@ export function OriginLayers({
             model.finalCoo
               ? [
                   result.product?.madeInBasis === 'barcode' ||
-                  result.product?.madeInBasis === 'label'
+                  result.product?.madeInBasis === 'label' ||
+                  result.product?.madeInBasis === 'model'
                     ? `${localizeCountry(t, model.finalCoo)} · ${t(`check.matchBasis.${result.product.madeInBasis}`)}`
                     : localizeCountry(t, model.finalCoo),
                 ]

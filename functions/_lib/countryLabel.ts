@@ -5,7 +5,7 @@
 
 /** Name/CJK patterns for whole-string scan (avoid short codes that match English words). */
 export const COUNTRY_NAME_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
-  { label: 'China', pattern: /\bchina\b|\bprc\b|中國大陸|中国大陆|中國|中国/i },
+  { label: 'China', pattern: /\bchina\b|\bprc\b|中華人民共和國|中华人民共和国|中國大陸|中国大陆|中國|中国/i },
   { label: 'Hong Kong', pattern: /hong\s*kong|香港/i },
   { label: 'Taiwan', pattern: /\btaiwan\b|台灣|台湾|臺灣/i },
   { label: 'Macau', pattern: /\bmacau\b|\bmacao\b|澳門|澳门/i },

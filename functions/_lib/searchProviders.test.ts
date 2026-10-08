@@ -28,7 +28,7 @@ import {
 import type { FetchedPage } from './search/types';
 import { runCheckOrchestrator, type ProgressEvent } from './orchestrator';
 import { extractCooClaimsFromText } from './cooPriority';
-import { applyWebCooGate, synthesize } from './synthesize';
+import { MODEL_AI_WEB_CONFIDENCE, MODEL_MATCH_CONFIDENCE, applyWebCooGate, synthesize } from './synthesize';
 import {
   barcodeTiedToCoo,
   htmlBlocks,
@@ -623,8 +623,9 @@ describe('barcode vs name matching rule (Tester / Chief bar)', () => {
       env: { BRAVE_SEARCH_API_KEY: 'b', GEMINI_API_KEY: 'g', SEARCH_PROVIDERS: 'brave' },
     });
     assert.equal(out.ok, true);
+    // The page names the exact model (brand + model + size): flagged, still likely.
     assert.deepEqual(out.coo, [
-      { country: '中国', basis: 'name', status: 'likely', url: 'https://shop.example.jp/one' },
+      { country: '中国', basis: 'name', status: 'likely', url: 'https://shop.example.jp/one', exactModel: true },
     ]);
     assert.ok(out.brief.includes('未確認'));
     assert.match(out.brief, /LIKELY candidate only, NOT confirmed \(matched by product name/);
@@ -701,7 +702,7 @@ describe('barcode vs name matching rule (Tester / Chief bar)', () => {
     assert.equal(g.product?.madeIn, 'Japan');
   });
 
-  it('orchestrator exposes basis: meta.searchMatch / meta.searchCoo; name-only never becomes madeIn', async () => {
+  const orchestrateOnePage = async (pageHtml: string) => {
     mock.method(
       globalThis,
       'fetch',
@@ -726,9 +727,7 @@ describe('barcode vs name matching rule (Tester / Chief bar)', () => {
         if (url.startsWith('https://api.search.brave.com/')) {
           return json({ web: { results: [{ url: 'https://a.example/1', title: 'A' }] } });
         }
-        if (url === 'https://a.example/1') {
-          return html('<p>Pigeon Sheer PPSU 240ml</p><p>生産国：中国</p>');
-        }
+        if (url === 'https://a.example/1') return html(pageHtml);
         return new Response('', { status: 404 });
       }
     );
@@ -740,14 +739,37 @@ describe('barcode vs name matching rule (Tester / Chief bar)', () => {
       dimensions: ['origin'],
       env: { GEMINI_API_KEY: 'g', BRAVE_SEARCH_API_KEY: 'b' },
     });
+    return out;
+  };
+
+  it('orchestrator exposes basis: AI answer + one exact-model page → confirmed 依型號比對 (ai_web), capped below two domains', async () => {
+    const out = await orchestrateOnePage('<p>Pigeon Sheer PPSU 240ml</p><p>生産国：中国</p>');
     assert.equal(out.ok, true);
     if (!out.ok) return;
     assert.equal(out.result.meta.searchProvider, 'brave');
+    // The provider row names the same basis as the card (依型號比對).
+    assert.equal(out.result.meta.searchMatch, 'model');
+    assert.deepEqual(out.result.meta.searchCoo, [
+      { country: '中国', basis: 'name', status: 'likely', url: 'https://a.example/1', exactModel: true },
+    ]);
+    assert.equal(out.result.product?.madeIn, 'China');
+    assert.equal(out.result.product?.madeInBasis, 'model');
+    assert.equal(out.result.product?.madeInSupport, 'ai_web');
+    const top = out.result.product?.originCandidates?.find((c) => c.rating === 'confirmed');
+    assert.ok(top && top.confidence <= MODEL_AI_WEB_CONFIDENCE && top.confidence < MODEL_MATCH_CONFIDENCE);
+  });
+
+  it('orchestrator: AI answer + a loosely matched page (not the exact model) → never madeIn, likely candidate', async () => {
+    // Words out of order: every name token is there (name match), the exact model is not.
+    const out = await orchestrateOnePage('<p>240ml PPSU bottle — Sheer series by Pigeon</p><p>生産国：中国</p>');
+    assert.equal(out.ok, true);
+    if (!out.ok) return;
     assert.equal(out.result.meta.searchMatch, 'name');
     assert.deepEqual(out.result.meta.searchCoo, [
       { country: '中国', basis: 'name', status: 'likely', url: 'https://a.example/1' },
     ]);
     assert.equal(out.result.product?.madeIn, undefined);
+    assert.equal(out.result.product?.madeInBasis, undefined);
     assert.ok(
       out.result.product?.originCandidates?.some(
         (c) => c.source === 'web_name' && c.rating === 'likely'

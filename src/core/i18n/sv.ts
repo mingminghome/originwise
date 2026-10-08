@@ -56,7 +56,7 @@ export const sv = {
       unconfirmed: 'Ej bekräftat',
       partsChina: 'Vissa delar tillverkade i Kina',
       hqParentNote: 'Huvudkontoret i Kina i svaret tillhör moderbolaget',
-      madeInBelow: 'Tillverkningslandet avgörs bara i kortet ”Tillverkad i” (streckkod eller förpackningsetikett).',
+      madeInBelow: 'Tillverkningslandet avgörs bara i kortet ”Tillverkad i” (streckkod, förpackningsetikett eller modellmatchning).',
       madeInChina: 'Tillverkad i Kina',
       footnote: 'Det här kortet beskriver bara var företaget har sitt säte, vem som äger det och var produkten tillverkas. Det är inte ett omdöme om produktens kvalitet eller säkerhet eller om företaget.',
       controlling: 'Kontroll',
@@ -64,19 +64,28 @@ export const sv = {
       reasonBrandOrigin: 'Varumärkets ursprung: {place}.',
       madeInLineBarcode: 'Tillverkad i: {place} (streckkodsmatchning, se kortet ”Tillverkad i” nedan)',
       madeInLineLabel: 'Tillverkad i: {place} (förpackningsetikett, se kortet ”Tillverkad i” nedan)',
+      madeInLineModel: 'Tillverkad i: {place} (matchning på exakt modell, se kortet ”Tillverkad i” nedan)',
     },
     rc: {
       modelRef: 'Modellens uppgift (obekräftad)',
       modelRefHelp: 'Inte bekräftad av någon webbsida eller förpackningsetikett; det är bara modellens gissning. Utgå från etiketten på förpackningen.',
       moreInfo: 'Mer info',
-      notConfirmed: ' (ej bekräftat)',
-      likelyNote: 'Endast matchad via produktnamn – tillverkningsland ej bekräftat. Behandla det inte som bekräftat.',
       candidatesTitle: 'Hittade kandidater för tillverkningsland (ej bekräftade)',
       noCandidates: 'Inga tillförlitliga kandidater hittades.',
-      noBarcodePage: 'Ingen sida visade streckkoden med tillverkningsland',
       sourceCount: 'Källor: {n}',
       sourceFirst: 'Källa 1: {label}',
       sourceNth: 'Källa {n}: {label}',
+      sourceAiAnswer: 'AI-svar',
+      oneExactModelPage: '1 sida med exakt denna modell',
+      foldUnconfirmed: 'Slutligt tillverkningsland ej bekräftat: {reason}. Andra länder är bara kandidater.',
+      citedUnverified: 'Citerad av AI, kunde inte verifieras',
+      excludedOtherModel: 'Annan modell ({model}), räknas inte',
+      reason: {
+        aiOnly: 'Bara AI-svaret, ingen webbsida stöder det',
+        pagesDisagree: 'Webbsidorna säger emot varandra',
+        aiCitedUnverified: 'AI-citerad länk kunde inte verifieras',
+        onePageOnly: 'Bara en webbsida nämner det',
+      },
       sourceCountry: 'tillverkad i {country}',
       labelSource: 'Källa: foto av förpackningens etikett',
       parent: 'Moderbolag',
@@ -94,6 +103,7 @@ export const sv = {
       barcode: 'Matchad via streckkod',
       name: 'Matchad via produktnamn',
       label: 'Enligt förpackningens märkning',
+      model: 'Matchning på exakt modell',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',
@@ -139,8 +149,16 @@ export const sv = {
     agentsUsed: '{n} agenter',
     agentsTitle: 'AI-pool som använts',
     agentsSummary: '{total} anrop · {ok} ok · {fail} misslyckade',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'stark koppling',
+      moderate: 'måttlig koppling',
+      weak: 'svag koppling',
+    },
     agentsHint:
       'Varje rad är ett gratisserver-AI-anrop. Misslyckanden beror ofta på kvot, modellåtkomst eller timeout; vi försöker andra eller en reserv. Live-web kräver Gemini Search grounding (inte samma sak som text-RPM).',
+    agentsHintVia:
+      'Varje rad är ett gratisserver-AI-anrop. Misslyckanden beror ofta på kvot, modellåtkomst eller timeout; vi försöker andra eller en reserv. Live-webbsökningen kördes via {provider}.',
     agentOk: 'OK',
     agentFail: 'Misslyckades ({err})',
     agentSkipped: 'Hoppad över ({err})',
@@ -167,6 +185,7 @@ export const sv = {
       monolith: 'Full koll (ett anrop)',
       dual_core: 'Produkt + företag',
       dual_alts: 'Alternativ med mindre CN-koppling',
+      web: 'Webbsökning',
       unknownProvider: 'Okänd AI',
     },
     provider: {
@@ -296,7 +315,7 @@ export const sv = {
       cooUnconfirmedNoLabel:
         'Slutligt ursprungsland obekräftat – inget ursprungsland på produkt/etikett; inget hittas på.',
       cooUnconfirmedNoBarcode:
-        'Slutligt ursprungsland obekräftat – ingen webbsida visade streckkoden/JAN tillsammans med ett tillverkningsland; träffar på produktnamn är bara troliga kandidater.',
+        'Slutligt tillverkningsland ej bekräftat; andra länder är bara kandidater.',
       cooUnconfirmedCandidates:
         'Slutligt ursprungsland obekräftat – kandidaterna nedan är söksignaler, inte en tryckt ”Made in”.',
       distributorOmitted:
@@ -607,7 +626,7 @@ export const sv = {
     evidenceTitle:
       'När ett tillverkningsland räknas som bekräftat',
     evidenceBody:
-      'Ett tillverkningsland visas som bekräftat (streckkodsmatchning) bara om det kommer från ett foto av förpackningsetiketten, eller om en webbsida visar samma streckkod (JAN/EAN) bredvid ursprungsuppgiften. En matchning bara på produktnamn är som mest ”troligt” (namnmatchning), och en sida med flera storlekar eller varianter förblir obekräftad. Om live-webbsökning inte är tillgänglig bygger resultatet bara på modellkunskap och anger det.',
+      'Ett tillverkningsland visas som bekräftat på tre sätt. Starkast: ett foto av förpackningsetiketten, eller en webbsida som visar samma streckkod (JAN/EAN) bredvid ursprungsuppgiften (streckkodsmatchning). Därefter matchning på exakt modell: AI-svaret och minst en webbsida med exakt samma märke och modell anger samma land, eller två eller fler sådana sidor från olika webbplatser är överens; AI-svaret visas då som en av källorna. I båda fallen får ingen sida med den exakta modellen ange ett annat land. AI-svaret ensamt bekräftar aldrig något och förblir en modellreferens; om sidor med den exakta modellen säger emot varandra förblir landet obekräftat och kandidaterna listas. En länk som AI:n citerar räknas först efter en kontroll: sidan (från webbsökningen eller laddad) måste ange exakt modell och samma land och får inte vara utesluten som en annan modell; annars visas den som ”Citerad av AI, kunde inte verifieras” och räknas inte. En lös matchning på produktnamn visas bara som kandidat under ”Ej bekräftat”, och en sida med flera storlekar eller varianter förblir obekräftad. Om live-webbsökning inte är tillgänglig bygger resultatet bara på modellkunskap och anger det.',
     flowWeb:
       'Webbsökning',
     flowWebDetail:

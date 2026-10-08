@@ -1,0 +1,49 @@
+{
+  "_note": "Reconstructed from Tester's live Softouch label-photo screen (2026-10-08, /workspace/ow-live-softouch-label-*.png): only the values visible there. Search did not run; parts come from the label photo.",
+  "provider": "gemini",
+  "result": {
+    "schemaVersion": 1,
+    "relationTier": "direct",
+    "title": "嬰兒奶瓶相關組件",
+    "summary": "",
+    "confidence": 0.95,
+    "tierReasons": ["made_in_cn", "explicit_non_cn_geo"],
+    "geoScope": "prc",
+    "knowledgeBasis": "model_memory",
+    "partsEvidence": "label",
+    "sources": [],
+    "caveats": [
+      "產品為多重產地組合，不可將整體歸納為單一國家製造。",
+      "根據包裝圖片文字，本產品採用多重產地：奶瓶本體生產與組裝在日本，而奶嘴、奶瓶蓋與奶瓶罩則由貝親株式會社中國工廠製造。"
+    ],
+    "product": {
+      "name": "嬰兒奶瓶相關組件",
+      "brand": "Pigeon",
+      "originCountry": "日本",
+      "madeIn": "日本 / 中國",
+      "madeInBasis": "label",
+      "componentsOrigin": "日本、中國",
+      "parts": [
+        {
+          "name": "乳首、キャップ、フード",
+          "kind": "part",
+          "madeIn": "中國",
+          "note": "包裝標示乳首、奶瓶蓋、奶瓶罩為ピジョン(株)中國工場製"
+        },
+        {
+          "name": "びん",
+          "kind": "part",
+          "madeIn": "日本",
+          "note": "包裝標示びん的生產與組立為日本"
+        }
+      ],
+      "notes": [
+        "根據包裝圖片文字，本產品採用多重產地：奶瓶本體生產與組裝在日本，而奶嘴、奶瓶蓋與奶瓶罩則由貝親株式會社中國工廠製造。"
+      ]
+    },
+    "company": { "name": "Pigeon", "hqCountry": "日本" },
+    "meta": {
+      "agents": [{ "id": "monolith", "provider": "gemini", "ok": true, "ms": 2308 }]
+    }
+  }
+}

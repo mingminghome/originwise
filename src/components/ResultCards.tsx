@@ -3,8 +3,9 @@
  *
  * - ChinaCard: 與中國的關係 — the ONLY place a China verdict appears
  *   (chip, relation tier, confidence, tier reasons).
- * - MadeInCard: 製造地 — country, basis, confidence, sources. No China verdict.
- *   「較可能」 always sits next to 「（非確認）」.
+ * - MadeInCard: 製造地 — a confirmed country with basis, confidence, sources;
+ *   anything not confirmed is 未確認 with candidate countries (and their
+ *   sources) underneath. No China verdict.
  * - LayersCard: 產地分層 rows with a status tag.
  * - Fold: collapsible section, closed by default.
  */
@@ -84,7 +85,11 @@ export function ChinaCard({ result, t }: { result: CheckResult; t: TFunction }) 
             ? {
                 key: 'madeIn',
                 text: t(
-                  r.basis === 'label' ? 'check.chinaLink.madeInLineLabel' : 'check.chinaLink.madeInLineBarcode',
+                  r.basis === 'label'
+                    ? 'check.chinaLink.madeInLineLabel'
+                    : r.basis === 'model'
+                      ? 'check.chinaLink.madeInLineModel'
+                      : 'check.chinaLink.madeInLineBarcode',
                   { place: localizeCountry(t, r.country) }
                 ),
               }
@@ -142,86 +147,152 @@ export function ChinaCard({ result, t }: { result: CheckResult; t: TFunction }) 
   );
 }
 
+type SourceRowLike = {
+  label: string;
+  url?: string;
+  host?: string;
+  pathHint?: string;
+  country?: string;
+};
+
+/** "來源 2：" (or any prefix) as plain text; only the page title is the link. */
+export function sourcePrefix(t: TFunction, n: number): { before: string; after: string } {
+  const MARK = '\u0001';
+  const [before = '', after = ''] = t('check.rc.sourceNth', { n, label: MARK }).split(MARK);
+  return { before, after };
+}
+
+/**
+ * One source row: prefix text, then the title (the only underlined, clickable
+ * part), then host / path hint / 生產國. Shared by every 製造地 row variant.
+ */
+function SourceLine({
+  t,
+  prefix,
+  suffix,
+  src,
+  plain,
+}: {
+  t: TFunction;
+  prefix?: string;
+  suffix?: string;
+  src: SourceRowLike;
+  /** Not a page (the AI answer): no link. */
+  plain?: boolean;
+}) {
+  return (
+    <>
+      {prefix ? <span className="rc-source-prefix">{prefix}</span> : null}
+      {src.url && !plain ? (
+        <a href={src.url} target="_blank" rel="noreferrer nofollow" title={src.url} className="rc-source-title">
+          {src.label}
+        </a>
+      ) : (
+        <span className="rc-source-title">{src.label}</span>
+      )}
+      {suffix ? suffix : null}
+      {src.host || src.pathHint ? (
+        <>
+          {' · '}
+          <span className="rc-source-host">
+            {src.host ?? ''}
+            {src.pathHint ?? ''}
+          </span>
+        </>
+      ) : null}
+      {src.country ? (
+        <>
+          {' · '}
+          <span className="rc-source-country">
+            {t('check.rc.sourceCountry', { country: localizeCountry(t, src.country) })}
+          </span>
+        </>
+      ) : null}
+    </>
+  );
+}
+
 export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction }) {
   const view = buildMadeInView(result);
   const title = t('check.chinaLink.madeIn');
   const conf = pct(view.confidence);
   const country = view.country ? localizeCountry(t, view.country) : '';
+  const confirmed = view.state === 'confirmed';
+  const sep = t('common.labelSep');
 
   return (
     <SectionShare label={title} t={t} className={`rc-card rc-madein is-${view.state}`}>
       <div data-testid="madein-card" data-state={view.state}>
         <p className="rc-eyebrow">{title}</p>
-        {view.state === 'confirmed' ? (
+        {/* Only a confirmed country reaches the headline; anything else is 未確認. */}
+        {confirmed ? (
           <p className="rc-headline">{country}</p>
-        ) : view.state === 'likely' ? (
-          <p className="rc-headline is-likely" data-testid="madein-likely">
-            <span className="rc-headline-likely">{t('check.candidateRating.likely')}</span>{' '}
-            <span className="rc-headline-country">
-              {country}
-              {t('check.rc.notConfirmed')}
-            </span>
-          </p>
         ) : (
           <p className="rc-headline is-unconfirmed">{t('check.chinaLink.unconfirmed')}</p>
         )}
 
         <div className="rc-chips">
-          {view.basis ? (
+          {confirmed && view.basis ? (
             <span className="rc-chip rc-chip--solid">{t(`check.matchBasis.${view.basis}`)}</span>
           ) : null}
-          {conf != null && view.state !== 'unconfirmed' ? (
+          {confirmed && conf != null ? (
             <span className="rc-chip">{t('check.confidence', { n: conf })}</span>
           ) : null}
-          {view.sourceCount > 0 && view.state !== 'unconfirmed' ? (
+          {confirmed && view.sourceCount > 0 ? (
             <span className="rc-chip">{t('check.rc.sourceCount', { n: view.sourceCount })}</span>
           ) : null}
-          {view.noBarcodePage && view.state !== 'confirmed' ? (
-            <span className="rc-chip">{t('check.rc.noBarcodePage')}</span>
+          {!confirmed && view.reason ? (
+            <span className="rc-chip" data-testid="madein-reason">
+              {t(`check.rc.reason.${view.reason}`)}
+            </span>
           ) : null}
         </div>
 
-        {view.state !== 'unconfirmed' && view.basis === 'label' ? (
+        {confirmed && view.basis === 'label' ? (
           <p className="rc-source">{t('check.rc.labelSource')}</p>
         ) : null}
-        {view.state !== 'unconfirmed' && view.sourceRows.length ? (
+        {confirmed && view.sourceRows.length ? (
           // One row per counted source: the chip number is sourceRows.length.
           <ol className="rc-sources" data-testid="madein-sources">
             {view.sourceRows.map((src, i) => {
-              const text = t('check.rc.sourceNth', { n: i + 1, label: src.label });
+              const { before, after } = sourcePrefix(t, i + 1);
               return (
-                <li key={src.url ?? src.label} className="rc-source">
-                  {src.url ? (
-                    <a href={src.url} target="_blank" rel="noreferrer" title={src.url}>
-                      {text}
-                    </a>
-                  ) : (
-                    text
-                  )}
-                  {src.host || src.pathHint ? (
-                    <>
-                      {' · '}
-                      <span className="rc-source-host">
-                        {src.host ?? ''}
-                        {src.pathHint ?? ''}
-                      </span>
-                    </>
-                  ) : null}
-                  {src.country ? (
-                    <>
-                      {' · '}
-                      <span className="rc-source-country">
-                        {t('check.rc.sourceCountry', { country: localizeCountry(t, src.country) })}
-                      </span>
-                    </>
-                  ) : null}
+                <li key={src.ai ? 'ai-answer' : (src.url ?? src.label)} className="rc-source">
+                  <SourceLine
+                    t={t}
+                    prefix={before}
+                    suffix={after}
+                    src={src.ai ? { ...src, label: t('check.rc.sourceAiAnswer') } : src}
+                    plain={src.ai}
+                  />
                 </li>
               );
             })}
           </ol>
         ) : null}
 
-        {view.state === 'unconfirmed' ? (
+        {view.citedRows.length || view.excludedRows.length ? (
+          // Shown, never counted: AI-cited links that failed the check, and
+          // pages about another model of that name.
+          <ul className="rc-sources rc-sources--unverified" data-testid="madein-not-counted">
+            {view.citedRows.map((src) => (
+              <li key={`cited-${src.url ?? src.label}`} className="rc-source is-unverified">
+                <SourceLine t={t} prefix={`${t('check.rc.citedUnverified')}${sep}`} src={src} />
+              </li>
+            ))}
+            {view.excludedRows.map((src) => (
+              <li key={`excl-${src.url ?? src.label}`} className="rc-source is-unverified is-excluded">
+                <SourceLine
+                  t={t}
+                  prefix={`${t('check.rc.excludedOtherModel', { model: src.model })}${sep}`}
+                  src={src}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {!confirmed || view.candidates.length ? (
           <div className="rc-candidates">
             <p className="rc-sub">{t('check.rc.candidatesTitle')}</p>
             {view.candidates.length ? (
@@ -229,7 +300,6 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
                 {view.candidates.map((c) => {
                   // Model made-in guess, or a parts row only the model named.
                   const model = modelOnlyPartCandidate(result, c);
-                  const hedged = c.rating === 'likely' || c.rating === 'possible';
                   return (
                     <li key={`${c.label}-${c.source}`} className={model ? 'is-model' : undefined}>
                       {/* Country + model label share one cell; the label may wrap inside it, never apart. */}
@@ -237,14 +307,28 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
                         <span className="rc-cand-name">{localizeCountry(t, c.label)}</span>
                         {model ? <ModelRefLabel t={t} /> : null}
                       </span>
-                      {/* A model-only guess carries its 模型參考 label only: no likelihood
-                          grade, since nothing weighed it (web/label rows keep theirs). */}
-                      {model ? null : (
-                        <span className="rc-cand-meta">
-                          {t(`check.candidateRating.${c.rating}`)}
-                          {hedged ? t('check.rc.notConfirmed') : null} · {t(`check.candidateSource.${c.source}`)}
+                      {/* Model-only guess: 模型參考 only. Pages that disagree: neutral
+                          (no grade). One exact-model page: 「1 個型號相符的網頁」, no grade.
+                          Otherwise the row's own grade, with no hedge suffix. */}
+                      {model || c.neutral ? null : (
+                        <span className="rc-cand-meta" data-testid={c.exactPages ? 'cand-exact-one' : undefined}>
+                          {c.exactPages
+                            ? t('check.rc.oneExactModelPage')
+                            : `${t(`check.candidateRating.${c.rating}`)} · ${t(`check.candidateSource.${c.source}`)}`}
                         </span>
                       )}
+                      {c.sources?.length ? (
+                        <ol className="rc-cand-sources">
+                          {c.sources.map((src, i) => {
+                            const { before, after } = sourcePrefix(t, i + 1);
+                            return (
+                              <li key={src.url ?? src.label} className="rc-source">
+                                <SourceLine t={t} prefix={before} suffix={after} src={{ ...src, country: undefined }} />
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      ) : null}
                     </li>
                   );
                 })}
@@ -253,12 +337,6 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
               <p className="rc-empty">{t('check.rc.noCandidates')}</p>
             )}
           </div>
-        ) : null}
-
-        {view.state === 'likely' ? (
-          <p className="rc-note" data-testid="madein-likely-note">
-            {t('check.rc.likelyNote')}
-          </p>
         ) : null}
       </div>
     </SectionShare>
@@ -275,6 +353,7 @@ const TAG_KEY: Record<LayerTag, string> = {
 const LAYER_LABEL: Record<string, string> = {
   brandOrigin: 'check.chinaLink.brandOrigin',
   hq: 'check.chinaLink.hq',
+  manufacturer: 'check.manufacturer',
   parts: 'check.chinaLink.parts',
   parent: 'check.rc.parent',
 };
@@ -282,6 +361,7 @@ const LAYER_LABEL: Record<string, string> = {
 export function LayersCard({ result, t }: { result: CheckResult; t: TFunction }) {
   const rows = buildLayerRows(result);
   const title = t('check.originLayersTitle');
+  const listSep = localeOfT(t) === 'zh-Hant' ? '、' : ', ';
   return (
     <SectionShare label={title} t={t} className="rc-card rc-layers">
       <div data-testid="layers-card">
@@ -289,9 +369,10 @@ export function LayersCard({ result, t }: { result: CheckResult; t: TFunction })
         <dl className="rc-rows">
           {rows.map((r) => {
             const country = r.country ? localizeCountry(t, r.country) : '';
-            const value = [r.value, country].filter(Boolean).join(' · ') || '—';
+            const name = r.names?.length ? r.names.join(listSep) : r.value;
+            const value = [name, country].filter(Boolean).join(' · ') || '—';
             return (
-              <div key={r.key} className={`rc-row rc-layer-row${r.modelRef ? ' is-model' : ''}`}>
+              <div key={`${r.key}-${r.country ?? ''}`} className={`rc-row rc-layer-row${r.modelRef ? ' is-model' : ''}`}>
                 <dt className="rc-row-label">{t(LAYER_LABEL[r.key])}</dt>
                 {r.modelRef ? (
                   // Model-only parts: value + 模型參考 + ⓘ in one cell, no tag/grade.
@@ -307,15 +388,11 @@ export function LayersCard({ result, t }: { result: CheckResult; t: TFunction })
                         // Parts: the part country's own grade + %, same as 零件候選.
                         <>
                           {t(`check.candidateRating.${r.grade.rating}`)}
-                          {r.grade.rating === 'likely' || r.grade.rating === 'possible'
-                            ? t('check.rc.notConfirmed')
-                            : null}
                           {` · ${Math.round(r.grade.confidence * 100)}%`}
                         </>
                       ) : (
                         <>
                           {t(TAG_KEY[r.tag])}
-                          {r.tag === 'likely' ? t('check.rc.notConfirmed') : null}
                         </>
                       )}
                     </span>

@@ -249,7 +249,7 @@ describe('China card: reasons map to shown rows (real payloads)', () => {
     const v = buildChinaCard(CYBEX_LIVE.result);
     assert.deepEqual(v.chips, ['chinaControlled']);
     assert.equal(v.tier, 'direct');
-    assert.deepEqual(kinds(v), ['parent', 'explicit_non_cn_geo', 'pointer']);
+    assert.deepEqual(kinds(v), ['parent', 'pointer']);
     assert.equal(v.confidence, 0.95);
     // Sources are domain titles only → no stake stated → neutral 控股.
     assert.deepEqual(v.stake, { kind: 'neutral' });
@@ -267,7 +267,7 @@ describe('China card: reasons map to shown rows (real payloads)', () => {
   it('Sheer: 中國製造 chip, one made-in line by barcode, no own confidence, no ownership_weak', () => {
     const v = buildChinaCard(SHEER_LIVE.result);
     assert.deepEqual(v.chips, ['madeInChina']);
-    assert.deepEqual(kinds(v), ['madeIn', 'explicit_non_cn_geo']);
+    assert.deepEqual(kinds(v), ['madeIn']);
     const made = v.reasons.find((r) => r.kind === 'madeIn');
     assert.equal(made?.kind === 'madeIn' && made.basis, 'barcode');
     assert.equal(v.confidence, undefined);
@@ -287,7 +287,7 @@ describe('China card: reasons map to shown rows (real payloads)', () => {
     const v = buildChinaCard(res);
     assert.equal(v.tier, 'none');
     assert.equal(displayTier(res).tier, 'none');
-    assert.deepEqual(kinds(v), ['explicit_non_cn_geo']);
+    assert.deepEqual(kinds(v), []);
   });
 
   it('a named China parent with a minority stake keeps ownership_weak_cn (indirect)', () => {

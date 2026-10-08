@@ -62,13 +62,40 @@ export type ProductPart = {
 };
 
 
+/** A search page left out: it is about another model of that name (Melio Carbon). */
+export type WebExcludedPage = { url: string; model: string; title?: string; country?: string };
+
+/** A page the model cites for its made-in answer (checked before it counts). */
+export type CitedSource = { url: string; title?: string; quote?: string };
+
 /** Made-in claim from a Brave/Firecrawl page, after the barcode/name gate. */
 export type WebCooClaim = {
   country: string;
-  /** 'barcode' = JAN/EAN on the page; 'name' = product name only. */
-  basis: 'barcode' | 'name';
-  /** barcode → confirmed; name-only single-variant page → likely (never confirmed). */
+  /**
+   * 'barcode' = JAN/EAN on the page; 'name' = product name only; 'model' =
+   * the exact model with this made-in on 2+ domains, none disagreeing (依型號比對).
+   */
+  basis: 'barcode' | 'name' | 'model';
+  /** barcode / model → confirmed; one name-matched page → likely. */
   status: 'confirmed' | 'likely';
+  /**
+   * The page names the exact model (brand + model, no other model of that
+   * name) and no exact-model page names another country. One such page plus
+   * the AI answer naming the same country confirms (依型號比對).
+   */
+  exactModel?: boolean;
+  /**
+   * A page the AI cited for its made-in: 'search' = the same URL the web
+   * search returned; 'fetched' = fetched and checked (loads, names the exact
+   * model and the country). Counts as an exact-model page.
+   */
+  cited?: 'search' | 'fetched';
+  /**
+   * An exact-model made-in line the page gate dropped (e.g. a multi-size
+   * page), kept only when exact-model evidence disagrees so the conflict is
+   * seen. Never counts toward a made-in.
+   */
+  evidenceOnly?: boolean;
   url?: string;
 };
 
@@ -145,7 +172,12 @@ export type CheckResult = {
      * How the made-in was confirmed: a web page showing the barcode/JAN with a
      * made-in ('barcode'), or the package label photo ('label').
      */
-    madeInBasis?: 'barcode' | 'label';
+    madeInBasis?: 'barcode' | 'label' | 'model';
+    /**
+     * 依型號比對 only: 'web' = 2+ exact-model pages on different domains;
+     * 'ai_web' = the AI answer plus 1+ exact-model page (shown as a source row).
+     */
+    madeInSupport?: 'web' | 'ai_web';
   };
   company?: {
     name?: string;
@@ -196,9 +228,15 @@ export type CheckResult = {
     /** Search API requests made for this check (all providers tried). */
     searchRequests?: number;
     /** Strongest match basis among kept Brave/Firecrawl made-in claims. */
-    searchMatch?: 'barcode' | 'name';
+    searchMatch?: 'barcode' | 'model' | 'name';
     /** Gated Brave/Firecrawl made-in claims with their match basis. */
     searchCoo?: WebCooClaim[];
+    /** Pages about another model of that name: shown as 型號不符，未計算. */
+    searchExcluded?: WebExcludedPage[];
+    /** AI-cited made-in pages that failed the check (shown, never counted). */
+    citedUnverified?: CitedSource[];
+    /** Page fetches spent checking AI-cited pages (at most MAX_CITED_SOURCES). */
+    citedFetches?: number;
   };
 };
 
@@ -209,6 +247,8 @@ export type ProductPartial = {
   originCountry?: string;
   madeIn?: string;
   manufacturedIn?: string;
+  /** Pages the model cites for madeIn (at most 2; verified before they count). */
+  madeInSources?: CitedSource[];
   manufacturer?: string;
   manufacturerCountry?: string;
   category?: string;
@@ -275,8 +315,17 @@ export const PART_CAP = 8;
 export const DEFAULT_DISCLAIMER_KEY = 'check.disclaimer';
 export const KNOWLEDGE_NOTE =
   'Based on general model knowledge only (no live web lookup). Brand origin, component plants, and final assembly/COO can differ by SKU/market — prefer packaging labels. Not a corporate registry or customs database. Informational — not legal, trade, or sanctions advice.';
-export const WEB_KNOWLEDGE_NOTE =
-  'Includes a live web research pass (Google Search via Gemini grounding) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.';
+const WEB_SEARCH_NAME: Record<string, string> = {
+  gemini: 'Google Search via Gemini grounding',
+  brave: 'Brave Search',
+  firecrawl: 'Firecrawl',
+};
+/** Web-enriched note naming the search service that actually ran. */
+export function webKnowledgeNote(provider = 'gemini'): string {
+  const name = WEB_SEARCH_NAME[provider] ?? WEB_SEARCH_NAME.gemini;
+  return `Includes a live web research pass (${name}) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.`;
+}
+export const WEB_KNOWLEDGE_NOTE = webKnowledgeNote('gemini');
 
 export function clampTier(raw: unknown): RelationTier {
   const s = String(raw ?? '')

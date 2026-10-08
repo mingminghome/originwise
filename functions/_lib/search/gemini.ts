@@ -14,7 +14,8 @@ import {
   fetchSourcePage,
   parseSourceLine,
 } from './extract';
-import type { SearchProvider } from './types';
+import type { SearchEvidence, SearchProvider } from './types';
+import type { WebExcludedPage } from '../schema';
 
 export const geminiSearchProvider: SearchProvider = {
   id: 'gemini',
@@ -26,6 +27,8 @@ export const geminiSearchProvider: SearchProvider = {
     const ok = wr.ok && Boolean(wr.brief.trim());
     const sources = ok ? wr.sources : [];
     let coo: ReturnType<typeof cooClaimsFromSourcePages> = [];
+    const excluded: WebExcludedPage[] = [];
+    const evidence: SearchEvidence = { pages: [], droppedUrls: [] };
     if (ok && sources.length) {
       const seen = new Set<string>();
       const targets = sources
@@ -42,7 +45,9 @@ export const geminiSearchProvider: SearchProvider = {
       coo = cooClaimsFromSourcePages(
         entity,
         ocrText,
-        pages.filter((p): p is NonNullable<typeof p> => Boolean(p))
+        pages.filter((p): p is NonNullable<typeof p> => Boolean(p)),
+        excluded,
+        evidence
       );
     }
     return {
@@ -54,6 +59,8 @@ export const geminiSearchProvider: SearchProvider = {
       requests: typeof wr.attempts === 'number' ? wr.attempts : ok ? 1 : 0,
       model: wr.model,
       coo,
+      excluded,
+      evidence,
     };
   },
 };

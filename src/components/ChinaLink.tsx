@@ -164,16 +164,18 @@ export function companyFactsSourced(result: CheckResult): boolean {
 }
 
 /**
- * Made-in confirmed by a barcode page or the package label. A made-in without
- * that basis is a model reference only (candidate row, never a verdict).
+ * Made-in confirmed by a barcode page, the package label, or 依型號比對
+ * (exact model on 2+ domains, or the AI answer plus an exact-model page). A
+ * made-in without one of those is a model reference only (candidate row,
+ * never a verdict).
  */
 export function confirmedMadeIn(
   result: CheckResult
-): { country: string; basis: 'barcode' | 'label' } | undefined {
+): { country: string; basis: 'barcode' | 'label' | 'model' } | undefined {
   const p = result.product;
   const madeIn = clean(p?.madeIn);
   if (!madeIn) return undefined;
-  if (p?.madeInBasis === 'barcode' || p?.madeInBasis === 'label') {
+  if (p?.madeInBasis === 'barcode' || p?.madeInBasis === 'label' || p?.madeInBasis === 'model') {
     return { country: madeIn, basis: p.madeInBasis };
   }
   const meta = result.meta;
@@ -211,7 +213,7 @@ export type ChinaCardReason =
   | { kind: 'code'; code: string }
   | { kind: 'parent' }
   | { kind: 'brandOrigin'; country: string }
-  | { kind: 'madeIn'; country: string; basis: 'barcode' | 'label' }
+  | { kind: 'madeIn'; country: string; basis: 'barcode' | 'label' | 'model' }
   | { kind: 'pointer' };
 
 export type ChinaCardView = {
@@ -314,11 +316,9 @@ export function buildChinaCard(result: CheckResult): ChinaCardView {
   }
   if (has('origin_cn') && isCn(brandOrigin)) reasons.push({ kind: 'brandOrigin', country: brandOrigin });
   if (madeCn) reasons.push({ kind: 'madeIn', country: made!.country, basis: made!.basis });
-  const nonCnShown = [hq, brandOrigin].some((v) => {
-    const r = normalizeRegion(v);
-    return r !== 'UNKNOWN' && !inScope(r, scope);
-  });
-  if (has('explicit_non_cn_geo') && nonCnShown) reasons.push({ kind: 'code', code: 'explicit_non_cn_geo' });
+  // explicit_non_cn_geo is not a card line: its places are the 總部 and
+  // 品牌來源地 rows right above (德國 on Cybex, 日本 on Sheer / Softouch), and
+  // on a 直接 card it read like a reason for the tier.
   for (const k of codes) if (META_CODES.has(k)) reasons.push({ kind: 'code', code: k });
   const madeInTalk = ['made_in_cn', 'manufacturer_cn', 'component_cn'].some(has);
   if (madeInTalk && !madeCn) reasons.push({ kind: 'pointer' });

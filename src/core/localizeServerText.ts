@@ -11,17 +11,36 @@ import {
   SUMMARY_SEP,
   type ServerTextKey,
 } from '../../functions/_lib/serverText';
-import type { TFunction } from './i18n';
+import { localeOfT, type TFunction } from './i18n';
+import { zhDisplayText } from '../../functions/_lib/zhHant';
 import { localizeCountry } from './i18n/countries';
 
 /** Summary fields whose value is a country name. */
 const COUNTRY_SUMMARY_KEYS = new Set(['madeIn', 'brandOrigin', 'hq']);
 
-const BY_TEXT = new Map<string, ServerTextKey>(
-  (Object.entries(SERVER_TEXT) as [ServerTextKey, string][]).map(([k, v]) => [v, k])
-);
+/** Older server wording still in cached results → today's key (and wording). */
+const LEGACY_TEXT: Array<[string, ServerTextKey]> = [
+  [
+    'Final COO unconfirmed — no web page showed the barcode/JAN with a made-in; product-name matches are likely candidates only.',
+    'cooUnconfirmedNoBarcode',
+  ],
+  [
+    'Final made-in unconfirmed — no barcode page, package label or exact-model match backs this made-in; other countries are candidates only.',
+    'cooUnconfirmedNoBarcode',
+  ],
+];
+
+const BY_TEXT = new Map<string, ServerTextKey>([
+  ...(Object.entries(SERVER_TEXT) as [ServerTextKey, string][]).map(([k, v]) => [v, k] as [string, ServerTextKey]),
+  ...LEGACY_TEXT,
+]);
 /** Longest first so a sentence never matches inside a longer one. */
 const SENTENCES = [...BY_TEXT.keys()].sort((a, b) => b.length - a.length);
+
+/** The fixed server sentence key for a note (today's or older wording), if any. */
+export function serverTextKeyOf(text: string): ServerTextKey | undefined {
+  return BY_TEXT.get(String(text || '').trim());
+}
 
 function srv(t: TFunction, key: string, vars?: Record<string, string | number>): string {
   const full = `check.srv.${key}`;
@@ -88,7 +107,8 @@ function localizeSegment(t: TFunction, seg: string): string {
   }
 
   // Server sentence glued to model text (e.g. a part note + " — " + reason).
-  let out = s;
+  // Model text: zh-Hant clean-up (Simplified slips, 未知 → 未確認) first.
+  let out = localeOfT(t) === 'zh-Hant' ? zhDisplayText(s) : s;
   for (const sentence of SENTENCES) {
     if (out.includes(sentence)) {
       const tr = srv(t, BY_TEXT.get(sentence)!);

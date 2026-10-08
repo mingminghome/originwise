@@ -56,7 +56,7 @@ export const pt = {
       unconfirmed: 'Não confirmado',
       partsChina: 'Algumas peças fabricadas na China',
       hqParentNote: 'A sede na China indicada é a da empresa-mãe',
-      madeInBelow: 'O país de fabrico é decidido apenas no cartão «Fabricado em» (código de barras ou rótulo).',
+      madeInBelow: 'O país de fabrico é decidido apenas no cartão «Fabricado em» (código de barras, rótulo ou correspondência do modelo).',
       madeInChina: 'Fabricado na China',
       footnote: 'Este cartão descreve apenas onde a empresa está sediada, quem a detém e onde o produto é fabricado. Não é um juízo sobre a qualidade ou a segurança do produto nem sobre a empresa.',
       controlling: 'Controlo',
@@ -64,19 +64,28 @@ export const pt = {
       reasonBrandOrigin: 'Origem da marca: {place}.',
       madeInLineBarcode: 'Fabricado em: {place} (correspondência do código de barras, ver o cartão «Fabricado em» abaixo)',
       madeInLineLabel: 'Fabricado em: {place} (rótulo da embalagem, ver o cartão «Fabricado em» abaixo)',
+      madeInLineModel: 'Fabricado em: {place} (correspondência do modelo exato, ver o cartão «Fabricado em» abaixo)',
     },
     rc: {
       modelRef: 'Referência do modelo (não confirmada)',
       modelRefHelp: 'Não confirmado por nenhuma página web nem pelo rótulo da embalagem; é apenas uma suposição do modelo. Siga o rótulo da embalagem.',
       moreInfo: 'Mais informações',
-      notConfirmed: ' (não confirmado)',
-      likelyNote: 'Correspondência apenas pelo nome do produto: país de fabrico não confirmado. Não o trate como confirmado.',
       candidatesTitle: 'Países de fabrico candidatos (não confirmados)',
       noCandidates: 'Não foram encontrados candidatos fiáveis.',
-      noBarcodePage: 'Nenhuma página mostrou o código de barras com o país de fabrico',
       sourceCount: 'Fontes: {n}',
       sourceFirst: 'Fonte 1: {label}',
       sourceNth: 'Fonte {n}: {label}',
+      sourceAiAnswer: 'Resposta da IA',
+      oneExactModelPage: '1 página com o modelo exato',
+      foldUnconfirmed: 'País de fabrico final por confirmar: {reason}. Os outros países são apenas candidatos.',
+      citedUnverified: 'Citado pela IA, não verificado',
+      excludedOtherModel: 'Outro modelo ({model}), não contado',
+      reason: {
+        aiOnly: 'Só a resposta da IA, nenhuma página web a apoia',
+        pagesDisagree: 'As páginas web não concordam',
+        aiCitedUnverified: 'Não foi possível verificar o link citado pela IA',
+        onePageOnly: 'Só uma página web o menciona',
+      },
       sourceCountry: 'fabricado em {country}',
       labelSource: 'Fonte: foto do rótulo da embalagem',
       parent: 'Empresa-mãe',
@@ -94,6 +103,7 @@ export const pt = {
       barcode: 'Correspondência pelo código de barras',
       name: 'Correspondência pelo nome do produto',
       label: 'Segundo o rótulo da embalagem',
+      model: 'Correspondência do modelo exato',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',
@@ -139,8 +149,16 @@ export const pt = {
     agentsUsed: '{n} agentes',
     agentsTitle: 'Pool de IA usado',
     agentsSummary: '{total} chamadas · {ok} ok · {fail} falhadas',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'ligação forte',
+      moderate: 'ligação moderada',
+      weak: 'ligação fraca',
+    },
     agentsHint:
       'Cada linha é uma chamada de IA do servidor gratuito. Falhas costumam ser quota, acesso ao modelo ou tempo esgotado; tentamos outros ou uma alternativa. A web em direto precisa de Gemini Search grounding (não é o mesmo que RPM de texto).',
+    agentsHintVia:
+      'Cada linha é uma chamada de IA do servidor gratuito. Falhas costumam ser quota, acesso ao modelo ou tempo esgotado; tentamos outros ou uma alternativa. A pesquisa web em direto foi feita com {provider}.',
     agentOk: 'OK',
     agentFail: 'Falhou ({err})',
     agentSkipped: 'Ignorado ({err})',
@@ -167,6 +185,7 @@ export const pt = {
       monolith: 'Verificação completa (uma chamada)',
       dual_core: 'Produto + empresa',
       dual_alts: 'Alternativas com menor ligação CN',
+      web: 'Pesquisa na web',
       unknownProvider: 'IA desconhecida',
     },
     provider: {
@@ -296,7 +315,7 @@ export const pt = {
       cooUnconfirmedNoLabel:
         'Origem final não confirmada – sem país de origem no produto/rótulo; nenhum é inventado.',
       cooUnconfirmedNoBarcode:
-        'Origem final não confirmada – nenhuma página web mostrava o código de barras/JAN com um país de fabrico; correspondências por nome são apenas candidatos prováveis.',
+        'País de fabrico final por confirmar; os outros países são apenas candidatos.',
       cooUnconfirmedCandidates:
         'Origem final não confirmada – os candidatos abaixo são sinais de pesquisa, não um «Fabricado em» impresso.',
       distributorOmitted:
@@ -607,7 +626,7 @@ export const pt = {
     evidenceTitle:
       'Quando um país de fabrico conta como confirmado',
     evidenceBody:
-      'Um país de fabrico só aparece como confirmado (correspondência do código de barras) se vier de uma foto do rótulo da embalagem, ou se uma página web mostrar o mesmo código de barras (JAN/EAN) junto à indicação de origem. Uma correspondência apenas pelo nome do produto é, no máximo, «provável» (correspondência do nome), e uma página com vários tamanhos ou variantes fica por confirmar. Se a pesquisa web em tempo real não estiver disponível, o resultado baseia-se apenas no conhecimento do modelo e indica-o.',
+      'Um país de fabrico aparece como confirmado de três formas. A mais forte: uma foto do rótulo da embalagem, ou uma página web que mostra o mesmo código de barras (JAN/EAN) junto à indicação de origem (correspondência do código de barras). Depois, a correspondência do modelo exato: a resposta da IA e pelo menos uma página web com a marca e o modelo exatos indicam o mesmo país, ou duas ou mais dessas páginas de sites diferentes concordam; a resposta da IA aparece então como uma das fontes. Em ambos os casos, nenhuma página com o modelo exato pode indicar outro país. A resposta da IA, por si só, nunca confirma e fica como referência do modelo; se as páginas com o modelo exato discordarem, o país fica por confirmar com os candidatos listados. Um link citado pela IA só conta após verificação: a página (devolvida pela pesquisa web ou carregada) tem de indicar o modelo exato e o mesmo país, e não pode ter sido excluída como outro modelo; caso contrário, aparece como «Citado pela IA, não verificado» e não conta. Uma correspondência vaga pelo nome do produto aparece só como candidato em «Não confirmado», e uma página com vários tamanhos ou variantes fica por confirmar. Se a pesquisa web em tempo real não estiver disponível, o resultado baseia-se apenas no conhecimento do modelo e indica-o.',
     flowWeb:
       'Pesquisa web',
     flowWebDetail:

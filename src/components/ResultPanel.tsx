@@ -10,8 +10,8 @@ import { buildOriginLayers, OriginLayers, webQuotaNotice } from './OriginLayers'
 import { OriginMap } from './OriginMap';
 import { RelationGraph } from './RelationGraph';
 import { ChinaCard, Fold, LayersCard, MadeInCard } from './ResultCards';
-import { cleanNotes } from './resultCards.model';
-import { localizeServerText } from '../core/localizeServerText';
+import { buildMadeInView, cleanNotes } from './resultCards.model';
+import { localizeServerText, serverTextKeyOf } from '../core/localizeServerText';
 import { resultTitle } from '../core/resultTitle';
 
 function agentLabel(id: string, t: TFunction): string {
@@ -42,6 +42,20 @@ function agentErrorLabel(code: string | undefined, t: TFunction): string {
   const key = `check.agentError.${code}`;
   const label = t(key);
   return label === key ? code : label;
+}
+
+/**
+ * Footnote under the AI pool. The default copy explains Gemini's Google
+ * Search grounding quota; when live search actually ran on Brave or
+ * Firecrawl it names that service instead.
+ */
+function agentsHint(
+  agents: NonNullable<NonNullable<CheckResult['meta']>['agents']>,
+  t: TFunction
+): string {
+  const web = agents.find((a) => a.id === 'web' && a.ok !== false);
+  const via = web?.provider && web.provider !== 'gemini' ? searchProviderLabel(web.provider, t) : null;
+  return via ? t('check.agentsHintVia', { provider: via }) : t('check.agentsHint');
 }
 
 function AgentsPoolCard({
@@ -102,7 +116,7 @@ function AgentsPoolCard({
           );
         })}
       </ul>
-      <p className="muted agents-pool-hint">{t('check.agentsHint')}</p>
+      <p className="muted agents-pool-hint">{agentsHint(agents, t)}</p>
     </div>
   );
 }
@@ -128,12 +142,26 @@ export function ResultPanel({
   const failCount = agents.filter((a) => a.ok === false && !skippedAgent(a)).length;
   const okCount = agents.filter((a) => a.ok !== false).length;
   // Older cached results may still carry echoed schema keys like "(madeIn)".
-  const notes = cleanNotes(result);
+  // The 製造地 card's reason always leads the fold when made-in is unconfirmed
+  // (replacing the server's generic note, or added when the server had none).
+  const madeIn = buildMadeInView(result);
+  const isUnconfirmedNote = (n: string) => serverTextKeyOf(n) === 'cooUnconfirmedNoBarcode';
+  const cardReason =
+    madeIn.state === 'unconfirmed' && madeIn.reason
+      ? t('check.rc.foldUnconfirmed', { reason: t(`check.rc.reason.${madeIn.reason}`) })
+      : null;
+  const notes = (() => {
+    const raw = cleanNotes(result);
+    if (!cardReason) return raw;
+    return [cardReason, ...raw.filter((n) => !isUnconfirmedNote(n))];
+  })();
   const searchName = searchProviderLabel(result.meta?.searchProvider, t);
   const title = resultTitle(result, query);
   const searchRequests = result.meta?.searchRequests;
   const sources = Array.isArray(result.sources) ? cleanSources(result.sources, 12) : [];
   const layers = buildOriginLayers(result);
+  // The card-reason line is already localized; server lines are localized here.
+  const foldNote = (n: string) => (n === cardReason ? n : localizeServerText(t, n));
   const originDetailCount =
     notes.length + layers.ownership.length + layers.parts.length;
   const altCount =
@@ -183,7 +211,7 @@ export function ResultPanel({
             {notes.length ? (
               <ul className="tier-reasons-list">
                 {notes.map((n) => (
-                  <li key={n}>{localizeServerText(t, n)}</li>
+                  <li key={n}>{foldNote(n)}</li>
                 ))}
               </ul>
             ) : null}

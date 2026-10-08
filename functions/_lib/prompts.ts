@@ -30,6 +30,11 @@ Products often have SEPARATE layers. Report each layer; never substitute one for
    - Prefer packaging "Made in …" / "Country of origin" / retailer COO for this exact model.
    - Final assembly or a regional localization plant counts as madeIn when that is the official stamp.
    - Do NOT put brand HQ or a generic global factory into madeIn when the unit is labeled elsewhere.
+   - madeInSources = at most 2 pages behind your madeIn answer, each {"url","title","quote"}:
+     url = the page address exactly as you saw it (web research Sources); title = its title;
+     quote = the exact words on that page that name the country (e.g. "產地：中國", "Made in China").
+     Never invent, guess or rebuild a URL; every cited URL is fetched and checked.
+     Use [] when madeIn is unknown or you have no page for it.
 4) componentsOrigin = where major parts / the global line may be built when different from final madeIn.
 5) parts[] — ALWAYS isolate from THIS product (do not wait for the user to list them):
    - List typical major BOM / recipe / service item NAMES for this category and SKU.

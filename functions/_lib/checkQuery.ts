@@ -17,9 +17,11 @@ import type {
   AlternativesPartial,
   CheckDimension,
   CompanyPartial,
+  CitedSource,
   ProductPartial,
   VerifyPartial,
 } from './schema';
+import { MAX_CITED_SOURCES, normalizeUrl } from './citedSources';
 
 export type QueryContext = {
   dimensions: CheckDimension[];
@@ -68,7 +70,7 @@ function hasDim(ctx: QueryContext, ...ids: CheckDimension[]): boolean {
 }
 
 const PRODUCT_SCHEMA =
-  '{"name":"string","brand":"string","originCountry":"string","madeIn":"string","manufacturedIn":"string","manufacturer":"string","manufacturerCountry":"string","category":"string","componentsOrigin":"string","parts":[{"name":"string","kind":"part|spare|ingredient|component","madeIn":"string","originCountry":"string","chinaRelated":false,"note":"string"}],"confidence":0.0,"notes":["string"]}';
+  '{"name":"string","brand":"string","originCountry":"string","madeIn":"string","manufacturedIn":"string","madeInSources":[{"url":"string","title":"string","quote":"string"}],"manufacturer":"string","manufacturerCountry":"string","category":"string","componentsOrigin":"string","parts":[{"name":"string","kind":"part|spare|ingredient|component","madeIn":"string","originCountry":"string","chinaRelated":false,"note":"string"}],"confidence":0.0,"notes":["string"]}';
 
 const COMPANY_SCHEMA =
   '{"name":"string","legalName":"string","hqCountry":"string","parents":[{"name":"string","country":"string","control":"majority|wholly|minority|unknown"}],"chinaRelations":[{"type":"ownership|subsidiary|hq|manufacturing|supply|retail|other","country":"string","strength":"strong|moderate|weak","note":"string"}],"confidence":0.0}';
@@ -193,6 +195,36 @@ export type QueryPartials = {
   ocrText?: string;
 };
 
+/** The model's cited made-in pages: http(s) URL, short title / quote, at most MAX_CITED_SOURCES. */
+export function readMadeInSources(raw: unknown): CitedSource[] {
+  if (!Array.isArray(raw)) return [];
+  const out: CitedSource[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const r = item as Record<string, unknown>;
+    const url = typeof r.url === 'string' ? r.url.trim() : '';
+    if (!/^https?:\/\/[^\s/]+\.[^\s]+$/i.test(url) || url.length > 2048) continue;
+    const key = normalizeUrl(url);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const str = (v: unknown) => (typeof v === 'string' ? v.trim().slice(0, 200) : '');
+    const title = str(r.title);
+    const quote = str(r.quote);
+    out.push({ url, ...(title ? { title } : {}), ...(quote ? { quote } : {}) });
+    if (out.length >= MAX_CITED_SOURCES) break;
+  }
+  return out;
+}
+
+function readProduct(value: unknown): ProductPartial {
+  const p = value as ProductPartial & { madeInSources?: unknown };
+  if (!p || typeof p !== 'object' || p.madeInSources === undefined) return p;
+  const cited = readMadeInSources(p.madeInSources);
+  const { madeInSources: _drop, ...rest } = p;
+  return cited.length ? { ...rest, madeInSources: cited } : rest;
+}
+
 /** Map the one JSON object onto synthesize slots, using only sections that were asked for. */
 export function readQueryPartials(
   obj: Record<string, unknown>,
@@ -207,7 +239,7 @@ export function readQueryPartials(
   for (const section of sections) {
     const value = obj[section.field];
     if (value == null) continue;
-    if (section.partial === 'product') out.product = value as ProductPartial;
+    if (section.partial === 'product') out.product = readProduct(value);
     else if (section.partial === 'company') out.company = value as CompanyPartial;
     else if (section.partial === 'verify') out.verify = value as VerifyPartial;
     else if (section.partial === 'alternatives') {

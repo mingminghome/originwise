@@ -12,10 +12,11 @@
  */
 
 import { isSearchResultUrl } from '../sourceLine';
+import { canonicalCountry } from '../countryLabel';
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
-import type { FetchedPage, PageBlock, SearchEnv, SearchOutput } from './types';
-import type { WebCooClaim } from '../schema';
+import type { FetchedPage, PageBlock, SearchEnv, SearchEvidence, SearchOutput } from './types';
+import type { WebCooClaim, WebExcludedPage } from '../schema';
 
 /** Analysis model for extraction (plain call, no grounding). */
 export const EXTRACT_MODEL = 'gemini-3.5-flash-lite';
@@ -305,17 +306,22 @@ export function barcodeTiedToCoo(
  * Used only for name-only matches: a made-in on such a page can't be tied to
  * the queried variant, so the claim is dropped (stays 未確認).
  */
-export function pageListsMultipleVariants(text: string): boolean {
+export function pageListsMultipleVariants(text: string, entity?: string): boolean {
   const t = nfkc(text);
   if (pageBarcodes(t).length >= 2) return true;
   const vol = distinctAmounts(t, VOLUME_RE, (n, u) =>
     u === 'l' || u === 'ℓ' || u === 'リットル' ? n * 1000 : /oz/.test(u) ? n * 29.5735 : n
   );
   if (vol.size >= 2) return true;
+  // Weights are spec lines on hardware pages (stroller 5.9 kg, child up to
+  // 22 kg), not sizes on sale; they mark variants only when the query itself
+  // names a weight ("Calbee 60g"). Without an entity (older callers) they
+  // still count.
+  const weightIsSize = entity === undefined || new RegExp(WEIGHT_RE.source, 'i').test(nfkc(entity));
   const wt = distinctAmounts(t, WEIGHT_RE, (n, u) =>
     u === 'kg' ? n * 1000 : u === 'mg' ? n / 1000 : n
   );
-  if (wt.size >= 2) return true;
+  if (weightIsSize && wt.size >= 2) return true;
   const cnt = distinctAmounts(t, COUNT_RE, (n) => n);
   if (cnt.size >= 2) return true;
   return VARIANT_SELECTOR_RE.test(t);
@@ -326,6 +332,360 @@ export function buildSearchQuery(entity: string, jans: string[]): string {
   const base = entity.trim().slice(0, 160);
   const jan = jans[0] ? ` ${jans[0]}` : '';
   return `${base}${jan} "made in" OR 生産国 OR 原産国`;
+}
+
+/**
+ * Wider made-in wording for the one follow-up query: how retailer and spec
+ * pages state it in EN, zh-Hant / zh (產地 / 製造地 / 原產地) and JA. The
+ * first query only has "made in" / 生産国 / 原産国, so a Taiwan retailer page
+ * that says 「產地：中國」 never matched it.
+ */
+export const MADE_IN_FOLLOWUP_TERMS = [
+  '"made in"',
+  '"country of origin"',
+  '產地',
+  '製造地',
+  '原產地',
+  '生産国',
+  '原産国',
+] as const;
+
+/** The follow-up query: the model name (no barcode) + the wider made-in terms. */
+export function buildMadeInQuery(entity: string): string {
+  const base = entity.trim().slice(0, 160);
+  return `${base} ${MADE_IN_FOLLOWUP_TERMS.join(' OR ')}`;
+}
+
+/** Pages handed to the one extraction after a follow-up (first query's pages first). */
+export const MAX_MERGED_PAGES = MAX_RESULT_PAGES * 2;
+
+/**
+ * At most one follow-up search per check, and only when the first query's
+ * pages give no made-in line that passes the gate (deterministic label regex,
+ * no model call), or only one page backs a country (a model-match
+ * confirmation needs two domains).
+ */
+export function needsMadeInFollowup(
+  entity: string,
+  ocrText: string | undefined,
+  pages: FetchedPage[]
+): boolean {
+  const usable = pages.filter((p) => p.url && p.text.trim() && !isSearchResultUrl(p.url));
+  if (!usable.length) return false;
+  const jans = findJans(entity, ocrText);
+  const { kept } = gateClaims(entity, jans, usable, regexCooClaims(usable));
+  if (kept.some((k) => k.status === 'confirmed')) return false;
+  return kept.length < 2;
+}
+
+function pageKey(url: string): string {
+  return url.replace(/[?#].*$/, '').replace(/\/+$/, '').toLowerCase();
+}
+
+/** First pages, then new ones from the follow-up; same URL once; capped. */
+export function mergePages(
+  first: FetchedPage[],
+  extra: FetchedPage[],
+  cap = MAX_MERGED_PAGES
+): FetchedPage[] {
+  const seen = new Set<string>();
+  const out: FetchedPage[] = [];
+  for (const p of [...first, ...extra]) {
+    if (!p.url) continue;
+    const k = pageKey(p.url);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(p);
+    if (out.length >= cap) break;
+  }
+  return out;
+}
+
+/* ---------- Exact-model match (依型號比對) ---------- */
+
+/**
+ * Lower-case words that always mark another edition, even in an all
+ * lower-case URL slug ("cybex-melio-carbon"). Capitalised, version and short
+ * suffix tokens are caught by shape (variantToken), so this is a backstop,
+ * not the rule.
+ */
+const MODEL_EDITION_WORDS = new Set([
+  'carbon', 'plus', 'pro', 'max', 'mini', 'lite', 'ultra', 'air', 'neo', 'se', 'gt', 'gtx',
+  'evo', 'eezy', 'street', 'edition', 'deluxe', 'premium', 'xl', 'xs', 'duo', 'twin', 'lux',
+  'luxe', 'elite', 'prime', 'nc', 'anc', 'outdoor', 'outdoors',
+  // Gold / Platinum editions (Melio Gold, Melio Platinum Black). Gold is read
+  // as a colour only at the end of a modifier phrase (Moon Gold).
+  'gold', 'platinum',
+  // Accessories sold under the model name: a different product (Melio Cot,
+  // Melio Seat Pack, Melio Footmuff), singular and plural.
+  ...[
+    'cot', 'carrycot', 'seat', 'pack', 'footmuff', 'raincover', 'adapter', 'adaptor', 'bumper',
+    'stand', 'insert', 'liner', 'cover', 'bag', 'case', 'strap', 'mount', 'charger', 'cable',
+    'replacement',
+  ].flatMap((w) => [w, /(s|x|ch|sh)$/.test(w) ? `${w}es` : `${w}s`]),
+]);
+
+/** Two-word accessory names that start with a plain word (carry cot, rain cover, seat pack). */
+const ACCESSORY_PHRASE_RE = /^(carry ?cots?|rain ?covers?|seat ?packs?|foot ?muffs?|car ?seat ?adapt[eo]rs?)(?![A-Za-z])/i;
+
+/**
+ * Words allowed right after "<brand> <model>" (any case): product types,
+ * shop / review words and plain function words, in the app's languages.
+ * Anything else that looks like a name, a version or a model suffix is a
+ * different variant.
+ */
+const MODEL_GENERIC_WORDS = new Set([
+  // product types
+  'stroller', 'strollers', 'pushchair', 'pushchairs', 'pram', 'prams', 'buggy', 'buggies',
+  'pram', 'carriage', 'bottle', 'bottles', 'baby', 'infant', 'toddler', 'kids', 'child',
+  'earbuds', 'earphones', 'headphones', 'camera', 'cam', 'speaker', 'phone',
+  'kinderwagen', 'sportwagen', 'buggy', 'flasche', 'babyflasche', 'poussette', 'biberon',
+  'passeggino', 'carrozzina', 'biberon', 'cochecito', 'silla', 'carrito', 'carrinho',
+  'wózek', 'wozek', 'butelka', 'kočárek', 'kocarek', 'láhev', 'barnvagn', 'sittvagn',
+  'klapvogn', 'barnevogn', 'sutteflaske', 'nappflaska', 'rattaat', 'lastenrattaat',
+  'tuttipullo', 'babakocsi', 'cumisüveg', 'cărucior', 'carucior', 'biberon', 'kinderwagen',
+  'wandelwagen', 'zuigfles', 'καρότσι', 'μπιμπερό',
+  // shop / review / info words
+  'review', 'reviews', 'test', 'tested', 'specs', 'spec', 'specifications', 'specification',
+  'features', 'details', 'buy', 'shop', 'store', 'online', 'price', 'prices', 'sale', 'deal',
+  'deals', 'offer', 'manual', 'guide', 'vs', 'versus', 'official', 'site', 'new', 'used',
+  'compact', 'lightweight', 'light', 'travel', 'system', 'colour', 'color', 'colours',
+  'colors', 'black', 'white', 'grey', 'gray', 'blue', 'red', 'green', 'beige', 'pink', 'navy',
+  'test', 'erfahrungen', 'kaufen', 'preis', 'avis', 'prix', 'acheter', 'prezzo', 'recensione',
+  'precio', 'opiniones', 'opinie', 'cena', 'recenze', 'pris', 'hinta', 'ár', 'preço', 'preț',
+  'kopen', 'prijs', 'testbericht', 'erfahrung', 'bewertung', 'angebot', 'günstig', 'anleitung',
+  'datenblatt', 'technische', 'daten', 'fiche', 'technique', 'scheda', 'ficha', 'specificaties',
+  // function words
+  'the', 'a', 'an', 'is', 'are', 'was', 'by', 'for', 'from', 'in', 'on', 'at', 'of', 'to',
+  'with', 'and', 'or', 'made', 'und', 'mit', 'von', 'für', 'der', 'die', 'das', 'le', 'la',
+  'les', 'de', 'du', 'des', 'et', 'il', 'di', 'e', 'el', 'y', 'en', 'het', 'een', 'og', 'och',
+  'i', 'w', 'z', 'na', 'ja', 'és', 'si', 'și', 'em', 'do', 'da',
+]);
+
+/** "<brand> <model>" in text, case and spacing kept (so name-like tokens show). */
+function normModelTextKeepCase(s: string): string {
+  // Line breaks stay: a title line ends the model name ("Cybex Melio\nHergestellt in …").
+  // ™ / ® / © first: NFKC would turn ™ into "TM" glued to the model name.
+  return nfkc((s || '').replace(/[™®©℠]/g, ' '))
+    // A spaced dash in a title separates the shop name ("Cybex Melio – Babyhaus").
+    .replace(/ [-‐‑‒–—]+ /g, ' | ')
+    .replace(/[-‐‑‒–—_·・/／]+/g, ' ')
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/ ?\n[\s]*/g, '\n');
+}
+
+function normModelText(s: string): string {
+  return normModelTextKeepCase(s).toLowerCase();
+}
+
+const YEAR_RE = /^(19|20)\d\d$/;
+
+/**
+ * Base colour words. Shop titles put the colour after the model ("Cybex
+ * Melio Moon Black", "Deep Black", "Mirage Grey"): a phrase that ends in one
+ * of these is descriptive, not another model.
+ */
+const BASE_COLOUR_WORDS = new Set([
+  'black', 'grey', 'gray', 'white', 'blue', 'navy', 'beige', 'red', 'green', 'pink', 'brown',
+  'silver', 'purple', 'yellow', 'orange', 'sand', 'cream', 'ivory', 'khaki', 'olive',
+  'taupe', 'charcoal', 'graphite', 'anthracite', 'turquoise', 'teal', 'mint', 'lavender', 'lilac',
+  'rose', 'bordeaux', 'burgundy', 'maroon', 'violet', 'copper', 'bronze', 'stone',
+  'mocha', 'espresso', 'caramel', 'champagne', 'pearl', 'denim', 'indigo', 'aqua', 'coral',
+  'peach', 'nude', 'mauve', 'plum', 'sage', 'ochre', 'rust', 'camel', 'oatmeal', 'linen',
+]);
+
+/**
+ * Known colour-name modifiers (Moon Black, Deep Black, Mirage Grey). Only
+ * these may stand in front of a colour word; any other capitalised word is
+ * read as another variant (Melio Xyz Black is not Melio).
+ */
+const COLOUR_MODIFIERS = new Set([
+  'moon', 'deep', 'mirage', 'magic', 'space', 'sky', 'seashell', 'lava', 'stone', 'sepia', 'ocean',
+  'forest', 'midnight', 'pure', 'soho', 'classic', 'dark', 'light', 'pale', 'soft', 'warm', 'cool',
+  'jet', 'pearl', 'almond', 'fog', 'nature', 'river', 'autumn', 'sunset', 'ice',
+]);
+
+function colourModifier(w: string): boolean {
+  return /^[A-Za-z]+$/.test(w) && COLOUR_MODIFIERS.has(w.toLowerCase());
+}
+
+/**
+ * "<0–2 capitalised modifiers> <base colour>" right after the model: a colour
+ * phrase (descriptive). "Carbon Moon Black" is not: Carbon is an edition word.
+ */
+function colourPhraseAt(s: string): boolean {
+  const words = /^([A-Za-z]+)(?: ([A-Za-z]+))?(?: ([A-Za-z]+))?/.exec(s);
+  if (!words) return false;
+  const ws = words.slice(1).filter((w): w is string => Boolean(w));
+  for (let n = 0; n < ws.length; n++) {
+    const c = ws[n]!.toLowerCase();
+    // Gold ends a colour phrase only after a modifier (Moon Gold); alone it is an edition.
+    const colour = BASE_COLOUR_WORDS.has(c) || (c === 'gold' && n > 0);
+    if (!colour) continue;
+    return ws.slice(0, n).every(colourModifier);
+  }
+  return false;
+}
+
+/**
+ * What follows the matched "<brand> <model>": null when it is allowed (CJK
+ * text, punctuation, a generic word, a year), else the token that names
+ * another variant ("Carbon", "V2", "NC", "4", "(Carbon)").
+ */
+function variantAfter(rest: string): string | null {
+  // A line break or a title separator (" | ") ends the model name; commas and
+  // other separators do not ("Cybex Melio, Carbon" reads as Carbon).
+  if (/^ ?(\n|\|)/.test(rest)) return null;
+  const s = rest.replace(/^[\s®™©,，、;；:：·・.。!！?？]+/, '');
+  if (!s || s.startsWith('|')) return null;
+  const acc = ACCESSORY_PHRASE_RE.exec(s);
+  if (acc) return acc[1]!;
+  // Bracketed: a year is fine ((2024)); Latin / digit content is an edition.
+  const br = /^[(（[［]\s*([^)）\]］]{1,24})\s*[)）\]］]/.exec(s);
+  if (br) {
+    const inner = br[1]!.trim();
+    if (YEAR_RE.test(inner)) return null;
+    const words = inner.split(/\s+/);
+    if (/[A-Za-z0-9]/.test(inner) && !words.every((w) => MODEL_GENERIC_WORDS.has(w.toLowerCase()))) {
+      return inner;
+    }
+    return null;
+  }
+  const m = /^([A-Za-z0-9][A-Za-z0-9+]*)/.exec(s);
+  // CJK, kana, punctuation or end: descriptive / category text, allowed.
+  if (!m) return null;
+  const w = m[1]!;
+  const lw = w.toLowerCase();
+  if (YEAR_RE.test(w)) return null;
+  // Version tokens: V2, Mk2, Gen 3, 2, II.
+  if (/^(v|mk|gen|ver)\d+$/i.test(w) || /^\d+$/.test(w) || /^(ii|iii|iv|vi)$/i.test(w)) return w;
+  if (/^(mk|gen|ver|version)$/i.test(w) && /^ ?\d/.test(s.slice(w.length))) {
+    return `${w} ${/^ ?(\d+)/.exec(s.slice(w.length))![1]}`;
+  }
+  if (MODEL_EDITION_WORDS.has(lw)) return w;
+  if (MODEL_GENERIC_WORDS.has(lw)) return null;
+  // Colour phrase (Moon Black, Deep Black, Mirage Grey): descriptive.
+  if (colourPhraseAt(s)) return null;
+  // Alphanumeric suffix (C2, 4K, X1) or a short all-caps token (NC, S).
+  if (/\d/.test(w) || /^[A-Z]{1,4}$/.test(w)) return w;
+  // A capitalised name-like token (Carbon, Eezy, Street, CARBON).
+  if (/^[A-Z]/.test(w)) return w;
+  // Lower-case running text ("cybex melio is …"): allowed.
+  return null;
+}
+
+/**
+ * Brand + model words of the query: its Latin / digit words when there are
+ * at least two ("Cybex Melio 嬰兒推車" → cybex, melio), else every word.
+ */
+export function modelTokens(entity: string): string[] {
+  const words = normModelText(entity)
+    .split(/[\s,，、|()（）【】[\]「」『』:：;；+&＆"'“”]+/)
+    .map((w) => w.trim())
+    .filter((w) => w && !STOP_TOKENS.has(w) && !/^\d{8,14}$/.test(w));
+  const latin = words.filter((w) => /^[a-z0-9][a-z0-9.+]*$/.test(w));
+  return latin.length >= 2 ? latin : words;
+}
+
+/**
+ * How often the page names the exact model, and how often the same words
+ * run on into another model ("Cybex Melio Carbon", "Melio V2", "Liberty 4
+ * NC"). Case, spacing and hyphens are normalised ("cybex-melio" = "Cybex
+ * Melio"); descriptive / category words, years and punctuation after the
+ * model are allowed ("Cybex Melio 輕量嬰兒推車", "Cybex Melio (2024)").
+ */
+export function modelMentions(
+  text: string,
+  entity: string
+): { exact: number; variant: number; variants: string[] } {
+  const tokens = modelTokens(entity);
+  if (tokens.length < 2) return { exact: 0, variant: 0, variants: [] };
+  const esc = (w: string) =>
+    w
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/(\d)([a-z])/g, '$1\\s?$2')
+      .replace(/([a-z])(\d)/g, '$1\\s?$2');
+  const latin = (c: string) => /[a-z0-9]/.test(c);
+  const first = tokens[0]!;
+  const last = tokens[tokens.length - 1]!;
+  const re = new RegExp(
+    `${latin(first[0]!) ? '(?<![A-Za-z0-9])' : ''}${tokens.map(esc).join('\\s?')}${latin(last[last.length - 1]!) ? '(?![A-Za-z0-9])' : ''}`,
+    'gi'
+  );
+  const t = normModelTextKeepCase(text).slice(0, PAGE_TEXT_MAX);
+  let exact = 0;
+  let variant = 0;
+  const variants: string[] = [];
+  for (const m of t.matchAll(re)) {
+    const end = (m.index ?? 0) + m[0].length;
+    const other = variantAfter(t.slice(end, end + 40));
+    if (other) {
+      variant += 1;
+      if (!variants.some((v) => v.toLowerCase() === other.toLowerCase())) variants.push(other);
+    } else {
+      exact += 1;
+    }
+  }
+  return { exact, variant, variants };
+}
+
+/**
+ * Display name of the other model a page is about: the query's model word in
+ * its own casing + the edition word ("Cybex Melio" + carbon → "Melio Carbon").
+ */
+export function otherModelName(entity: string, edition: string): string {
+  const tokens = modelTokens(entity);
+  const last = tokens[tokens.length - 1] ?? '';
+  const orig =
+    nfkc(entity)
+      .split(/\s+/)
+      .find((w) => w.toLowerCase() === last) ?? last;
+  const word = /^(ii|iii|iv|vi)$/i.test(edition)
+    ? edition.toUpperCase()
+    : /[A-Z]/.test(edition)
+      ? edition
+      : edition.charAt(0).toUpperCase() + edition.slice(1);
+  return `${orig} ${word}`.trim();
+}
+
+/** A page left out because it is about another model of that name. */
+export type ExcludedPage = { page: number; model: string; country?: string };
+
+/** The page names this exact model and no other model of the same name. */
+export function exactModelPage(text: string, entity: string): boolean {
+  const m = modelMentions(text, entity);
+  return m.exact > 0 && m.variant === 0;
+}
+
+/** Two-level public suffixes, so shop.aeon.com.tw and aeon.com.tw are one domain. */
+const SECOND_LEVEL = new Set([
+  'co.jp', 'ne.jp', 'or.jp', 'com.tw', 'org.tw', 'co.uk', 'org.uk', 'com.au', 'com.cn',
+  'com.hk', 'co.kr', 'com.sg', 'com.my', 'co.nz', 'com.br', 'co.th', 'com.vn', 'co.id',
+]);
+
+/** Registrable domain of a page ("www.momoshop.com.tw" → "momoshop.com.tw"). */
+export function siteOf(url: string): string {
+  let host = '';
+  try {
+    host = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+  const labels = host.split('.');
+  const two = labels.slice(-2).join('.');
+  return labels.length >= 3 && SECOND_LEVEL.has(two) ? labels.slice(-3).join('.') : two;
+}
+
+/** Where a page really is (Gemini Sources are redirect links; use the landing URL). */
+function pageSite(p: FetchedPage): string {
+  return siteOf(p.finalUrl || p.url);
+}
+
+/** Pages from different domains that must agree before a model match confirms. */
+export const MODEL_MATCH_MIN_SITES = 2;
+
+function claimCountryKey(country: string): string {
+  return canonicalCountry(country) ?? compact(country);
 }
 
 const ENTITY_MAP: Record<string, string> = {
@@ -389,21 +749,60 @@ export async function fetchWithTimeout(
 export async function fetchSourcePage(
   url: string,
   rawTitle = '',
-  rawSnippet = ''
+  rawSnippet = '',
+  opts: {
+    /** Timeout per request (default PAGE_FETCH_MS). */
+    ms?: number;
+    /**
+     * When set, redirects are followed by hand and every hop must pass this
+     * check (AI-cited pages: public http(s) only), at most `maxRedirects`.
+     */
+    allowHop?: (url: string) => boolean;
+    maxRedirects?: number;
+    /** Total time across every hop (manual redirects only). */
+    totalMs?: number;
+  } = {}
 ): Promise<FetchedPage> {
   const title = stripHtml(rawTitle);
   const snippet = stripHtml(rawSnippet);
-  const res = await fetchWithTimeout(
-    url,
-    {
-      headers: {
-        Accept: 'text/html,application/xhtml+xml,text/plain;q=0.8',
-        'User-Agent': 'OriginWise/1.0 (+https://originwise.pages.dev)',
-      },
-      redirect: 'follow',
-    },
-    PAGE_FETCH_MS
-  );
+  const ms = opts.ms ?? PAGE_FETCH_MS;
+  const headers = {
+    Accept: 'text/html,application/xhtml+xml,text/plain;q=0.8',
+    'User-Agent': 'OriginWise/1.0 (+https://originwise.pages.dev)',
+  };
+  let res: Response | null = null;
+  let deadline = Infinity;
+  if (opts.allowHop) {
+    let at = url;
+    const max = opts.maxRedirects ?? 3;
+    deadline = Date.now() + (opts.totalMs ?? ms * (max + 1));
+    for (let hop = 0; ; hop++) {
+      const left = deadline - Date.now();
+      if (!opts.allowHop(at) || left <= 0) {
+        res = null;
+        break;
+      }
+      res = await fetchWithTimeout(at, { headers, redirect: 'manual' }, Math.min(ms, left));
+      const loc = res && res.status >= 300 && res.status < 400 ? res.headers.get('location') : null;
+      if (!loc) break;
+      if (hop >= max) {
+        res = null;
+        break;
+      }
+      try {
+        at = new URL(loc, at).toString();
+      } catch {
+        res = null;
+        break;
+      }
+    }
+    if (res && res.ok && at !== url) {
+      // Record where it landed (Response.url is read-only).
+      Object.defineProperty(res, 'url', { value: at });
+    }
+  } else {
+    res = await fetchWithTimeout(url, { headers, redirect: 'follow' }, ms);
+  }
   // A redirect that lands on a search-results page is not product evidence.
   if (res && res.url && isSearchResultUrl(res.url)) {
     return { url, title, text: '', blocks: [] };
@@ -414,7 +813,17 @@ export async function fetchSourcePage(
     const ct = res.headers.get('content-type') || '';
     if (!ct || /text\/html|text\/plain|xhtml/i.test(ct)) {
       try {
-        const raw = await res.text();
+        // The body read shares the total budget (manual-redirect fetches).
+        const left = deadline - Date.now();
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const raw = Number.isFinite(left)
+          ? await Promise.race([
+              res.text(),
+              new Promise<string>((_, reject) => {
+                timer = setTimeout(() => reject(new Error('budget')), Math.max(0, left));
+              }),
+            ]).finally(() => clearTimeout(timer))
+          : await res.text();
         const isHtml = /html/i.test(ct) || /<html|<body|<div/i.test(raw.slice(0, 2000));
         body = isHtml ? stripHtml(raw) : raw.slice(0, 200_000);
         blocks = isHtml ? htmlBlocks(raw) : textBlocks(body);
@@ -424,7 +833,13 @@ export async function fetchSourcePage(
     }
   }
   const text = [title, snippet, body].filter(Boolean).join('\n');
-  return { url, title, text, blocks: blocks ?? textBlocks(text) };
+  return {
+    url,
+    finalUrl: res?.url && res.url !== url ? res.url : undefined,
+    title,
+    text,
+    blocks: blocks ?? textBlocks(text),
+  };
 }
 
 /** "title — https://…" or bare URL source lines → { url, title }. */
@@ -446,7 +861,9 @@ export function parseSourceLine(line: string): { url: string; title: string } | 
 export function cooClaimsFromSourcePages(
   entity: string,
   ocrText: string | undefined,
-  pages: FetchedPage[]
+  pages: FetchedPage[],
+  excludedOut?: WebExcludedPage[],
+  evidenceOut?: SearchEvidence
 ): WebCooClaim[] {
   // Search-result pages list many products, so they are never evidence.
   const usable = pages.filter(
@@ -454,15 +871,81 @@ export function cooClaimsFromSourcePages(
   );
   if (!usable.length) return [];
   const jans = findJans(entity, ocrText);
-  const tokens = variantTokens(entity);
-  const matches = usable.map((p) => matchPage(p.text, jans, tokens));
-  const { kept } = enforceCooClaims(regexCooClaims(usable), usable, matches, jans);
+  const { kept, excluded, droppedPages } = gateClaims(entity, jans, usable, regexCooClaims(usable));
+  excludedOut?.push(...excludedPages(excluded, usable));
+  if (evidenceOut) {
+    const ev = searchEvidence(usable, droppedPages);
+    evidenceOut.pages.push(...ev.pages);
+    evidenceOut.droppedUrls.push(...ev.droppedUrls);
+  }
+  return webCooFromKept(kept, usable);
+}
+
+/** Page text kept for the AI-cited check (search matches are checked on it, no refetch). */
+const EVIDENCE_TEXT_MAX = 40_000;
+
+/** Pages + dropped-claim URLs from one gate run, for the AI-cited check. */
+export function searchEvidence(pages: FetchedPage[], droppedPages: number[]): SearchEvidence {
+  return {
+    pages: pages.map((p) => ({
+      url: p.url,
+      ...(p.finalUrl ? { finalUrl: p.finalUrl } : {}),
+      title: p.title,
+      text: p.text.slice(0, EVIDENCE_TEXT_MAX),
+    })),
+    droppedUrls: droppedPages.map((n) => pages[n - 1]?.url).filter((u): u is string => Boolean(u)),
+  };
+}
+
+/** Exact-model evidence (search pages, dropped lines, verified AI-cited pages). */
+function exactEvidence(coo: WebCooClaim[]): WebCooClaim[] {
+  return coo.filter((c) => c.exactModel || (c.basis === 'model' && c.status === 'confirmed'));
+}
+
+/** Some exact-model evidence names a different country from the rest. */
+export function exactModelConflict(coo: WebCooClaim[]): boolean {
+  const keys = new Set(exactEvidence(coo).map((c) => claimCountryKey(c.country)));
+  return keys.size > 1;
+}
+
+/**
+ * After AI-cited pages join the search claims: when the exact-model evidence
+ * disagrees, nothing stays confirmed by model (2-domain matches go back to
+ * exact-model candidates), so the result is 未確認 · 網頁說法不一 whatever the
+ * AI answer or its cited pages say. Barcode claims are left alone.
+ */
+export function settleExactConflict(coo: WebCooClaim[]): WebCooClaim[] {
+  if (!exactModelConflict(coo)) return coo;
+  return coo.map((c) =>
+    c.basis === 'model' && c.status === 'confirmed'
+      ? { ...c, basis: 'name', status: 'likely', exactModel: true }
+      : c
+  );
+}
+
+/** Gate claims → the WebCooClaim rows the result carries. */
+export function webCooFromKept(kept: KeptCooClaim[], pages: FetchedPage[]): WebCooClaim[] {
   return kept.map((k) => ({
     country: k.country,
     basis: k.basis,
     status: k.status,
-    url: usable[k.page - 1]!.url,
+    url: pages[k.page - 1]!.url,
+    ...(k.exactModel ? { exactModel: true } : {}),
+    ...(k.evidenceOnly ? { evidenceOnly: true } : {}),
   }));
+}
+
+/** Gate output → page rows for the card (url + title + the other model). */
+export function excludedPages(excluded: ExcludedPage[], pages: FetchedPage[]): WebExcludedPage[] {
+  return excluded.map((e) => {
+    const p = pages[e.page - 1]!;
+    return {
+      url: p.url,
+      model: e.model,
+      ...(p.title ? { title: p.title.slice(0, 160) } : {}),
+      ...(e.country ? { country: e.country } : {}),
+    };
+  });
 }
 
 /** Map a search API HTTP failure to the shared web error codes. */
@@ -550,7 +1033,137 @@ function hostOf(url: string): string {
 
 export type CooStatus = 'confirmed' | 'likely';
 
-export type KeptCooClaim = CooClaim & { basis: MatchBasis; status: CooStatus };
+/** The claim quotes a made-in line that is really on its page. */
+function claimOnPage(c: CooClaim, page: FetchedPage): boolean {
+  const quote = (c.quote || '').trim();
+  return (
+    Boolean((c.country || '').trim()) &&
+    quote.length >= 3 &&
+    compact(page.text).includes(compact(quote)) &&
+    COO_CUE.test(nfkc(quote))
+  );
+}
+
+/**
+ * 依型號比對: name-matched ('likely') claims become confirmed (basis 'model')
+ * when pages from at least MODEL_MATCH_MIN_SITES different domains each name
+ * the exact model with the same made-in country, and no exact-model page
+ * (multi-variant pages included) names another country. A barcode-confirmed
+ * claim outranks it: then nothing is promoted. One page, loose (non-exact)
+ * matches, or a conflict stay as they were (likely / dropped).
+ */
+export function promoteModelMatches(
+  kept: KeptCooClaim[],
+  claims: CooClaim[],
+  pages: FetchedPage[],
+  exact: boolean[]
+): KeptCooClaim[] {
+  if (kept.some((k) => k.status === 'confirmed')) return kept;
+  const named = new Set(
+    claims
+      .filter((c) => exact[c.page - 1] && pages[c.page - 1] && claimOnPage(c, pages[c.page - 1]!))
+      .map((c) => claimCountryKey(c.country))
+  );
+  if (!named.size) return kept;
+  if (named.size > 1) {
+    // Exact-model evidence disagrees (dropped claims included): every kept
+    // exact-page claim is flagged, and each exact-page made-in line the page
+    // gate dropped comes along as evidence only, so synthesize, the cited
+    // check and the card all see the conflict (未確認 · 網頁說法不一) and
+    // nothing added later (AI answer, AI-cited page) can confirm past it.
+    const flagged = kept.map((k) => (k.status === 'likely' && exact[k.page - 1] ? { ...k, exactModel: true } : k));
+    const evidence: KeptCooClaim[] = [];
+    for (const c of claims) {
+      const page = pages[c.page - 1];
+      if (!exact[c.page - 1] || !page || !claimOnPage(c, page)) continue;
+      const key = claimCountryKey(c.country);
+      const has = (k: KeptCooClaim) => k.page === c.page && claimCountryKey(k.country) === key;
+      if (flagged.some(has) || evidence.some(has)) continue;
+      evidence.push({
+        ...c,
+        country: c.country.trim().slice(0, 40),
+        quote: c.quote.trim().slice(0, 80),
+        basis: 'name',
+        status: 'likely',
+        exactModel: true,
+        evidenceOnly: true,
+      });
+    }
+    return [...flagged, ...evidence];
+  }
+  const [country] = [...named];
+  const backing = kept.filter(
+    (k) => k.status === 'likely' && exact[k.page - 1] && claimCountryKey(k.country) === country
+  );
+  const sites = new Set(backing.map((k) => pageSite(pages[k.page - 1]!)).filter(Boolean));
+  const promote = sites.size >= MODEL_MATCH_MIN_SITES;
+  return kept.map((k) =>
+    backing.includes(k)
+      ? promote
+        ? { ...k, basis: 'model', status: 'confirmed', exactModel: true }
+        : { ...k, exactModel: true }
+      : k
+  );
+}
+
+/**
+ * Full gate for one set of pages: page match (barcode, every name token, or
+ * the exact brand + model), the per-page rules (enforceCooClaims), then the
+ * two-domain model-match promotion.
+ */
+export function gateClaims(
+  entity: string,
+  jans: string[],
+  pages: FetchedPage[],
+  claims: CooClaim[]
+): {
+  kept: KeptCooClaim[];
+  dropped: number;
+  droppedMultiVariant: number;
+  excluded: ExcludedPage[];
+  /** Pages with a made-in claim of which none passed the gate (1-based). */
+  droppedPages: number[];
+} {
+  const tokens = variantTokens(entity);
+  const mentions = pages.map((p) => modelMentions(p.text, entity));
+  const exact = mentions.map((m) => m.exact > 0 && m.variant === 0);
+  const matches = pages.map((p, i) => {
+    const m = matchPage(p.text, jans, tokens);
+    if (m === 'barcode') return m;
+    // The page only names another model of that name (Melio Carbon for a
+    // Melio check): not this product, not even a likely candidate.
+    if (mentions[i]!.exact === 0 && mentions[i]!.variant > 0) return null;
+    return m ?? (exact[i] ? 'name' : null);
+  });
+  const out = enforceCooClaims(claims, pages, matches, jans, entity);
+  // Near-miss pages with a made-in line: listed as excluded (型號不符，未計算).
+  const excluded: ExcludedPage[] = [];
+  pages.forEach((p, i) => {
+    const m = mentions[i]!;
+    if (matches[i] !== null || m.exact > 0 || !m.variants.length) return;
+    const claim = claims.find((c) => c.page === i + 1 && claimOnPage(c, p));
+    if (!claim) return;
+    excluded.push({ page: i + 1, model: otherModelName(entity, m.variants[0]!), country: claim.country });
+  });
+  const keptPages = new Set(out.kept.map((k) => k.page));
+  const droppedPages = [...new Set(claims.map((c) => c.page))].filter(
+    (n) => n >= 1 && n <= pages.length && !keptPages.has(n)
+  );
+  return { ...out, kept: promoteModelMatches(out.kept, claims, pages, exact), excluded, droppedPages };
+}
+
+/** 'model' = two domains name the exact model with this made-in (依型號比對). */
+export type KeptCooClaim = CooClaim & {
+  basis: MatchBasis | 'model';
+  status: CooStatus;
+  /** On a page naming the exact model, and no exact-model page disagrees. */
+  exactModel?: boolean;
+  /**
+   * Exact-model made-in line the page gate dropped, kept only so a conflict
+   * is seen (never counts toward a made-in).
+   */
+  evidenceOnly?: boolean;
+};
 
 /**
  * Made-in gate (exported for tests). A claim must quote text that is really on
@@ -566,7 +1179,8 @@ export function enforceCooClaims(
   claims: CooClaim[],
   pages: FetchedPage[],
   matches: PageMatch[],
-  jans: string[] = []
+  jans: string[] = [],
+  entity?: string
 ): { kept: KeptCooClaim[]; dropped: number; droppedMultiVariant: number } {
   const kept: KeptCooClaim[] = [];
   let dropped = 0;
@@ -577,14 +1191,11 @@ export function enforceCooClaims(
     const match = matches[c.page - 1];
     const quote = (c.quote || '').trim();
     const country = (c.country || '').trim();
-    const onPage =
-      Boolean(page) && quote.length >= 3 && compact(page!.text).includes(compact(quote));
-    const isCoo = COO_CUE.test(nfkc(quote));
-    if (!page || !country || !onPage || !isCoo || !match) {
+    if (!page || !claimOnPage(c, page) || !match) {
       dropped += 1;
       continue;
     }
-    if (!multi.has(c.page)) multi.set(c.page, pageListsMultipleVariants(page.text));
+    if (!multi.has(c.page)) multi.set(c.page, pageListsMultipleVariants(page.text, entity));
     const multiVariant = multi.get(c.page) === true;
     if (match === 'name' && multiVariant) {
       dropped += 1;
@@ -708,8 +1319,6 @@ export async function extractBriefFromPages(opts: {
   }
 
   const jans = findJans(entity, ocrText);
-  const tokens = variantTokens(entity);
-  const matches = pages.map((p) => matchPage(p.text, jans, tokens));
 
   let claims: CooClaim[] = [];
   let notes: string[] = [];
@@ -729,9 +1338,9 @@ export async function extractBriefFromPages(opts: {
     claims = regexCooClaims(pages);
   }
 
-  const { kept, dropped, droppedMultiVariant } = enforceCooClaims(claims, pages, matches, jans);
+  const { kept, dropped, droppedMultiVariant, excluded, droppedPages } = gateClaims(entity, jans, pages, claims);
   const confirmed = kept.filter((k) => k.status === 'confirmed');
-  const likely = kept.filter((k) => k.status === 'likely');
+  const likely = kept.filter((k) => k.status === 'likely' && !k.evidenceOnly);
   // Notes must never smuggle a made-in claim past the barcode/name gate.
   const safeNotes = notes
     .filter((n) => !NOTE_COO_CUE.test(nfkc(n)))
@@ -747,9 +1356,11 @@ export async function extractBriefFromPages(opts: {
   if (confirmed.length) {
     for (const k of confirmed) {
       const via = hostOf(pages[k.page - 1]!.url);
-      lines.push(
-        `- COO: ${k.country} | source: ${k.sourceType} | via: ${via} (matched by barcode JAN ${jans.join('/')}) — "${k.quote}"`
-      );
+      const how =
+        k.basis === 'model'
+          ? `matched by exact model on ${MODEL_MATCH_MIN_SITES}+ sites`
+          : `matched by barcode JAN ${jans.join('/')}`;
+      lines.push(`- COO: ${k.country} | source: ${k.sourceType} | via: ${via} (${how}) — "${k.quote}"`);
     }
   } else {
     lines.push(
@@ -792,11 +1403,8 @@ export async function extractBriefFromPages(opts: {
     ms: Date.now() - t0,
     requests,
     model,
-    coo: kept.map((k) => ({
-      country: k.country,
-      basis: k.basis,
-      status: k.status,
-      url: pages[k.page - 1]!.url,
-    })),
+    coo: webCooFromKept(kept, pages),
+    excluded: excludedPages(excluded, pages),
+    evidence: searchEvidence(pages, droppedPages),
   };
 }

@@ -13,6 +13,7 @@ import type { CheckResult } from '../core/types';
 import { normalizeRegion } from '../../functions/_lib/regions';
 import { zhCountryText } from '../../functions/_lib/zhHant';
 import { canonicalCountry } from '../../functions/_lib/countryLabel';
+import { notesNameMadeIn } from '../../functions/_lib/noteText';
 import { brandHqFolded, companyFactsSourced, confirmedMadeIn, pickOwner } from './ChinaLink';
 
 const VAGUE_RE =
@@ -25,12 +26,18 @@ export function cleanValue(raw?: string | null): string {
 
 type Candidate = NonNullable<NonNullable<CheckResult['product']>['originCandidates']>[number];
 
-export type MadeInBasis = 'barcode' | 'label' | 'name';
+export type MadeInBasis = 'barcode' | 'label' | 'model' | 'name';
+
+/** Why a made-in stays 未確認 (one chip; replaces the old barcode-only reason). */
+export type UnconfirmedReason = 'pagesDisagree' | 'aiCitedUnverified' | 'aiOnly' | 'onePageOnly';
 
 export type MadeInView = {
-  /** A confirmed / B unconfirmed / C likely (name match only). */
-  state: 'confirmed' | 'unconfirmed' | 'likely';
-  /** Headline country (confirmed or likely). */
+  /**
+   * confirmed (barcode / label / 依型號比對) or unconfirmed. Nothing else ever
+   * reaches the headline: a likely country is a candidate under 未確認.
+   */
+  state: 'confirmed' | 'unconfirmed';
+  /** Headline country (confirmed only). */
   country?: string;
   basis?: MadeInBasis;
   /** 0–1, for the confidence chip. */
@@ -43,10 +50,32 @@ export type MadeInView = {
    * name/likely), at most MAX_SOURCE_ROWS. Label basis: none.
    */
   sourceRows: SourceRow[];
-  /** B only: queried candidates, not confirmed. */
-  candidates: Array<{ label: string; rating: Candidate['rating']; source: Candidate['source'] }>;
-  /** Web research ran but no page showed the barcode with a made-in. */
-  noBarcodePage: boolean;
+  /**
+   * Candidate countries (not confirmed). Web candidates carry their own
+   * source rows; `neutral` (exact-model pages disagree) shows no grade.
+   */
+  candidates: Array<{
+    label: string;
+    rating: Candidate['rating'];
+    source: Candidate['source'];
+    sources?: SourceRow[];
+    neutral?: boolean;
+    /**
+     * 1 when the country rests on exactly one exact-model page (and no other
+     * page): its meta reads 「1 個型號相符的網頁」 instead of a grade. Loose
+     * name-match pages keep their grade.
+     */
+    exactPages?: 1;
+  }>;
+  /** Unconfirmed only: the one reason chip. */
+  reason?: UnconfirmedReason;
+  /** Pages about another model of that name: 「型號不符（…），未計算」 rows. */
+  excludedRows: Array<SourceRow & { model: string }>;
+  /**
+   * AI-cited pages that failed the check: listed as 「AI 引用，未能驗證」 in
+   * every state, outside the numbered source rows and never in the chip.
+   */
+  citedRows: SourceRow[];
 };
 
 /** Candidate sources that never stand for a made-in (HQ / owner echoes). */
@@ -104,13 +133,43 @@ export function modelOnlyPartCandidate(
 
 const RATING_RANK: Record<string, number> = { confirmed: 4, likely: 3, possible: 2, mentioned: 1 };
 
-/** Candidate sources the 零件 list never shows (ownership / made-in / HQ echo). */
-const PARTS_LIST_SKIP = new Set(['ownership', 'confirmed_coo', 'manufacturer']);
+/**
+ * Candidate sources the 零件 list never shows: ownership / HQ echo, and the
+ * made-in candidates (product-name web pages, the model's made-in guess),
+ * which belong to the 製造地 card only.
+ */
+const PARTS_LIST_SKIP = new Set(['ownership', 'confirmed_coo', 'manufacturer', 'web_name', 'model_memory']);
+
+/**
+ * A 'notes' candidate that only echoes the HQ / manufacturer / brand-origin
+ * country (「品牌設計及總部設於日本」 → 日本 · 有提及 · 38%). Same rule as the
+ * server (synthesize collectOriginCandidates), applied again here for cached
+ * results: kept only when another product-specific candidate has that
+ * country or a note ties it to manufacturing in the same clause.
+ */
+export function notesEchoCandidate(result: CheckResult, c: Pick<Candidate, 'label' | 'source'>): boolean {
+  if (c.source !== 'notes') return false;
+  const p = result.product;
+  const echo = [result.company?.hqCountry, p?.manufacturerCountry, p?.originCountry]
+    .map(cleanValue)
+    .some((x) => x && sameCountryLabel(c.label, x));
+  if (!echo) return false;
+  const backed = (p?.originCandidates ?? []).some(
+    (x) =>
+      x.source !== 'notes' &&
+      !PARTS_LIST_SKIP.has(String(x.source)) &&
+      x.source !== 'model_memory' &&
+      sameCountryLabel(x.label, c.label)
+  );
+  return !backed && !notesNameMadeIn(p?.notes, c.label);
+}
 
 /** Candidates the 零件 rows may use (none when parts were read from the label). */
 export function partsListCandidates(result: CheckResult): Candidate[] {
   if (result.partsEvidence === 'label') return [];
-  return (result.product?.originCandidates ?? []).filter((c) => !PARTS_LIST_SKIP.has(String(c.source)));
+  return (result.product?.originCandidates ?? []).filter(
+    (c) => !PARTS_LIST_SKIP.has(String(c.source)) && !notesEchoCandidate(result, c)
+  );
 }
 
 /**
@@ -142,7 +201,7 @@ export function backedCandidate(
  * - 'label': read from the package label photo (確認 · 依包裝標示),
  * - 'graded': a web-backed part candidate for the same country (its own
  *   grade + %),
- * - 'model': nothing backs it → 模型參考（未經確認） + ⓘ.
+ * - 'model': nothing backs it → 模型參考（未經多重確認） + ⓘ.
  * Result-level partsEvidence 'web' alone never grades a part: without a
  * candidate for that country there is nothing to take a grade from.
  */
@@ -199,6 +258,7 @@ function candidateRows(result: CheckResult, candidates: Candidate[], unconfirmed
       continue;
     }
     if (NOT_MADE_IN.has(String(c.source))) continue;
+    if (notesEchoCandidate(result, c)) continue;
     put({ label: c.label, rating: c.rating, source: c.source });
   }
   if (unconfirmedMadeIn) modelLabels.push(unconfirmedMadeIn);
@@ -227,6 +287,8 @@ export type SourceRow = {
    */
   pathHint?: string;
   country?: string;
+  /** The AI answer counted as one source (依型號比對 'ai_web'); label from the view. */
+  ai?: boolean;
 };
 
 /** Rows (and the count chip) stop here; the chip never claims more than shown. */
@@ -238,7 +300,8 @@ type CooHit = NonNullable<NonNullable<CheckResult['meta']>['searchCoo']>[number]
 function supportingRows(
   hits: CooHit[],
   sources: string[],
-  match: (h: CooHit) => boolean
+  match: (h: CooHit) => boolean,
+  max = MAX_SOURCE_ROWS
 ): SourceRow[] {
   const rows: SourceRow[] = [];
   const seen = new Set<string>();
@@ -256,7 +319,7 @@ function supportingRows(
       host: host && host !== label ? host : undefined,
       country: canonicalCountry(h.country) ?? h.country,
     });
-    if (rows.length === MAX_SOURCE_ROWS) break;
+    if (rows.length >= max) break;
   }
   return withPathHints(rows);
 }
@@ -308,28 +371,45 @@ function withPathHints(rows: SourceRow[]): SourceRow[] {
   });
 }
 
-export function buildMadeInView(result: CheckResult): MadeInView {
+function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' | 'excludedRows'> {
   const p = result.product;
   const meta = result.meta;
   const sources = Array.isArray(result.sources) ? cleanSources(result.sources, 8) : [];
   const searchCoo = meta?.searchCoo ?? [];
   const candidates = p?.originCandidates ?? [];
   const madeIn = cleanValue(p?.madeIn);
-  const webRan = result.knowledgeBasis === 'web_enriched';
 
   const made = confirmedMadeIn(result);
   if (made) {
     const basis: MadeInBasis = made.basis;
     const confirmed = candidates.find((c) => c.rating === 'confirmed');
     // Label basis: the package photo, no web rows, so no web-source chip.
-    const sourceRows =
+    // 依型號比對: the exact-model pages, plus the AI answer as the first row
+    // when it was one of the two sources ('ai_web').
+    const aiRow = basis === 'model' && p?.madeInSupport === 'ai_web';
+    const webRows =
       basis === 'label'
         ? []
         : supportingRows(
             searchCoo,
             sources,
-            (h) => h.status === 'confirmed' && h.basis === 'barcode' && sameCountryLabel(h.country, madeIn)
+            (h) =>
+              sameCountryLabel(h.country, madeIn) &&
+              (basis === 'model'
+                ? (h.status === 'confirmed' && h.basis === 'model') || Boolean(h.exactModel)
+                : h.status === 'confirmed' && h.basis === 'barcode'),
+            aiRow ? MAX_SOURCE_ROWS - 1 : MAX_SOURCE_ROWS
           );
+    const sourceRows: SourceRow[] = aiRow
+      ? [{ label: '', ai: true, country: canonicalCountry(madeIn) ?? madeIn }, ...webRows]
+      : webRows;
+    // 2+ domains outvoted the AI answer: its country stays a candidate row.
+    const outvoted =
+      basis === 'model'
+        ? candidates
+            .filter((c) => c.source === 'model_memory' && !sameCountryLabel(c.label, madeIn))
+            .map((c) => ({ label: c.label, rating: c.rating, source: c.source }))
+        : [];
     return {
       state: 'confirmed',
       country: madeIn,
@@ -337,61 +417,81 @@ export function buildMadeInView(result: CheckResult): MadeInView {
       confidence: confirmed?.confidence ?? result.confidence,
       sourceCount: sourceRows.length,
       sourceRows,
-      candidates: [],
-      noBarcodePage: false,
+      candidates: outvoted,
     };
   }
 
-  // C: a single name-matched page says "likely <country>" — never confirmed.
-  const nameLikely =
-    candidates.find((c) => c.source === 'web_name' && c.rating === 'likely') ??
-    (searchCoo.find((c) => c.status === 'likely' && c.basis === 'name')
-      ? {
-          label: searchCoo.find((c) => c.status === 'likely' && c.basis === 'name')!.country,
-          confidence: 0.55,
-          source: 'web_name' as const,
-          rating: 'likely' as const,
-        }
-      : undefined);
-  const hadBarcode = searchCoo.some((c) => c.basis === 'barcode');
-  if (nameLikely) {
-    const sourceRows = supportingRows(
-      searchCoo,
+  // Not confirmed: the headline is 未確認 and every country is a candidate
+  // row underneath, web ones with their own source rows.
+  let rows = candidateRows(result, candidates, madeIn);
+  const likelyHits = searchCoo.filter((c) => c.status === 'likely');
+  for (const h of likelyHits) {
+    if (!rows.some((r) => sameCountryLabel(r.label, h.country))) {
+      rows.push({ label: canonicalCountry(h.country) ?? h.country, rating: 'likely', source: 'web_name' });
+    }
+  }
+  const webCountries: string[] = [];
+  for (const r of rows) {
+    if (r.source === 'web_name' && !webCountries.some((c) => sameCountryLabel(c, r.label))) webCountries.push(r.label);
+  }
+  // Pages that disagree (exact-model ones, or name-matched ones): neutral rows.
+  const exactCountries = searchCoo.filter((c) => c.exactModel).map((c) => c.country);
+  const disagree =
+    exactCountries.some((c) => !sameCountryLabel(c, exactCountries[0]!)) || webCountries.length >= 2;
+  rows = rows.map((r) => {
+    if (r.source !== 'web_name') return r;
+    const srcRows = supportingRows(
+      likelyHits,
       sources,
-      (h) => h.status === 'likely' && h.basis === 'name' && sameCountryLabel(h.country, nameLikely.label)
+      (h) => sameCountryLabel(h.country, r.label)
     );
+    const pages = new Set(likelyHits.filter((h) => sameCountryLabel(h.country, r.label)).map((h) => h.url ?? ''));
+    const exact = new Set(
+      likelyHits.filter((h) => h.exactModel && sameCountryLabel(h.country, r.label)).map((h) => h.url ?? '')
+    );
+    const onlyOneExact = !disagree && pages.size === 1 && exact.size === 1;
     return {
-      state: 'likely',
-      country: nameLikely.label,
-      basis: 'name',
-      confidence: nameLikely.confidence,
-      sourceCount: sourceRows.length,
-      sourceRows,
-      candidates: [],
-      noBarcodePage: webRan && !hadBarcode,
+      ...r,
+      ...(srcRows.length ? { sources: srcRows } : {}),
+      ...(disagree ? { neutral: true } : {}),
+      ...(onlyOneExact ? { exactPages: 1 as const } : {}),
     };
-  }
-
-  const rows = candidateRows(result, candidates, madeIn);
+  });
+  const webPages = new Set(likelyHits.map((h) => h.url).filter(Boolean)).size;
+  const aiSaid = [madeIn, ...candidates.filter((c) => c.source === 'model_memory').map((c) => c.label)].filter(Boolean);
+  const aiBacks = (label: string) => aiSaid.some((a) => sameCountryLabel(a, label));
+  const reason: UnconfirmedReason | undefined = disagree
+    ? 'pagesDisagree'
+    : (meta?.citedUnverified ?? []).length
+      ? 'aiCitedUnverified'
+      : !webCountries.length && aiSaid.length && rows.some((r) => modelOnlyPartCandidate(result, r))
+        ? 'aiOnly'
+        : webCountries.length === 1 && webPages === 1 && !aiBacks(webCountries[0]!)
+          ? 'onePageOnly'
+          : undefined;
   return {
     state: 'unconfirmed',
-    basis: rows.some((c) => c.source === 'web_name') ? 'name' : undefined,
-    // B: no source-count chip, no source rows.
+    // No basis / confidence / source-count chip on a 未確認 headline.
     sourceCount: 0,
     sourceRows: [],
     candidates: rows,
-    noBarcodePage: webRan && !hadBarcode,
+    ...(reason ? { reason } : {}),
   };
 }
 
+/** 零件 rows in 產地分層: one per part country, at most this many. */
+export const MAX_PART_ROWS = 3;
+
 export type LayerTag = 'confirmed' | 'likely' | 'mentioned' | 'unconfirmed';
 export type LayerRowView = {
-  key: 'brandOrigin' | 'hq' | 'parts' | 'parent';
+  key: 'brandOrigin' | 'hq' | 'manufacturer' | 'parts' | 'parent';
   value: string;
+  /** Parts: every part name for this country (joined by the view). */
+  names?: string[];
   /** Country part of the value (localized by the view). */
   country?: string;
   tag: LayerTag;
-  /** Model-only parts: shown with 模型參考（未經確認） + ⓘ instead of a tag. */
+  /** Model-only parts: shown with 模型參考（未經多重確認） + ⓘ instead of a tag. */
   modelRef?: boolean;
   /** Parts: the part country's own candidate grade + confidence (0–1). */
   grade?: { rating: Candidate['rating']; confidence: number };
@@ -401,7 +501,7 @@ export type LayerRowView = {
  * 產地分層 rows. Tags say how far the value is backed:
  * web-searched company facts → 確認; model memory → 有提及; label-read parts
  * → 確認; web parts → their own candidate grade + %; model parts →
- * 模型參考（未經確認） + ⓘ (no tag); nothing → 未確認.
+ * 模型參考（未經多重確認） + ⓘ (no tag); nothing → 未確認.
  */
 export function buildLayerRows(result: CheckResult): LayerRowView[] {
   const p = result.product;
@@ -427,15 +527,29 @@ export function buildLayerRows(result: CheckResult): LayerRowView[] {
       : { key: 'hq', value: '', tag: 'unconfirmed' }
   );
 
-  const partWithCountry = (p?.parts ?? []).find(
-    (x) => cleanValue(x.madeIn) || cleanValue(x.originCountry)
-  );
-  if (partWithCountry) {
-    const country = cleanValue(partWithCountry.madeIn) || cleanValue(partWithCountry.originCountry);
+  // 製造商: the maker the answer names (Pigeon Corporation · 日本), same tag
+  // rule as the company rows. No row when the answer names none.
+  const maker = cleanValue(p?.manufacturer);
+  const makerCountry = cleanValue(p?.manufacturerCountry);
+  if (maker || makerCountry) {
+    rows.push({ key: 'manufacturer', value: maker, country: makerCountry || undefined, tag: factTag });
+  }
+
+  // One 零件 row per part country (Softouch label: 乳首、キャップ、フード ·
+  // 中國 and びん · 日本), never only the first part.
+  const byCountry: Array<{ country: string; names: string[] }> = [];
+  for (const part of p?.parts ?? []) {
+    const country = cleanValue(part.madeIn) || cleanValue(part.originCountry);
+    if (!country) continue;
+    const group = byCountry.find((g) => sameCountryLabel(g.country, country));
+    if (group) group.names.push(part.name);
+    else byCountry.push({ country, names: [part.name] });
+  }
+  for (const { country, names } of byCountry.slice(0, MAX_PART_ROWS)) {
     // Same evidence as the 零件候選 list (partCountryEvidence): never a grade
     // borrowed from another country or from result-level partsEvidence.
     const ev = partCountryEvidence(result, country);
-    const base = { key: 'parts' as const, value: partWithCountry.name, country };
+    const base = { key: 'parts' as const, value: names.join(', '), names, country };
     if (ev.kind === 'label') rows.push({ ...base, tag: 'confirmed' });
     else if (ev.kind === 'graded')
       rows.push({
@@ -444,7 +558,8 @@ export function buildLayerRows(result: CheckResult): LayerRowView[] {
         grade: { rating: ev.rating, confidence: ev.confidence },
       });
     else rows.push({ ...base, tag: 'mentioned', modelRef: true });
-  } else {
+  }
+  if (!byCountry.length) {
     rows.push({ key: 'parts', value: '', tag: 'unconfirmed' });
   }
 
@@ -483,4 +598,34 @@ export function cleanNotes(result: CheckResult): string[] {
       )
       .filter(Boolean) ?? []
   );
+}
+
+/** AI-cited made-in pages that failed the check (meta.citedUnverified). */
+function citedRows(result: CheckResult): SourceRow[] {
+  const rows: SourceRow[] = [];
+  for (const c of result.meta?.citedUnverified ?? []) {
+    const url = c.url?.trim();
+    if (!url || rows.some((r) => r.url === url)) continue;
+    const host = sourceLabel({ title: '', url });
+    const title = c.title?.trim();
+    rows.push({ label: title || host || url, url, host: title && host && host !== title ? host : undefined });
+  }
+  return rows;
+}
+
+/** Search pages about another model of that name (meta.searchExcluded). */
+function excludedRows(result: CheckResult): MadeInView['excludedRows'] {
+  const rows: MadeInView['excludedRows'] = [];
+  for (const e of result.meta?.searchExcluded ?? []) {
+    const url = e.url?.trim();
+    if (!url || !e.model || rows.some((r) => r.url === url)) continue;
+    const host = sourceLabel({ title: '', url });
+    const title = e.title?.trim();
+    rows.push({ label: title || host || url, url, host: title && host && host !== title ? host : undefined, model: e.model });
+  }
+  return rows;
+}
+
+export function buildMadeInView(result: CheckResult): MadeInView {
+  return { ...buildMadeInViewCore(result), citedRows: citedRows(result), excludedRows: excludedRows(result) };
 }

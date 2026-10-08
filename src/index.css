@@ -5170,17 +5170,31 @@ p {
 .rc-headline.is-unconfirmed {
   color: var(--text);
 }
-.rc-headline.is-likely {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: 0.45rem;
+/* Only the page title in a source row is a link; the 「來源 N：」 prefix is text. */
+.rc-source-prefix {
+  font-weight: 600;
 }
-/* 較可能 and （非確認） stay on one unbreakable run with the country. */
-.rc-headline-country {
-  font-size: 1.35rem;
-  font-weight: 700;
-  white-space: nowrap;
+/* A candidate country's own source rows (未確認 card). */
+.rc-cand-sources {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+  flex-basis: 100%;
+}
+.rc-candidates li:has(.rc-cand-sources) {
+  flex-wrap: wrap;
+}
+.rc-candidates .rc-cand-sources li {
+  display: block;
+  border-bottom: 0;
+}
+.rc-cand-sources .rc-source {
+  font-weight: 500;
+  margin: 0;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.8rem;
 }
 .rc-source {
   margin: 0 0 0.25rem;
@@ -5206,6 +5220,22 @@ p {
 }
 .rc-sources .rc-source {
   margin: 0;
+}
+/* AI-cited links that failed the check: dashed, muted, never counted. */
+.rc-sources--unverified {
+  margin-top: 0.3rem;
+}
+.rc-source.is-unverified {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+}
+.rc-source.is-unverified a {
+  font-weight: 500;
+}
+.rc-source-flag {
+  font-weight: 600;
+  white-space: nowrap;
 }
 /* Domain and 生產國 move as a unit (no lone 「國」 on its own line). */
 .rc-source-host,
@@ -5411,4 +5441,11 @@ p {
   .rc-headline {
     font-size: 2rem;
   }
+}
+
+/* 產地分層 values: CJK breaks at the 「 · 」 / 、 between names and the
+   country, never inside 中國 (Softouch 「…フード · 中／國」). */
+.rc-layer-row .rc-row-value {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }

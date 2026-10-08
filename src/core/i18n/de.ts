@@ -56,7 +56,7 @@ export const de = {
       unconfirmed: 'Nicht bestätigt',
       partsChina: 'Einige Teile in China hergestellt',
       hqParentNote: 'Der China-Hauptsitz in der Antwort gehört zur Muttergesellschaft',
-      madeInBelow: 'Das Herstellungsland wird nur in der Karte „Hergestellt in“ bestimmt (Barcode oder Verpackungsetikett).',
+      madeInBelow: 'Das Herstellungsland wird nur in der Karte „Hergestellt in“ bestimmt (Barcode, Verpackungsetikett oder Modellabgleich).',
       madeInChina: 'Hergestellt in China',
       footnote: 'Diese Karte beschreibt nur, wo das Unternehmen sitzt, wem es gehört und wo das Produkt hergestellt wird. Sie ist keine Bewertung der Produktqualität, der Sicherheit oder des Unternehmens.',
       controlling: 'Beherrschend',
@@ -64,19 +64,28 @@ export const de = {
       reasonBrandOrigin: 'Herkunft der Marke: {place}.',
       madeInLineBarcode: 'Hergestellt in: {place} (Barcode-Abgleich, siehe Karte „Hergestellt in“ unten)',
       madeInLineLabel: 'Hergestellt in: {place} (Verpackungsetikett, siehe Karte „Hergestellt in“ unten)',
+      madeInLineModel: 'Hergestellt in: {place} (Abgleich über exaktes Modell, siehe Karte „Hergestellt in“ unten)',
     },
     rc: {
       modelRef: 'Modellangabe (unbestätigt)',
       modelRefHelp: 'Von keiner Webseite und keinem Verpackungsetikett bestätigt; das ist nur eine Vermutung des Modells. Maßgeblich ist die Angabe auf der Verpackung.',
       moreInfo: 'Mehr dazu',
-      notConfirmed: ' (nicht bestätigt)',
-      likelyNote: 'Nur per Produktname abgeglichen – Herstellungsland nicht bestätigt. Bitte nicht als bestätigt behandeln.',
       candidatesTitle: 'Gefundene Herkunftskandidaten (nicht bestätigt)',
       noCandidates: 'Keine verlässlichen Herkunftskandidaten gefunden.',
-      noBarcodePage: 'Keine Seite zeigte den Barcode mit Herstellungsland',
       sourceCount: 'Quellen: {n}',
       sourceFirst: 'Quelle 1: {label}',
       sourceNth: 'Quelle {n}: {label}',
+      sourceAiAnswer: 'KI-Antwort',
+      oneExactModelPage: '1 Seite mit genau diesem Modell',
+      foldUnconfirmed: 'Endgültiges Herstellungsland nicht bestätigt: {reason}. Andere Länder sind nur Kandidaten.',
+      citedUnverified: 'Von der KI zitiert, nicht überprüfbar',
+      excludedOtherModel: 'Anderes Modell ({model}), nicht gezählt',
+      reason: {
+        aiOnly: 'Nur KI-Antwort, keine Webseite belegt sie',
+        pagesDisagree: 'Webseiten widersprechen sich',
+        aiCitedUnverified: 'KI-zitierter Link nicht überprüfbar',
+        onePageOnly: 'Nur eine Webseite nennt es',
+      },
       sourceCountry: 'hergestellt in {country}',
       labelSource: 'Quelle: Foto des Verpackungsetiketts',
       parent: 'Muttergesellschaft',
@@ -94,6 +103,7 @@ export const de = {
       barcode: 'Abgleich per Barcode',
       name: 'Abgleich per Produktname',
       label: 'Laut Verpackungsangabe',
+      model: 'Abgleich über exaktes Modell',
     },
     searchVia: {
       gemini: 'Google-Suche (Gemini)',
@@ -139,8 +149,16 @@ export const de = {
     agentsUsed: '{n} Agenten',
     agentsTitle: 'Genutzter KI-Pool',
     agentsSummary: '{total} Aufrufe · {ok} ok · {fail} fehlgeschlagen',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'starke Verbindung',
+      moderate: 'mittlere Verbindung',
+      weak: 'schwache Verbindung',
+    },
     agentsHint:
       'Jede Zeile ist ein kostenloser Server-KI-Aufruf. Fehlschläge bedeuten oft Quota, Modellzugang oder Timeout; wir versuchen andere oder einen Fallback. Live-Web braucht Gemini-Search-Grounding (nicht dasselbe wie Text-RPM).',
+    agentsHintVia:
+      'Jede Zeile ist ein kostenloser Server-KI-Aufruf. Fehlschläge bedeuten oft Quota, Modellzugang oder Timeout; wir versuchen andere oder einen Fallback. Die Live-Websuche lief über {provider}.',
     agentOk: 'OK',
     agentFail: 'Fehlgeschlagen ({err})',
     agentSkipped: 'Übersprungen ({err})',
@@ -167,6 +185,7 @@ export const de = {
       monolith: 'Vollcheck (ein Aufruf)',
       dual_core: 'Produkt + Unternehmen',
       dual_alts: 'Alternativen mit weniger CN-Bezug',
+      web: 'Websuche',
       unknownProvider: 'Unbekannte KI',
     },
     provider: {
@@ -296,7 +315,7 @@ export const de = {
       cooUnconfirmedNoLabel:
         'Endgültiges Herkunftsland unbestätigt – kein Herkunftsland auf Produkt/Etikett; es wird keins erfunden.',
       cooUnconfirmedNoBarcode:
-        'Endgültiges Herkunftsland unbestätigt – keine Webseite zeigte den Barcode/JAN zusammen mit einem Herstellungsland; Treffer nur über den Produktnamen sind lediglich wahrscheinliche Kandidaten.',
+        'Endgültiges Herstellungsland nicht bestätigt; andere Länder sind nur Kandidaten.',
       cooUnconfirmedCandidates:
         'Endgültiges Herkunftsland unbestätigt – die Kandidaten unten sind Suchsignale, kein aufgedrucktes „Made in“.',
       distributorOmitted:
@@ -607,7 +626,7 @@ export const de = {
     evidenceTitle:
       'Wann ein Herstellungsland als bestätigt gilt',
     evidenceBody:
-      'Ein Herstellungsland gilt nur dann als bestätigt (Barcode-Abgleich), wenn es von einem Foto des Verpackungsetiketts stammt oder eine Webseite denselben Barcode (JAN/EAN) neben der Herkunftsangabe zeigt. Ein Treffer nur über den Produktnamen ist höchstens „wahrscheinlich“ (Namensabgleich), und eine Seite mit mehreren Größen oder Varianten bleibt unbestätigt. Ist die Live-Websuche nicht verfügbar, beruht das Ergebnis nur auf Modellwissen und wird so gekennzeichnet.',
+      'Ein Herstellungsland gilt auf drei Wegen als bestätigt. Am stärksten: ein Foto des Verpackungsetiketts oder eine Webseite mit demselben Barcode (JAN/EAN) neben der Herkunftsangabe (Barcode-Abgleich). Danach der Abgleich über das exakte Modell: Die KI-Antwort und mindestens eine Webseite mit genau dieser Marke und diesem Modell nennen dasselbe Land, oder zwei oder mehr solcher Seiten von verschiedenen Websites stimmen überein; die KI-Antwort erscheint dann als eine der Quellen. In beiden Fällen darf keine Seite mit dem exakten Modell ein anderes Land nennen. Die KI-Antwort allein bestätigt nie etwas und bleibt eine Modellreferenz; widersprechen sich Seiten mit dem exakten Modell, bleibt das Herstellungsland unbestätigt und die Kandidaten werden aufgeführt. Ein von der KI zitierter Link zählt erst nach einer Prüfung: Die Seite (aus der Websuche oder geladen) muss das exakte Modell und dasselbe Land nennen und darf nicht als anderes Modell aussortiert sein; sonst erscheint sie als „Von der KI zitiert, nicht überprüfbar“ und zählt nicht. Ein loser Treffer über den Produktnamen erscheint nur als Kandidat unter „Nicht bestätigt“, und eine Seite mit mehreren Größen oder Varianten bleibt unbestätigt. Ist die Live-Websuche nicht verfügbar, beruht das Ergebnis nur auf Modellwissen und wird so gekennzeichnet.',
     flowWeb:
       'Websuche',
     flowWebDetail:

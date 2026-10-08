@@ -59,7 +59,7 @@ export const en: MessageTree = {
       unconfirmed: 'Unconfirmed',
       partsChina: 'Some parts made in China',
       hqParentNote: 'The China HQ in the answer is the parent company\'s',
-      madeInBelow: 'Where it is made is decided only in the Made in card (barcode or package label).',
+      madeInBelow: 'Where it is made is decided only in the Made in card (barcode, package label or exact-model match).',
       madeInChina: 'Made in China',
       footnote: 'This card only describes where the company is based, who owns it and where the product is made. It is not a judgement of product quality, safety or the company.',
       controlling: 'Controlling',
@@ -67,19 +67,28 @@ export const en: MessageTree = {
       reasonBrandOrigin: 'Brand origin: {place}.',
       madeInLineBarcode: 'Made in: {place} (barcode match, see the Made in card below)',
       madeInLineLabel: 'Made in: {place} (package label, see the Made in card below)',
+      madeInLineModel: 'Made in: {place} (exact-model match, see the Made in card below)',
     },
     rc: {
       modelRef: 'Model reference (unconfirmed)',
       modelRefHelp: 'Not confirmed by any web page or package label; this is only the model\'s guess. Go by the label on the package.',
       moreInfo: 'About this',
-      notConfirmed: ' (not confirmed)',
-      likelyNote: 'Matched by product name only — made-in not confirmed. Do not treat it as confirmed.',
       candidatesTitle: 'Made-in candidates found (unconfirmed)',
       noCandidates: 'No reliable made-in candidates found.',
-      noBarcodePage: 'No page showed the barcode with a made-in',
       sourceCount: 'Sources: {n}',
       sourceFirst: 'Source 1: {label}',
       sourceNth: 'Source {n}: {label}',
+      sourceAiAnswer: 'AI answer',
+      oneExactModelPage: '1 exact-model page',
+      foldUnconfirmed: 'Final made-in unconfirmed: {reason}. Other countries are candidates only.',
+      citedUnverified: 'AI-cited, could not verify',
+      excludedOtherModel: 'Different model ({model}), not counted',
+      reason: {
+        aiOnly: 'AI answer only, no web page backs it',
+        pagesDisagree: 'Web pages disagree',
+        aiCitedUnverified: 'AI-cited link could not be verified',
+        onePageOnly: 'Only one web page mentions it',
+      },
       sourceCountry: 'made in {country}',
       labelSource: 'Source: package label photo',
       parent: 'Parent company',
@@ -97,6 +106,7 @@ export const en: MessageTree = {
       barcode: 'Matched by barcode',
       name: 'Matched by product name',
       label: 'Read from the package label',
+      model: 'Matched by exact model',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',
@@ -142,8 +152,16 @@ export const en: MessageTree = {
     agentsUsed: '{n} agents',
     agentsTitle: 'AI pool used',
     agentsSummary: '{total} calls · {ok} ok · {fail} failed',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'strong link',
+      moderate: 'moderate link',
+      weak: 'weak link',
+    },
     agentsHint:
       'Each row is one free-server AI call. Failed calls often mean quota, model access, or timeout; we still try others or a single fallback. Live web needs Google Search on the Gemini key (separate from ordinary text quota).',
+    agentsHintVia:
+      'Each row is one free-server AI call. Failed calls often mean quota, model access, or timeout; we still try others or a single fallback. Live web search for this check ran on {provider}.',
     agentOk: 'OK',
     agentFail: 'Failed ({err})',
     agentSkipped: 'Skipped ({err})',
@@ -170,6 +188,7 @@ export const en: MessageTree = {
       monolith: 'Full check (one call)',
       dual_core: 'Product + company',
       dual_alts: 'Lower-CN alternatives',
+      web: 'Web search',
       unknownProvider: 'Unknown AI',
     },
     provider: {
@@ -296,7 +315,7 @@ export const en: MessageTree = {
       cooUnconfirmedNoLabel:
         'Final COO unconfirmed — no SKU/label country of origin; do not invent made-in.',
       cooUnconfirmedNoBarcode:
-        'Final COO unconfirmed — no web page showed the barcode/JAN with a made-in; product-name matches are likely candidates only.',
+        'Final made-in unconfirmed; other countries are candidates only.',
       cooUnconfirmedCandidates:
         'Final COO unconfirmed — candidates below are queried signals, not a stamped made-in label.',
       distributorOmitted:
@@ -607,7 +626,7 @@ export const en: MessageTree = {
     evidenceTitle:
       'When a made-in counts as confirmed',
     evidenceBody:
-      'A made-in shows as confirmed (barcode match) only from a package label photo, or when a web page shows the same barcode (JAN/EAN) next to the made-in line. A product-name match shows as “likely” at most (name match), and a page listing several sizes or variants stays unconfirmed. If live web search is unavailable, the result relies on model knowledge only and says so.',
+      'A made-in shows as confirmed in three ways. Strongest: a package label photo, or a web page showing the same barcode (JAN/EAN) next to the made-in line (barcode match). Next, an exact-model match: the AI answer and at least one web page naming the exact brand and model give the same country, or two or more such pages on different websites agree; the AI answer then appears as one of the sources. Either way, no exact-model page may name a different country. The AI answer alone is never confirmed and stays a model reference; if exact-model pages disagree, the made-in stays unconfirmed with the candidates listed. A link the AI cites counts only after a check: the page (one the web search returned, or one that loads) must name the exact model and the same country, and must not be one left out as another model; otherwise it is listed as “AI-cited, could not verify” and counts for nothing. A loose product-name match is listed only as a candidate under “Unconfirmed”, and a page listing several sizes or variants stays unconfirmed. If live web search is unavailable, the result relies on model knowledge only and says so.',
     flowWeb:
       'Web search',
     flowWebDetail:

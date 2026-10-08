@@ -56,7 +56,7 @@ export const fi = {
       unconfirmed: 'Vahvistamaton',
       partsChina: 'Osa osista valmistettu Kiinassa',
       hqParentNote: 'Vastauksen Kiinan pääkonttori kuuluu emoyhtiölle',
-      madeInBelow: 'Valmistusmaa ratkaistaan vain Valmistusmaa-kortissa (viivakoodi tai pakkausmerkintä).',
+      madeInBelow: 'Valmistusmaa ratkaistaan vain Valmistusmaa-kortissa (viivakoodi, pakkausmerkintä tai mallivastaavuus).',
       madeInChina: 'Valmistettu Kiinassa',
       footnote: 'Tämä kortti kertoo vain, missä yritys toimii, kuka sen omistaa ja missä tuote valmistetaan. Se ei ole arvio tuotteen laadusta tai turvallisuudesta eikä yrityksestä.',
       controlling: 'Määräysvalta',
@@ -64,19 +64,28 @@ export const fi = {
       reasonBrandOrigin: 'Brändin alkuperä: {place}.',
       madeInLineBarcode: 'Valmistusmaa: {place} (viivakoodivastaavuus, katso Valmistusmaa-kortti alla)',
       madeInLineLabel: 'Valmistusmaa: {place} (pakkausmerkintä, katso Valmistusmaa-kortti alla)',
+      madeInLineModel: 'Valmistusmaa: {place} (täsmällinen mallivastaavuus, katso Valmistusmaa-kortti alla)',
     },
     rc: {
       modelRef: 'Mallin tieto (vahvistamaton)',
       modelRefHelp: 'Mikään verkkosivu tai pakkausmerkintä ei vahvista tätä; tämä on vain mallin arvaus. Luota pakkauksen merkintään.',
       moreInfo: 'Lisätietoja',
-      notConfirmed: ' (vahvistamaton)',
-      likelyNote: 'Täsmätty vain tuotenimellä – valmistusmaata ei ole vahvistettu. Älä pidä sitä vahvistettuna.',
       candidatesTitle: 'Löydetyt valmistusmaaehdokkaat (vahvistamattomat)',
       noCandidates: 'Luotettavia ehdokkaita ei löytynyt.',
-      noBarcodePage: 'Mikään sivu ei näyttänyt viivakoodia ja valmistusmaata',
       sourceCount: 'Lähteet: {n}',
       sourceFirst: 'Lähde 1: {label}',
       sourceNth: 'Lähde {n}: {label}',
+      sourceAiAnswer: 'Tekoälyn vastaus',
+      oneExactModelPage: '1 sivu täsmälleen tällä mallilla',
+      foldUnconfirmed: 'Lopullista valmistusmaata ei ole vahvistettu: {reason}. Muut maat ovat vain ehdokkaita.',
+      citedUnverified: 'Tekoälyn lähde, ei voitu vahvistaa',
+      excludedOtherModel: 'Eri malli ({model}), ei laskettu',
+      reason: {
+        aiOnly: 'Vain tekoälyn vastaus, mikään verkkosivu ei tue sitä',
+        pagesDisagree: 'Verkkosivut ovat ristiriidassa',
+        aiCitedUnverified: 'Tekoälyn lainaamaa linkkiä ei voitu vahvistaa',
+        onePageOnly: 'Vain yksi verkkosivu mainitsee sen',
+      },
       sourceCountry: 'valmistusmaa {country}',
       labelSource: 'Lähde: valokuva pakkausmerkinnästä',
       parent: 'Emoyhtiö',
@@ -94,6 +103,7 @@ export const fi = {
       barcode: 'Täsmätty viivakoodilla',
       name: 'Täsmätty tuotenimellä',
       label: 'Pakkausmerkinnän mukaan',
+      model: 'Täsmällinen mallivastaavuus',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',
@@ -139,8 +149,16 @@ export const fi = {
     agentsUsed: '{n} agenttia',
     agentsTitle: 'Käytetty tekoälyallas',
     agentsSummary: '{total} kutsua · {ok} ok · {fail} epäonnistui',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'vahva yhteys',
+      moderate: 'kohtalainen yhteys',
+      weak: 'heikko yhteys',
+    },
     agentsHint:
       'Jokainen rivi on ilmaispalvelimen tekoälykutsu. Epäonnistumiset johtuvat usein kiintiöstä, mallin käyttöoikeudesta tai aikakatkaisusta; yritämme muita tai varavaihtoehtoa. Live-verkko vaatii Gemini Search groundingin (ei sama kuin tekstin RPM).',
+    agentsHintVia:
+      'Jokainen rivi on ilmaispalvelimen tekoälykutsu. Epäonnistumiset johtuvat usein kiintiöstä, mallin käyttöoikeudesta tai aikakatkaisusta; yritämme muita tai varavaihtoehtoa. Live-verkkohaku tehtiin palvelulla {provider}.',
     agentOk: 'OK',
     agentFail: 'Epäonnistui ({err})',
     agentSkipped: 'Ohitettu ({err})',
@@ -167,6 +185,7 @@ export const fi = {
       monolith: 'Täysi tarkistus (yksi kutsu)',
       dual_core: 'Tuote + yritys',
       dual_alts: 'Vaihtoehdot, joissa vähemmän CN-yhteyttä',
+      web: 'Verkkohaku',
       unknownProvider: 'Tuntematon tekoäly',
     },
     provider: {
@@ -296,7 +315,7 @@ export const fi = {
       cooUnconfirmedNoLabel:
         'Lopullinen alkuperämaa vahvistamatta – tuotteessa/etiketissä ei ole alkuperämaata; sitä ei keksitä.',
       cooUnconfirmedNoBarcode:
-        'Lopullinen alkuperämaa vahvistamatta – mikään verkkosivu ei näyttänyt viivakoodia/JAN-koodia yhdessä valmistusmaan kanssa; tuotenimellä löydetyt ovat vain todennäköisiä ehdokkaita.',
+        'Lopullista valmistusmaata ei ole vahvistettu; muut maat ovat vain ehdokkaita.',
       cooUnconfirmedCandidates:
         'Lopullinen alkuperämaa vahvistamatta – alla olevat ehdokkaat ovat hakusignaaleja, eivät painettu ”Made in”.',
       distributorOmitted:
@@ -607,7 +626,7 @@ export const fi = {
     evidenceTitle:
       'Milloin valmistusmaa lasketaan vahvistetuksi',
     evidenceBody:
-      'Valmistusmaa näkyy vahvistettuna (viivakoodivastaavuus) vain, jos se on peräisin pakkausetiketin kuvasta tai jos verkkosivulla on sama viivakoodi (JAN/EAN) alkuperämerkinnän vieressä. Pelkän tuotenimen vastaavuus on enintään ”todennäköinen” (nimivastaavuus), ja sivu, jolla on useita kokoja tai versioita, jää vahvistamattomaksi. Jos reaaliaikainen verkkohaku ei ole käytettävissä, tulos perustuu vain mallin tietoihin ja kertoo sen.',
+      'Valmistusmaa näkyy vahvistettuna kolmella tavalla. Vahvin on pakkausetiketin kuva tai verkkosivu, jolla on sama viivakoodi (JAN/EAN) alkuperämerkinnän vieressä (viivakoodivastaavuus). Seuraavana täsmällinen mallivastaavuus: tekoälyn vastaus ja vähintään yksi verkkosivu, jolla on täsmälleen sama merkki ja malli, nimeävät saman maan, tai kaksi tai useampi tällainen sivu eri sivustoilta on samaa mieltä; tekoälyn vastaus näkyy silloin yhtenä lähteistä. Kummassakaan tapauksessa mikään saman mallin sivu ei saa nimetä toista maata. Pelkkä tekoälyn vastaus ei koskaan vahvista mitään, vaan jää mallin viitteeksi; jos saman mallin sivut ovat ristiriidassa, valmistusmaa jää vahvistamattomaksi ja ehdokkaat luetellaan. Tekoälyn lainaama linkki lasketaan vasta tarkistuksen jälkeen: sivun (verkkohaun palauttama tai ladattu) on mainittava täsmällinen malli ja sama maa, eikä se saa olla toisena mallina pois jätetty; muuten se näytetään merkinnällä ”Tekoälyn lähde, ei voitu vahvistaa” eikä sitä lasketa. Löyhä tuotenimen vastaavuus näkyy vain ehdokkaana otsikon ”Vahvistamaton” alla, ja sivu, jolla on useita kokoja tai versioita, jää vahvistamattomaksi. Jos reaaliaikainen verkkohaku ei ole käytettävissä, tulos perustuu vain mallin tietoihin ja kertoo sen.',
     flowWeb:
       'Verkkohaku',
     flowWebDetail:
