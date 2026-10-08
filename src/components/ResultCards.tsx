@@ -284,8 +284,21 @@ export function LayersCard({ result, t }: { result: CheckResult; t: TFunction })
                   <>
                     <dd className="rc-row-value">{value}</dd>
                     <span className={`rc-tag is-${r.tag}`}>
-                      {t(TAG_KEY[r.tag])}
-                      {r.tag === 'likely' ? t('check.rc.notConfirmed') : null}
+                      {r.grade ? (
+                        // Parts: the part country's own grade + %, same as 零件候選.
+                        <>
+                          {t(`check.candidateRating.${r.grade.rating}`)}
+                          {r.grade.rating === 'likely' || r.grade.rating === 'possible'
+                            ? t('check.rc.notConfirmed')
+                            : null}
+                          {` · ${Math.round(r.grade.confidence * 100)}%`}
+                        </>
+                      ) : (
+                        <>
+                          {t(TAG_KEY[r.tag])}
+                          {r.tag === 'likely' ? t('check.rc.notConfirmed') : null}
+                        </>
+                      )}
                     </span>
                   </>
                 )}

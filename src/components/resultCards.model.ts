@@ -11,6 +11,7 @@ import {
 } from '../../functions/_lib/sourceLine';
 import type { CheckResult } from '../core/types';
 import { normalizeRegion } from '../../functions/_lib/regions';
+import { zhCountryText } from '../../functions/_lib/zhHant';
 import { brandHqFolded, companyFactsSourced, confirmedMadeIn, pickOwner } from './ChinaLink';
 
 const VAGUE_RE =
@@ -55,7 +56,14 @@ type CandRow = MadeInView['candidates'][number];
 export function sameCountryLabel(a: string, b: string): boolean {
   if (sameLabel(a, b)) return true;
   const ra = normalizeRegion(a);
-  return ra !== 'UNKNOWN' && ra === normalizeRegion(b);
+  const rb = normalizeRegion(b);
+  const greater = (r: string) => r !== 'OTHER' && r !== 'UNKNOWN';
+  // CN / HK / TW / MO compare by region code (中國（含港澳） = China).
+  if (greater(ra) || greater(rb)) return ra === rb;
+  // Every other country is 'OTHER' there, so compare names instead
+  // (Thailand = 泰國, but never Thailand = Japan).
+  const za = zhCountryText(a.trim()).toLowerCase();
+  return Boolean(za) && za === zhCountryText(b.trim()).toLowerCase();
 }
 
 /** Candidate sources that name a part / component country. */
@@ -85,24 +93,63 @@ export function modelOnlyPartCandidate(
   return PART_SOURCES.has(String(c.source)) && partsFromModel(result);
 }
 
-/**
- * Same rule as the 製造地 card: when the model and a web/label row agree on
- * the country, the web row absorbs the model row (it keeps its grade/%).
- */
-export function absorbModelRows<T>(
-  rows: T[],
-  isModel: (row: T) => boolean,
-  country: (row: T) => string | undefined
-): T[] {
-  const backed = rows.filter((r) => !isModel(r)).map(country).filter(Boolean) as string[];
-  return rows.filter((r) => {
-    if (!isModel(r)) return true;
-    const c = country(r);
-    return !c || !backed.some((b) => sameCountryLabel(b, c));
-  });
+const RATING_RANK: Record<string, number> = { confirmed: 4, likely: 3, possible: 2, mentioned: 1 };
+
+/** Candidate sources the 零件 list never shows (ownership / made-in / HQ echo). */
+const PARTS_LIST_SKIP = new Set(['ownership', 'confirmed_coo', 'manufacturer']);
+
+/** Candidates the 零件 rows may use (none when parts were read from the label). */
+export function partsListCandidates(result: CheckResult): Candidate[] {
+  if (result.partsEvidence === 'label') return [];
+  return (result.product?.originCandidates ?? []).filter((c) => !PARTS_LIST_SKIP.has(String(c.source)));
 }
 
-const RATING_RANK: Record<string, number> = { confirmed: 4, likely: 3, possible: 2, mentioned: 1 };
+/**
+ * Strongest web/label-backed candidate for THIS country (never another
+ * country's). `partsOnly` limits it to part / components / notes evidence,
+ * so a product-name match never grades a part.
+ */
+export function backedCandidate(
+  result: CheckResult,
+  country: string,
+  partsOnly = false
+): Candidate | undefined {
+  return partsListCandidates(result)
+    .filter(
+      (c) =>
+        (!partsOnly || PART_SOURCES.has(String(c.source))) &&
+        !modelOnlyPartCandidate(result, c) &&
+        sameCountryLabel(c.label, country)
+    )
+    .sort(
+      (a, b) =>
+        (RATING_RANK[b.rating] ?? 0) - (RATING_RANK[a.rating] ?? 0) || b.confidence - a.confidence
+    )[0];
+}
+
+/**
+ * What backs one part country, shared by the 產地分層 零件 row and the
+ * 零件候選 list so both always agree:
+ * - 'label': read from the package label photo (確認 · 依包裝標示),
+ * - 'graded': a web-backed part candidate for the same country (its own
+ *   grade + %),
+ * - 'model': nothing backs it → 模型參考（未經確認） + ⓘ.
+ * Result-level partsEvidence 'web' alone never grades a part: without a
+ * candidate for that country there is nothing to take a grade from.
+ */
+export type PartEvidence =
+  | { kind: 'label' }
+  | { kind: 'graded'; rating: Candidate['rating']; confidence: number; source: Candidate['source'] }
+  | { kind: 'model' };
+
+export function partCountryEvidence(result: CheckResult, country: string): PartEvidence {
+  if (result.partsEvidence === 'label') return { kind: 'label' };
+  const c = backedCandidate(result, country, true);
+  return c
+    ? { kind: 'graded', rating: c.rating, confidence: c.confidence, source: c.source }
+    : { kind: 'model' };
+}
+
 
 /**
  * 查到的產地候選（未確認）. One row per country. A model-only made-in (no
@@ -243,13 +290,15 @@ export type LayerRowView = {
   tag: LayerTag;
   /** Model-only parts: shown with 模型參考（未經確認） + ⓘ instead of a tag. */
   modelRef?: boolean;
+  /** Parts: the part country's own candidate grade + confidence (0–1). */
+  grade?: { rating: Candidate['rating']; confidence: number };
 };
 
 /**
  * 產地分層 rows. Tags say how far the value is backed:
  * web-searched company facts → 確認; model memory → 有提及; label-read parts
- * → 確認; web parts → 較可能; model parts → 模型參考（未經確認） + ⓘ (no tag);
- * nothing → 未確認.
+ * → 確認; web parts → their own candidate grade + %; model parts →
+ * 模型參考（未經確認） + ⓘ (no tag); nothing → 未確認.
  */
 export function buildLayerRows(result: CheckResult): LayerRowView[] {
   const p = result.product;
@@ -279,19 +328,19 @@ export function buildLayerRows(result: CheckResult): LayerRowView[] {
     (x) => cleanValue(x.madeIn) || cleanValue(x.originCountry)
   );
   if (partWithCountry) {
-    const tag: LayerTag =
-      result.partsEvidence === 'label'
-        ? 'confirmed'
-        : result.partsEvidence === 'web'
-          ? 'likely'
-          : 'mentioned';
-    rows.push({
-      key: 'parts',
-      value: partWithCountry.name,
-      country: cleanValue(partWithCountry.madeIn) || cleanValue(partWithCountry.originCountry),
-      tag,
-      ...(result.partsEvidence !== 'label' && partsFromModel(result) ? { modelRef: true } : {}),
-    });
+    const country = cleanValue(partWithCountry.madeIn) || cleanValue(partWithCountry.originCountry);
+    // Same evidence as the 零件候選 list (partCountryEvidence): never a grade
+    // borrowed from another country or from result-level partsEvidence.
+    const ev = partCountryEvidence(result, country);
+    const base = { key: 'parts' as const, value: partWithCountry.name, country };
+    if (ev.kind === 'label') rows.push({ ...base, tag: 'confirmed' });
+    else if (ev.kind === 'graded')
+      rows.push({
+        ...base,
+        tag: ev.rating === 'confirmed' ? 'confirmed' : ev.rating === 'likely' ? 'likely' : 'mentioned',
+        grade: { rating: ev.rating, confidence: ev.confidence },
+      });
+    else rows.push({ ...base, tag: 'mentioned', modelRef: true });
   } else {
     rows.push({ key: 'parts', value: '', tag: 'unconfirmed' });
   }
