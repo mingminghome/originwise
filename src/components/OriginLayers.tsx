@@ -2,6 +2,11 @@
  * Labeled origin layers — presentation only from existing CheckResult fields.
  * Ownership/parents must never be shown as Final COO (madeIn).
  */
+import {
+  cleanSources,
+  sourceLabel,
+  splitSourceLine,
+} from '../../functions/_lib/sourceLine';
 import type { CheckResult } from '../core/types';
 import type { TFunction } from '../core/i18n';
 import { SectionShare } from './SectionShare';
@@ -250,7 +255,7 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
     result.partsEvidence !== 'label';
   const partsSources =
     result.knowledgeBasis === 'web_enriched' && Array.isArray(result.sources)
-      ? result.sources.map((s) => String(s).trim()).filter(Boolean).slice(0, 8)
+      ? cleanSources(result.sources, 8)
       : [];
 
   return { brandOps, ownership, finalCoo, parts, partsModelOnly, partsSources };
@@ -455,16 +460,21 @@ export function OriginLayers({
                 </span>
                 <ul>
                   {model.partsSources.map((src) => {
-                    const urlMatch = src.match(/https?:\/\/\S+/);
-                    const href = urlMatch ? urlMatch[0] : undefined;
+                    const parts = splitSourceLine(src);
+                    const label = sourceLabel(parts);
                     return (
                       <li key={src}>
-                        {href ? (
-                          <a href={href} target="_blank" rel="noreferrer">
-                            {src}
+                        {parts.url ? (
+                          <a
+                            href={parts.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={parts.url}
+                          >
+                            {label}
                           </a>
                         ) : (
-                          src
+                          label
                         )}
                       </li>
                     );

@@ -1,7 +1,7 @@
 {
   "name": "OriginWise",
   "short_name": "OriginWise",
-  "description": "Local-first China-related product, brand, and origin checker.",
+  "description": "China-related product, brand, and origin checker. History stays on your device.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f2f2f2",

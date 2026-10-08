@@ -11,6 +11,8 @@ export const fi = {
   },
   common: {
     present: 'Kyllä',
+    /** Separator after a short label (full-width in CJK). */
+    labelSep: ': ',
     missing: 'Ei',
     cancel: 'Peruuta',
     confirm: 'Vahvista',

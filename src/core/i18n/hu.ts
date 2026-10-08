@@ -11,6 +11,8 @@ export const hu = {
   },
   common: {
     present: 'Igen',
+    /** Separator after a short label (full-width in CJK). */
+    labelSep: ': ',
     missing: 'Nem',
     cancel: 'Mégse',
     confirm: 'Megerősítés',

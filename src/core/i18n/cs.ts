@@ -11,6 +11,8 @@ export const cs = {
   },
   common: {
     present: 'Ano',
+    /** Separator after a short label (full-width in CJK). */
+    labelSep: ': ',
     missing: 'Ne',
     cancel: 'Zrušit',
     confirm: 'Potvrdit',

@@ -11,6 +11,8 @@ export const es = {
   },
   common: {
     present: 'Sí',
+    /** Separator after a short label (full-width in CJK). */
+    labelSep: ': ',
     missing: 'No',
     cancel: 'Cancelar',
     confirm: 'Confirmar',
