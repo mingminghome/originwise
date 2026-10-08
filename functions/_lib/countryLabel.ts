@@ -95,3 +95,32 @@ export function canonicalCountry(raw: string | undefined | null): string | undef
   if (code) return code;
   return COUNTRY_NAME_PATTERNS.find((row) => row.pattern.test(s))?.label;
 }
+
+/**
+ * Short forms read only right after an explicit made-in cue ("MADE IN CN",
+ * "Country of Origin: CN", "COO: VN", "產地：TW", "Made in the UK"). Upper
+ * case only, never in free prose. DE and IT are left out on purpose
+ * ("IT company", German "DE" shop codes).
+ */
+export const MADE_IN_CODE_LABEL: Record<string, string> = {
+  CN: 'China', TW: 'Taiwan', VN: 'Vietnam', TH: 'Thailand', JP: 'Japan', KR: 'South Korea',
+  HK: 'Hong Kong', MY: 'Malaysia', PH: 'Philippines', ID: 'Indonesia', IN: 'India',
+  BD: 'Bangladesh', KH: 'Cambodia', MX: 'Mexico', TR: 'Turkey', PT: 'Portugal', PL: 'Poland',
+  CZ: 'Czech Republic', UK: 'United Kingdom', 'U.K.': 'United Kingdom', USA: 'United States',
+  'U.S.A.': 'United States', 'U.S.': 'United States', PRC: 'China', EU: 'European Union',
+};
+const ci = (w: string) => w.replace(/[a-z]/g, (c) => `[${c}${c.toUpperCase()}]`);
+const MADE_IN_CODE_CUE = [
+  `(?:${['made', 'manufactured', 'assembled', 'produced'].map(ci).join('|')})[\\s-]?${ci('in')}\\s*[:：]?`,
+  `${ci('country')}\\s+${ci('of')}\\s+${ci('origin')}\\s*[:：]?`,
+  `(?<!${ci('brand')}\\s)${ci('origin')}\\s*[:：]`,
+  `\\b${ci('coo')}\\s*[:：]`,
+  '(?:產地|产地|原產國|原產国|原産国|原产国|製造国|製造國|生產國|生産国)\\s*[:：]?',
+].join('|');
+// MY / IN / ID are also English words: "MADE IN MY KITCHEN" is no claim.
+const MADE_IN_CODE_TOKEN =
+  'U\\.K\\.|U\\.S\\.A\\.|U\\.S\\.|(?:CN|TW|VN|TH|JP|KR|HK|PH|BD|KH|MX|TR|PT|PL|CZ|UK|USA|PRC|EU)(?![A-Za-z])|(?:MY|IN|ID)(?![A-Za-z])(?![ \\t]*[A-Za-z])';
+/** Global regex: m[1] is the code (a key of MADE_IN_CODE_LABEL). */
+export function madeInCodeRegex(): RegExp {
+  return new RegExp(`(?:${MADE_IN_CODE_CUE})\\s*(?:${ci('the')}\\s+)?(${MADE_IN_CODE_TOKEN})`, 'g');
+}

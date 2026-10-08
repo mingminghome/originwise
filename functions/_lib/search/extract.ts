@@ -12,7 +12,7 @@
  */
 
 import { isSearchResultUrl } from '../sourceLine';
-import { canonicalCountry } from '../countryLabel';
+import { MADE_IN_CODE_LABEL, canonicalCountry, madeInCodeRegex } from '../countryLabel';
 import { designMentions, quoteBacksCountry, stripDesignPhrases } from '../designOrigin';
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
@@ -969,7 +969,7 @@ export function mapSearchHttpError(status: number, body: string): string {
 
 /** A quote must look like a COO statement (Made in / 原産国 / 〜製 …). */
 const COO_CUE =
-  /made\s*in|manufactured\s*in|assembled\s*in|country\s*of\s*origin|origin|原産|原產|生産|生產|製|産地|產地/i;
+  /made\s*in|manufactured\s*in|assembled\s*in|country\s*of\s*origin|origin|\bcoo\b|原産|原產|生産|生產|製|産地|產地/i;
 
 /** Notes that look like a made-in claim are dropped (they skipped the JAN check). */
 const NOTE_COO_CUE =
@@ -1000,11 +1000,6 @@ export type CooClaim = {
   sourceType: 'retailer' | 'manufacturer' | 'label';
 };
 
-const MADE_IN_SHORT: Record<string, string> = {
-  'U.K.': 'United Kingdom', UK: 'United Kingdom', 'U.S.A.': 'United States', 'U.S.': 'United States',
-  USA: 'United States', PRC: 'China', EU: 'European Union',
-};
-
 /** Deterministic fallback when the extraction model is unavailable. */
 export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
   const out: CooClaim[] = [];
@@ -1012,15 +1007,24 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
     // Design / brand wording is blanked first ("Designed in Germany, made in China" → China).
     const t = stripDesignPhrases(nfkc(p.text));
     const patterns: RegExp[] = [
-      /\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|[Cc]ountry of [Oo]rigin\s*[:：]?)\s*(U\.K\.|U\.S\.A\.|U\.S\.|(?:UK|USA|PRC|EU)(?![A-Za-z])|[A-Z][A-Za-z]{2,}(?: [A-Z][a-z]+)?)/g,
+      /\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|[Cc]ountry of [Oo]rigin\s*[:：]?)\s*(?:[Tt]he\s+|THE\s+)?([A-Z][A-Za-z]{2,}(?: [A-Z][a-z]+)?)/g,
       /(?:原産国|生産国|製造国|原産地|生産地|原產地|原產國|生產國|生產地|產地|製造地)(?:名)?\s*[:：・／/]?\s*([^\s:：、。,，|/／()（）<>[\]]{1,12})/g,
+      // Upper-case short forms only right after an explicit cue ("MADE IN CN",
+      // "COO: VN", "Made in the UK"); never IT / DE / my, never in prose.
+      madeInCodeRegex(),
     ];
+    const seen = new Set<string>();
     for (const re of patterns) {
       for (const m of t.matchAll(re)) {
         const raw = (m[1] || '').trim();
-        // Upper-case short forms only right after the cue ("Made in UK"); never IT / DE / my.
-        const country = MADE_IN_SHORT[raw] ?? raw;
+        const country = MADE_IN_CODE_LABEL[raw] ?? raw;
         if (!country || /^(不明|なし|-|—|unknown)$/i.test(country)) continue;
+        // A bare code the table does not list (產地：DE / IT) is no claim.
+        if (/^[A-Za-z]{2}$/.test(country)) continue;
+        // "Made in USA" read by name and by code: one claim per page and country.
+        const key = canonicalCountry(country) ?? country.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
         out.push({
           country,
           quote: m[0].trim().slice(0, 80),

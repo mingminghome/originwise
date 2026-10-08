@@ -287,6 +287,8 @@ function matchCountryLabel(token: string): string | undefined {
  * componentsOrigin field, a country list the model writes ("CN / TH / VN"),
  * reads codes, and only as whole list items.
  */
+const LOWER_PART_CODES = new Set(['cn', 'tw', 'vn', 'th', 'jp', 'kr', 'hk']);
+
 function extractCountryLabelsFromText(blob: string, opts: { codes?: boolean } = {}): string[] {
   if (!blob || !blob.trim()) return [];
   const found: string[] = [];
@@ -308,6 +310,14 @@ function extractCountryLabelsFromText(blob: string, opts: { codes?: boolean } = 
       if (m[1] === 'IT') continue;
       const fromCode = COUNTRY_CODE_TO_LABEL[m[1].toLowerCase()];
       if (fromCode) add(fromCode);
+    }
+  }
+  // Lower case only when the whole field is a code list ("cn / th", "vn, cn"):
+  // 2-letter items split by / , ; and nothing else. Even then only these
+  // codes; in / id / it / my / ph / us … are ordinary words in lower case.
+  if (/^\s*[a-z]{2}(?:\s*[/,;]\s*[a-z]{2})*\s*$/.test(blob)) {
+    for (const code of blob.split(/[/,;]/).map((c) => c.trim())) {
+      if (LOWER_PART_CODES.has(code)) add(COUNTRY_CODE_TO_LABEL[code]!);
     }
   }
   return found;

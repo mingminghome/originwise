@@ -9,6 +9,7 @@
  * stamp, clear madeIn and keep layered candidates — do not fake a stamp.
  */
 
+import { MADE_IN_CODE_LABEL, madeInCodeRegex } from './countryLabel';
 import { stripDesignPhrases } from './designOrigin';
 import { normalizeRegion, type RegionCode } from './regions';
 import {
@@ -68,26 +69,25 @@ const CJK_COUNTRY_TOKEN =
 
 /** Suffix form on labels: 「日本製」「中国工場製」「タイ製」. */
 const COO_LINE = new RegExp(
-  `(?:made[\\s-]?in|manufactured[\\s-]?in|produced[\\s-]?in|assembled[\\s-]?in|country\\s+of\\s+origin|country\\s+of\\s+publication|coo|製造国|製造國|原産国名?|原產國|产地|產地|生产地|生產地|生産(?:[・･/／]組み?立て?)?|組み?立て?|組裝|组装)\\s*[:：]?\\s*(${CJK_COUNTRY_TOKEN}|${COUNTRY_TOKEN})`,
+  `(?:(?:製造|制造|生產|生产|生産|組裝|组装|產|产|製|制)(?:於|于|在)|made[\\s-]?in|manufactured[\\s-]?in|produced[\\s-]?in|assembled[\\s-]?in|country\\s+of\\s+origin|country\\s+of\\s+publication|coo|製造国|製造國|原産国名?|原產國|产地|產地|生产地|生產地|生産(?:[・･/／]組み?立て?)?|組み?立て?|組裝|组装)\\s*[:：]?\\s*(?:the\\s+)?(${CJK_COUNTRY_TOKEN}|${COUNTRY_TOKEN})`,
   'gi'
 );
 
-/** 「中國製造」「台灣製」「中國生產」「日本産」: country, then a made word. */
+/**
+ * 「中國製造」「台灣製」「中國生產」「日本産」「越南工廠生產」「中國組裝」: country,
+ * then a made word. Not when 於 / 于 / 在 follows: 「德國製造於中國」 is the verb
+ * form 製造於 X, so X is read (COO_LINE), not 德國.
+ */
 const COO_SUFFIX = new RegExp(
-  `(${CJK_COUNTRY_TOKEN}|德國|德国|ドイツ|法國|法国|フランス|義大利|意大利|イタリア|英國|英国|イギリス|美國|美国|アメリカ)(?:工場|工厂|廠|厂)?(?:製|制造|生產|生产|生産|產(?![品業])|产(?![品业])|産(?![品業]))`,
+  `(${CJK_COUNTRY_TOKEN}|德國|德国|ドイツ|法國|法国|フランス|義大利|意大利|イタリア|英國|英国|イギリス|美國|美国|アメリカ)(?:工場|工廠|工厂|廠|厂)?(?:製造|制造|製|生產|生产|生産|組裝|组装|產(?![品業])|产(?![品业])|産(?![品業]))(?![造]?\\s*[於于在])`,
   'g'
 );
 
 /**
- * Upper-case short forms count only right after a made-in cue ("Made in UK",
- * "MADE IN U.S.A."); other 2-letter codes (IT, DE, my …) never do.
+ * Upper-case short forms count only right after an explicit made-in cue
+ * ("MADE IN CN", "COO: VN", "Made in the UK"); DE / IT / my … never do.
  */
-const MADE_IN_CODE =
-  /(?:made|Made|MADE|manufactured|Manufactured|MANUFACTURED|assembled|Assembled|ASSEMBLED|produced|Produced|PRODUCED)[\s-]?(?:in|In|IN)\s*[:：]?\s*(U\.K\.|U\.S\.A\.|U\.S\.|UK|USA|PRC|EU)(?![A-Za-z])/g;
-const CODE_LABEL: Record<string, string> = {
-  'U.K.': 'United Kingdom', UK: 'United Kingdom', 'U.S.A.': 'United States', 'U.S.': 'United States',
-  USA: 'United States', PRC: 'China', EU: 'European Union',
-};
+const MADE_IN_CODE = madeInCodeRegex();
 
 /** Same country in English or CJK ("Japan" / 日本 / タイ vs Thailand). */
 const CANON_COUNTRY: Record<string, string> = {
@@ -161,7 +161,7 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
   }
   MADE_IN_CODE.lastIndex = 0;
   while ((m = MADE_IN_CODE.exec(raw)) !== null) {
-    const label = CODE_LABEL[m[1]]!;
+    const label = MADE_IN_CODE_LABEL[m[1]]!;
     // "Made in USA" / "Made in PRC" already read by name above: one claim.
     if (out.some((c) => canonCountry(c.label) === canonCountry(label))) continue;
     const region = normalizeRegion(label);

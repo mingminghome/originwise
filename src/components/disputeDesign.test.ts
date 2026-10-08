@@ -224,6 +224,90 @@ describe('label photo: CJK design wording never eats the made-in country (95% fr
   });
 });
 
+describe('label photo: 製造於 X after a design phrase reads X; the design country stays 附加資訊', () => {
+  for (const [ocr, madeIn, made, design] of [
+    ['設計於德國製造於中國', 'China', '中國', '德國'],
+    ['設計於德國 製造於中國', 'China', '中國', '德國'],
+    ['德國設計 生產於越南', 'Vietnam', '越南', '德國'],
+    ['設計：德國 產地：中國', 'China', '中國', '德國'],
+  ] as const) {
+    it(`「${ocr}」 → ${made} 95% + 附加資訊 ${design}`, () => {
+      const r = runPages({ madeIn, ocrText: `CYBEX Melio\n${ocr}`, pages: [] });
+      const v = buildMadeInView(r);
+      assert.equal(v.state, 'confirmed', JSON.stringify(v));
+      assert.equal(v.basis, 'label');
+      assert.equal(v.country, madeIn);
+      assert.equal(Math.round((v.confidence ?? 0) * 100), 95);
+      assert.ok(!v.candidates.some((c) => /germany|德國/i.test(c.label)), JSON.stringify(v.candidates));
+      const t = text(r);
+      assert.ok(t.includes(made) && t.includes('95%'), t);
+      assert.ok(t.includes(zh('check.rc.designInfo', { country: design })), t);
+      assert.ok(!t.includes('有提及') && !t.includes('爭議'), t);
+    });
+  }
+  it('「設計於德國製造於中國」 with the AI saying Germany never gets 德國 · 依包裝標示 · 95%', () => {
+    const r = runPages({ madeIn: 'Germany', ocrText: 'CYBEX Melio\n設計於德國製造於中國', pages: [] });
+    const v = buildMadeInView(r);
+    assert.ok(!(v.country === 'Germany' && v.basis === 'label'), JSON.stringify(v));
+    assert.ok(!/德國 · 依包裝標示/.test(text(r)));
+  });
+  for (const ocr of ['設計於德國 德國製造', '德國設計 德國製造']) {
+    it(`「${ocr}」 → 德國 95% from the label (the second 德國 is the made-in)`, () => {
+      const r = runPages({ madeIn: 'Germany', ocrText: `CYBEX Melio\n${ocr}`, pages: [] });
+      const v = buildMadeInView(r);
+      assert.equal(v.state, 'confirmed', JSON.stringify(v));
+      assert.equal(v.basis, 'label');
+      assert.equal(v.country, 'Germany');
+      assert.equal(Math.round((v.confidence ?? 0) * 100), 95);
+    });
+  }
+  it('設計：德國 in the notes gives no 「德國 · 有提及」 row, only 附加資訊', () => {
+    const r = runPages({ madeIn: 'China', ocrText: 'CYBEX Melio\n產地：中國', notes: ['設計：德國 產地：中國'], pages: [] });
+    const t = text(r);
+    assert.ok(!t.includes('有提及'), t);
+    assert.ok(t.includes(DESIGN_ZH), t);
+  });
+});
+
+describe('upper-case codes after a made-in cue: 95% from a label, 較可能 from one page', () => {
+  for (const [code, madeIn, zhName] of [
+    ['Country of Origin: CN', 'China', '中國'],
+    ['COO: CN', 'China', '中國'],
+    ['MADE IN CN', 'China', '中國'],
+    ['MADE IN JP', 'Japan', '日本'],
+    ['MADE IN TW', 'Taiwan', '台灣'],
+    ['Made in VN', 'Vietnam', '越南'],
+  ] as const) {
+    it(`label "${code}" → ${zhName} 95%`, () => {
+      const r = runPages({ madeIn, ocrText: `CYBEX Melio\n${code}`, pages: [] });
+      const v = buildMadeInView(r);
+      assert.equal(v.state, 'confirmed', JSON.stringify(v));
+      assert.equal(v.basis, 'label');
+      assert.equal(Math.round((v.confidence ?? 0) * 100), 95);
+      assert.ok(text(r).includes(zhName), text(r));
+    });
+    it(`page "${code}" → ${zhName} 較可能`, () => {
+      const r = runPages({ pages: [page(URLS.mami, 'Cybex Melio 嬰兒推車 | MamiLove', `商品規格\n${code}\n重量：5.9 kg`)] });
+      const coo = r.meta.searchCoo ?? [];
+      assert.equal(coo.length, 1, JSON.stringify(coo));
+      assert.equal(coo[0]!.status, 'likely');
+      assert.equal(coo[0]!.country, madeIn);
+      assert.ok(text(r).includes(zhName), text(r));
+      // Same card as the full country name on that page (one page → likely, as on de6dba0).
+      const full = runPages({ pages: [page(URLS.mami, 'Cybex Melio 嬰兒推車 | MamiLove', `商品規格\nMade in ${madeIn}\n重量：5.9 kg`)] });
+      assert.equal(text(r), text(full));
+    });
+  }
+  it('Made in IT / Made in DE / IT company / made in my kitchen stay rejected on both paths', () => {
+    for (const t of ['Made in IT', 'Made in DE', 'IT company', 'made in my kitchen']) {
+      const label = buildMadeInView(runPages({ madeIn: 'Italy', ocrText: `CYBEX Melio\n${t}`, pages: [] }));
+      assert.notEqual(label.basis, 'label', t);
+      const pg = runPages({ pages: [page(URLS.mami, 'Cybex Melio 嬰兒推車 | MamiLove', t)] });
+      assert.deepEqual(pg.meta.searchCoo ?? [], [], t);
+    }
+  });
+});
+
 describe('dispute / design wording in all 16 locales', () => {
   const KEYS = ['dispute', 'disputeSideExact', 'disputeSideMixed', 'disputeSidePages', 'designInfo', 'brandInfo', 'infoSource'];
   it('every locale has its own wording, soft, never 非確認', () => {

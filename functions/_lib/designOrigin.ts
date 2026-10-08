@@ -85,6 +85,9 @@ const FORWARD_CUES = new RegExp(
     '(?:總部|总部)(?:設於|设于|位於|位于|在)',
     '(?:創立|创立|成立|創辦|创办|創建|创建)(?:於|于)',
     'デザイン(?:は|：|:)',
+    // Label fields: 「設計：德國」「設計地：德國」「研發：德國」, "Design: Germany".
+    '(?:設計|设计|研發|研发)(?:地|國|国)?\\s*[:：]',
+    '\\bdesign(?:ed)?\\s*[:：]',
   ].join('|'),
   'gi'
 );
@@ -104,15 +107,7 @@ const PREFIX_CUES = new RegExp(
  */
 const PHRASE_HARD_END =
   /[;；。！!？?\n|]|\.\s|\.$|\bbut\b|\bwhile\b|\bmade\b|\bmanufactured\b|\bassembled\b|\bproduced\b|\bcountry\s+of\s+origin\b|但|製造|制造|產地|产地|組裝|组装|生產|生产|原產|原产|原産|生産/i;
-/**
- * A country that starts a made-in clause: 「中國製造」「台灣製」「中國生產」,
- * "Germany-made". The phrase ends before it, so it is never eaten
- * (「設計於德國中國製造」 → design 德國, made-in 中國).
- */
-const MADE_COUNTRY = new RegExp(
-  `(?:${CJK_COUNTRY})\\s*(?:工場|工厂|廠|厂)?(?:製|制造|生產|生产|生産|產(?![品業])|产(?![品业]))|\\b(?:${EN_COUNTRY})[\\s-]+made\\b(?!\\s+in\\b)`,
-  'i'
-);
+
 /** A clause break: where a phrase with no country in it ends. */
 const PHRASE_SOFT_END = /[,，、（(]/;
 const PHRASE_MAX = 80;
@@ -129,12 +124,13 @@ function spans(text: string): Span[] {
     const from = start + m[0].length;
     let rest = text.slice(from, from + PHRASE_MAX);
     const hard = PHRASE_HARD_END.exec(rest);
-    const made = MADE_COUNTRY.exec(rest);
-    const cut = Math.min(hard ? hard.index : rest.length, made ? made.index : rest.length);
-    rest = rest.slice(0, cut);
-    // "Founded in 1947 in Bayreuth, Germany, made in China": the phrase runs
-    // past a comma to the first country and stops there; with no country it
-    // ends at the first clause break.
+    if (hard) rest = rest.slice(0, hard.index);
+    // The first country after the cue is the design / brand country and the
+    // phrase ends right after it, so a later country is never eaten:
+    // 「設計於德國中國製造」 → 德國 | 中國製造; 「設計於德國製造於中國」 → 德國 | 製造於中國;
+    // 「設計於德國 德國製造」 → 德國 | 德國製造. "Founded in 1947 in Bayreuth,
+    // Germany, made in China" runs past a comma to Germany; with no country
+    // the phrase ends at the first clause break.
     const place = firstCountry(rest);
     const soft = PHRASE_SOFT_END.exec(rest);
     const end = place ? place.end : soft ? soft.index : rest.length;
