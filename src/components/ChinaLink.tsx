@@ -142,14 +142,27 @@ export const MADE_IN_REASONS: ReadonlySet<string> = new Set([
   'component_cn',
 ]);
 
-/** Reason codes for the China card + whether made-in reasons were held back. */
-export function chinaCardReasons(codes: readonly string[] | undefined): {
+/**
+ * Reason codes for the China card + whether made-in reasons were held back.
+ * hqFolded (see brandHqFolded): the China HQ is the parent's, so 「公司總部位於
+ * 中國大陸」 (hq_cn) becomes the parent line (parent_majority_cn). Older
+ * cached answers still carry hq_cn for these; the server no longer emits it.
+ */
+export function chinaCardReasons(
+  codes: readonly string[] | undefined,
+  opts: { hqFolded?: boolean } = {}
+): {
   shown: string[];
   madeInHidden: boolean;
 } {
   const all = codes ?? [];
-  const shown = all.filter((c) => !MADE_IN_REASONS.has(c));
-  return { shown, madeInHidden: shown.length !== all.length };
+  let shown = all.filter((c) => !MADE_IN_REASONS.has(c));
+  if (opts.hqFolded && shown.includes('hq_cn')) {
+    shown = shown.flatMap((c) =>
+      c !== 'hq_cn' ? [c] : shown.includes('parent_majority_cn') ? [] : ['parent_majority_cn']
+    );
+  }
+  return { shown, madeInHidden: all.some((c) => MADE_IN_REASONS.has(c)) };
 }
 
 /**

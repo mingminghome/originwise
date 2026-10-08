@@ -1,5 +1,5 @@
 import type { CheckResult } from '../core/types';
-import { ChinaLink, chinaCardReasons, companyView, displayTier } from './ChinaLink';
+import { brandHqFolded, ChinaLink, chinaCardReasons, companyView, displayTier } from './ChinaLink';
 import type { TFunction } from '../core/i18n';
 import { formatTierReason } from '../core/i18n/tierReasons';
 import { AlternativeCards } from './AlternativeCards';
@@ -137,7 +137,7 @@ export function ResultPanel({
       .filter(Boolean) ?? [];
   const searchName = searchProviderLabel(result.meta?.searchProvider, t);
   const shown = displayTier(result);
-  const reasons = chinaCardReasons(result.tierReasons);
+  const reasons = chinaCardReasons(result.tierReasons, { hqFolded: brandHqFolded(result) });
   const title = resultTitle(result, query);
   const searchRequests = result.meta?.searchRequests;
 

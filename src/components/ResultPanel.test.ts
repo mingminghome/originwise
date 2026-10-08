@@ -41,6 +41,7 @@ describe('ResultPanel (real Cybex payload, zh-Hant)', () => {
   it('總部 is not a confirmed China HQ for the brand; parent note shown', () => {
     const html = render(CYBEX.query);
     assert.ok(html.includes('回答中的中國總部屬於母公司'));
+    assert.doesNotMatch(html, /公司總部位於[：:]?\s*中國/, 'brand HQ claimed as China');
   });
 
   it('headline is the query spelling; model name as 辨識為', () => {

@@ -232,6 +232,20 @@ describe('China card reasons (no made-in lines)', () => {
     assert.deepEqual(chinaCardReasons(['hq_cn']), { shown: ['hq_cn'], madeInHidden: false });
   });
 
+  it('folded parent HQ: hq_cn becomes the parent line, never 「公司總部位於中國」', () => {
+    assert.deepEqual(
+      chinaCardReasons(['manufacturer_cn', 'hq_cn', 'parent_majority_cn'], { hqFolded: true }).shown,
+      ['parent_majority_cn']
+    );
+    assert.deepEqual(chinaCardReasons(['hq_cn'], { hqFolded: true }).shown, ['parent_majority_cn']);
+    // Real Cybex payload (stored before the server fix still says hq_cn).
+    const r = CYBEX_LIVE.result;
+    const shown = chinaCardReasons(r.tierReasons, { hqFolded: brandHqFolded(r) }).shown;
+    assert.ok(r.tierReasons?.includes('hq_cn'));
+    assert.ok(!shown.includes('hq_cn'));
+    assert.ok(shown.includes('parent_majority_cn'));
+  });
+
   it('outside-China places list company places only, never the made-in', () => {
     const zh = createT('zh-Hant');
     const res: CheckResult = {
