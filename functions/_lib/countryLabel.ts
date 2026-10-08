@@ -5,13 +5,13 @@
 
 /** Name/CJK patterns for whole-string scan (avoid short codes that match English words). */
 export const COUNTRY_NAME_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
-  { label: 'China', pattern: /\bchina\b|\bprc\b|中華人民共和國|中华人民共和国|中國大陸|中国大陆|中國|中国/i },
+  { label: 'China', pattern: /\bchina\b|\bprc\b|\bp\.r\.c\b|中華人民共和國|中华人民共和国|中國大陸|中国大陆|中國|中国/i },
   { label: 'Hong Kong', pattern: /hong\s*kong|香港/i },
   { label: 'Taiwan', pattern: /\btaiwan\b|台灣|台湾|臺灣/i },
   { label: 'Macau', pattern: /\bmacau\b|\bmacao\b|澳門|澳门/i },
   { label: 'Japan', pattern: /\bjapan\b|日本/i },
   { label: 'South Korea', pattern: /south\s*korea|\bkorea\b|韓國|韩国/i },
-  { label: 'Vietnam', pattern: /\bvietnam\b|越南/i },
+  { label: 'Vietnam', pattern: /\bviet\s?nam\b|越南/i },
   { label: 'Thailand', pattern: /\bthailand\b|泰國|泰国|タイ/i },
   { label: 'Indonesia', pattern: /\bindonesia\b|印尼|印度尼西亞/i },
   { label: 'Malaysia', pattern: /\bmalaysia\b|馬來西亞|马来西亚/i },
@@ -107,20 +107,39 @@ export const MADE_IN_CODE_LABEL: Record<string, string> = {
   HK: 'Hong Kong', MY: 'Malaysia', PH: 'Philippines', ID: 'Indonesia', IN: 'India',
   BD: 'Bangladesh', KH: 'Cambodia', MX: 'Mexico', TR: 'Turkey', PT: 'Portugal', PL: 'Poland',
   CZ: 'Czech Republic', UK: 'United Kingdom', 'U.K.': 'United Kingdom', USA: 'United States',
-  'U.S.A.': 'United States', 'U.S.': 'United States', PRC: 'China', EU: 'European Union',
+  'U.S.A.': 'United States', 'U.S.': 'United States', PRC: 'China', 'P.R.C.': 'China', 'P.R.C': 'China',
+  EU: 'European Union',
 };
 const ci = (w: string) => w.replace(/[a-z]/g, (c) => `[${c}${c.toUpperCase()}]`);
-const MADE_IN_CODE_CUE = [
-  `(?:${['made', 'manufactured', 'assembled', 'produced'].map(ci).join('|')})[\\s-]?${ci('in')}\\s*[:：]?`,
+const MADE_IN_CUE = `(?:${['made', 'manufactured', 'assembled', 'produced'].map(ci).join('|')})[\\s-]?${ci('in')}\\s*[:：]?`;
+/** Cues that do not end in "in" (IN after them can be India). */
+const FIELD_CODE_CUE = [
   `${ci('country')}\\s+${ci('of')}\\s+${ci('origin')}\\s*[:：]?`,
   `(?<!${ci('brand')}\\s)${ci('origin')}\\s*[:：]`,
   `\\b${ci('coo')}\\s*[:：]`,
   '(?:產地|产地|原產國|原產国|原産国|原产国|製造国|製造國|生產國|生産国)\\s*[:：]?',
 ].join('|');
-// MY / IN / ID are also English words: "MADE IN MY KITCHEN" is no claim.
+// MY / ID are also English words: "MADE IN MY KITCHEN" is no claim.
 const MADE_IN_CODE_TOKEN =
-  'U\\.K\\.|U\\.S\\.A\\.|U\\.S\\.|(?:CN|TW|VN|TH|JP|KR|HK|PH|BD|KH|MX|TR|PT|PL|CZ|UK|USA|PRC|EU)(?![A-Za-z])|(?:MY|IN|ID)(?![A-Za-z])(?![ \\t]*[A-Za-z])';
-/** Global regex: m[1] is the code (a key of MADE_IN_CODE_LABEL). */
-export function madeInCodeRegex(): RegExp {
-  return new RegExp(`(?:${MADE_IN_CODE_CUE})\\s*(?:${ci('the')}\\s+)?(${MADE_IN_CODE_TOKEN})`, 'g');
+  'U\\.K\\.|U\\.S\\.A\\.|U\\.S\\.|P\\.R\\.C\\.?|(?:CN|TW|VN|TH|JP|KR|HK|PH|BD|KH|MX|TR|PT|PL|CZ|UK|USA|PRC|EU)(?![A-Za-z])|(?:MY|ID)(?![A-Za-z])(?![ \\t]*[A-Za-z])';
+// IN (India) only after a field cue, as the last token or before punctuation;
+// "MADE IN IN" is ambiguous and never read.
+const IN_TOKEN = 'IN(?=[ \\t]*(?:$|[\\r\\n.,;:!?)）\\]/|]))';
+
+/**
+ * Upper-case short forms right after an explicit made-in cue: "MADE IN CN",
+ * "Country of Origin: CN", "COO: VN", "產地：TW", "Made in the UK",
+ * "MADE IN P.R.C.". Returns the code (a key of MADE_IN_CODE_LABEL).
+ */
+export function madeInCodeMatches(text: string): Array<{ code: string; index: number; length: number }> {
+  const re = new RegExp(
+    `(?:${MADE_IN_CUE}|${FIELD_CODE_CUE})\\s*(?:${ci('the')}\\s+)?(${MADE_IN_CODE_TOKEN})|(?:${FIELD_CODE_CUE})\\s*(${IN_TOKEN})`,
+    'gm'
+  );
+  const out: Array<{ code: string; index: number; length: number }> = [];
+  for (const m of String(text ?? '').matchAll(re)) {
+    const code = m[1] ?? m[2];
+    if (code && MADE_IN_CODE_LABEL[code]) out.push({ code, index: m.index ?? 0, length: m[0].length });
+  }
+  return out;
 }

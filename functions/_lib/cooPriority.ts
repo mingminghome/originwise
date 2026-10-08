@@ -9,7 +9,7 @@
  * stamp, clear madeIn and keep layered candidates — do not fake a stamp.
  */
 
-import { MADE_IN_CODE_LABEL, madeInCodeRegex } from './countryLabel';
+import { MADE_IN_CODE_LABEL, madeInCodeMatches } from './countryLabel';
 import { stripDesignPhrases } from './designOrigin';
 import { normalizeRegion, type RegionCode } from './regions';
 import {
@@ -61,7 +61,7 @@ const OWNERSHIP_CONTEXT =
  * Keep generic: English + common CJK forms. No product hardcodes.
  */
 const COUNTRY_TOKEN =
-  '(?:mainland\\s+china|people.?s\\s+republic\\s+of\\s+china|hong\\s+kong|macau|macao|taiwan|thailand|vietnam|indonesia|malaysia|philippines|india|japan|south\\s+korea|korea|china|prc|germany|france|italy|spain|united\\s+kingdom|sweden|switzerland|poland|czech\\s+republic|united\\s+states|usa|mexico|美國|美国|日本|韓國|韩国|泰國|泰国|越南|印尼|馬來西亞|马来西亚|菲律賓|菲律宾|印度|中國大陸|中国大陆|中國|中国|台灣|台湾|香港|澳門|澳门|德國|德国|法國|法国|義大利|意大利|英國|英国)(?![A-Za-z])';
+  '(?:mainland\\s+china|viet\\s+nam|netherlands|holland|portugal|turkey|cambodia|bangladesh|sri\\s+lanka|canada|australia|brazil|austria|belgium|denmark|hungary|romania|people.?s\\s+republic\\s+of\\s+china|hong\\s+kong|macau|macao|taiwan|thailand|vietnam|indonesia|malaysia|philippines|india|japan|south\\s+korea|korea|china|prc|germany|france|italy|spain|united\\s+kingdom|great\\s+britain|sweden|switzerland|poland|czech\\s+republic|united\\s+states|usa|mexico|美國|美国|日本|韓國|韩国|泰國|泰国|越南|印尼|馬來西亞|马来西亚|菲律賓|菲律宾|印度|中國大陸|中国大陆|中國|中国|台灣|台湾|香港|澳門|澳门|德國|德国|法國|法国|義大利|意大利|英國|英国)(?![A-Za-z])';
 
 /** CJK country names as written on Japanese / Chinese packaging. */
 const CJK_COUNTRY_TOKEN =
@@ -69,25 +69,25 @@ const CJK_COUNTRY_TOKEN =
 
 /** Suffix form on labels: 「日本製」「中国工場製」「タイ製」. */
 const COO_LINE = new RegExp(
-  `(?:(?:製造|制造|生產|生产|生産|組裝|组装|產|产|製|制)(?:於|于|在)|made[\\s-]?in|manufactured[\\s-]?in|produced[\\s-]?in|assembled[\\s-]?in|country\\s+of\\s+origin|country\\s+of\\s+publication|coo|製造国|製造國|原産国名?|原產國|产地|產地|生产地|生產地|生産(?:[・･/／]組み?立て?)?|組み?立て?|組裝|组装)\\s*[:：]?\\s*(?:the\\s+)?(${CJK_COUNTRY_TOKEN}|${COUNTRY_TOKEN})`,
+  `(?:(?:製造|制造|生產|生产|生産|組裝|组装|產|产|製|制)(?:於|于|在)|(?:製造地|生產地|生产地|製造|制造|生產|生产|生産)(?=\\s*[:：])|(?<!brand\\s)origin(?=\\s*[:：])|made[\\s-]?in|manufactured[\\s-]?in|produced[\\s-]?in|assembled[\\s-]?in|country\\s+of\\s+origin|country\\s+of\\s+publication|coo|製造国|製造國|原産国名?|原產國|产地|產地|生产地|生產地|生産(?:[・･/／]組み?立て?)?|組み?立て?|組裝|组装)\\s*[:：]?\\s*(?:the\\s+)?(${CJK_COUNTRY_TOKEN}|${COUNTRY_TOKEN})`,
   'gi'
 );
 
+const SUFFIX_COUNTRY = `(?:${CJK_COUNTRY_TOKEN}|德國|德国|ドイツ|法國|法国|フランス|義大利|意大利|イタリア|英國|英国|イギリス|美國|美国|アメリカ)`;
+
 /**
  * 「中國製造」「台灣製」「中國生產」「日本産」「越南工廠生產」「中國組裝」: country,
- * then a made word. Not when 於 / 于 / 在 follows: 「德國製造於中國」 is the verb
- * form 製造於 X, so X is read (COO_LINE), not 德國.
+ * then a made word. Not 製造商 / 生產商 / 製造廠商 (a manufacturer: brand info;
+ * 「德國製造商品」 is ambiguous and also skipped, fail-safe). Not when 於 / 于 /
+ * 在 plus a country follows: 「德國製造於中國」 is the verb form 製造於 X, so X
+ * is read (COO_LINE). 「日本製 在庫あり」「中國製造於2023年」 still read.
  */
 const COO_SUFFIX = new RegExp(
-  `(${CJK_COUNTRY_TOKEN}|德國|德国|ドイツ|法國|法国|フランス|義大利|意大利|イタリア|英國|英国|イギリス|美國|美国|アメリカ)(?:工場|工廠|工厂|廠|厂)?(?:製造|制造|製|生產|生产|生産|組裝|组装|產(?![品業])|产(?![品业])|産(?![品業]))(?![造]?\\s*[於于在])`,
+  `(${CJK_COUNTRY_TOKEN}|德國|德国|ドイツ|法國|法国|フランス|義大利|意大利|イタリア|英國|英国|イギリス|美國|美国|アメリカ)(?:工場|工廠|工厂|廠|厂)?(?:製造|制造|製|生產|生产|生産|組裝|组装|產(?![品業])|产(?![品业])|産(?![品業]))(?!造?\\s*[於于在]\\s*${SUFFIX_COUNTRY})(?!造?(?:商|廠商|厂商))`,
   'g'
 );
 
-/**
- * Upper-case short forms count only right after an explicit made-in cue
- * ("MADE IN CN", "COO: VN", "Made in the UK"); DE / IT / my … never do.
- */
-const MADE_IN_CODE = madeInCodeRegex();
+
 
 /** Same country in English or CJK ("Japan" / 日本 / タイ vs Thailand). */
 const CANON_COUNTRY: Record<string, string> = {
@@ -159,14 +159,15 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     seen.add(key);
     out.push({ label, region, source });
   }
-  MADE_IN_CODE.lastIndex = 0;
-  while ((m = MADE_IN_CODE.exec(raw)) !== null) {
-    const label = MADE_IN_CODE_LABEL[m[1]]!;
+  // Upper-case short forms only right after an explicit made-in cue
+  // ("MADE IN CN", "COO: VN", "Made in the UK"); DE / IT / my … never.
+  for (const c of madeInCodeMatches(raw)) {
+    const label = MADE_IN_CODE_LABEL[c.code]!;
     // "Made in USA" / "Made in PRC" already read by name above: one claim.
     if (out.some((c) => canonCountry(c.label) === canonCountry(label))) continue;
     const region = normalizeRegion(label);
-    const start = Math.max(0, m.index - 80);
-    const end = Math.min(raw.length, m.index + m[0].length + 80);
+    const start = Math.max(0, c.index - 80);
+    const end = Math.min(raw.length, c.index + c.length + 80);
     const source = classifySource(raw.slice(start, end));
     const key = `${source}:${region}:${label.toLowerCase()}`;
     if (seen.has(key)) continue;
@@ -187,6 +188,20 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     out.push({ label, region, source });
   }
   return out;
+}
+
+const VERB_FORM_MAKER = new RegExp(
+  `${SUFFIX_COUNTRY}(?=(?:製造|制造|製|制|生產|生产|生産|組裝|组装)\\s*[於于在]\\s*${SUFFIX_COUNTRY})`,
+  'g'
+);
+
+/**
+ * Blank the country before a verb-form made-in (「德國製造於中國」 → 「  製造於中國」):
+ * only the country after 於 / 于 / 在 is the made-in, so a note never lists the
+ * first one as a mention. Same length, so offsets stay.
+ */
+export function blankVerbFormMakers(text: string): string {
+  return String(text ?? '').replace(VERB_FORM_MAKER, (m) => ' '.repeat(m.length));
 }
 
 export function bestCooClaim(

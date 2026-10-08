@@ -64,6 +64,12 @@ const CJK_COUNTRIES: Record<string, string> = {
   美国: 'United States', アメリカ: 'United States', 加州: 'United States', 韓國: 'South Korea',
   韩国: 'South Korea', 韓国: 'South Korea', 中國: 'China', 中国: 'China', 台灣: 'Taiwan', 台湾: 'Taiwan',
   臺灣: 'Taiwan', 澳洲: 'Australia', 加拿大: 'Canada', 以色列: 'Israel',
+  // Factory countries: so 「生產於越南」 is seen as the verb form with a country.
+  中國大陸: 'China', 中国大陆: 'China', 越南: 'Vietnam', ベトナム: 'Vietnam', 泰國: 'Thailand',
+  泰国: 'Thailand', 印尼: 'Indonesia', 印度尼西亞: 'Indonesia', インドネシア: 'Indonesia',
+  馬來西亞: 'Malaysia', 马来西亚: 'Malaysia', マレーシア: 'Malaysia', 菲律賓: 'Philippines',
+  菲律宾: 'Philippines', 印度: 'India', インド: 'India', 香港: 'Hong Kong', 柬埔寨: 'Cambodia',
+  墨西哥: 'Mexico', 波蘭: 'Poland', 波兰: 'Poland', 葡萄牙: 'Portugal', 土耳其: 'Turkey',
 };
 const CJK_COUNTRY = Object.keys(CJK_COUNTRIES)
   .sort((a, b) => b.length - a.length)
@@ -96,7 +102,7 @@ const FORWARD_CUES = new RegExp(
 const PREFIX_CUES = new RegExp(
   [
     `\\b(?:${EN_COUNTRY})[\\s-]+(?:engineering|engineered|design|designed|designs|brand|brands|company|technology|heritage|developed|innovation|r\\s*&\\s*d)\\b`,
-    `(?:${CJK_COUNTRY})(?:的)?(?:設計|设计|研發|研发|工程|工藝|工艺|技術|技术|品牌|廠牌|厂牌|廠商|厂商|公司|企業|企业|血統|血统|デザイン|ブランド|メーカー|發源|发源)`,
+    `(?:${CJK_COUNTRY})(?:的)?(?:設計|设计|研發|研发|工程|工藝|工艺|技術|技术|品牌|廠牌|厂牌|製造廠商|制造厂商|生產廠商|生产厂商|製造商|制造商|生產商|生产商|廠商|厂商|公司|企業|企业|血統|血统|デザイン|ブランド|メーカー|發源|发源)`,
   ].join('|'),
   'gi'
 );
@@ -106,15 +112,33 @@ const PREFIX_CUES = new RegExp(
  * semicolon, "but", or a made-in word (a made-in clause is never eaten).
  */
 const PHRASE_HARD_END =
-  /[;；。！!？?\n|]|\.\s|\.$|\bbut\b|\bwhile\b|\bmade\b|\bmanufactured\b|\bassembled\b|\bproduced\b|\bcountry\s+of\s+origin\b|但|製造|制造|產地|产地|組裝|组装|生產|生产|原產|原产|原産|生産/i;
+  /[;；。！!？?\n|]|\.\s|\.$|\bbut\b|\bwhile\b|\bmade\b|\bmanufactured\b|\bassembled\b|\bproduced\b|\bcountry\s+of\s+origin\b|\borigin\b|\bcoo\b|但|製造|制造|產地|产地|組裝|组装|生產|生产|原產|原产|原産|生産/i;
 
 /** A clause break: where a phrase with no country in it ends. */
 const PHRASE_SOFT_END = /[,，、（(]/;
 const PHRASE_MAX = 80;
 
-const BRAND_CUE = /brand|company|headquarter|based|founded|established|品牌|廠牌|厂牌|廠商|厂商|公司|企業|企业|ブランド|メーカー|總部|总部|源自|來自|来自|源於|源于|發源|发源|創立|创立|成立|創辦|创办|創建|创建|血統|血统|heritage/i;
+const BRAND_CUE = /brand|company|headquarter|based|founded|established|品牌|廠牌|厂牌|廠商|厂商|製造商|制造商|生產商|生产商|公司|企業|企业|ブランド|メーカー|總部|总部|源自|來自|来自|源於|源于|發源|发源|創立|创立|成立|創辦|创办|創建|创建|血統|血统|heritage/i;
 
 type Span = { start: number; end: number; prefix: boolean };
+
+/**
+ * A country that starts a made-in clause: 「中國製」「台灣製造」「越南工廠生產」
+ * 「中國組裝」, "China-made". A forward phrase stops before it, so "Designed by
+ * CYBEX 中國製" keeps 中國 as the made-in.
+ */
+const MADE_WORD =
+  '(?:工場|工廠|工厂|廠|厂)?(?:製造|制造|製|制|生產|生产|生産|組裝|组装|產(?![品業])|产(?![品业])|産(?![品業]))' +
+  // Not a field name: 「德國 產地：中國」「製造国：中国」「製造：中國」 (the field's value is the made-in).
+  '(?![地國国:：造])';
+const MADE_COUNTRY = new RegExp(
+  `(?:${CJK_COUNTRY})\\s*${MADE_WORD}|\\b(?:${EN_COUNTRY})[\\s-]+made\\b(?!\\s+in\\b)`,
+  'gi'
+);
+/** The verb form: 製造 / 生產 … then 於 / 于 / 在 and a country (「製造於中國」). */
+const VERB_FORM_AFTER = new RegExp(`^造?\\s*[於于在]\\s*(?:${CJK_COUNTRY})`);
+/** More design countries in a list right after the first: 「設計於德國、日本」. */
+const LIST_MORE = new RegExp(`^\\s*(?:[、/／&]|和|與|与|及|\\band\\b)\\s*(?:${CJK_COUNTRY}|\\b(?:${EN_COUNTRY})\\b)`, 'i');
 
 function spans(text: string): Span[] {
   const out: Span[] = [];
@@ -122,18 +146,40 @@ function spans(text: string): Span[] {
   for (const m of text.matchAll(FORWARD_CUES)) {
     const start = m.index ?? 0;
     const from = start + m[0].length;
-    let rest = text.slice(from, from + PHRASE_MAX);
-    const hard = PHRASE_HARD_END.exec(rest);
-    if (hard) rest = rest.slice(0, hard.index);
-    // The first country after the cue is the design / brand country and the
-    // phrase ends right after it, so a later country is never eaten:
-    // 「設計於德國中國製造」 → 德國 | 中國製造; 「設計於德國製造於中國」 → 德國 | 製造於中國;
-    // 「設計於德國 德國製造」 → 德國 | 德國製造. "Founded in 1947 in Bayreuth,
-    // Germany, made in China" runs past a comma to Germany; with no country
-    // the phrase ends at the first clause break.
+    const raw = text.slice(from, from + PHRASE_MAX);
+    // Hard end: a sentence end or a made-in word / field (Made in, COO:,
+    // Origin:, 產地, 原産国, 製造：…). A made-in clause is never eaten.
+    const hard = PHRASE_HARD_END.exec(raw);
+    let cut = hard ? hard.index : raw.length;
+    // Also before a country that starts a made-in clause (「中國製」), except
+    // the verb form right after the cue: 「設計於德國製造於中國」 keeps 德國 as the
+    // design country and reads 製造於中國. 「設計於德國 德國製造」: the 德國
+    // with 製造 right after it is the made-in.
+    MADE_COUNTRY.lastIndex = 0;
+    for (const mc of raw.matchAll(MADE_COUNTRY)) {
+      const at = mc.index ?? 0;
+      if (at >= cut) break;
+      const straight = /^[\s:：]*$/.test(raw.slice(0, at));
+      if (straight && VERB_FORM_AFTER.test(raw.slice(at + mc[0].length))) continue;
+      cut = at;
+      break;
+    }
+    const rest = raw.slice(0, cut);
+    // The phrase ends right after its first country (plus a 、 / and list of
+    // countries), so a later country is never eaten. "Founded in 1947 in
+    // Bayreuth, Germany, made in China" runs past a comma to Germany; with no
+    // country the phrase ends at the first clause break.
     const place = firstCountry(rest);
-    const soft = PHRASE_SOFT_END.exec(rest);
-    const end = place ? place.end : soft ? soft.index : rest.length;
+    let end: number;
+    if (place) {
+      end = place.end;
+      for (let more = LIST_MORE.exec(rest.slice(end)); more; more = LIST_MORE.exec(rest.slice(end))) {
+        end += more[0].length;
+      }
+    } else {
+      const soft = PHRASE_SOFT_END.exec(rest);
+      end = soft ? soft.index : rest.length;
+    }
     out.push({ start, end: from + end, prefix: false });
   }
   PREFIX_CUES.lastIndex = 0;
@@ -150,6 +196,17 @@ function firstCountry(text: string): { index: number; end: number } | undefined 
   const cjk = new RegExp(`(${CJK_COUNTRY})`).exec(text);
   const m = en && cjk ? (en.index <= cjk.index ? en : cjk) : (en ?? cjk);
   return m ? { index: m.index, end: m.index + m[0].length } : undefined;
+}
+
+function countriesIn(phrase: string): string[] {
+  const out: string[] = [];
+  let rest = phrase;
+  for (let place = firstCountry(rest); place; place = firstCountry(rest)) {
+    const c = countryIn(rest.slice(place.index, place.end));
+    if (c && !out.includes(c)) out.push(c);
+    rest = rest.slice(place.end);
+  }
+  return out;
 }
 
 function countryIn(phrase: string): string | undefined {
@@ -192,11 +249,12 @@ export function designMentions(text: string): DesignMention[] {
   const out: DesignMention[] = [];
   for (const sp of spans(s)) {
     const phrase = s.slice(sp.start, sp.end).trim().replace(/\s+(?:and|&)$/i, '');
-    const country = countryIn(phrase);
-    if (!country) continue;
     const kind: DesignKind = BRAND_CUE.test(phrase) ? 'brand' : 'design';
-    if (out.some((d) => d.country === country && d.kind === kind)) continue;
-    out.push({ country, kind, phrase: phrase.slice(0, PHRASE_MAX) });
+    // Every country in the phrase (「設計於德國、日本」 → 德國, 日本).
+    for (const country of countriesIn(phrase)) {
+      if (out.some((d) => d.country === country && d.kind === kind)) continue;
+      out.push({ country, kind, phrase: phrase.slice(0, PHRASE_MAX) });
+    }
   }
   return out;
 }

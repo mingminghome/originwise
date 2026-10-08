@@ -346,7 +346,8 @@ describe('upper-case codes right after an explicit made-in cue (label and page p
     ['Made in CZ', 'Czech Republic'],
     ['Made in TR', 'Turkey'],
     ['MADE IN MY', 'Malaysia'],
-    ['MADE IN IN', 'India'],
+    ['Country of Origin: IN', 'India'],
+    ['COO: IN.', 'India'],
     ['MADE IN ID', 'Indonesia'],
     ['Made in PH', 'Philippines'],
     ['Made in KR', 'South Korea'],
@@ -366,7 +367,7 @@ describe('upper-case codes right after an explicit made-in cue (label and page p
   }
   it('rejected: Made in IT / DE, IT company, made in my kitchen, codes in prose, brand origin', () => {
     for (const t of [
-      'Made in IT', 'MADE IN IT', 'Made in DE', 'IT company', 'made in my kitchen', 'MADE IN MY KITCHEN',
+      'Made in IT', 'MADE IN IT', 'Made in DE', 'IT company', 'made in my kitchen', 'MADE IN MY KITCHEN', 'MADE IN IN', 'Made in IN',
       'made in cn', 'We ship CN and VN orders fast', 'JP / KR versions differ', 'Brand origin: CN', '產地：DE',
     ]) {
       assert.deepEqual(extractCooClaimsFromText(t), [], t);

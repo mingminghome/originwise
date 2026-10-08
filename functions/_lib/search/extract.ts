@@ -12,7 +12,7 @@
  */
 
 import { isSearchResultUrl } from '../sourceLine';
-import { MADE_IN_CODE_LABEL, canonicalCountry, madeInCodeRegex } from '../countryLabel';
+import { MADE_IN_CODE_LABEL, canonicalCountry, madeInCodeMatches } from '../countryLabel';
 import { designMentions, quoteBacksCountry, stripDesignPhrases } from '../designOrigin';
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
@@ -1007,32 +1007,33 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
     // Design / brand wording is blanked first ("Designed in Germany, made in China" → China).
     const t = stripDesignPhrases(nfkc(p.text));
     const patterns: RegExp[] = [
-      /\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|[Cc]ountry of [Oo]rigin\s*[:：]?)\s*(?:[Tt]he\s+|THE\s+)?([A-Z][A-Za-z]{2,}(?: [A-Z][a-z]+)?)/g,
+      /\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|[Cc]ountry of [Oo]rigin\s*[:：]?|(?<![Bb]rand\s|BRAND\s)(?:[Oo]rigin|ORIGIN)\s*[:：])\s*(?:[Tt]he\s+|THE\s+)?([A-Z][A-Za-z]{2,}(?: [A-Z][a-z]+)?)/g,
       /(?:原産国|生産国|製造国|原産地|生産地|原產地|原產國|生產國|生產地|產地|製造地)(?:名)?\s*[:：・／/]?\s*([^\s:：、。,，|/／()（）<>[\]]{1,12})/g,
-      // Upper-case short forms only right after an explicit cue ("MADE IN CN",
-      // "COO: VN", "Made in the UK"); never IT / DE / my, never in prose.
-      madeInCodeRegex(),
+      // 「製造：中國」「生產：越南」: the field name needs its colon.
+      /(?:製造|制造|生產|生产|生産)\s*[:：]\s*([^\s:：、。,，|/／()（）<>[\]]{1,12})/g,
     ];
+    // Upper-case short forms only right after an explicit cue ("MADE IN CN",
+    // "COO: VN", "Made in the UK"); never IT / DE / my, never in prose.
+    const codeMatches = madeInCodeMatches(t).map((c) => ({ 0: t.slice(c.index, c.index + c.length), 1: c.code }));
     const seen = new Set<string>();
-    for (const re of patterns) {
-      for (const m of t.matchAll(re)) {
-        const raw = (m[1] || '').trim();
-        const country = MADE_IN_CODE_LABEL[raw] ?? raw;
-        if (!country || /^(不明|なし|-|—|unknown)$/i.test(country)) continue;
-        // A bare code the table does not list (產地：DE / IT) is no claim.
-        if (/^[A-Za-z]{2}$/.test(country)) continue;
-        // "Made in USA" read by name and by code: one claim per page and country.
-        const key = canonicalCountry(country) ?? country.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        out.push({
-          country,
-          quote: m[0].trim().slice(0, 80),
-          page: idx + 1,
-          sourceType: 'retailer',
-        });
-        if (out.length >= 8) return;
-      }
+    const found: Array<{ 0: string; 1?: string }> = [...patterns.flatMap((re) => [...t.matchAll(re)]), ...codeMatches];
+    for (const m of found) {
+      const raw = (m[1] || '').trim();
+      const country = MADE_IN_CODE_LABEL[raw] ?? raw;
+      if (!country || /^(不明|なし|-|—|unknown)$/i.test(country)) continue;
+      // A bare code the table does not list (產地：DE / IT) is no claim.
+      if (/^[A-Za-z]{2}$/.test(country)) continue;
+      // "Made in USA" read by name and by code: one claim per page and country.
+      const key = canonicalCountry(country) ?? country.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        country,
+        quote: m[0].trim().slice(0, 80),
+        page: idx + 1,
+        sourceType: 'retailer',
+      });
+      if (out.length >= 8) return;
     }
   });
   return out;

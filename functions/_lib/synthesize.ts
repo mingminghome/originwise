@@ -35,7 +35,7 @@ import {
   type GeoScope,
   type RegionCode,
 } from './regions';
-import { applyCooPriority, extractCooClaimsFromText } from './cooPriority';
+import { applyCooPriority, blankVerbFormMakers, extractCooClaimsFromText } from './cooPriority';
 import { hqFoldedIntoParent } from './chinaChip';
 import { tierFromCodes } from './tierRules';
 import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
@@ -433,7 +433,8 @@ function collectOriginCandidates(
   const echoCountries = [opts.hqCountry, p.manufacturerCountry, p.originCountry];
   for (const n of p.notes ?? []) {
     // Design / brand wording (「品牌源自德國」, "Engineered in Germany") is not a candidate.
-    for (const label of extractCountryLabelsFromText(stripDesignPhrases(String(n)))) {
+    // 「德國製造於中國」: only 中國 is the made-in; 德國 is not even a mention.
+    for (const label of extractCountryLabelsFromText(blankVerbFormMakers(stripDesignPhrases(String(n))))) {
       if (out.get(label)?.rating === 'confirmed') continue;
       const echo = echoCountries.some((c) => sameCountry(label, c));
       if (echo && !out.has(label) && !notesNameMadeIn([n], label)) continue;
