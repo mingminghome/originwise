@@ -308,15 +308,42 @@ const EU_FIRST = /(?:\b(?:made|manufactured|produced|assembled)[\s-]+in[ \t]+|(?
 const EU_FIELD_PAIR = new RegExp(`^[ \\t]*(?:[-–—/／,，、&+]|\\band\\b|\\bor\\b)[ \\t]*(${VALUE_COUNTRY_TOKEN})`, 'i');
 /** The EU named in a field value ("China / EU"); upper case only. */
 const EU_IN_VALUE = /(?<![A-Za-z.])(?:E\.U\.|EU)(?![A-Za-z])/g;
+/** USA, then a second country after a comma, and, & or or ("Made in USA, China"). */
+const US_JOIN_AFTER = new RegExp(`^[ \\t]*(,|，|&|\\band\\b|\\bor\\b)[ \\t]*(?:the[ \\t]+)?(${VALUE_COUNTRY_TOKEN})`, 'i');
 /**
- * Country names that are also US towns, kept as the made-in next to USA in prose
- * ("Made in Mexico/USA", "Made in Mexico - USA" are Mexico): never a pair.
+ * Country names that are also US towns: one FIRST, with a bare USA second, keeps
+ * the country ("Made in Mexico/USA", "Mexico - USA", "Mexico, USA" are Mexico).
+ * USA first is no town ("Made in USA/Mexico" is 爭議).
  */
 const US_TOWN_COUNTRIES = new Set(['mexico', 'poland', 'chile', 'panama', 'peru', 'cuba', 'jordan', 'lebanon']);
-function usTownPair(a: string, b: string): boolean {
-  const us = (x: string) => canonCountry(x) === 'united states';
-  const town = (x: string) => US_TOWN_COUNTRIES.has(canonCountry(x));
-  return (us(a) && town(b)) || (town(a) && us(b));
+const isUs = (x: string) => canonCountry(x) === 'united states';
+/**
+ * Two places joined in prose after a made-in cue are one claim, or a 爭議:
+ * - the same country twice ("China / PRC") is one;
+ * - a part / material word after the second ("Made in USA, China parts") makes it a component;
+ * - USA with a US state ("Made in USA/Georgia", "USA, Texas") is the US;
+ * - a town-list country first, bare USA second ("Made in Mexico/USA") keeps the country;
+ * - a bare ", USA" tag after any country ("Made in China, USA", "Mexico, USA and
+ *   China") keeps the country (an importer / market line);
+ * - comma / and / & / or join two places only when one side is USA ("Made in USA,
+ *   China", "Made in China and USA"); slash and dash pairs always count.
+ */
+function proseSecond(first: string, tail: string): { second: string; length: number } | undefined {
+  const slash = PAIR_AFTER.exec(tail);
+  const join = slash ? null : US_JOIN_AFTER.exec(tail);
+  const hit = slash ?? join;
+  if (!hit) return undefined;
+  const found = slash ? slash[1]! : join![2]!;
+  const second = pairLabel(found);
+  if (canonCountry(second) === canonCountry(first)) return undefined;
+  if (new RegExp(`^[ \\t]*${PART_WORD}`, 'i').test(tail.slice(hit[0].length))) return undefined;
+  if (isUs(first) && US_STATES.includes(second.toLowerCase())) return undefined;
+  if (isUs(second) && US_TOWN_COUNTRIES.has(canonCountry(first)) && (slash || /^[,，]$/.test(join![1]!))) return undefined;
+  if (join) {
+    if (!isUs(first) && !isUs(second)) return undefined;
+    if (isUs(second) && /^[,，]$/.test(join[1]!)) return undefined;
+  }
+  return { second, length: hit[0].length };
 }
 /** One country joined in a pair as the card names it ("EU" → European Union). */
 function pairLabel(found: string): string {
@@ -324,7 +351,7 @@ function pairLabel(found: string): string {
 }
 /** Part / material words: a later country tied to one is a component, not a made-in. */
 const PART_WORD =
-  '(?:生地|布料|面料|布|材料|原料|素材|部品|零件|配件|零組件|零组件|パーツ|fabrics?|parts?|materials?|components?|leather|yarn)';
+  '(?:生地|布料|面料|布|材料|原料|素材|部品|零件|配件|零組件|零组件|パーツ|fabrics?|parts?|materials?|components?|leather|yarn|motors?|batter(?:y|ies)|chips?|movements?|electronics|lens(?:es)?)(?![A-Za-z])';
 const PART_AFTER = new RegExp(
   `^\\s*(?:国内|國內)?(?:工場|工廠|工厂|廠|厂)?(?:製造|制造|製|制|生產|生产|生産|產|产|産)(?:の|的)?\\s*${PART_WORD}`,
   'i'
@@ -428,15 +455,13 @@ function resolveFieldValues(input: string): FieldPass {
     const first = normalizeCooLabel(m[1]);
     if (normalizeRegion(first) === 'UNKNOWN') continue;
     if (!FIELD_CUE.test(m[0])) {
-      // "Made in China-Japan" / "Made in China/Japan": two countries in one claim.
-      // The same country twice ("China / PRC") is one; USA next to a country that is
-      // also a US town ("Made in Mexico/USA") keeps the first.
-      const pair = PAIR_AFTER.exec(text.slice(m.index + m[0].length));
-      const second = pair ? pairLabel(pair[1]!) : '';
-      if (pair && canonCountry(second) !== canonCountry(first) && !usTownPair(first, second)) {
-        const end = m.index + m[0].length + pair[0].length;
+      // "Made in China-Japan" / "Made in China/Japan" / "Made in USA, China": two
+      // places in one claim (see proseSecond).
+      const pair = proseSecond(first, text.slice(m.index + m[0].length));
+      if (pair) {
+        const end = m.index + m[0].length + pair.length;
         blank(m.index, end);
-        disputes.push({ sides: sides([first, second]), start: m.index, end });
+        disputes.push({ sides: sides([first, pair.second]), start: m.index, end });
         blankedTo = end;
       }
       continue;

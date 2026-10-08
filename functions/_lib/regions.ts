@@ -64,7 +64,8 @@ export function normalizeRegion(raw: unknown): RegionCode {
       '中华民国',
     ]) ||
     // "Republic of China" / ROC / R.O.C. is Taiwan; "People's Republic of China" is not.
-    /(?<!people'?s\s+)republic\s+of\s+china/i.test(s) ||
+    // Any apostrophe or none: People's / People’s / People s / Peoples.
+    /(?<!people.?s\s+)republic\s+of\s+china/i.test(s) ||
     /(^|[^a-z.])r\.?o\.?c\b/i.test(s)
   ) {
     return 'TW';
@@ -87,6 +88,7 @@ export function normalizeRegion(raw: unknown): RegionCode {
       "people's republic of china",
       'peoples republic of china',
       'prc',
+      'p.r.c',
       '中國大陸',
       '中国大陆',
       '中華人民共和國',

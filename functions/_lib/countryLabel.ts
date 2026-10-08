@@ -48,6 +48,8 @@ export const PART_FIELD_WORDS = [
   // Packaging, manual, label, chip, lens, head (round 11). 機身 / 主機 / 本體 are the whole product.
   '外箱', '包裝', '包装', '外盒', '包材', 'パッケージ', '說明書', '说明书', '盒子', '標籤', '标签',
   '芯片', '晶片', '鏡頭', '镜头', '機頭', '机头',
+  // Box, hang tag, power supply / cord, housing (round 12).
+  '包裝盒', '包装盒', '吊牌', '電源', '电源', '電源線', '电源线', '外殼', '外壳',
 ];
 /**
  * Lookbehind: not right after a brand / design / part word (an optional 原 between).
