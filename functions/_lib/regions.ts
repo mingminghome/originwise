@@ -62,9 +62,10 @@ export function normalizeRegion(raw: unknown): RegionCode {
       '臺灣',
       '中華民國',
       '中华民国',
-      'republic of china',
     ]) ||
-    /(^|[^a-z])roc([^a-z]|$)/i.test(s)
+    // "Republic of China" / ROC / R.O.C. is Taiwan; "People's Republic of China" is not.
+    /(?<!people'?s\s+)republic\s+of\s+china/i.test(s) ||
+    /(^|[^a-z.])r\.?o\.?c\b/i.test(s)
   ) {
     return 'TW';
   }

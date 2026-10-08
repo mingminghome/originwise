@@ -5,9 +5,10 @@
 
 /** Name/CJK patterns for whole-string scan (avoid short codes that match English words). */
 export const COUNTRY_NAME_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
-  { label: 'China', pattern: /\bchina\b|\bprc\b|\bp\.r\.c\b|中華人民共和國|中华人民共和国|中國大陸|中国大陆|中國|中国/i },
+  // "Republic of China" / ROC is Taiwan; "People's Republic of China" stays China.
+  { label: 'China', pattern: /(?<!(?<!people.?s\s+)republic\s+of\s+)\bchina\b|\bprc\b|\bp\.r\.c\b|中華人民共和國|中华人民共和国|中國大陸|中国大陆|中國|中国/i },
   { label: 'Hong Kong', pattern: /hong\s*kong|香港/i },
-  { label: 'Taiwan', pattern: /\btaiwan\b|台灣|台湾|臺灣/i },
+  { label: 'Taiwan', pattern: /\btaiwan\b|(?<!people.?s\s+)\brepublic\s+of\s+china\b|\br\.o\.c\b\.?|^roc$|台灣|台湾|臺灣|中華民國|中华民国/i },
   { label: 'Macau', pattern: /\bmacau\b|\bmacao\b|澳門|澳门/i },
   { label: 'Japan', pattern: /\bjapan\b|日本/i },
   // North Korea first, and never inside South Korea's pattern ("Made in North Korea" is not 韓國).
@@ -44,8 +45,15 @@ export const BRAND_FIELD_WORDS = ['品牌', '設計', '设计', 'ブランド', 
 export const PART_FIELD_WORDS = [
   '配件', '電池', '电池', '零件', '部件', '部品', '零組件', '零组件', '機芯', '机芯', '面料', '布料',
   '材料', '材質', '材质', '原料', '素材', '生地', '馬達', '马达', '電機', '电机', 'パーツ',
+  // Packaging, manual, label, chip, lens, head (round 11). 機身 / 主機 / 本體 are the whole product.
+  '外箱', '包裝', '包装', '外盒', '包材', 'パッケージ', '說明書', '说明书', '盒子', '標籤', '标签',
+  '芯片', '晶片', '鏡頭', '镜头', '機頭', '机头',
 ];
-/** Lookbehind: not right after a brand / design / part word (an optional 原 between). */
+/**
+ * Lookbehind: not right after a brand / design / part word (an optional 原 between).
+ * The brand words are not redundant with designOrigin: 「品牌產地 德國」 (no colon)
+ * would read 產地 德國 as a made-in without them.
+ */
 export const NOT_PRODUCT_FIELD = `(?<!(?:${[...BRAND_FIELD_WORDS, ...PART_FIELD_WORDS].join('|')})原?)`;
 
 /** ISO / short tokens — only when the token itself is short (after split). */
@@ -130,8 +138,8 @@ const ci = (w: string) => w.replace(/[a-z]/g, (c) => `[${c}${c.toUpperCase()}]`)
 const MADE_IN_CUE = `(?:${['made', 'manufactured', 'assembled', 'produced'].map(ci).join('|')})[\\s-]?${ci('in')}\\s*[:：]?`;
 /** Cues that do not end in "in" (IN after them can be India). */
 const FIELD_CODE_CUE = [
-  `${ci('country')}\\s+${ci('of')}\\s+${ci('origin')}\\s*[:：]?`,
-  `(?<!${ci('brand')}\\s)${ci('origin')}\\s*[:：]`,
+  `(?<!(?:${ci('brand')}|${ci('design')})\\s+)${ci('country')}\\s+${ci('of')}\\s+${ci('origin')}\\s*[:：]?`,
+  `(?<!(?:${ci('brand')}|${ci('design')})\\s+(?:${ci('of')}\\s+)?)${ci('origin')}\\s*[:：]`,
   `\\b${ci('coo')}\\s*[:：]`,
   `${NOT_PRODUCT_FIELD}(?:產地|产地|原產國|原產国|原産国|原产国|製造国|製造國|生產國|生産国)\\s*[:：]?`,
 ].join('|');

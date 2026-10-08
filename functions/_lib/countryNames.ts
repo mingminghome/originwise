@@ -16,7 +16,7 @@ const ROWS: readonly Row[] = [
   ['China', 'CN', ['china', 'mainland china', 'prc', 'p.r.c.', 'p.r. china', "people's republic of china"], ['中国', '中華人民共和国'], ['中國', '中國大陸', '中華人民共和國'], ['中国', '中国大陆', '中华人民共和国']],
   ['Hong Kong', 'HK', ['hong kong'], ['香港'], ['香港'], ['香港']],
   ['Macau', 'MO', ['macau', 'macao'], ['マカオ'], ['澳門'], ['澳门']],
-  ['Taiwan', 'TW', ['taiwan'], ['台湾'], ['台灣', '臺灣'], ['台湾']],
+  ['Taiwan', 'TW', ['taiwan', 'republic of china', 'r.o.c.', 'r.o.c', 'roc'], ['台湾', '中華民国'], ['台灣', '臺灣', '中華民國'], ['台湾', '中华民国']],
   ['Japan', 'JP', ['japan'], ['日本'], ['日本'], ['日本']],
   ['South Korea', 'KR', ['south korea', 'korea', 'republic of korea'], ['韓国', '大韓民国'], ['韓國', '南韓'], ['韩国']],
   ['North Korea', 'KP', ['north korea', 'n. korea', 'n.korea', 'n korea', 'dprk', 'd.p.r.k.', "democratic people's republic of korea"], ['北朝鮮'], ['北韓', '朝鮮民主主義人民共和國'], ['朝鲜', '北朝鲜', '北韩']],

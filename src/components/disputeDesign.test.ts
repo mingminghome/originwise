@@ -562,6 +562,31 @@ describe('round 10: merged 爭議 wording and EU in every language', () => {
   });
 });
 
+describe('round 11: partial label wording, English brand fields, North Korea in every language', () => {
+  it('a label side with 2 pages, 1 of them the exact model, reads 「包裝標示、2 個網頁，其中 1 個型號相符」', () => {
+    const exact = page('https://www.momoshop.com.tw/goods/x', 'Cybex Melio 嬰兒推車 - momo購物網', 'Made in China');
+    const other = page(URLS.mami, 'Melio 嬰兒推車 Cybex 品牌', '產地：中國');
+    const r = runPages({ ocrText: 'CYBEX Melio\n產地：中國 日本製', pages: [exact, other] });
+    assert.ok(text(r).includes('中國（包裝標示、2 個網頁，其中 1 個型號相符）'), text(r));
+    assert.ok(text(r, createT('en')).includes('China (package label; pages: 2, exact model: 1)'), text(r, createT('en')));
+  });
+  it('Country of origin: China + Brand origin: Germany → 中國 confirmed, 「德國品牌」, never 「中國品牌」', () => {
+    const r = runPages({ ocrText: 'CYBEX Melio\nCountry of origin: China\nBrand origin: Germany', pages: [] });
+    const v = buildMadeInView(r);
+    assert.equal(v.state, 'confirmed');
+    assert.equal(v.country, 'China');
+    const t = text(r);
+    assert.ok(t.includes('德國品牌') && !t.includes('中國品牌'), t);
+  });
+  it('产地：北朝鲜 is stored as North Korea: the English card prints North Korea, no locale prints 北朝鲜', () => {
+    const r = runPages({ ocrText: 'CYBEX Melio\n产地：北朝鲜', pages: [] });
+    assert.equal(buildMadeInView(r).country, 'North Korea');
+    assert.ok(text(r, createT('en')).includes('North Korea'), text(r, createT('en')));
+    assert.ok(text(r).includes('北韓'), text(r));
+    for (const lng of locales) assert.ok(!text(r, createT(lng)).includes('北朝鲜'), lng);
+  });
+});
+
 describe('dispute / design wording in all 16 locales', () => {
   const KEYS = ['dispute', 'disputeSideExact', 'disputeSideMixed', 'disputeSidePages', 'disputeSideLabel', 'disputeSideLabelPages', 'disputeSideLabelExact', 'disputeSideLabelMixed', 'designInfo', 'brandInfo', 'infoSource'];
   it('every locale has its own wording, soft, never 非確認', () => {

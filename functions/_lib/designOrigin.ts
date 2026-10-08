@@ -78,6 +78,11 @@ const CJK_COUNTRY = Object.keys(CJK_COUNTRIES)
 /** Cue, then the place: the phrase runs to the clause end or a made-in word. */
 const FORWARD_CUES = new RegExp(
   [
+    // English brand / design fields, colon or line break ("Brand origin: Germany",
+    // "Brand Country: Germany", "Brand of origin", "Brand country of origin",
+    // "Design origin: Japan", "Designed in:"): 附加資訊 only, never a made-in field.
+    '\\b(?:brand|design)\\s+(?:country\\s+of\\s+origin|of\\s+origin|origin|country)\\b[ \\t]*(?:[:：]|\\r?\\n)',
+    '\\bdesigned\\s+in[ \\t]*(?:[:：]|\\r?\\n)',
     '\\b(?:designed|engineered|developed|conceived|created|styled|invented)(?:\\s+and\\s+(?:designed|engineered|developed|tested))?\\s+(?:in|by|at)\\b',
     '\\bdesign(?:ed)?\\s+from\\b',
     '\\bR\\s*&\\s*D\\s+(?:in|centre|center|centres|centers|based\\s+in)\\b',
@@ -94,8 +99,9 @@ const FORWARD_CUES = new RegExp(
     // Label fields: 「設計：德國」「設計地：德國」「研發：德國」, "Design: Germany".
     '(?:設計|设计|研發|研发)(?:地|國|国)?\\s*[:：]',
     // Brand / design origin fields: 「品牌產地：德國」「設計產地：日本」「品牌來源地：德國」
-    // 「品牌原產國：德國」「ブランド原産国：日本」 (附加資訊, never a made-in field).
-    '(?:品牌|設計|设计|ブランド|デザイン)(?:產地|产地|來源地|来源地|發源地|发源地|原產地|原产地|原産地|原產國|原產国|原産国|原产国|國|国)\\s*[:：]',
+    // 「品牌原產國：德國」「ブランド原産国：日本」「品牌國家 / 品牌所在地 / 品牌歸屬地：德國」
+    // (附加資訊, never a made-in field).
+    '(?:品牌|設計|设计|ブランド|デザイン)(?:產地|产地|來源地|来源地|發源地|发源地|原產地|原产地|原産地|原產國|原產国|原産国|原产国|國家|国家|所在地|歸屬地|归属地|國|国)(?:\\s*[:：]|[ \\t\u3000]+)',
     '\\bdesign(?:ed)?\\s*[:：]',
   ].join('|'),
   'gi'
@@ -112,15 +118,19 @@ export const MAKER_TAIL = '(?:廠|厂)?商(?!品(?!牌))';
 export const NOT_MADE_TAIL = `(?!造?(?:${MAKER_TAIL}|[業业]))`;
 const MAKER_WORD = `(?:製造|制造|生產|生产|生産|製|制)${MAKER_TAIL}`;
 
-/** Place, then the cue ("German engineering", 德國設計): the phrase is the match. */
+/**
+ * Place, then the cue ("German engineering", 德國設計): the phrase is the match.
+ * Never across a line break: "Country of origin: China\nBrand origin: Germany" is
+ * no 「China brand」 (the made-in value stays; the brand line is the 附加資訊).
+ */
 const PREFIX_CUES = new RegExp(
   [
-    `\\b(?:${EN_COUNTRY})[\\s-]+(?:engineering|engineered|design|designed|designs|brand|brands|company|technology|heritage|developed|innovation|r\\s*&\\s*d)\\b`,
+    `\\b(?:${EN_COUNTRY})[ \\t-]+(?:engineering|engineered|design|designed|designs|brand|brands|company|technology|heritage|developed|innovation|r\\s*&\\s*d)\\b`,
     `(?:${CJK_COUNTRY})(?:的)?(?:設計|设计|研發|研发|工程|工藝|工艺|技術|技术|品牌|廠牌|厂牌|廠商|厂商|公司|企業|企业|血統|血统|デザイン|ブランド|メーカー|發源|发源)`,
     `(?:${CJK_COUNTRY})(?:的)?${MAKER_WORD}`,
     // A value tagged as brand / design: 「產地：德國（品牌）中國（製造）」, "Germany (brand)".
-    `(?:${CJK_COUNTRY})\\s*[（(]\\s*(?:品牌|設計|设计|研發|研发|brand|design(?:ed)?)\\s*[）)]`,
-    `\\b(?:${EN_COUNTRY})\\s*[（(]\\s*(?:brand|design(?:ed)?)\\s*[）)]`,
+    `(?:${CJK_COUNTRY})[ \\t]*[（(]\\s*(?:品牌|設計|设计|研發|研发|brand|design(?:ed)?)\\s*[）)]`,
+    `\\b(?:${EN_COUNTRY})[ \\t]*[（(]\\s*(?:brand|design(?:ed)?)\\s*[）)]`,
   ].join('|'),
   'gi'
 );
@@ -255,7 +265,8 @@ export function stripDesignPhrases(text: string): string {
   for (const sp of found) {
     if (sp.end <= at) continue;
     const from = Math.max(sp.start, at);
-    out += s.slice(at, from) + ' '.repeat(sp.end - from);
+    // Line breaks stay (a field label ending in a line break: "Brand origin\nGermany").
+    out += s.slice(at, from) + s.slice(from, sp.end).replace(/[^\n]/g, ' ');
     at = sp.end;
   }
   return out + s.slice(at);
