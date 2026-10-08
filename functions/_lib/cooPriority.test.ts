@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   applyCooPriority,
+  canonCountry,
   extractCooClaimsFromText,
   bestCooClaim,
 } from './cooPriority';
+import { COUNTRY_NAME_PATTERNS, MADE_IN_CODE_LABEL } from './countryLabel';
+import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN, countryNameLabel } from './countryNames';
 import { applyWebCooGate, labelConfirmsMadeIn, synthesize } from './synthesize';
 
 describe('extractCooClaimsFromText', () => {
@@ -186,5 +189,28 @@ describe('package label OCR (Pigeon Softouch glass)', () => {
     });
     assert.equal(r.product?.madeIn, 'Japan');
     assert.equal(r.product?.madeInBasis, 'label');
+  });
+});
+
+describe('canonCountry: every name the display can produce maps to one key (round 20)', () => {
+  const unesc = (s: string) => s.replace(/\\s\+/g, ' ').replace(/\\(.)/g, '$1');
+  it('each countryNames name (English, Japanese, Traditional, Simplified) has its English label key', () => {
+    for (const list of [COUNTRY_LIST_LATIN, COUNTRY_LIST_CJK]) {
+      for (const name of list.split('|').map(unesc)) {
+        const label = countryNameLabel(name);
+        assert.ok(label, name);
+        assert.equal(canonCountry(name), canonCountry(label), `${name} vs ${label}`);
+      }
+    }
+  });
+  it('the made-in codes and the free-text table agree with countryNames', () => {
+    for (const [code, label] of Object.entries(MADE_IN_CODE_LABEL)) assert.equal(canonCountry(code), canonCountry(label), code);
+    for (const row of COUNTRY_NAME_PATTERNS) assert.equal(canonCountry(row.label), canonCountry(countryNameLabel(row.label) ?? row.label), row.label);
+  });
+  it('China, Hong Kong, Macau and Taiwan stay four places', () => {
+    const keys = ['中國', '香港', '澳門', '台灣'].map(canonCountry);
+    assert.equal(new Set(keys).size, 4);
+    assert.equal(canonCountry('Republic of China'), canonCountry('Taiwan'));
+    assert.notEqual(canonCountry("People's Republic of China"), canonCountry('Taiwan'));
   });
 });

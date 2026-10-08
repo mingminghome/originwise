@@ -215,9 +215,34 @@ const CANON_COUNTRY: Record<string, string> = {
 export function canonCountry(label: string | undefined): string {
   const s = String(label ?? '').trim();
   if (!s) return '';
+  // China, Hong Kong, Macau and Taiwan stay four places ('Made in China / Hong Kong' is two).
   const region = normalizeRegion(s);
   if (region === 'CN' || region === 'HK' || region === 'TW' || region === 'MO') return region;
-  return CANON_COUNTRY[s] ?? CANON_COUNTRY[s.toLowerCase()] ?? s.toLowerCase();
+  const legacy = CANON_COUNTRY[s] ?? CANON_COUNTRY[s.toLowerCase()];
+  if (legacy) return legacy;
+  // Every name the display can produce maps back to one key: the countryNames rows in
+  // English (aliases too), Japanese, Traditional and Simplified (德國 / 德国 / ドイツ /
+  // Germany, 英國 / イギリス / Great Britain / United Kingdom, Türkiye / Turkey / 土耳其),
+  // the made-in codes (UK) and the free-text table.
+  const named = countryNameLabel(s) ?? countryNameLabel(CJK_TO_LABEL[s] ?? '') ?? MADE_IN_CODE_LABEL[s] ?? canonicalCountry(s);
+  if (!named) return s.toLowerCase();
+  // 中華人民共和国 / 中華民国 / マカオ: the same four places by their English label.
+  const namedRegion = normalizeRegion(named);
+  if (namedRegion === 'CN' || namedRegion === 'HK' || namedRegion === 'TW' || namedRegion === 'MO') return namedRegion;
+  const key = named.toLowerCase();
+  return CANON_COUNTRY[key] ?? key;
+}
+
+/** The name a 爭議 side is shown as (synthesize: canonicalCountry ?? countryNameLabel ?? raw). */
+function shownKey(label: string): string {
+  const region = canonCountry(label);
+  if (region === 'CN' || region === 'HK' || region === 'TW' || region === 'MO') return region;
+  return (canonicalCountry(label) ?? countryNameLabel(label) ?? label).trim().toLowerCase();
+}
+
+/** Two 爭議 sides are one place when their key or their shown name is the same. */
+function sameSide(a: string, b: string): boolean {
+  return canonCountry(a) === canonCountry(b) || shownKey(a) === shownKey(b);
 }
 
 const CJK_TO_LABEL: Record<string, string> = {
@@ -550,7 +575,7 @@ function resolveFieldValues(input: string): FieldPass {
   };
   const sides = (list: string[]) => {
     const out: string[] = [];
-    for (const l of list) if (!out.some((x) => canonCountry(x) === canonCountry(l))) out.push(l);
+    for (const l of list) if (!out.some((x) => sameSide(x, l))) out.push(l);
     return out.slice(0, 4);
   };
   const hasCountry = new RegExp(ANY_COUNTRY.source, 'i');
@@ -754,7 +779,7 @@ function resolveFieldValues(input: string): FieldPass {
       claims.push({ country: label, start: e.index!, end: e.index! + e[0].length, suffix: true });
     }
     claims.sort((x, y) => x.start - y.start);
-    const firsts = claims.filter((c, i) => claims.findIndex((o) => canonCountry(o.country) === canonCountry(c.country)) === i);
+    const firsts = claims.filter((c, i) => claims.findIndex((o) => sameSide(o.country, c.country)) === i);
     if (firsts.length >= 2) {
       for (const c of claims) blank(c.start, c.end);
       const shown = firsts.slice(0, 4);
@@ -766,7 +791,15 @@ function resolveFieldValues(input: string): FieldPass {
       });
     }
   }
-  return { text: chars.join(''), disputes };
+  // Backstop: a 爭議 whose sides all show as one country is no 爭議 ('Made in Germany\n
+  // 德國製造' → Germany): its claims are read again, as if it had never been settled.
+  const kept = disputes.filter((d) => d.sides.length >= 2 && d.sides.some((x) => !sameSide(x, d.sides[0]!)));
+  for (const d of disputes) {
+    if (kept.includes(d)) continue;
+    if (kept.some((k) => k.start < d.end && d.start < k.end)) continue;
+    for (let i = d.start; i < d.end; i++) chars[i] = text[i]!;
+  }
+  return { text: chars.join(''), disputes: kept };
 }
 
 /** The text with multi-country field values settled (see resolveFieldValues); same length. */
@@ -815,7 +848,8 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     const end = Math.min(raw.length, m.index + m[0].length + 80);
     const window = raw.slice(start, end);
     const source = classifySource(window);
-    const key = `${source}:${region}:${label.toLowerCase()}`;
+    // One claim per country and source: 「德國製\nドイツ製」 is one claim, read by its first spelling.
+    const key = `${source}:${region}:${canonCountry(label)}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({ label, region, source });
@@ -830,7 +864,7 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     const start = Math.max(0, c.index - 80);
     const end = Math.min(raw.length, c.index + c.length + 80);
     const source = classifySource(raw.slice(start, end));
-    const key = `${source}:${region}:${label.toLowerCase()}`;
+    const key = `${source}:${region}:${canonCountry(label)}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({ label, region, source });
@@ -842,13 +876,16 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     if (/^\s*(?:では|じゃ)(?:ありません|ない|なく)/.test(raw.slice(m.index + m[0].length))) continue;
     // 「日本製品牌」 (a brand) / 「日本製品取扱店」 (a store selling Japanese goods): no made-in.
     if (/^品(?:牌|取扱|取り扱|販売店|専門店)/.test(raw.slice(m.index + m[0].length))) continue;
-    const label = CJK_TO_LABEL[m[1]] ?? m[1];
+    // A katakana name (ドイツ / イギリス / アメリカ) is read as its English label, which the
+    // card shows in its own locale (德國); kanji names (德國 / 中國) are shown as written.
+    const written = CJK_TO_LABEL[m[1]] ?? m[1];
+    const label = /[\u30a0-\u30ff]/.test(written) ? normalizeCooLabel(written) : written;
     const region = normalizeRegion(label);
     if (region === 'UNKNOWN') continue;
     const start = Math.max(0, m.index - 80);
     const end = Math.min(raw.length, m.index + m[0].length + 80);
     const source = classifySource(raw.slice(start, end));
-    const key = `${source}:${region}:${label.toLowerCase()}`;
+    const key = `${source}:${region}:${canonCountry(label)}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({ label, region, source });
@@ -862,7 +899,7 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
       const region = normalizeRegion(label);
       if (region === 'UNKNOWN' || isUs(label)) continue;
       const source = classifySource(raw.slice(Math.max(0, p.index! - 80), Math.min(raw.length, p.index! + p[0].length + 80)));
-      const key = `${source}:${region}:${label.toLowerCase()}`;
+      const key = `${source}:${region}:${canonCountry(label)}`;
       if (seen.has(key)) continue;
       seen.add(key);
       out.push({ label, region, source });
