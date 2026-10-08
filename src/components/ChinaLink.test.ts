@@ -11,11 +11,14 @@ import { formatTierReason } from '../core/i18n/tierReasons';
 import { createT } from '../core/i18n';
 import {
   brandHqFolded,
+  buildChinaCard,
   buildChinaLinks,
-  chinaCardReasons,
+  companyFactsSourced,
   companyView,
+  confirmedMadeIn,
   displayTier,
   isChinaCountry,
+  stakeInSources,
 } from './ChinaLink';
 
 /** Trimmed real /api/check payload for "Cybex Melio" (2026-10-08). */
@@ -117,11 +120,24 @@ describe('buildChinaLinks chip rule', () => {
 });
 
 describe('displayTier', () => {
-  it('China HQ never shows weaker than direct / 75%', () => {
+  it('sourced China HQ never shows weaker than direct / 75%', () => {
+    const shown = displayTier(
+      base({
+        relationTier: 'indirect',
+        confidence: 0.5,
+        knowledgeBasis: 'web_enriched',
+        sources: ['About — https://example.com/about'],
+        company: { hqCountry: 'China' },
+      })
+    );
+    assert.deepEqual(shown, { tier: 'direct', confidence: 0.75 });
+  });
+
+  it('model-memory China HQ: direct, but no 75% floor', () => {
     const shown = displayTier(
       base({ relationTier: 'indirect', confidence: 0.5, company: { hqCountry: 'China' } })
     );
-    assert.deepEqual(shown, { tier: 'direct', confidence: 0.75 });
+    assert.deepEqual(shown, { tier: 'direct', confidence: 0.5 });
   });
 
   it('keeps a higher server confidence', () => {
@@ -164,6 +180,8 @@ describe('folded parent HQ (real Cybex payload)', () => {
     const out = synthesize({
       jobId: 'cybex-live',
       geoScope: 'prc',
+      webEnriched: true,
+      sources: r.sources,
       partials: {
         product: { ...r.product, confidence: 0.6 } as never,
         company: { ...r.company, confidence: 0.9 } as never,
@@ -216,36 +234,125 @@ describe('folded parent HQ (real Cybex payload)', () => {
   });
 });
 
-describe('China card reasons (no made-in lines)', () => {
-  it('drops made-in / manufacturer / product-origin / parts reasons', () => {
-    const { shown, madeInHidden } = chinaCardReasons([
-      'made_in_cn',
-      'manufacturer_cn',
-      'origin_cn',
-      'component_cn',
-      'hq_cn',
-      'parent_majority_cn',
-      'explicit_non_cn_geo',
-    ]);
-    assert.deepEqual(shown, ['hq_cn', 'parent_majority_cn', 'explicit_non_cn_geo']);
-    assert.equal(madeInHidden, true);
-    assert.deepEqual(chinaCardReasons(['hq_cn']), { shown: ['hq_cn'], madeInHidden: false });
+const TAPO_LIVE = JSON.parse(
+  readFileSync(new URL('./fixtures/tapo-live.json', import.meta.url), 'utf8')
+) as { query: string; result: CheckResult };
+const SHEER_LIVE = JSON.parse(
+  readFileSync(new URL('./fixtures/sheer-live.json', import.meta.url), 'utf8')
+) as { query: string; result: CheckResult };
+
+const kinds = (v: ReturnType<typeof buildChinaCard>) =>
+  v.reasons.map((r) => (r.kind === 'code' ? r.code : r.kind));
+
+describe('China card: reasons map to shown rows (real payloads)', () => {
+  it('Cybex: folded hq_cn is the parent fact, said once; no ownership_* lines', () => {
+    const v = buildChinaCard(CYBEX_LIVE.result);
+    assert.deepEqual(v.chips, ['chinaControlled']);
+    assert.equal(v.tier, 'direct');
+    assert.deepEqual(kinds(v), ['parent', 'explicit_non_cn_geo', 'pointer']);
+    assert.equal(v.confidence, 0.95);
+    // Sources are domain titles only → no stake stated → neutral 控股.
+    assert.deepEqual(v.stake, { kind: 'neutral' });
   });
 
-  it('folded parent HQ: hq_cn becomes the parent line, never 「公司總部位於中國」', () => {
-    assert.deepEqual(
-      chinaCardReasons(['manufacturer_cn', 'hq_cn', 'parent_majority_cn'], { hqFolded: true }).shown,
-      ['parent_majority_cn']
-    );
-    assert.deepEqual(chinaCardReasons(['hq_cn'], { hqFolded: true }).shown, ['parent_majority_cn']);
-    // Real Cybex payload (stored before the server fix still says hq_cn).
-    const r = CYBEX_LIVE.result;
-    const shown = chinaCardReasons(r.tierReasons, { hqFolded: brandHqFolded(r) }).shown;
-    assert.ok(r.tierReasons?.includes('hq_cn'));
-    assert.ok(!shown.includes('hq_cn'));
-    assert.ok(shown.includes('parent_majority_cn'));
+  it('Tapo: 總部 + 品牌來源地 lines only; unnamed ownership relations dropped', () => {
+    const v = buildChinaCard(TAPO_LIVE.result);
+    assert.deepEqual(v.chips, ['chinaCompany']);
+    assert.deepEqual(kinds(v), ['hq_cn', 'brandOrigin', 'pointer']);
+    assert.equal(v.tier, 'direct');
+    // Sourced web answer → company floor applies (0.6 → 0.75).
+    assert.equal(v.confidence, 0.75);
   });
 
+  it('Sheer: 中國製造 chip, one made-in line by barcode, no own confidence, no ownership_weak', () => {
+    const v = buildChinaCard(SHEER_LIVE.result);
+    assert.deepEqual(v.chips, ['madeInChina']);
+    assert.deepEqual(kinds(v), ['madeIn', 'explicit_non_cn_geo']);
+    const made = v.reasons.find((r) => r.kind === 'madeIn');
+    assert.equal(made?.kind === 'madeIn' && made.basis, 'barcode');
+    assert.equal(v.confidence, undefined);
+    assert.equal(v.tier, 'direct');
+  });
+
+  it('ownership_* with no named parent + stake never feed the tier', () => {
+    const res: CheckResult = {
+      schemaVersion: 1,
+      relationTier: 'direct',
+      title: 'X',
+      summary: '',
+      confidence: 0.8,
+      tierReasons: ['ownership_strong_cn', 'ownership_weak_cn', 'explicit_non_cn_geo'],
+      company: { name: 'Pigeon', hqCountry: 'Japan' },
+    };
+    const v = buildChinaCard(res);
+    assert.equal(v.tier, 'none');
+    assert.equal(displayTier(res).tier, 'none');
+    assert.deepEqual(kinds(v), ['explicit_non_cn_geo']);
+  });
+
+  it('a named China parent with a minority stake keeps ownership_weak_cn (indirect)', () => {
+    const res: CheckResult = {
+      schemaVersion: 1,
+      relationTier: 'indirect',
+      title: 'X',
+      summary: '',
+      tierReasons: ['ownership_weak_cn'],
+      company: { name: 'Co', hqCountry: 'Germany', parents: [{ name: 'Tencent', country: 'China', control: 'minority' }] },
+    };
+    const v = buildChinaCard(res);
+    assert.equal(v.tier, 'indirect');
+    assert.ok(kinds(v).includes('ownership_weak_cn'));
+    assert.deepEqual(v.chips, []);
+  });
+
+  it('no 75% floor when the company rows come from model memory only', () => {
+    const res: CheckResult = { ...TAPO_LIVE.result, knowledgeBasis: 'model_memory', sources: undefined };
+    assert.equal(buildChinaCard(res).confidence, 0.6);
+    assert.equal(companyFactsSourced(res), false);
+    assert.equal(companyFactsSourced(TAPO_LIVE.result), true);
+  });
+
+  it('model-only made-in (no barcode / label) is never a chip, line, tier or confidence', () => {
+    const res: CheckResult = {
+      ...SHEER_LIVE.result,
+      product: { ...SHEER_LIVE.result.product, madeInBasis: undefined },
+      meta: undefined,
+    };
+    assert.equal(confirmedMadeIn(res), undefined);
+    const v = buildChinaCard(res);
+    assert.deepEqual(v.chips, []);
+    assert.ok(!kinds(v).includes('madeIn'));
+    assert.notEqual(v.tier, 'direct');
+  });
+});
+
+describe('stake label needs a Source that states it', () => {
+  const owned = (sources?: string[]): CheckResult => ({
+    schemaVersion: 1,
+    relationTier: 'direct',
+    title: 'X',
+    summary: '',
+    knowledgeBasis: 'web_enriched',
+    sources,
+    company: { name: 'Cybex GmbH', hqCountry: 'Germany', parents: [{ name: 'Goodbaby', country: 'China', control: 'wholly' }] },
+  });
+  it('title says wholly-owned → 全資', () => {
+    const r = owned(['Cybex is a wholly-owned subsidiary of Goodbaby — https://example.com/a']);
+    assert.equal(stakeInSources(r, 'wholly'), true);
+    assert.deepEqual(buildChinaCard(r).stake, { kind: 'stated', control: 'wholly' });
+  });
+  it('no source states the stake → neutral 控股', () => {
+    for (const r of [owned(['wikipedia.org — https://example.com/b']), owned(undefined)]) {
+      assert.deepEqual(buildChinaCard(r).stake, { kind: 'neutral' });
+    }
+  });
+  it('a stake word for a different level does not count', () => {
+    const r = owned(['Goodbaby takes majority stake — https://example.com/c']);
+    assert.equal(stakeInSources(r, 'wholly'), false);
+  });
+});
+
+describe('China card helpers', () => {
   it('outside-China places list company places only, never the made-in', () => {
     const zh = createT('zh-Hant');
     const res: CheckResult = {

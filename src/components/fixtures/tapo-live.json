@@ -1,0 +1,88 @@
+{
+  "_note": "Trimmed real /api/check result for \"TP-Link Tapo C200\" from https://originwise.pages.dev on 2026-10-08 (zh-Hant).",
+  "query": "TP-Link Tapo C200",
+  "result": {
+    "schemaVersion": 1,
+    "relationTier": "direct",
+    "title": "TP-Link Tapo C200",
+    "summary": "Final COO unconfirmed · Candidates: China (possible 50% · manufacturer) · Brand origin: 中國 · Components/global line: unknown · Parts: 攝影機鏡頭模組, Wi-Fi 通訊晶片, 電源供應器 · HQ: 中國 · Company: TP-Link",
+    "confidence": 0.6,
+    "tierReasons": [
+      "origin_cn",
+      "manufacturer_cn",
+      "hq_cn",
+      "ownership_strong_cn",
+      "ownership_weak_cn"
+    ],
+    "regions": [
+      "CN",
+      "OTHER"
+    ],
+    "geoScope": "prc",
+    "knowledgeBasis": "web_enriched",
+    "partsEvidence": "web",
+    "sources": [
+      "Tp Link Tapo - Etsy — https://www.etsy.com/market/tp_link_tapo",
+      "[PDF] Pan/Tilt Home Security Wi-Fi Camera Tapo C200 - User Guide — https://static.tp-link.com/upload/manual/2022/202208/20220819/1910013030_Tapo%20C200(EU)2.0_UG_V1.pdf",
+      "Window Mount for TP-Link Tapo C100 C101 - Made in U.S.A. | eBay — https://www.ebay.com/itm/235907460053"
+    ],
+    "meta": {
+      "searchProvider": "firecrawl"
+    },
+    "product": {
+      "name": "TP-Link Tapo C200",
+      "brand": "TP-Link",
+      "originCountry": "中國",
+      "manufacturer": "TP-Link Corporation Limited",
+      "manufacturerCountry": "中國",
+      "componentsOrigin": "unknown",
+      "parts": [
+        {
+          "name": "攝影機鏡頭模組",
+          "kind": "component",
+          "chinaRelated": false,
+          "note": "originCountry 與 madeIn 未知"
+        },
+        {
+          "name": "Wi-Fi 通訊晶片",
+          "kind": "component",
+          "chinaRelated": false,
+          "note": "originCountry 與 madeIn 未知"
+        },
+        {
+          "name": "電源供應器",
+          "kind": "part",
+          "chinaRelated": false,
+          "note": "originCountry 與 madeIn 未知"
+        }
+      ],
+      "originCandidates": [
+        {
+          "label": "China",
+          "confidence": 0.5,
+          "source": "manufacturer",
+          "rating": "possible"
+        }
+      ]
+    },
+    "company": {
+      "name": "TP-Link",
+      "legalName": "TP-Link Corporation Limited",
+      "hqCountry": "中國",
+      "chinaRelations": [
+        {
+          "type": "hq",
+          "note": "公司總部設於中國大陸。",
+          "country": "中國",
+          "strength": "strong"
+        },
+        {
+          "type": "manufacturing",
+          "note": "主要製造與供應鏈集中在中國大陸。",
+          "country": "中國",
+          "strength": "strong"
+        }
+      ]
+    }
+  }
+}

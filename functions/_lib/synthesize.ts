@@ -36,6 +36,7 @@ import {
 } from './regions';
 import { applyCooPriority, extractCooClaimsFromText } from './cooPriority';
 import { hqFoldedIntoParent } from './chinaChip';
+import { tierFromCodes } from './tierRules';
 import { SERVER_TEXT, webFailText } from './serverText';
 
 export type SynthesizeInput = {
@@ -72,7 +73,6 @@ type Factors = {
   F_MFG_CN: boolean;
   F_HQ_CN: boolean;
   F_PARENT_CN_MAJORITY: boolean;
-  F_OWNERSHIP_STRONG_CN: boolean;
   F_OWNERSHIP_WEAK_CN: boolean;
   F_COMPONENT_CN: boolean;
   F_EXPLICIT_NON_CN_GEO: boolean;
@@ -83,29 +83,6 @@ type Factors = {
   reasons: string[];
   regions: RegionCode[];
 };
-
-const STRONG_REL = new Set([
-  'ownership',
-  'subsidiary',
-  'hq',
-  'parent_of',
-  'owned_by',
-  'controlling_shareholder',
-  'state_owned_cn',
-]);
-
-const WEAK_REL = new Set([
-  'manufacturing',
-  'supply',
-  'retail',
-  'minority_stake',
-  'supplier',
-  'assembled_in',
-  'retail_presence',
-  'licensed_in',
-  'joint_venture_minority',
-  'other',
-]);
 
 function uniqRegions(list: RegionCode[]): RegionCode[] {
   const out: RegionCode[] = [];
@@ -146,52 +123,24 @@ function extractFactors(
     ...partRegions,
   ]);
 
-  // Parent majority in scope
+  // Ownership counts only for a NAMED parent with a stated stake:
+  // majority / wholly in China → parent_majority_cn (one reason per fact; no
+  // separate ownership_strong_cn), minority in China → ownership_weak_cn.
+  // Unnamed chinaRelations ("strong ownership link", supply, retail,
+  // manufacturing) never feed the tier or the confidence; they stay as notes.
   let F_PARENT_CN_MAJORITY = false;
+  let F_OWNERSHIP_WEAK_CN = false;
   for (const parent of c.parents ?? []) {
     const pr = normalizeRegion(parent.country);
     if (regions.indexOf(pr) === -1 && pr !== 'UNKNOWN') regions.push(pr);
+    if (!String(parent.name ?? '').trim() || !inScope(pr, geoScope)) continue;
     const control = String(parent.control ?? '').toLowerCase();
-    if (
-      inScope(pr, geoScope) &&
-      (control === 'majority' || control === 'wholly')
-    ) {
-      F_PARENT_CN_MAJORITY = true;
-    }
+    if (control === 'majority' || control === 'wholly') F_PARENT_CN_MAJORITY = true;
+    else if (control === 'minority') F_OWNERSHIP_WEAK_CN = true;
   }
-
-  let F_OWNERSHIP_STRONG_CN = false;
-  let F_OWNERSHIP_WEAK_CN = false;
   for (const rel of c.chinaRelations ?? []) {
     const rr = normalizeRegion(rel.country);
     if (rr !== 'UNKNOWN' && !regions.includes(rr)) regions.push(rr);
-    const type = String(rel.type ?? 'other').toLowerCase();
-    const strength = String(rel.strength ?? '').toLowerCase();
-    // Relations without country: only count if type is strongly CN-coded
-    const scoped =
-      inScope(rr, geoScope) ||
-      (rr === 'UNKNOWN' &&
-        (type.includes('cn') || type === 'state_owned_cn'));
-    if (!scoped && rr !== 'UNKNOWN') continue;
-    if (!scoped && rr === 'UNKNOWN' && !type.includes('cn') && type !== 'state_owned_cn') {
-      // ambiguous relation without geo — do not invent CN link
-      continue;
-    }
-    // Ownership-class types only. strength "strong" on manufacturing/supply
-    // is still a component/supply link, not HQ/parent control.
-    if (STRONG_REL.has(type)) {
-      if (inScope(rr, geoScope) || type === 'state_owned_cn') {
-        F_OWNERSHIP_STRONG_CN = true;
-      }
-    } else if (
-      inScope(rr, geoScope) &&
-      (WEAK_REL.has(type) ||
-        strength === 'weak' ||
-        strength === 'moderate' ||
-        strength === 'strong')
-    ) {
-      F_OWNERSHIP_WEAK_CN = true;
-    }
   }
 
   const F_MADE_IN_CN = inScope(madeIn, geoScope);
@@ -226,7 +175,6 @@ function extractFactors(
     F_MFG_CN ||
     F_HQ_CN ||
     F_PARENT_CN_MAJORITY ||
-    F_OWNERSHIP_STRONG_CN ||
     F_OWNERSHIP_WEAK_CN ||
     F_COMPONENT_CN;
 
@@ -234,8 +182,7 @@ function extractFactors(
     F_MADE_IN_CN ||
     F_MFG_CN ||
     F_HQ_CN ||
-    F_PARENT_CN_MAJORITY ||
-    F_OWNERSHIP_STRONG_CN;
+    F_PARENT_CN_MAJORITY;
 
   const F_INSUFFICIENT = !F_CN_POSITIVE && !F_EXPLICIT_NON_CN_GEO;
 
@@ -245,7 +192,6 @@ function extractFactors(
   if (F_MFG_CN) reasons.push('manufacturer_cn');
   if (F_HQ_CN) reasons.push('hq_cn');
   if (F_PARENT_CN_MAJORITY) reasons.push('parent_majority_cn');
-  if (F_OWNERSHIP_STRONG_CN) reasons.push('ownership_strong_cn');
   if (F_OWNERSHIP_WEAK_CN) reasons.push('ownership_weak_cn');
   if (F_COMPONENT_CN) reasons.push('component_cn');
   if (F_EXPLICIT_NON_CN_GEO) reasons.push('explicit_non_cn_geo');
@@ -260,7 +206,6 @@ function extractFactors(
     F_MFG_CN,
     F_HQ_CN,
     F_PARENT_CN_MAJORITY,
-    F_OWNERSHIP_STRONG_CN,
     F_OWNERSHIP_WEAK_CN,
     F_COMPONENT_CN,
     F_EXPLICIT_NON_CN_GEO,
@@ -277,28 +222,13 @@ function decideTier(f: Factors): {
   tier: RelationTier;
   tierReasons: string[];
 } {
-  // Priority 1
-  if (f.F_CONFLICT && !f.F_STRONG_CN) {
-    return { tier: 'unknown', tierReasons: [...f.reasons, 'conflict_no_strong'] };
-  }
-  // Priority 2
-  if (f.F_STRONG_CN) {
-    return { tier: 'direct', tierReasons: [...f.reasons] };
-  }
-  // Priority 3
-  if (f.F_ORIGIN_CN) {
-    return { tier: 'indirect', tierReasons: [...f.reasons] };
-  }
-  // Priority 4
-  if (f.F_COMPONENT_CN || f.F_OWNERSHIP_WEAK_CN) {
-    return { tier: 'indirect', tierReasons: [...f.reasons] };
-  }
-  // Priority 5
-  if (!f.F_CN_POSITIVE && f.F_EXPLICIT_NON_CN_GEO) {
-    return { tier: 'none', tierReasons: [...f.reasons] };
-  }
-  // Priority 6
-  return { tier: 'unknown', tierReasons: [...f.reasons, 'insufficient'] };
+  // Same rules as the client China card (functions/_lib/tierRules.ts).
+  const tier = tierFromCodes(f.reasons);
+  if (tier !== 'unknown') return { tier, tierReasons: [...f.reasons] };
+  return {
+    tier,
+    tierReasons: [...f.reasons, f.F_CONFLICT && !f.F_STRONG_CN ? 'conflict_no_strong' : 'insufficient'],
+  };
 }
 
 const PART_KINDS = new Set<PartKind>([
@@ -493,7 +423,14 @@ function pushCandidate(
  */
 function collectOriginCandidates(
   p: ProductPartial | null | undefined,
-  opts: { webEnriched?: boolean; productConfidence?: number; webLikely?: string[] }
+  opts: {
+    webEnriched?: boolean;
+    productConfidence?: number;
+    webLikely?: string[];
+    /** Model-only made-in (not confirmed by barcode page or label). */
+    modelMadeIn?: string;
+    hqCountry?: string;
+  }
 ): OriginCandidate[] {
   if (!p && !opts.webLikely?.length) return [];
   const out = new Map<string, OriginCandidate>();
@@ -548,6 +485,20 @@ function collectOriginCandidates(
     for (const label of extractCountryLabelsFromText(String(n))) {
       if (out.get(label)?.rating === 'confirmed') continue;
       pushCandidate(out, label, Math.min(0.55, 0.28 + webBoost), 'notes', 'mentioned');
+    }
+  }
+
+  // Model-only made-in: one 'possible' row (source model_memory), merged into
+  // an existing row for the same country (a web row keeps its own label). An
+  // HQ / manufacturer echo with no product-specific mention (parts, components
+  // line, notes) is dropped (#28 rule).
+  const modelLab = confirmedOriginLabel(opts.modelMadeIn);
+  if (modelLab) {
+    const label = matchCountryLabel(modelLab) || modelLab;
+    const echo =
+      sameCountry(label, opts.hqCountry) || sameCountry(label, p.manufacturerCountry);
+    if (!echo || out.has(label)) {
+      pushCandidate(out, label, Math.min(0.5, base), 'model_memory', 'possible');
     }
   }
 
@@ -1502,6 +1453,9 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     }) ?? input.partials.product;
   let webLikely: string[] = [];
   let madeInBasis: MadeInBasis | undefined;
+  // What the model said before the web gate (the gate strips it silently).
+  const modelSaid =
+    confirmedOriginLabel(productSan?.madeIn) || confirmedOriginLabel(productSan?.manufacturedIn);
   if (input.webCoo && input.webEnriched) {
     const gated = applyWebCooGate(productSan, input.webCoo, input.ocrText);
     productSan = gated.product;
@@ -1512,6 +1466,14 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   // (also when web research was off for this check).
   if (!madeInBasis && productSan?.madeIn && labelConfirmsMadeIn(productSan.madeIn, input.ocrText)) {
     madeInBasis = 'label';
+  }
+  // Model-only made-in (no barcode page, no package label): never the made-in,
+  // never a tier / confidence input. It survives only as a 'model_memory'
+  // candidate row (see collectOriginCandidates).
+  let modelMadeIn: string | undefined;
+  if (productSan && !madeInBasis && modelSaid) {
+    modelMadeIn = modelSaid;
+    productSan = { ...productSan, madeIn: undefined, manufacturedIn: undefined };
   }
   if (productSan?.parts?.length) {
     const partsCtx: PartsSanitizeCtx = {
@@ -1582,10 +1544,25 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     caveats.push(SERVER_TEXT.verifyConflict);
   }
 
+  const rawGroundingSources = (
+    input.webEnriched
+      ? (input.sources?.length
+          ? input.sources
+          : parseSourcesFromBrief(input.webBrief))
+      : []
+  )
+    .map((s) => String(s).trim())
+    .filter(Boolean);
+  const groundingSources = cleanSources(rawGroundingSources, 8);
+  // The company floor needs a sourced company row (web research with at
+  // least one Source line — the 確認 tag on the client). Model memory alone
+  // gets no floor.
+  const companySourced = Boolean(input.webEnriched) && groundingSources.length > 0;
+
   // A China HQ or China-controlling parent is company-level evidence: the
   // tier is direct whatever the made-in says, so its confidence follows the
   // company finding, not a weak / unconfirmed made-in (no 50% "weak" China HQ).
-  if (tier === 'direct' && (f.F_HQ_CN || f.F_PARENT_CN_MAJORITY)) {
+  if (tier === 'direct' && (f.F_HQ_CN || f.F_PARENT_CN_MAJORITY) && companySourced) {
     const companyConf = partials.company?.confidence;
     const base =
       typeof companyConf === 'number' && Number.isFinite(companyConf) && companyConf > 0
@@ -1639,6 +1616,8 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     webEnriched: input.webEnriched,
     productConfidence: p?.confidence,
     webLikely,
+    modelMadeIn,
+    hqCountry: c?.hqCountry,
   });
 
   if (p && !p.madeIn) {
@@ -1658,7 +1637,8 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   // queried candidates line is noise there (e.g. "Japan (likely 55% · parts)").
   if (originCandidates.length && !p?.madeIn && !labelPartsEvidence) {
     const candBits = originCandidates
-      .filter((c) => c.rating !== 'confirmed')
+      // Model references carry no percentage anywhere (unconfirmed).
+      .filter((c) => c.rating !== 'confirmed' && c.source !== 'model_memory')
       .slice(0, 5)
       .map(
         (c) =>
@@ -1757,16 +1737,6 @@ export function synthesize(input: SynthesizeInput): CheckResult {
       (partials.company == null && !input.companySkipped && !input.productSkipped)
   );
 
-  const rawGroundingSources = (
-    input.webEnriched
-      ? (input.sources?.length
-          ? input.sources
-          : parseSourcesFromBrief(input.webBrief))
-      : []
-  )
-    .map((s) => String(s).trim())
-    .filter(Boolean);
-  const groundingSources = cleanSources(rawGroundingSources, 8);
 
   return {
     schemaVersion: 1,

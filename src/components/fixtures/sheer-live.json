@@ -1,0 +1,110 @@
+{
+  "_note": "Trimmed real /api/check result for \"4902508277471\" from https://originwise.pages.dev on 2026-10-08 (zh-Hant).",
+  "query": "4902508277471",
+  "result": {
+    "schemaVersion": 1,
+    "relationTier": "direct",
+    "title": "母乳実感 Sheer PPSU プラスチック製 240ml",
+    "summary": "Made in: 中國 · Brand origin: 日本 · Components/global line: 未知 · Parts: PPSUボトル本体, シリコーンゴム製乳首, キャップ・フード · HQ: 日本 · Company: Pigeon",
+    "confidence": 0.9,
+    "tierReasons": [
+      "made_in_cn",
+      "ownership_weak_cn",
+      "explicit_non_cn_geo"
+    ],
+    "regions": [
+      "CN",
+      "OTHER"
+    ],
+    "geoScope": "prc",
+    "knowledgeBasis": "web_enriched",
+    "partsEvidence": "web",
+    "sources": [
+      "ピジョン 母乳実感 Sheer PPSU プラスチック製 240ml 3ヵ月頃 — https://aeonretail.com/product/0/P-4902508277471/?srsltid=AU7gw4VDWUwW30ann-NLq7fCuprt-Uz5UIjW1wdGDQ8uODkKTGmTQoug",
+      "おうちでイオン イオンネットスーパー 【3ヶ月頃～】ピジョン 母乳 ... — https://shop.aeon.com/netsuper/01050000006850/010500000068504902508277471.html",
+      "【3ヶ月頃～】ピジョン 母乳実感 Sheer PPSU プラスチック製 240ml — https://shop.aeon.com/netsuper/01050000010610/010500000106104902508277471.html"
+    ],
+    "meta": {
+      "searchProvider": "firecrawl",
+      "searchMatch": "barcode",
+      "searchCoo": [
+        {
+          "country": "中国",
+          "basis": "barcode",
+          "status": "confirmed",
+          "url": "https://aeonretail.com/product/0/P-4902508277471/?srsltid=AU7gw4VDWUwW30ann-NLq7fCuprt-Uz5UIjW1wdGDQ8uODkKTGmTQoug"
+        },
+        {
+          "country": "中国",
+          "basis": "barcode",
+          "status": "confirmed",
+          "url": "https://shop.aeon.com/netsuper/01050000006850/010500000068504902508277471.html"
+        },
+        {
+          "country": "中国",
+          "basis": "barcode",
+          "status": "confirmed",
+          "url": "https://shop.aeon.com/netsuper/01050000010610/010500000106104902508277471.html"
+        }
+      ]
+    },
+    "product": {
+      "name": "母乳実感 Sheer PPSU プラスチック製 240ml",
+      "brand": "ピジョン (Pigeon)",
+      "originCountry": "日本",
+      "madeIn": "中國",
+      "manufacturedIn": "中國",
+      "manufacturer": "ピジョン株式会社",
+      "manufacturerCountry": "日本",
+      "componentsOrigin": "未知",
+      "parts": [
+        {
+          "name": "PPSUボトル本体",
+          "kind": "part",
+          "chinaRelated": false,
+          "note": "依據現有資訊未標註零件細部產地"
+        },
+        {
+          "name": "シリコーンゴム製乳首",
+          "kind": "part",
+          "chinaRelated": false,
+          "note": "依據現有資訊未標註零件細部產地"
+        },
+        {
+          "name": "キャップ・フード",
+          "kind": "part",
+          "chinaRelated": false,
+          "note": "依據現有資訊未標註零件細部產地"
+        }
+      ],
+      "originCandidates": [
+        {
+          "label": "China",
+          "confidence": 0.95,
+          "source": "confirmed_coo",
+          "rating": "confirmed"
+        },
+        {
+          "label": "Japan",
+          "confidence": 0.5,
+          "source": "manufacturer",
+          "rating": "possible"
+        }
+      ],
+      "madeInBasis": "barcode"
+    },
+    "company": {
+      "name": "Pigeon",
+      "legalName": "ピジョン株式会社 (Pigeon Corporation)",
+      "hqCountry": "日本",
+      "chinaRelations": [
+        {
+          "type": "manufacturing",
+          "note": "部分商品（如本SKU）於中國製造",
+          "country": "中國",
+          "strength": "strong"
+        }
+      ]
+    }
+  }
+}

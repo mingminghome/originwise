@@ -30,6 +30,7 @@ describe('synthesize decision table', () => {
       jobId: 't1',
       geoScope: 'prc',
       companySkipped: true,
+      ocrText: 'Made in Japan',
       partials: {
         product: { name: 'Snack', madeIn: 'Japan', confidence: 0.8 },
       },
@@ -164,6 +165,7 @@ describe('synthesize decision table', () => {
         jobId: 't5',
         geoScope,
         companySkipped: true,
+        ocrText: 'Made in Taiwan',
         partials: {
           product: { name: 'Chip', madeIn: 'Taiwan', brand: 'TSMC-ish' },
         },
@@ -183,6 +185,7 @@ describe('synthesize decision table', () => {
       jobId: 't6a',
       geoScope: 'greater_china',
       companySkipped: true,
+      ocrText: 'Made in Hong Kong',
       partials: { product: { name: 'Tea', madeIn: 'Hong Kong' } },
     });
     assert.equal(hi.relationTier, 'direct');
@@ -191,6 +194,7 @@ describe('synthesize decision table', () => {
       jobId: 't6b',
       geoScope: 'prc',
       companySkipped: true,
+      ocrText: 'Made in Hong Kong',
       partials: { product: { name: 'Tea', madeIn: 'Hong Kong' } },
     });
     assert.equal(lo.relationTier, 'none');
@@ -200,6 +204,7 @@ describe('synthesize decision table', () => {
     const r = synthesize({
       jobId: 't7',
       geoScope: 'prc',
+      ocrText: 'Made in China',
       partials: {
         product: { name: 'Phone', madeIn: 'China', confidence: 0.9 },
         company: { name: 'Co', hqCountry: 'Japan', confidence: 0.9 },
@@ -218,6 +223,9 @@ describe('synthesize decision table', () => {
     const r = synthesize({
       jobId: 't7b',
       geoScope: 'prc',
+      ocrText: 'Made in China',
+      webEnriched: true,
+      sources: ['Co — https://example.com/about'],
       partials: {
         product: { name: 'Phone', madeIn: 'China', confidence: 0.9 },
         company: { name: 'Co', hqCountry: 'China', confidence: 0.9 },
@@ -548,6 +556,7 @@ describe('madeIn unknown sanitize', () => {
       jobId: 'unk-cn',
       geoScope: 'prc',
       companySkipped: true,
+      ocrText: 'Made in China',
       partials: {
         product: {
           name: 'DJI Mini 4 Pro',
@@ -804,6 +813,8 @@ describe('China HQ / China-controlling parent → direct with strong confidence'
     const r = synthesize({
       jobId: 'cn-hq',
       geoScope: 'prc',
+      webEnriched: true,
+      sources: ['About us — https://example.com/about'],
       partials: {
         product: { name: 'Tapo C200', brand: 'Tapo', confidence: 0.5 },
         company: { name: 'TP-Link', hqCountry: 'China', confidence: 0.85 },
@@ -819,6 +830,8 @@ describe('China HQ / China-controlling parent → direct with strong confidence'
     const r = synthesize({
       jobId: 'cn-parent',
       geoScope: 'prc',
+      webEnriched: true,
+      sources: ['About us — https://example.com/about'],
       partials: {
         product: { name: 'Cybex Melio', brand: 'Cybex', confidence: 0.45 },
         company: {
@@ -838,6 +851,8 @@ describe('China HQ / China-controlling parent → direct with strong confidence'
     const r = synthesize({
       jobId: 'cn-hq-noconf',
       geoScope: 'prc',
+      webEnriched: true,
+      sources: ['About us — https://example.com/about'],
       partials: {
         product: { name: 'Anker charger', confidence: 0.4 },
         company: { name: 'Anker Innovations', hqCountry: 'China' },
@@ -858,5 +873,162 @@ describe('China HQ / China-controlling parent → direct with strong confidence'
     });
     assert.notEqual(r.relationTier, 'direct');
     assert.ok(!r.tierReasons.includes('hq_cn'));
+  });
+});
+
+describe('fairness: what may feed the tier and the confidence', () => {
+  it('company floor needs a sourced company row: model memory alone gets none', () => {
+    const r = synthesize({
+      jobId: 'floor-model',
+      geoScope: 'prc',
+      partials: {
+        product: { name: 'Tapo C200', confidence: 0.5 },
+        company: { name: 'TP-Link', hqCountry: 'China', confidence: 0.6 },
+      },
+    });
+    assert.equal(r.relationTier, 'direct');
+    assert.equal(r.confidence, 0.5);
+    const web = synthesize({
+      jobId: 'floor-web-nosrc',
+      geoScope: 'prc',
+      webEnriched: true,
+      sources: [],
+      partials: {
+        product: { name: 'Tapo C200', confidence: 0.5 },
+        company: { name: 'TP-Link', hqCountry: 'China', confidence: 0.6 },
+      },
+    });
+    assert.ok(web.confidence < 0.75, String(web.confidence));
+  });
+
+  it('unnamed / stake-less China relations never raise the tier', () => {
+    const r = synthesize({
+      jobId: 'rel-only',
+      geoScope: 'prc',
+      partials: {
+        product: { name: 'Bottle', confidence: 0.8 },
+        company: {
+          name: 'Pigeon',
+          hqCountry: 'Japan',
+          confidence: 0.8,
+          chinaRelations: [
+            { type: 'ownership', note: 'strong China ties', country: 'China', strength: 'strong' },
+            { type: 'manufacturing', note: 'some SKUs made in China', country: 'China', strength: 'strong' },
+          ],
+        },
+      },
+    });
+    assert.ok(!r.tierReasons.includes('ownership_strong_cn'));
+    assert.ok(!r.tierReasons.includes('ownership_weak_cn'));
+    assert.notEqual(r.relationTier, 'direct');
+    assert.notEqual(r.relationTier, 'indirect');
+  });
+
+  it('named China parent: majority → one reason (parent_majority_cn); minority → ownership_weak_cn', () => {
+    const maj = synthesize({
+      jobId: 'own-maj',
+      geoScope: 'prc',
+      partials: {
+        company: {
+          name: 'Co',
+          hqCountry: 'Germany',
+          parents: [{ name: 'Big CN Group', country: 'China', control: 'wholly' }],
+          chinaRelations: [{ type: 'ownership', country: 'China', strength: 'strong' }],
+        },
+      },
+    });
+    assert.ok(maj.tierReasons.includes('parent_majority_cn'));
+    assert.ok(!maj.tierReasons.includes('ownership_strong_cn'));
+    const min = synthesize({
+      jobId: 'own-min',
+      geoScope: 'prc',
+      partials: {
+        company: {
+          name: 'Co',
+          hqCountry: 'Germany',
+          parents: [{ name: 'Tencent', country: 'China', control: 'minority' }],
+        },
+      },
+    });
+    assert.ok(min.tierReasons.includes('ownership_weak_cn'));
+    assert.equal(min.relationTier, 'indirect');
+    const unnamed = synthesize({
+      jobId: 'own-unnamed',
+      geoScope: 'prc',
+      partials: {
+        company: { name: 'Co', hqCountry: 'Germany', parents: [{ name: ' ', country: 'China', control: 'majority' }] },
+      },
+    });
+    assert.ok(!unnamed.tierReasons.includes('parent_majority_cn'));
+  });
+
+  it('model-only China made-in + empty web search: candidate row only, tier unchanged', () => {
+    const base = {
+      geoScope: 'prc' as const,
+      webEnriched: true,
+      webCoo: [],
+      sources: [],
+    };
+    const company = { name: 'Pigeon', hqCountry: 'Japan', confidence: 0.8 };
+    const withModel = synthesize({
+      ...base,
+      jobId: 'model-mi',
+      partials: {
+        product: { name: 'Sheer 240ml', madeIn: 'China', notes: ['Some SKUs are made in China'], confidence: 0.8 },
+        company,
+      },
+    });
+    const without = synthesize({
+      ...base,
+      jobId: 'model-mi-none',
+      partials: { product: { name: 'Sheer 240ml', confidence: 0.8 }, company },
+    });
+    assert.equal(withModel.product?.madeIn, undefined);
+    assert.ok(!withModel.tierReasons.includes('made_in_cn'));
+    assert.equal(withModel.relationTier, without.relationTier);
+    assert.equal(withModel.confidence, without.confidence);
+    const rows = (withModel.product?.originCandidates ?? []).filter((c) => c.label === 'China');
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]?.rating, 'possible');
+  });
+
+  it('model-only made-in, no web at all (model memory): same rule', () => {
+    const r = synthesize({
+      jobId: 'model-mi-mem',
+      geoScope: 'prc',
+      partials: {
+        product: { name: 'Gadget', madeIn: 'China', parts: [{ name: 'battery', madeIn: 'China' }], confidence: 0.8 },
+        company: { name: 'Acme', hqCountry: 'Japan', confidence: 0.8 },
+      },
+    });
+    assert.equal(r.product?.madeIn, undefined);
+    assert.ok(!r.tierReasons.includes('made_in_cn'));
+  });
+
+  it('model made-in that only repeats the HQ country is dropped (#28)', () => {
+    const r = synthesize({
+      jobId: 'model-mi-echo',
+      geoScope: 'prc',
+      partials: {
+        product: { name: 'Bottle', madeIn: 'Japan', confidence: 0.8 },
+        company: { name: 'Pigeon', hqCountry: 'Japan', confidence: 0.8 },
+      },
+    });
+    assert.ok(!(r.product?.originCandidates ?? []).some((c) => c.label === 'Japan'));
+  });
+
+  it('label-confirmed made-in still counts (basis label)', () => {
+    const r = synthesize({
+      jobId: 'label-mi',
+      geoScope: 'prc',
+      ocrText: '中国製 Made in China',
+      partials: {
+        product: { name: 'Sheer 240ml', madeIn: 'China', confidence: 0.9 },
+        company: { name: 'Pigeon', hqCountry: 'Japan', confidence: 0.9 },
+      },
+    });
+    assert.equal(r.product?.madeIn, 'China');
+    assert.equal(r.product?.madeInBasis, 'label');
+    assert.equal(r.relationTier, 'direct');
   });
 });

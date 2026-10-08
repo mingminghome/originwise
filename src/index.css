@@ -5035,59 +5035,348 @@ p {
 }
 .alt-disclaimer{font-size:0.8rem;margin:0 0 0.65rem;line-height:1.4}.alt-geo{font-size:0.8rem;margin:0.25rem 0 0}
 
-/* China link first (top of a result) */
-.china-link {
-  margin: 0;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 0.75rem 0.9rem;
-}
-.china-link-company {
-  display: inline-block;
-  margin: 0 0 0.5rem;
-  padding: 0.15rem 0.6rem;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 0.9rem;
-  background: rgba(200, 40, 40, 0.12);
-  color: #b42318;
-}
-:root[data-theme='dark'] .china-link-company {
-  background: rgba(240, 80, 80, 0.16);
-  color: #ff8a80;
-}
-.china-link-rows {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* China-first result cards (與中國的關係 → 製造地 → 產地分層 → folds) */
+.result-cards {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.75rem;
 }
-.china-link-row {
+.rc-head .ask-result-title {
+  margin: 0;
+}
+.rc-head .ask-result-meta:empty {
+  display: none;
+}
+.rc-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 0.95rem 1rem 1rem;
+}
+.rc-eyebrow,
+.rc-title {
+  margin: 0 0 0.35rem;
+  padding-right: 9rem; /* room for the Save / Share toolbar */
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.rc-title {
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.rc-verdict,
+.rc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.15rem 0 0.7rem;
+}
+.rc-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.22rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.rc-chip--solid {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg-card);
+}
+/* China card chips and the tier pill are factual labels: the same neutral
+   pill as the confidence chip (no alarm colour). */
+.rc-china-chip,
+.rc-tier-chip {
+  font-weight: 700;
+}
+.rc-footnote {
+  margin: 0.65rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.rc-rows {
+  margin: 0;
+  display: grid;
+  gap: 0;
+}
+.rc-row {
+  display: grid;
+  grid-template-columns: 6.8rem minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border);
+}
+.rc-row:first-child {
+  border-top: 0;
+}
+.rc-row-label {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.rc-row-value {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.5rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.rc-china .rc-row {
+  grid-template-columns: 6.8rem minmax(0, 1fr);
+}
+.rc-row-value.is-china > span:first-child {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+.rc-row-detail {
+  font-weight: 500;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.rc-reasons {
+  margin: 0.55rem 0 0;
+  padding: 0.55rem 0 0 1.1rem;
+  border-top: 1px dashed var(--border);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  display: grid;
+  gap: 0.2rem;
+}
+.rc-headline {
+  margin: 0 0 0.55rem;
+  font-family: var(--font-heading);
+  font-size: 2.3rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+.rc-headline.is-unconfirmed {
+  color: var(--text);
+}
+.rc-headline.is-likely {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.5rem;
-  font-size: 0.95rem;
+  column-gap: 0.45rem;
 }
-.china-link-label {
-  min-width: 6.5rem;
-  color: var(--text);
-  opacity: 0.75;
-}
-.china-link-status {
+/* 較可能 and （非確認） stay on one unbreakable run with the country. */
+.rc-headline-country {
+  font-size: 1.35rem;
   font-weight: 700;
+  white-space: nowrap;
 }
-.china-link-status.is-china {
-  color: #b42318;
-}
-:root[data-theme='dark'] .china-link-status.is-china {
-  color: #ff8a80;
-}
-.china-link-status.is-unconfirmed {
-  font-weight: 600;
-  opacity: 0.7;
-}
-.china-link-detail {
+.rc-source {
+  margin: 0 0 0.25rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: var(--bg-subtle);
   font-size: 0.85rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.rc-source a {
+  color: inherit;
+  font-weight: 600;
+}
+.rc-candidates {
+  margin-top: 0.2rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--border);
+}
+.rc-sub {
+  margin: 0 0 0.3rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.rc-candidates ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rc-candidates li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+/* Country + 模型參考（未經網頁或標示確認） share one cell: the label may wrap
+   to a second line inside it, never into a separate row, never truncated
+   (also in the saved 780px image). */
+.rc-cand-country {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.4rem;
+  row-gap: 0.1rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.rc-cand-name {
+  white-space: nowrap;
+}
+.rc-cand-label {
+  font-weight: 500;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.rc-info {
+  display: contents;
+}
+.rc-info-btn {
+  appearance: none;
+  border: 0;
+  background: none;
+  margin: 0;
+  padding: 0.05rem 0.25rem;
+  min-width: 1.6rem;
+  min-height: 1.6rem;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.rc-info-btn:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+/* Opens in the flow under the label inside the same cell: never floats past
+   the card edge, never truncated. */
+.rc-info-text {
+  flex-basis: 100%;
+  font-weight: 500;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.rc-info-text[hidden] {
+  display: none;
+}
+.rc-cand-meta {
+  flex: 0 0 auto;
+  font-weight: 500;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+.rc-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.rc-note {
+  margin: 0.55rem 0 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.rc-tag {
+  justify-self: end;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.rc-tag.is-confirmed {
+  color: var(--text);
+}
+.rc-tag.is-unconfirmed {
+  border-style: dashed;
+}
+.rc-folds {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 0.2rem 1rem;
+}
+.rc-fold {
+  border-top: 1px solid var(--border);
+}
+.rc-fold:first-child {
+  border-top: 0;
+}
+.rc-fold > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+.rc-fold > summary::-webkit-details-marker {
+  display: none;
+}
+.rc-fold-toggle {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.rc-fold-close,
+.rc-fold[open] .rc-fold-open {
+  display: none;
+}
+.rc-fold[open] .rc-fold-close {
+  display: inline;
+}
+.rc-fold-body {
+  padding: 0 0 0.85rem;
+  display: grid;
+  gap: 0.6rem;
+}
+.rc-source-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+  display: grid;
+  gap: 0.25rem;
+  overflow-wrap: anywhere;
+}
+.rc-source-list a {
+  color: inherit;
+}
+.origin-layers--detail {
+  padding: 0;
+}
+@media (max-width: 420px) {
+  .rc-row {
+    grid-template-columns: 5.6rem minmax(0, 1fr) auto;
+  }
+  .rc-china .rc-row {
+    grid-template-columns: 5.6rem minmax(0, 1fr);
+  }
+  .rc-headline {
+    font-size: 2rem;
+  }
 }

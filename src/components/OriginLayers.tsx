@@ -374,9 +374,15 @@ function LayerRow({
 export function OriginLayers({
   result,
   t,
+  detailOnly = false,
 }: {
   result: CheckResult;
   t: TFunction;
+  /**
+   * Inside the 產地說明 fold: ownership + parts only. Made-in and brand/HQ
+   * already have their own cards above.
+   */
+  detailOnly?: boolean;
 }) {
   const model = buildOriginLayers(result);
   const hasProductOrCompany = Boolean(result.product || result.company);
@@ -388,6 +394,37 @@ export function OriginLayers({
   const notice = webQuotaNotice(result);
   const searchQuotaUsedUp = notice === 'searchQuotaUsedUp';
   const aiCreditsUsedUp = notice === 'aiCreditsUsedUp';
+
+  if (detailOnly) {
+    // No China verdict here: part rows show their country only.
+    const detailParts = model.parts.map((l) =>
+      formatParts(l.kind === 'part' ? { ...l, chinaRelated: false } : l, t)
+    );
+    return (
+      <div className="origin-layers origin-layers--detail" data-testid="origin-layers">
+        <div className="origin-layers-grid">
+          {ownershipItems.length ? (
+            <LayerRow
+              label={t('check.layerOwnership')}
+              items={ownershipItems}
+              variant="ownership"
+              t={t}
+            />
+          ) : null}
+          {detailParts.length ? (
+            <div className="origin-layer-parts-wrap">
+              {model.partsModelOnly ? (
+                <p className="muted origin-parts-banner" data-testid="parts-model-only-banner">
+                  {t('check.partsModelOnlyBanner')}
+                </p>
+              ) : null}
+              <LayerRow label={t('check.layerParts')} items={detailParts} variant="parts" t={t} />
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="origin-layers card-soft" data-testid="origin-layers">

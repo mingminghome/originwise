@@ -1,12 +1,16 @@
 import type { CheckResult } from '../core/types';
-import { brandHqFolded, ChinaLink, chinaCardReasons, companyView, displayTier } from './ChinaLink';
 import type { TFunction } from '../core/i18n';
-import { formatTierReason } from '../core/i18n/tierReasons';
+import {
+  cleanSources,
+  sourceLabel,
+  splitSourceLine,
+} from '../../functions/_lib/sourceLine';
 import { AlternativeCards } from './AlternativeCards';
-import { OriginLayers } from './OriginLayers';
+import { buildOriginLayers, OriginLayers, webQuotaNotice } from './OriginLayers';
 import { OriginMap } from './OriginMap';
 import { RelationGraph } from './RelationGraph';
-import { TierBadge } from './TierBadge';
+import { ChinaCard, Fold, LayersCard, MadeInCard } from './ResultCards';
+import { cleanNotes } from './resultCards.model';
 import { localizeServerText } from '../core/localizeServerText';
 import { resultTitle } from '../core/resultTitle';
 
@@ -124,151 +128,144 @@ export function ResultPanel({
   const failCount = agents.filter((a) => a.ok === false && !skippedAgent(a)).length;
   const okCount = agents.filter((a) => a.ok !== false).length;
   // Older cached results may still carry echoed schema keys like "(madeIn)".
-  const notes =
-    result.product?.notes
-      ?.map((n) =>
-        n
-          .replace(
-            /\s*[(（]\s*(?:madeIn|manufacturedIn|originCountry|componentsOrigin|manufacturerCountry|hqCountry|chinaRelated)\s*[)）]/g,
-            ''
-          )
-          .trim()
-      )
-      .filter(Boolean) ?? [];
+  const notes = cleanNotes(result);
   const searchName = searchProviderLabel(result.meta?.searchProvider, t);
-  const shown = displayTier(result);
-  const reasons = chinaCardReasons(result.tierReasons, { hqFolded: brandHqFolded(result) });
   const title = resultTitle(result, query);
   const searchRequests = result.meta?.searchRequests;
+  const sources = Array.isArray(result.sources) ? cleanSources(result.sources, 12) : [];
+  const layers = buildOriginLayers(result);
+  const originDetailCount =
+    notes.length + layers.ownership.length + layers.parts.length;
+  const altCount =
+    (result.alternatives?.brands?.length ?? 0) + (result.alternatives?.products?.length ?? 0);
+  const caveats = result.caveats ?? [];
+  const notice = webQuotaNotice(result);
+  const hasEntity = Boolean(result.product || result.company);
 
   return (
-    <div className="ask-result" role="status">
-      <header className="result-verdict">
-        <div className="ask-result-head">
-          <h2 className="ask-result-title">{title.title}</h2>
-          {title.modelName ? (
-            <p className="muted ask-result-identified" data-testid="identified-as">
-              {t('check.identifiedAs', { name: title.modelName })}
-            </p>
-          ) : null}
-          <p className="ask-result-meta muted">
-            {[
-              provider
-                ? t('check.answeredBy', { name: providerLabel(provider, t) })
-                : null,
-              cached ? t('check.cached') : null,
-              result.meta?.degraded ? t('check.degraded') : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
+    <div className="ask-result result-cards" role="status">
+      <header className="rc-head">
+        <h2 className="ask-result-title">{title.title}</h2>
+        {title.modelName ? (
+          <p className="muted ask-result-identified" data-testid="identified-as">
+            {t('check.identifiedAs', { name: title.modelName })}
           </p>
-        </div>
-        <div className="result-tier-hero">
-          <p className="result-tier-label muted">{t('check.relationLabel')}</p>
-          <TierBadge
-            tier={shown.tier}
-            label={t(`tier.${shown.tier}`)}
-            size="lg"
-          />
-          {typeof shown.confidence === 'number' ? (
-            <span className="muted result-tier-conf">
-              {t('check.confidence', {
-                n: Math.round(shown.confidence * 100),
-              })}
-            </span>
-          ) : null}
-        </div>
+        ) : null}
+        <p className="ask-result-meta muted">
+          {[
+            provider ? t('check.answeredBy', { name: providerLabel(provider, t) }) : null,
+            cached ? t('check.cached') : null,
+            result.meta?.degraded ? t('check.degraded') : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
       </header>
 
-      <ChinaLink result={result} t={t} />
+      <ChinaCard result={result} t={t} />
 
-      {reasons.shown.length || reasons.madeInHidden ? (
-        <section className="result-why">
-          <h3 className="result-section-title">{t('check.reasons')}</h3>
-          <ul className="tier-reasons-list">
-            {reasons.shown.map((r) => (
-              <li key={r}>{formatTierReason(r, t, companyView(result))}</li>
-            ))}
-            {reasons.madeInHidden ? (
-              <li key="made-in-below">{t('check.chinaLink.madeInBelow')}</li>
-            ) : null}
-          </ul>
-        </section>
-      ) : null}
-
-      {result.summary ? (
-        <p className="ask-result-summary">{localizeServerText(t, result.summary)}</p>
-      ) : null}
-
-      {searchName && typeof searchRequests === 'number' ? (
-        <p className="muted result-search-usage" data-testid="search-usage">
-          {t('check.searchUsage', { provider: searchName, n: searchRequests })}
-          {result.meta?.searchMatch
-            ? ` · ${t(`check.matchBasis.${result.meta.searchMatch}`)}`
-            : null}
+      {notice ? (
+        <p
+          className="origin-layers-quota"
+          role="status"
+          data-testid={notice === 'aiCreditsUsedUp' ? 'ai-credits-used-up' : 'search-quota-used-up'}
+        >
+          {t(`check.${notice}`)}
         </p>
       ) : null}
 
-      <OriginLayers result={result} t={t} />
+      {hasEntity ? <MadeInCard result={result} t={t} /> : null}
+      {hasEntity ? <LayersCard result={result} t={t} /> : null}
 
-      <AlternativeCards alternatives={result.alternatives} t={t} />
+      <div className="rc-folds">
+        {originDetailCount ? (
+          <Fold title={t('check.productNotes')} count={originDetailCount} t={t} testId="fold-notes">
+            {notes.length ? (
+              <ul className="tier-reasons-list">
+                {notes.map((n) => (
+                  <li key={n}>{localizeServerText(t, n)}</li>
+                ))}
+              </ul>
+            ) : null}
+            <OriginLayers result={result} t={t} detailOnly />
+          </Fold>
+        ) : null}
 
-      {notes.length ? (
-        <section className="result-notes">
-          <h3 className="result-section-title">{t('check.productNotes')}</h3>
-          <ul className="tier-reasons-list">
-            {notes.map((n) => (
-              <li key={n}>{localizeServerText(t, n)}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+        {caveats.length ? (
+          <Fold title={t('check.caveats')} count={caveats.length} t={t} testId="fold-caveats">
+            <ul className="tier-reasons-list">
+              {caveats.map((c) => (
+                <li key={c}>{localizeServerText(t, c)}</li>
+              ))}
+            </ul>
+          </Fold>
+        ) : null}
 
-      <OriginMap regions={result.regions} t={t} />
-
-      {result.graph?.nodes?.length ? (
-        <details className="result-fold">
-          <summary>{t('check.graphTitle')}</summary>
-          <RelationGraph graph={result.graph} t={t} embedded />
-        </details>
-      ) : null}
-
-      {agents.length > 0 ? (
-        <details className="result-fold" open={failCount > 0}>
-          <summary>
-            {t('check.agentsTitle')}
-            <span className="muted result-fold-meta">
-              {t('check.agentsSummary', {
-                total: agents.length,
-                ok: okCount,
-                fail: failCount,
+        {sources.length ? (
+          <Fold title={t('check.rc.foldSources')} count={sources.length} t={t} testId="fold-sources">
+            <ol className="rc-source-list">
+              {sources.map((src) => {
+                const parts = splitSourceLine(src);
+                const label = sourceLabel(parts);
+                return (
+                  <li key={src}>
+                    {parts.url ? (
+                      <a href={parts.url} target="_blank" rel="noreferrer" title={parts.url}>
+                        {label}
+                      </a>
+                    ) : (
+                      label
+                    )}
+                  </li>
+                );
               })}
-            </span>
-          </summary>
-          <AgentsPoolCard agents={agents} t={t} />
-        </details>
-      ) : null}
+            </ol>
+          </Fold>
+        ) : null}
 
-      {result.caveats?.length ? (
-        <div className="ask-result-caveats">
-          <h3 className="ask-result-caveats-title">{t('check.caveats')}</h3>
-          <ul>
-            {result.caveats.map((c) => (
-              <li key={c}>{localizeServerText(t, c)}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+        {altCount ? (
+          <Fold title={t('check.rc.foldAlts')} count={altCount} t={t} testId="fold-alts">
+            <AlternativeCards alternatives={result.alternatives} t={t} />
+          </Fold>
+        ) : null}
 
-      <p className="muted result-disclaimer">
-        {result.knowledgeBasis === 'web_enriched'
-          ? searchName && result.meta?.searchProvider !== 'gemini'
-            ? t('check.knowledgeWebVia', { provider: searchName })
-            : t('check.knowledgeWeb')
-          : result.knowledgeBasis === 'model_memory'
-            ? t('check.knowledgeModel')
-            : result.knowledgeCutoffNote || t('check.disclaimer')}
-      </p>
+        <Fold title={t('check.rc.foldAi')} t={t} testId="fold-ai">
+          {searchName && typeof searchRequests === 'number' ? (
+            <p className="muted result-search-usage" data-testid="search-usage">
+              {t('check.searchUsage', { provider: searchName, n: searchRequests })}
+              {result.meta?.searchMatch
+                ? ` · ${t(`check.matchBasis.${result.meta.searchMatch}`)}`
+                : null}
+            </p>
+          ) : null}
+          {agents.length > 0 ? (
+            <>
+              <p className="muted result-fold-meta">
+                {t('check.agentsTitle')} ·{' '}
+                {t('check.agentsSummary', { total: agents.length, ok: okCount, fail: failCount })}
+              </p>
+              <AgentsPoolCard agents={agents} t={t} />
+            </>
+          ) : null}
+          <OriginMap regions={result.regions} t={t} />
+          {result.graph?.nodes?.length ? (
+            <details className="result-fold">
+              <summary>{t('check.graphTitle')}</summary>
+              <RelationGraph graph={result.graph} t={t} embedded />
+            </details>
+          ) : null}
+          <p className="muted result-disclaimer">
+            {result.knowledgeBasis === 'web_enriched'
+              ? searchName && result.meta?.searchProvider !== 'gemini'
+                ? t('check.knowledgeWebVia', { provider: searchName })
+                : t('check.knowledgeWeb')
+              : result.knowledgeBasis === 'model_memory'
+                ? t('check.knowledgeModel')
+                : result.knowledgeCutoffNote || t('check.disclaimer')}
+          </p>
+        </Fold>
+      </div>
+      <p className="muted origin-layers-share">{t('check.sectionShareHint')}</p>
     </div>
   );
 }
