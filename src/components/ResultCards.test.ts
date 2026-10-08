@@ -9,7 +9,7 @@ import { describe, it } from 'node:test';
 import * as React from 'react';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { createT } from '../core/i18n';
+import { catalogs, createT } from '../core/i18n';
 import type { CheckResult } from '../core/types';
 import { ChinaCard, MadeInCard } from './ResultCards';
 import { ResultPanel } from './ResultPanel';
@@ -413,6 +413,63 @@ describe('model-only made-in (item 9)', () => {
     );
   });
 
+  // Model says China; web only found a Thailand parts mention (modelref preview shape).
+  const mixed = base({
+    relationTier: 'none',
+    sources: [],
+    product: {
+      name: 'Bottle',
+      madeIn: 'China',
+      originCandidates: [{ label: 'Thailand', confidence: 0.55, source: 'parts', rating: 'likely' }],
+    },
+    company: { name: 'Pigeon', hqCountry: 'Japan' },
+  });
+  const liOf = (out: string, model: boolean) =>
+    [...out.matchAll(/<li(?: class="is-model")?>.*?<\/li>/g)]
+      .map((m) => m[0])
+      .filter((li) => li.startsWith('<li class="is-model"') === model);
+
+  it('model-only row shows no likelihood grade (Tester / Chief follow-up)', () => {
+    const out = html(createElement(MadeInCard, { result: modelOnly, t: zh }));
+    const [row] = liOf(out, true);
+    assert.ok(row, out);
+    assert.ok(!row.includes('rc-cand-meta'), row);
+    assert.doesNotMatch(row, /可能|（非確認）/);
+  });
+
+  it('web row next to a model-only row keeps its grade', () => {
+    const out = html(createElement(MadeInCard, { result: mixed, t: zh }));
+    const [web] = liOf(out, false);
+    assert.ok(web?.includes('<span class="rc-cand-meta">較可能（非確認） · 零件／物料</span>'), out);
+    const [model] = liOf(out, true);
+    assert.ok(model && !model.includes('rc-cand-meta'), out);
+  });
+
+  it('no locale renders a grade on a model-only row (all 16)', () => {
+    const locales = Object.keys(catalogs) as Array<Parameters<typeof createT>[0]>;
+    assert.equal(locales.length, 16);
+    for (const lng of locales) {
+      const t = createT(lng);
+      const out = html(createElement(MadeInCard, { result: mixed, t }));
+      const models = liOf(out, true);
+      assert.equal(models.length, 1, `${lng}: ${out}`);
+      const row = models[0]!;
+      assert.ok(row.includes(t('check.rc.modelRef')), lng);
+      assert.ok(!row.includes('rc-cand-meta'), `${lng}: ${row}`);
+      // Strip the label + tooltip text, then no grade word or hedge may remain.
+      const rest = row
+        .split(t('check.rc.modelRef')).join('')
+        .split(t('check.rc.modelRefHelp')).join('');
+      for (const k of ['possible', 'likely'] as const) {
+        assert.ok(!rest.includes(`>${t(`check.candidateRating.${k}`)}`), `${lng} ${k}: ${row}`);
+      }
+      assert.ok(!rest.includes(t('check.rc.notConfirmed')), `${lng}: ${row}`);
+      const webs = liOf(out, false);
+      assert.equal(webs.length, 1, lng);
+      assert.ok(webs[0]!.includes(`${t('check.candidateRating.likely')}${t('check.rc.notConfirmed')}`), `${lng}: ${webs[0]}`);
+    }
+  });
+
   it('HQ echo with no product-specific mention is dropped (#28)', () => {
     const echo = base({
       product: { name: 'Bottle', madeIn: 'Japan' },
@@ -433,5 +490,8 @@ describe('model-only made-in (item 9)', () => {
     const rows = buildMadeInView(merged).candidates;
     assert.equal(rows.length, 1);
     assert.equal(rows[0]?.source, 'web_name');
+    const out = html(createElement(MadeInCard, { result: merged, t: zh }));
+    assert.ok(!out.includes('data-testid="model-ref"'));
+    assert.ok(out.includes('<span class="rc-cand-meta">可能（非確認） · '), out);
   });
 });

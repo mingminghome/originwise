@@ -227,11 +227,14 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
                           </>
                         ) : null}
                       </span>
-                      <span className="rc-cand-meta">
-                        {t(`check.candidateRating.${c.rating}`)}
-                        {hedged ? t('check.rc.notConfirmed') : null}
-                        {model ? null : <> · {t(`check.candidateSource.${c.source}`)}</>}
-                      </span>
+                      {/* A model-only guess carries its 模型參考 label only: no likelihood
+                          grade, since nothing weighed it (web/label rows keep theirs). */}
+                      {model ? null : (
+                        <span className="rc-cand-meta">
+                          {t(`check.candidateRating.${c.rating}`)}
+                          {hedged ? t('check.rc.notConfirmed') : null} · {t(`check.candidateSource.${c.source}`)}
+                        </span>
+                      )}
                     </li>
                   );
                 })}
