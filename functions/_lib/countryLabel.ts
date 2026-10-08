@@ -143,7 +143,7 @@ const FIELD_CODE_CUE = [
   `(?<!(?:${ci('brand')}|${ci('design')})\\s+)${ci('country')}\\s+${ci('of')}\\s+${ci('origin')}\\s*[:：]?`,
   `(?<!(?:${ci('brand')}|${ci('design')})\\s+(?:${ci('of')}\\s+)?)${ci('origin')}\\s*[:：]`,
   `\\b${ci('coo')}\\s*[:：]`,
-  `${NOT_PRODUCT_FIELD}(?:產地|产地|原產國|原產国|原産国|原产国|製造国|製造國|生產國|生産国)\\s*[:：]?`,
+  `${NOT_PRODUCT_FIELD}(?:產地|产地|産地|原產地|原产地|原産地|原產國|原產国|原産国|原产国|製造国|製造國|生產國|生産国|生産地)\\s*[:：]?`,
 ].join('|');
 // MY / ID are also English words: "MADE IN MY KITCHEN" is no claim.
 const MADE_IN_CODE_TOKEN =

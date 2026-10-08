@@ -981,7 +981,7 @@ const NOTE_COO_CUE =
 export function excerptForExtraction(text: string): string {
   const head = text.slice(0, 1200);
   const re =
-    /made in|country of origin|原産国|生産国|製造国|原産地|生産地|原產地|產地|生產地|製造地/gi;
+    /made in|country of origin|原産国|生産国|製造国|原産地|生産地|原產地|產地|産地|生產地|製造地/gi;
   const windows: string[] = [];
   let total = head.length;
   for (const m of text.matchAll(re)) {
@@ -1028,7 +1028,7 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
       /(?<![Nn]ot[ \t]|NOT[ \t]|[Nn]ever[ \t]|NEVER[ \t])\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|(?<!(?:[Bb]rand|BRAND|[Dd]esign|DESIGN)\s+)(?:[Cc]ountry of [Oo]rigin|COUNTRY OF ORIGIN)\s*[:：]?|(?<!(?:[Bb]rand|BRAND|[Dd]esign|DESIGN)\s+(?:of\s+|OF\s+)?)(?:[Oo]rigin|ORIGIN)\s*[:：])\s*(?:[Tt]he\s+|THE\s+)?([A-Z][A-Za-z]{2,}(?: [A-Z][a-z]+| [A-Z]{2,}(?![a-z]))?)(?![A-Za-z]|-(?!made\b)[A-Za-z])/g,
       // Not 品牌產地 / 設計產地 (附加資訊) or 配件產地 / 電池產地 (a component): NOT_PRODUCT_FIELD.
       new RegExp(
-        `${NOT_PRODUCT_FIELD}(?:原産国|生産国|製造国|製造國|制造国|原産地|生産地|原產地|原產國|生產國|生產国|生產地|產地|製造地|原产国|原产地|生产国|生产地|产地)(?:名)?\\s*[:：・／/]?\\s*([^\\s:：、。,，|/／()（）<>[\\]]{1,12})`,
+        `${NOT_PRODUCT_FIELD}(?:原産国|生産国|製造国|製造國|制造国|原産地|生産地|原產地|原產國|生產國|生產国|生產地|產地|産地|製造地|原产国|原产地|生产国|生产地|产地)(?:名)?\\s*[:：・／/]?\\s*([^\\s:：、。,，|/／()（）<>[\\]]{1,12})`,
         'g'
       ),
       // 「製造：中國」「生產：越南」: the field name needs its colon.

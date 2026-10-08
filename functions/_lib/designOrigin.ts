@@ -96,12 +96,14 @@ const FORWARD_CUES = new RegExp(
     '(?:總部|总部)(?:設於|设于|位於|位于|在)',
     '(?:創立|创立|成立|創辦|创办|創建|创建)(?:於|于)',
     'デザイン(?:は|：|:)',
+    // Bare brand field (「ブランド：ドイツ」「品牌：德國」): 附加資訊 (德國品牌), never a made-in.
+    '(?:ブランド|品牌)\\s*[:：]',
     // Label fields: 「設計：德國」「設計地：德國」「研發：德國」, "Design: Germany".
     '(?:設計|设计|研發|研发)(?:地|國|国)?\\s*[:：]',
     // Brand / design origin fields: 「品牌產地：德國」「設計產地：日本」「品牌來源地：德國」
     // 「品牌原產國：德國」「ブランド原産国：日本」「品牌國家 / 品牌所在地 / 品牌歸屬地：德國」
     // (附加資訊, never a made-in field).
-    '(?:品牌|設計|设计|ブランド|デザイン)(?:產地|产地|來源地|来源地|發源地|发源地|原產地|原产地|原産地|原產國|原產国|原産国|原产国|國家|国家|所在地|歸屬地|归属地|國|国)(?:\\s*[:：]|[ \\t\u3000]+)',
+    '(?:品牌|設計|设计|ブランド|デザイン)(?:產地|产地|産地|來源地|来源地|發源地|发源地|原產地|原产地|原産地|原產國|原產国|原産国|原产国|國家|国家|所在地|歸屬地|归属地|國|国)(?:\\s*[:：]|[ \\t\u3000]+)',
     '\\bdesign(?:ed)?\\s*[:：]',
   ].join('|'),
   'gi'
@@ -140,7 +142,7 @@ const PREFIX_CUES = new RegExp(
  * semicolon, "but", or a made-in word (a made-in clause is never eaten).
  */
 const PHRASE_HARD_END =
-  /[;；。！!？?\n|]|\.\s|\.$|\bbut\b|\bwhile\b|\bmade\b|\bmanufactured\b|\bassembled\b|\bproduced\b|\bcountry\s+of\s+origin\b|\borigin\b|\bcoo\b|但|製造|制造|產地|产地|組裝|组装|生產|生产|原產|原产|原産|生産/i;
+  /[;；。！!？?\n|]|\.\s|\.$|\bbut\b|\bwhile\b|\bmade\b|\bmanufactured\b|\bassembled\b|\bproduced\b|\bcountry\s+of\s+origin\b|\borigin\b|\bcoo\b|但|製造|制造|產地|产地|組裝|组装|生產|生产|原產|原产|原産|生産|産地/i;
 
 /** A clause break: where a phrase with no country in it ends. */
 const PHRASE_SOFT_END = /[,，、（(]/;
@@ -250,13 +252,27 @@ function countryIn(phrase: string): string | undefined {
   );
 }
 
+const MADE_IN_NEARBY = /\bmade[\s-]?in\b|\bmanufactured[\s-]?in\b|製造|制造|中國製|中国製|中国制造|中國製造/i;
+/** Bare "Origin: …" field (not Country/Brand/Design of origin). */
+const BARE_ORIGIN_FIELD = /(?<!(?:country|brand|design)\s+(?:of\s+)?)(?<![A-Za-z])origin\s*[:：][^\n]*/gi;
+
 /**
  * The text with every design / brand phrase blanked (same length, so offsets
  * and quotes elsewhere still line up). "Designed in Germany, made in China"
  * → "                  , made in China".
  */
 export function stripDesignPhrases(text: string): string {
-  const s = String(text ?? '');
+  let s = String(text ?? '');
+  // A bare "Origin: X" (not Country of origin / Brand origin / Design origin) next to an
+  // explicit made-in claim is brand-style attach (附加資訊), as Brand origin: is: keep
+  // the Made in as the claim, never a 爭議 with Origin.
+  s = s.replace(BARE_ORIGIN_FIELD, (m, offset) => {
+    // Only when an explicit Made in claim follows ("Origin: Germany\nMade in China"), not
+    // when Made in came first ("Made in USA\nOrigin: China") or sits inside the Origin
+    // value ("Origin: China, made in Germany").
+    if (!MADE_IN_NEARBY.test(s.slice(offset + m.length))) return m;
+    return m.replace(/[^\n]/g, ' ');
+  });
   const found = spans(s);
   if (!found.length) return s;
   // UTF-16 offsets throughout; rebuilt by slices so surrogate pairs stay whole.
@@ -276,6 +292,14 @@ export function stripDesignPhrases(text: string): string {
 export function designMentions(text: string): DesignMention[] {
   const s = String(text ?? '');
   const out: DesignMention[] = [];
+  for (const m of s.matchAll(BARE_ORIGIN_FIELD)) {
+    if (!MADE_IN_NEARBY.test(s.slice(m.index! + m[0].length))) continue;
+    const phrase = m[0].trim();
+    for (const country of countriesIn(phrase)) {
+      if (out.some((d) => d.country === country && d.kind === 'brand')) continue;
+      out.push({ country, kind: 'brand', phrase: phrase.slice(0, PHRASE_MAX) });
+    }
+  }
   for (const sp of spans(s)) {
     const phrase = s.slice(sp.start, sp.end).trim().replace(/\s+(?:and|&)$/i, '');
     const kind: DesignKind = BRAND_CUE.test(phrase) ? 'brand' : 'design';

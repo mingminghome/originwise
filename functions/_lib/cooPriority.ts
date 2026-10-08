@@ -44,7 +44,7 @@ const SOURCE_RANK: Record<CooClaimSource, number> = {
 
 /** Labels that look like packaging / OCR made-in lines. */
 const OCR_CONTEXT =
-  /\b(made[\s-]?in|manufactured[\s-]?in|assembled[\s-]?in|produced[\s-]?in|country\s+of\s+origin|coo|製造国|製造國|原産国|原產國|产地|產地|生产地|生產地)\b/i;
+  /\b(made[\s-]?in|manufactured[\s-]?in|assembled[\s-]?in|produced[\s-]?in|country\s+of\s+origin|coo|製造国|製造國|原産国|原產國|产地|產地|産地|生产地|生產地|生産地)\b/i;
 
 /** Retailer / product-page style fields (Amazon "Country of Publication", etc.). */
 const RETAILER_CONTEXT =
@@ -81,7 +81,7 @@ const HYPHEN_WORD_GUARD = `(?![A-Za-z]|-(?!made\\b|(?:${COUNTRY_LIST_LATIN})(?![
 const VALUE_COUNTRY_TOKEN = `(?:${COUNTRY_LIST_CJK}|(?:${COUNTRY_TOKEN}|${COUNTRY_LIST_LATIN})${HYPHEN_WORD_GUARD})`;
 
 /** Made-in cues (made in / 產地 / 原産国 / COO / Origin …) that a country value follows. */
-const COO_CUE_SRC = `(?:(?:製造|制造|生產|生产|生産|組裝|组装|產|产|製|制)(?:於|于|在)|生產國|生产国|生産国|生產国|(?:製造地|生產地|生产地|製造|制造|生產|生产|生産)(?=\\s*[:：])|(?<!(?:brand|design)\\s+(?:of\\s+)?)origin(?=\\s*[:：])|made[\\s-]?in|manufactured[\\s-]?in|produced[\\s-]?in|assembled[\\s-]?in|(?<!(?:brand|design)\\s+)country\\s+of\\s+origin|country\\s+of\\s+publication|coo|${NOT_PRODUCT_FIELD}(?:製造国|製造國|原産国名?|原產國|原产国|产地|產地|生产地|生產地)|生産(?:[・･/／]組み?立て?)?|組み?立て?|組裝|组装)`;
+const COO_CUE_SRC = `(?:(?:製造|制造|生產|生产|生産|組裝|组装|產|产|製|制)(?:於|于|在)|生產國|生产国|生産国|生產国|(?:製造地|生產地|生产地|製造|制造|生產|生产|生産)(?=\\s*[:：])|(?<!(?:brand|design)\\s+(?:of\\s+)?)origin(?=\\s*[:：])|made[\\s-]?in|manufactured[\\s-]?in|produced[\\s-]?in|assembled[\\s-]?in|(?<!(?:brand|design)\\s+)country\\s+of\\s+origin|country\\s+of\\s+publication|coo|${NOT_PRODUCT_FIELD}(?:製造国|製造國|原産国名?|原產國|原产国|产地|產地|産地|生产地|生產地|生産地)|生産(?:[・･/／]組み?立て?)?|組み?立て?|組裝|组装)`;
 
 /** Made-in cue, then the country value. */
 const COO_LINE = new RegExp(`${COO_CUE_SRC}\\s*[:：]?\\s*(?:the\\s+)?(${VALUE_COUNTRY_TOKEN})`, 'gi');
@@ -253,7 +253,7 @@ function classifySource(window: string): CooClaimSource {
  * Source rank is inferred from nearby wording — no SKU/retailer allowlists.
  */
 /** Field-style cues (a value follows): 產地：, 原産国：, 生產國：, COO:, Origin: … */
-const FIELD_CUE = /產地|产地|原產|原産|原产|生產國|生产国|生産国|生產国|製造国|製造國|生產地|生产地|製造地|製造\s*[:：]|生產\s*[:：]|origin|\bcoo\b/i;
+const FIELD_CUE = /產地|产地|産地|原產|原産|原产|生產國|生产国|生産国|生產国|製造国|製造國|生產地|生产地|製造地|製造\s*[:：]|生產\s*[:：]|origin|\bcoo\b/i;
 const ANY_COUNTRY = new RegExp(`(?<![A-Za-z])${VALUE_COUNTRY_TOKEN}`, 'gi');
 
 /** Separators and joiners in a value that lists countries only. */
@@ -347,9 +347,8 @@ const US_ADDRESS_END = /^[ \t]*(?:[.;)）。]|$|,[ \t]*(?:united\s+states(?:\s+o
  * - PARTS / FROM before such a country ("…, IN\nPARTS FROM CHINA");
  * - a demonym / IMPORTED / FOREIGN before a part word, or OTHER COUNTRIES
  *   ("…, OR\nCHINESE PARTS", "…, OR\nIMPORTED PARTS");
- * - a spec line "Word: value" (: or ：) whose value names such a country
- *   ("…, OR\nBattery: China"); any other spec line ends it ("Battery: Li-ion"), and so
- *   does a part's own made-in ("Battery: made in China", 「電池：中國製」).
+ * Every spec line "Word: value" (: or ：) ends it: "Battery: Li-ion", "Battery: China",
+ * 「電池：中國」, "Battery: made in China", 「電池：中國製」.
  * US / USA / U.S. / U.S.A. / United States (also after PARTS / FROM), the EU, a
  * made-in field or claim of its own ("Origin: …", 「中國製造」) and anything else end it.
  */
@@ -357,9 +356,8 @@ const ENGLISH_WORD_CODES = new Set(['OR', 'IN', 'ME', 'OK', 'HI', 'DE', 'CO']);
 const NEXT_LINE_JOINERS = /^(?:[\s\p{P}\p{S}]|(?:and\/or|and|or|the)(?![A-Za-z])|[和及或、])*/iu;
 const NEXT_LINE_FROM = /^(?:parts?[ \t]+)?(?:from[ \t]+)?(?:the[ \t]+)?/i;
 const NEXT_LINE_US_EU = /^(?:united\s+states(?:\s+of\s+america)?|u\.s\.a\.?|u\.s\.|usa|us|e\.u\.|eu|european\s+union)(?![A-Za-z])/i;
-const NEXT_LINE_OWN_FIELD = /^(?:country\s+of\s+origin|origin|coo|made\s+in|產地|产地|原產地|原产地|原産地|原産国|原產國|原产国)\s*[:：]/i;
+const NEXT_LINE_OWN_FIELD = /^(?:country\s+of\s+origin|origin|coo|made\s+in|產地|产地|産地|原產地|原产地|原産地|原産国|原產國|原产国|製造国|製造國)\s*[:：]/i;
 const SPEC_LINE = /^[^\n:：]{1,30}[:：]([^\n]*)/;
-const SPEC_MADE_IN = /\bmade\b|製造|制造|製|生產|生产|生産/i;
 const DEMONYM = 'chinese|japanese|korean|taiwanese|vietnamese|thai|indian|mexican|canadian|german|italian|french|european|imported|foreign';
 // Built on first use: PART_WORD is declared further down.
 let nextLineCountryRe: RegExp | undefined;
@@ -377,14 +375,10 @@ function startsWithOtherCountry(text: string): boolean {
 function nextLineCarries(lines: string): boolean {
   const line = /^\s*([^\n]*)/.exec(lines)![1]!.trim();
   if (NEXT_CLAUSE_CJK.test(line) || NEXT_LINE_OWN_FIELD.test(line)) return false;
-  const spec = SPEC_LINE.exec(line);
-  if (spec) {
-    // A part's own made-in ("Battery: made in China", 「電池：中國製」) is a claim of its
-    // own, not more of the place list: the address ends.
-    if (SPEC_MADE_IN.test(spec[1]!)) return false;
-    const others = [...spec[1]!.matchAll(ANY_COUNTRY)].filter((c) => !isUs(normalizeCooLabel(c[0])));
-    return others.length > 0;
-  }
+  // A spec line "Word: value" (: or ：) ends the address whatever its value: a bare
+  // country ("Battery: China", 「電池：中國」) or a part's own made-in ("Battery: made in
+  // China", 「電池：中國製」) is about that part, never more of the place list.
+  if (SPEC_LINE.test(line)) return false;
   const next = lines.replace(NEXT_LINE_JOINERS, '');
   if (startsWithOtherCountry(next)) return true;
   const from = NEXT_LINE_FROM.exec(next)![0];
@@ -786,8 +780,29 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     seen.add(key);
     out.push({ label, region, source });
   }
+  // A part field (「電池產地：中國」) is no whole-product field, but beside nothing but a
+  // USA claim it is read as de6dba0 read it (that build never read USA): the part's
+  // country, as for 「電池：中國製」. Next to any other made-in it is never read.
+  if (out.length && out.every((c) => isUs(c.label))) {
+    for (const p of raw.matchAll(partFieldClaim())) {
+      const label = normalizeCooLabel(p[1]!);
+      const region = normalizeRegion(label);
+      if (region === 'UNKNOWN' || isUs(label)) continue;
+      const source = classifySource(raw.slice(Math.max(0, p.index! - 80), Math.min(raw.length, p.index! + p[0].length + 80)));
+      const key = `${source}:${region}:${label.toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ label, region, source });
+    }
+  }
   return out;
 }
+let partFieldClaimRe: RegExp | undefined;
+const partFieldClaim = () =>
+  (partFieldClaimRe ??= new RegExp(
+    `(?:${PART_FIELD_WORDS.join('|')})原?(?:產地|产地|産地|原產國|原产国|原産国|製造国|製造國|生產國|生產国|生产国|生産国)\\s*[:：]?\\s*(${VALUE_COUNTRY_TOKEN})`,
+    'g'
+  ));
 
 const VERB_FORM_MAKER = new RegExp(
   `${SUFFIX_COUNTRY}(?=(?:製造|制造|製|制|生產|生产|生産|組裝|组装)\\s*[於于在]\\s*${SUFFIX_COUNTRY})` +
@@ -818,8 +833,10 @@ export function bestCooClaim(
   usable.sort(
     (a, b) =>
       SOURCE_RANK[a.source] - SOURCE_RANK[b.source] ||
-      // By the country's English name, so 「中國製」 ranks as "China made" does.
-      canonCountry(a.label).localeCompare(canonCountry(b.label)) ||
+      // USA gives way to a CJK claim of the same rank ("Made in USA\n電池：中國製" →
+      // China, as on de6dba0, which never read USA there); English vs English stays by name.
+      Number(isUs(a.label) && /[\u4e00-\u9fff]/.test(b.label)) -
+        Number(isUs(b.label) && /[\u4e00-\u9fff]/.test(a.label)) ||
       a.label.localeCompare(b.label)
   );
   return usable[0];
