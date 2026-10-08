@@ -308,10 +308,13 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
                         {model ? <ModelRefLabel t={t} /> : null}
                       </span>
                       {/* Model-only guess: 模型參考 only. Pages that disagree: neutral
-                          (no grade). Otherwise the row's own grade, with no hedge suffix. */}
+                          (no grade). One exact-model page: 「1 個型號相符的網頁」, no grade.
+                          Otherwise the row's own grade, with no hedge suffix. */}
                       {model || c.neutral ? null : (
-                        <span className="rc-cand-meta">
-                          {t(`check.candidateRating.${c.rating}`)} · {t(`check.candidateSource.${c.source}`)}
+                        <span className="rc-cand-meta" data-testid={c.exactPages ? 'cand-exact-one' : undefined}>
+                          {c.exactPages
+                            ? t('check.rc.oneExactModelPage')
+                            : `${t(`check.candidateRating.${c.rating}`)} · ${t(`check.candidateSource.${c.source}`)}`}
                         </span>
                       )}
                       {c.sources?.length ? (

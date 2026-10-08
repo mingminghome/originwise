@@ -76,6 +76,7 @@ export const fi = {
       sourceFirst: 'Lähde 1: {label}',
       sourceNth: 'Lähde {n}: {label}',
       sourceAiAnswer: 'Tekoälyn vastaus',
+      oneExactModelPage: '1 sivu täsmälleen tällä mallilla',
       citedUnverified: 'Tekoälyn lähde, ei voitu vahvistaa',
       excludedOtherModel: 'Eri malli ({model}), ei laskettu',
       reason: {

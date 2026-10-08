@@ -76,6 +76,7 @@ export const sv = {
       sourceFirst: 'Källa 1: {label}',
       sourceNth: 'Källa {n}: {label}',
       sourceAiAnswer: 'AI-svar',
+      oneExactModelPage: '1 sida med exakt denna modell',
       citedUnverified: 'Citerad av AI, kunde inte verifieras',
       excludedOtherModel: 'Annan modell ({model}), räknas inte',
       reason: {

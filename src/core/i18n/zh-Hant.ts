@@ -76,6 +76,7 @@ export const zhHant = {
       sourceFirst: '來源 1：{label}',
       sourceNth: '來源 {n}：{label}',
       sourceAiAnswer: 'AI 回答',
+      oneExactModelPage: '1 個型號相符的網頁',
       citedUnverified: 'AI 引用，未能驗證',
       excludedOtherModel: '型號不符（{model}），未計算',
       reason: {

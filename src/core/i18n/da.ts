@@ -76,6 +76,7 @@ export const da = {
       sourceFirst: 'Kilde 1: {label}',
       sourceNth: 'Kilde {n}: {label}',
       sourceAiAnswer: 'AI-svar',
+      oneExactModelPage: '1 side med præcis denne model',
       citedUnverified: 'Citeret af AI, kunne ikke bekræftes',
       excludedOtherModel: 'Anden model ({model}), ikke talt med',
       reason: {

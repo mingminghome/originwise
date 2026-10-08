@@ -76,6 +76,7 @@ export const cs = {
       sourceFirst: 'Zdroj 1: {label}',
       sourceNth: 'Zdroj {n}: {label}',
       sourceAiAnswer: 'Odpověď AI',
+      oneExactModelPage: '1 stránka s přesně tímto modelem',
       citedUnverified: 'Citováno AI, nelze ověřit',
       excludedOtherModel: 'Jiný model ({model}), nezapočteno',
       reason: {

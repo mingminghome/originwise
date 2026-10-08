@@ -76,6 +76,7 @@ export const ro = {
       sourceFirst: 'Sursa 1: {label}',
       sourceNth: 'Sursa {n}: {label}',
       sourceAiAnswer: 'Răspunsul AI',
+      oneExactModelPage: '1 pagină cu modelul exact',
       citedUnverified: 'Citat de AI, neverificat',
       excludedOtherModel: 'Alt model ({model}), nu se ia în calcul',
       reason: {

@@ -76,6 +76,7 @@ export const nl = {
       sourceFirst: 'Bron 1: {label}',
       sourceNth: 'Bron {n}: {label}',
       sourceAiAnswer: 'AI-antwoord',
+      oneExactModelPage: '1 pagina met exact dit model',
       citedUnverified: 'Door AI geciteerd, niet te controleren',
       excludedOtherModel: 'Ander model ({model}), niet meegeteld',
       reason: {

@@ -253,6 +253,45 @@ describe('製造地 rule cases (example fixture madein-rules.json)', () => {
     }
   });
 
+  it('6: one exact-model page → candidate meta 「1 個型號相符的網頁」 / "1 exact-model page", no grade, no %', () => {
+    const r = RULES.rule6.result;
+    const china = buildMadeInView(r).candidates.find((c) => c.label === 'China' || c.label === '中國');
+    assert.equal(china?.exactPages, 1);
+    const zhHtml = renderToStaticMarkup(React.createElement(MadeInCard, { result: r, t: zhT }));
+    assert.match(zhHtml, /<span class="rc-cand-meta" data-testid="cand-exact-one">1 個型號相符的網頁<\/span>/);
+    assert.ok(!zhHtml.includes('較可能'), zhHtml);
+    assert.ok(!zhHtml.includes('依品名比對'), zhHtml);
+    assert.ok(!/\d+%/.test(zhHtml), zhHtml);
+    const en = createT('en');
+    const enHtml = renderToStaticMarkup(React.createElement(MadeInCard, { result: r, t: en }));
+    assert.match(enHtml, /<span class="rc-cand-meta" data-testid="cand-exact-one">1 exact-model page<\/span>/);
+    assert.ok(!enHtml.includes(en('check.candidateRating.likely')), enHtml);
+    for (const lng of locales) {
+      const t = createT(lng);
+      const label = t('check.rc.oneExactModelPage');
+      assert.ok(label && label !== 'check.rc.oneExactModelPage' && !/%/.test(label), lng);
+      if (lng !== 'en') assert.notEqual(label, en('check.rc.oneExactModelPage'), lng);
+      assert.ok(card(r, t).includes(label), lng);
+    }
+  });
+
+  it('loose name-match page only (web_name, no exact model): keeps its grade, never 「1 個型號相符的網頁」', () => {
+    const one = run(undefined, [{ country: '中國', basis: 'name', status: 'likely', url: MOMO }]);
+    const v = buildMadeInView(one);
+    assert.equal(v.state, 'unconfirmed');
+    assert.ok(v.candidates.every((c) => !c.exactPages));
+    const en = createT('en');
+    for (const t of [zhT, en]) {
+      const html = renderToStaticMarkup(React.createElement(MadeInCard, { result: one, t }));
+      assert.ok(!html.includes(t('check.rc.oneExactModelPage')), html);
+      assert.ok(!html.includes('cand-exact-one'), html);
+      assert.ok(html.includes(`${t('check.candidateRating.likely')} · ${t('check.candidateSource.web_name')}`), html);
+    }
+    // Disagreeing exact pages (case 4) stay neutral: no grade and no exact-page count.
+    const four = renderToStaticMarkup(React.createElement(MadeInCard, { result: RULES.rule4.result, t: zhT }));
+    assert.ok(!four.includes('1 個型號相符的網頁') && !four.includes('rc-cand-meta'), four);
+  });
+
   it('reasons are localised in every locale; the old barcode-only reason is gone', () => {
     const en = createT('en');
     for (const lng of locales) {

@@ -79,6 +79,7 @@ export const en: MessageTree = {
       sourceFirst: 'Source 1: {label}',
       sourceNth: 'Source {n}: {label}',
       sourceAiAnswer: 'AI answer',
+      oneExactModelPage: '1 exact-model page',
       citedUnverified: 'AI-cited, could not verify',
       excludedOtherModel: 'Different model ({model}), not counted',
       reason: {

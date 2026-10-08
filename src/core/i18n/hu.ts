@@ -76,6 +76,7 @@ export const hu = {
       sourceFirst: '1. forrás: {label}',
       sourceNth: '{n}. forrás: {label}',
       sourceAiAnswer: 'MI-válasz',
+      oneExactModelPage: '1 pontos modellű oldal',
       citedUnverified: 'MI által idézett, nem ellenőrizhető',
       excludedOtherModel: 'Másik modell ({model}), nem számít',
       reason: {

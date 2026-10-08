@@ -76,6 +76,7 @@ export const es = {
       sourceFirst: 'Fuente 1: {label}',
       sourceNth: 'Fuente {n}: {label}',
       sourceAiAnswer: 'Respuesta de la IA',
+      oneExactModelPage: '1 página con el modelo exacto',
       citedUnverified: 'Citado por la IA, no verificado',
       excludedOtherModel: 'Otro modelo ({model}), no se cuenta',
       reason: {

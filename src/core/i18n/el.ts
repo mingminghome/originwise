@@ -76,6 +76,7 @@ export const el = {
       sourceFirst: 'Πηγή 1: {label}',
       sourceNth: 'Πηγή {n}: {label}',
       sourceAiAnswer: 'Απάντηση AI',
+      oneExactModelPage: '1 σελίδα με ακριβώς αυτό το μοντέλο',
       citedUnverified: 'Παράθεση AI, δεν επαληθεύτηκε',
       excludedOtherModel: 'Άλλο μοντέλο ({model}), δεν μετρήθηκε',
       reason: {

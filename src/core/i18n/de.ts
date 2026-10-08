@@ -76,6 +76,7 @@ export const de = {
       sourceFirst: 'Quelle 1: {label}',
       sourceNth: 'Quelle {n}: {label}',
       sourceAiAnswer: 'KI-Antwort',
+      oneExactModelPage: '1 Seite mit genau diesem Modell',
       citedUnverified: 'Von der KI zitiert, nicht überprüfbar',
       excludedOtherModel: 'Anderes Modell ({model}), nicht gezählt',
       reason: {

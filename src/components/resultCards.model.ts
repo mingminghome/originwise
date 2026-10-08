@@ -60,6 +60,12 @@ export type MadeInView = {
     source: Candidate['source'];
     sources?: SourceRow[];
     neutral?: boolean;
+    /**
+     * 1 when the country rests on exactly one exact-model page (and no other
+     * page): its meta reads 「1 個型號相符的網頁」 instead of a grade. Loose
+     * name-match pages keep their grade.
+     */
+    exactPages?: 1;
   }>;
   /** Unconfirmed only: the one reason chip. */
   reason?: UnconfirmedReason;
@@ -435,7 +441,17 @@ function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' 
       sources,
       (h) => sameCountryLabel(h.country, r.label)
     );
-    return { ...r, ...(srcRows.length ? { sources: srcRows } : {}), ...(disagree ? { neutral: true } : {}) };
+    const pages = new Set(likelyHits.filter((h) => sameCountryLabel(h.country, r.label)).map((h) => h.url ?? ''));
+    const exact = new Set(
+      likelyHits.filter((h) => h.exactModel && sameCountryLabel(h.country, r.label)).map((h) => h.url ?? '')
+    );
+    const onlyOneExact = !disagree && pages.size === 1 && exact.size === 1;
+    return {
+      ...r,
+      ...(srcRows.length ? { sources: srcRows } : {}),
+      ...(disagree ? { neutral: true } : {}),
+      ...(onlyOneExact ? { exactPages: 1 as const } : {}),
+    };
   });
   const webPages = new Set(likelyHits.map((h) => h.url).filter(Boolean)).size;
   const aiSaid = [madeIn, ...candidates.filter((c) => c.source === 'model_memory').map((c) => c.label)].filter(Boolean);
