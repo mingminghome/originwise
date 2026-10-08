@@ -191,7 +191,7 @@ export function backedCandidate(
  * - 'label': read from the package label photo (確認 · 依包裝標示),
  * - 'graded': a web-backed part candidate for the same country (its own
  *   grade + %),
- * - 'model': nothing backs it → 模型參考（未經確認） + ⓘ.
+ * - 'model': nothing backs it → 模型參考（未經多重確認） + ⓘ.
  * Result-level partsEvidence 'web' alone never grades a part: without a
  * candidate for that country there is nothing to take a grade from.
  */
@@ -471,7 +471,7 @@ export type LayerRowView = {
   /** Country part of the value (localized by the view). */
   country?: string;
   tag: LayerTag;
-  /** Model-only parts: shown with 模型參考（未經確認） + ⓘ instead of a tag. */
+  /** Model-only parts: shown with 模型參考（未經多重確認） + ⓘ instead of a tag. */
   modelRef?: boolean;
   /** Parts: the part country's own candidate grade + confidence (0–1). */
   grade?: { rating: Candidate['rating']; confidence: number };
@@ -481,7 +481,7 @@ export type LayerRowView = {
  * 產地分層 rows. Tags say how far the value is backed:
  * web-searched company facts → 確認; model memory → 有提及; label-read parts
  * → 確認; web parts → their own candidate grade + %; model parts →
- * 模型參考（未經確認） + ⓘ (no tag); nothing → 未確認.
+ * 模型參考（未經多重確認） + ⓘ (no tag); nothing → 未確認.
  */
 export function buildLayerRows(result: CheckResult): LayerRowView[] {
   const p = result.product;

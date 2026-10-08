@@ -392,13 +392,13 @@ describe('model-only made-in (item 9)', () => {
     meta: { searchProvider: 'brave', searchCoo: [] },
   });
 
-  it('headline 未確認, one 中國 row labelled 模型參考（未經確認）, no %, tier unchanged', () => {
+  it('headline 未確認, one 中國 row labelled 模型參考（未經多重確認）, no %, tier unchanged', () => {
     const view = buildMadeInView(modelOnly);
     assert.equal(view.state, 'unconfirmed');
     assert.deepEqual(view.candidates, [{ label: 'China', rating: 'possible', source: 'model_memory' }]);
     const out = html(createElement(MadeInCard, { result: modelOnly, t: zh }));
     assert.ok(out.includes('rc-headline is-unconfirmed">未確認'));
-    assert.ok(out.includes('模型參考（未經確認）'));
+    assert.ok(out.includes('模型參考（未經多重確認）'));
     assert.doesNotMatch(out.slice(out.indexOf('rc-candidates')), /\d+\s*%/);
     const china = html(createElement(ChinaCard, { result: modelOnly, t: zh }));
     assert.ok(!china.includes('中國製造'));
@@ -410,7 +410,7 @@ describe('model-only made-in (item 9)', () => {
     const out = html(createElement(MadeInCard, { result: modelOnly, t: zh }));
     assert.match(
       out,
-      /<span class="rc-cand-country is-model"><span class="rc-cand-name">中國<\/span><span class="rc-cand-label" data-testid="model-ref" title="[^"]+">模型參考（未經確認）<\/span><span class="rc-info" data-section-share="ui">/
+      /<span class="rc-cand-country is-model"><span class="rc-cand-name">中國<\/span><span class="rc-cand-label" data-testid="model-ref" title="[^"]+">模型參考（未經多重確認）<\/span><span class="rc-info" data-section-share="ui">/
     );
     // aria wiring: button labelled, described by the full sentence, collapsed.
     const id = out.match(/aria-describedby="([^"]+)"/)?.[1];
@@ -679,7 +679,7 @@ describe('零件 rows: own grade + % OR 模型參考 + ⓘ, never neither, never
       rows.map(([m, x]) => [m, x.replace(/未經網頁.*$/, '')]),
       [
         [false, '泰國 · 較可能 · 55% · 零件／物料'],
-        [true, '中國模型參考（未經確認）ⓘ'],
+        [true, '中國模型參考（未經多重確認）ⓘ'],
         [false, 'Bottle body · 零件 · 日本 · 可能 · 50%'],
       ]
     );
@@ -693,7 +693,7 @@ describe('零件 rows: own grade + % OR 模型參考 + ⓘ, never neither, never
     assert.ok(isModelLi(body), body);
     assert.doesNotMatch(textOf(body), /較可能|55%/);
     const row = layersPartsRow(noJapanCandidate, zh);
-    assert.ok(row.includes('模型參考（未經確認）') && !row.includes('較可能'), row);
+    assert.ok(row.includes('模型參考（未經多重確認）') && !row.includes('較可能'), row);
     // Thailand keeps its own grade.
     assert.ok(list.some((li) => textOf(li) === '泰國 · 較可能 · 55% · 零件／物料'));
   });
@@ -712,7 +712,7 @@ describe('零件 rows: own grade + % OR 模型參考 + ⓘ, never neither, never
     const rows = lis(listHtml(modelParts, zh));
     assert.equal(rows.length, 1, rows.join('\n'));
     assert.ok(isModelLi(rows[0]!));
-    assert.ok(textOf(rows[0]!).startsWith('Nipple · 零件 · 泰國模型參考（未經確認）'), rows[0]);
+    assert.ok(textOf(rows[0]!).startsWith('Nipple · 零件 · 泰國模型參考（未經多重確認）'), rows[0]);
     const mixedRows = lis(listHtml(mixed, zh)).map(textOf);
     assert.equal(mixedRows.filter((x) => x.includes('日本')).length, 1, mixedRows.join(' | '));
   });
@@ -840,7 +840,7 @@ describe('製造地 card: parts candidates only the model named (closes #32 deci
     assert.equal(rows.length, 1, out);
     assert.match(
       rows[0]!,
-      /^<li class="is-model"><span class="rc-cand-country is-model"><span class="rc-cand-name">泰國<\/span><span class="rc-cand-label" data-testid="model-ref" title="[^"]+">模型參考（未經確認）<\/span><span class="rc-info" data-section-share="ui"><button type="button" class="rc-info-btn" aria-label="說明"/
+      /^<li class="is-model"><span class="rc-cand-country is-model"><span class="rc-cand-name">泰國<\/span><span class="rc-cand-label" data-testid="model-ref" title="[^"]+">模型參考（未經多重確認）<\/span><span class="rc-info" data-section-share="ui"><button type="button" class="rc-info-btn" aria-label="說明"/
     );
     assert.ok(!rows[0]!.includes('rc-cand-meta'), rows[0]);
     assert.doesNotMatch(textOf(rows[0]!), /可能|\d\s*%|零件／物料/);

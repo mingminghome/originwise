@@ -67,7 +67,7 @@ export const zhHant = {
       madeInLineModel: '製造地：{place}（依型號比對，見下方製造地卡）',
     },
     rc: {
-      modelRef: '模型參考（未經確認）',
+      modelRef: '模型參考（未經多重確認）',
       modelRefHelp: '未經網頁或包裝標示確認，只是模型的推測；請以包裝上的標示為準。',
       moreInfo: '說明',
       candidatesTitle: '查到的產地候選（未確認）',
