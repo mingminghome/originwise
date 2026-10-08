@@ -75,7 +75,7 @@ function run(path: Exclude<RegPath, 'pagecard'>, text: string): CheckResult {
   ];
   const g = gateClaims(ENT, findJans(ENT, undefined), pages, regexCooClaims(pages));
   const coo = webCooFromKept(g.kept, pages);
-  return synthesize({
+  const r = synthesize({
     ...base,
     webEnriched: true,
     webBrief: 'x',
@@ -84,6 +84,9 @@ function run(path: Exclude<RegPath, 'pagecard'>, text: string): CheckResult {
     webDesign: designFromPages(g.design, pages),
     partials: { product: { name: `${ENT} 嬰兒推車`, brand: 'Cybex', confidence: 0.9 } },
   } as Parameters<typeof synthesize>[0]) as unknown as CheckResult;
+  // As the orchestrator does: the page claims ride along for the card (爭議 page counts).
+  if (coo.length) r.meta = { ...r.meta, searchCoo: coo } as CheckResult['meta'];
+  return r;
 }
 
 export function summarize(path: RegPath, text: string): RegSummary {

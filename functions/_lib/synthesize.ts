@@ -1642,8 +1642,8 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     'Result';
 
   const designInfo = collectDesignInfo(p, input.webEnriched ? input.webDesign : undefined, input.ocrText);
-  // 「產地：中國 日本製」: two explicit made-in claims in one label field → 爭議 line.
-  const labelDispute = (cooFieldDisputes(input.ocrText ?? '')[0] ?? []).slice(0, 2);
+  // 「產地：中國 日本製」「產地：德國 中國」: two made-in claims in one label field → 爭議 line.
+  const labelDispute = (cooFieldDisputes(input.ocrText ?? '')[0] ?? []).slice(0, 4);
 
   const originCandidates = collectOriginCandidates(p, {
     webEnriched: input.webEnriched,

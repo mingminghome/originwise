@@ -363,6 +363,44 @@ describe('label field with a second explicit made-in claim: 未確認 + 爭議 (
   }
 });
 
+describe('a pure country list in one 產地 field: 未確認 + 爭議, sourced to the label or to the page', () => {
+  const NO_CAND = zh('check.rc.noCandidates');
+  for (const [ocr, a, b] of [
+    ['產地：德國 中國', '德國', '中國'],
+    ['產地：德國、中國', '德國', '中國'],
+    ['產地：日本／中國', '日本', '中國'],
+    ['Origin: China / Germany', '中國', '德國'],
+    ['Origin: China and Vietnam (see label)', '中國', '越南'],
+  ] as const) {
+    it(`label 「${ocr}」 → 爭議：${a}（包裝標示）；${b}（包裝標示）, no %, no 「${NO_CAND}」`, () => {
+      const r = runPages({ ocrText: `CYBEX Melio\n${ocr}`, pages: [] });
+      const v = buildMadeInView(r);
+      assert.equal(v.state, 'unconfirmed', JSON.stringify(v));
+      const t = text(r);
+      assert.ok(t.includes(`爭議：${a}（包裝標示）；${b}（包裝標示）`), t);
+      assert.ok(!t.includes('%') && !t.includes(NO_CAND), t);
+    });
+    it(`page 「${ocr}」 → 爭議 names the web page (never 包裝標示), sides ungraded`, () => {
+      const r = runPages({ pages: [page(URLS.mami, 'Cybex Melio 嬰兒推車 | MamiLove', `商品規格\n${ocr}\n重量：5.9 kg`)] });
+      const v = buildMadeInView(r);
+      assert.equal(v.state, 'unconfirmed', JSON.stringify(v));
+      assert.equal(v.dispute?.length, 2, JSON.stringify(v));
+      assert.ok(v.dispute!.every((d) => !d.label && d.pages === 1), JSON.stringify(v.dispute));
+      assert.ok(v.candidates.every((c) => c.neutral), JSON.stringify(v.candidates));
+      const t = text(r);
+      assert.match(t, new RegExp(`爭議：${a}（1 個(型號相符的)?網頁）；${b}（1 個(型號相符的)?網頁）`), t);
+      assert.ok(!t.includes('包裝標示') && !t.includes('%') && !t.includes(NO_CAND), t);
+    });
+  }
+  it('a label 爭議 line hides 「沒有查到可信的產地候選。」 (explicit second claim too)', () => {
+    const r = runPages({ ocrText: 'CYBEX Melio\n產地：中國 日本製', pages: [] });
+    const t = text(r);
+    assert.ok(t.includes('爭議：中國（包裝標示）；日本（包裝標示）') && !t.includes(NO_CAND), t);
+    // Without a 爭議 line the empty-state text still shows.
+    assert.ok(text(runPages({ pages: [] })).includes(NO_CAND));
+  });
+});
+
 describe('dispute / design wording in all 16 locales', () => {
   const KEYS = ['dispute', 'disputeSideExact', 'disputeSideMixed', 'disputeSidePages', 'disputeSideLabel', 'designInfo', 'brandInfo', 'infoSource'];
   it('every locale has its own wording, soft, never 非確認', () => {

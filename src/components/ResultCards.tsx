@@ -360,7 +360,8 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
                   );
                 })}
               </ul>
-            ) : (
+            ) : view.dispute?.length ? null : (
+              // A 爭議 line already says why there is no answer.
               <p className="rc-empty">{t('check.rc.noCandidates')}</p>
             )}
           </div>

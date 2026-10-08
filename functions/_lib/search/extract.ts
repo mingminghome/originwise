@@ -13,7 +13,7 @@
 
 import { isSearchResultUrl } from '../sourceLine';
 import { MADE_IN_CODE_LABEL, canonicalCountry, madeInCodeMatches } from '../countryLabel';
-import { normalizeCooLabel, settleCooFields } from '../cooPriority';
+import { isKnownCountryLabel, normalizeCooLabel, settleCooFields } from '../cooPriority';
 import { designMentions, quoteBacksCountry, stripDesignPhrases } from '../designOrigin';
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
@@ -1002,22 +1002,25 @@ export type CooClaim = {
 };
 
 const MADE_IN_NAME_ANY_CASE =
-  /(?<!\b(?:not|never)\s)\b(?:(?:made|manufactured|assembled|produced)[\s-]+in|country\s+of\s+origin)\s*[:：]?\s*(?:the\s+)?(mainland china|china|taiwan|japan|viet\s?nam|thailand|indonesia|malaysia|philippines|india|south korea|korea|hong kong|germany|france|italy|spain|portugal|poland|turkey|mexico|united kingdom|great britain|united states|usa|cambodia|bangladesh|netherlands|sri lanka|czech republic|canada|australia|brazil)\b/gi;
+  /(?<!\b(?:not|never)[ \t])\b(?:(?:made|manufactured|assembled|produced)[\s-]+in|country\s+of\s+origin|coo(?=\s*[:：]))\s*[:：]?\s*(?:the\s+)?(mainland china|p\.\s?r\.\s*china|new zealand|china|taiwan|japan|viet\s?nam|thailand|indonesia|malaysia|philippines|india|south korea|korea|hong kong|germany|france|italy|spain|portugal|poland|turkey|mexico|united kingdom|great britain|united states|usa|cambodia|bangladesh|netherlands|sri lanka|czech republic|canada|australia|brazil)\b/gi;
 
 /** Deterministic fallback when the extraction model is unavailable. */
 export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
   const out: CooClaim[] = [];
   pages.forEach((p, idx) => {
     // Design / brand wording is blanked first ("Designed in Germany, made in China" → China);
-    // then a field value with a second country is settled: 「產地：德國 中國」 and
-    // 「產地：中國 日本製」 give nothing, 「原産国：中国（日本企画）」 gives China.
-    const t = settleCooFields(stripDesignPhrases(nfkc(p.text)));
+    // then a field value with a second country is settled: 「原産国：中国（日本企画）」
+    // gives China; 「產地：德國 中國」 and 「產地：中國 日本製」 give one claim per side,
+    // each quoting the field, so the card shows 爭議 with this page as the source.
+    const pre = stripDesignPhrases(nfkc(p.text));
+    const settled = settleCooFields(pre);
+    const t = settled.text;
     const patterns: RegExp[] = [
       // "Made In China" / "MADE IN HONG KONG" / "COUNTRY OF ORIGIN\nCHINA": any case,
       // full country names only (lower-case codes such as "made in cn" stay
       // rejected). First, so a longer name wins over a one-word fragment.
       MADE_IN_NAME_ANY_CASE,
-      /(?<![Nn]ot\s|NOT\s|[Nn]ever\s|NEVER\s)\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|[Cc]ountry of [Oo]rigin\s*[:：]?|(?<![Bb]rand\s|BRAND\s)(?:[Oo]rigin|ORIGIN)\s*[:：])\s*(?:[Tt]he\s+|THE\s+)?([A-Z][A-Za-z]{2,}(?: [A-Z][a-z]+| [A-Z]{2,}(?![a-z]))?)/g,
+      /(?<![Nn]ot[ \t]|NOT[ \t]|[Nn]ever[ \t]|NEVER[ \t])\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|[Cc]ountry of [Oo]rigin\s*[:：]?|(?<![Bb]rand\s|BRAND\s)(?:[Oo]rigin|ORIGIN)\s*[:：])\s*(?:[Tt]he\s+|THE\s+)?([A-Z][A-Za-z]{2,}(?: [A-Z][a-z]+| [A-Z]{2,}(?![a-z]))?)/g,
       /(?:原産国|生産国|製造国|製造國|制造国|原産地|生産地|原產地|原產國|生產國|生產国|生產地|產地|製造地|原产国|原产地|生产国|生产地|产地)(?:名)?\s*[:：・／/]?\s*([^\s:：、。,，|/／()（）<>[\]]{1,12})/g,
       // 「製造：中國」「生產：越南」: the field name needs its colon.
       /(?:製造|制造|生產|生产|生産)\s*[:：]\s*([^\s:：、。,，|/／()（）<>[\]]{1,12})/g,
@@ -1032,7 +1035,11 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
     const seen = new Set<string>();
     // One claim per made-in cue: "MADE IN HONG KONG" is Hong Kong, not also "HONG".
     const cueAt = new Set<number>();
+    const fieldSides = settled.disputes.flatMap((d) =>
+      d.sides.map((side) => ({ 0: pre.slice(d.start, d.end), 1: side }))
+    );
     const found: Array<{ 0: string; 1?: string; index?: number }> = [
+      ...fieldSides,
       ...patterns.flatMap((re) => [...t.matchAll(re)]),
       ...codeMatches,
     ];
@@ -1049,6 +1056,8 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
       const country = normalizeCooLabel(MADE_IN_CODE_LABEL[raw] ?? raw);
       if (!country || /^(不明|なし|-|—|unknown)$/i.test(country)) continue;
       if (/^[A-Za-z]{2}$/.test(country)) continue;
+      // Only a country we know: "COUNTRY OF ORIGIN:\nIMPORTER: XX" is no candidate.
+      if (!isKnownCountryLabel(country)) continue;
       // "Made in USA" read by name and by code: one claim per page and country.
       const key = canonicalCountry(country) ?? country.toLowerCase();
       if (seen.has(key)) continue;
