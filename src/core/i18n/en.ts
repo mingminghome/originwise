@@ -79,6 +79,7 @@ export const en: MessageTree = {
       noBarcodePage: 'No page showed the barcode with a made-in',
       sourceCount: 'Sources: {n}',
       sourceFirst: 'Source 1: {label}',
+      sourceNth: 'Source {n}: {label}',
       sourceCountry: 'made in {country}',
       labelSource: 'Source: package label photo',
       parent: 'Parent company',

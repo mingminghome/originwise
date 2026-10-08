@@ -76,6 +76,7 @@ export const fr = {
       noBarcodePage: 'Aucune page n’affiche le code-barres avec le lieu de fabrication',
       sourceCount: 'Sources : {n}',
       sourceFirst: 'Source 1 : {label}',
+      sourceNth: 'Source {n} : {label}',
       sourceCountry: 'fabriqué en {country}',
       labelSource: 'Source : photo de l’étiquette',
       parent: 'Société mère',

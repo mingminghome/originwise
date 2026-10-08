@@ -76,6 +76,7 @@ export const da = {
       noBarcodePage: 'Ingen side viste stregkoden med fremstillingsland',
       sourceCount: 'Kilder: {n}',
       sourceFirst: 'Kilde 1: {label}',
+      sourceNth: 'Kilde {n}: {label}',
       sourceCountry: 'fremstillet i {country}',
       labelSource: 'Kilde: foto af emballagens etiket',
       parent: 'Moderselskab',

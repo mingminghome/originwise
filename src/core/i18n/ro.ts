@@ -76,6 +76,7 @@ export const ro = {
       noBarcodePage: 'Nicio pagină nu a arătat codul de bare cu țara de fabricație',
       sourceCount: 'Surse: {n}',
       sourceFirst: 'Sursa 1: {label}',
+      sourceNth: 'Sursa {n}: {label}',
       sourceCountry: 'fabricat în {country}',
       labelSource: 'Sursă: fotografia etichetei ambalajului',
       parent: 'Companie-mamă',

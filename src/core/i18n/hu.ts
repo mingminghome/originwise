@@ -76,6 +76,7 @@ export const hu = {
       noBarcodePage: 'Egyik oldal sem mutatta a vonalkódot a gyártási hellyel',
       sourceCount: 'Források: {n}',
       sourceFirst: '1. forrás: {label}',
+      sourceNth: '{n}. forrás: {label}',
       sourceCountry: 'gyártási hely: {country}',
       labelSource: 'Forrás: a csomagolás címkéjének fotója',
       parent: 'Anyavállalat',

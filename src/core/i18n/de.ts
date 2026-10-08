@@ -76,6 +76,7 @@ export const de = {
       noBarcodePage: 'Keine Seite zeigte den Barcode mit Herstellungsland',
       sourceCount: 'Quellen: {n}',
       sourceFirst: 'Quelle 1: {label}',
+      sourceNth: 'Quelle {n}: {label}',
       sourceCountry: 'hergestellt in {country}',
       labelSource: 'Quelle: Foto des Verpackungsetiketts',
       parent: 'Muttergesellschaft',

@@ -76,6 +76,7 @@ export const nl = {
       noBarcodePage: 'Geen pagina toonde de barcode met het productieland',
       sourceCount: 'Bronnen: {n}',
       sourceFirst: 'Bron 1: {label}',
+      sourceNth: 'Bron {n}: {label}',
       sourceCountry: 'gemaakt in {country}',
       labelSource: 'Bron: foto van het verpakkingslabel',
       parent: 'Moederbedrijf',

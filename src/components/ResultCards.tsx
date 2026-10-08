@@ -181,25 +181,31 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
           ) : null}
         </div>
 
-        {view.state !== 'unconfirmed' && (view.source || view.basis === 'label') ? (
-          <p className="rc-source">
-            {view.basis === 'label' ? (
-              t('check.rc.labelSource')
-            ) : view.source ? (
-              <>
-                {view.source.url ? (
-                  <a href={view.source.url} target="_blank" rel="noreferrer" title={view.source.url}>
-                    {t('check.rc.sourceFirst', { label: view.source.label })}
-                  </a>
-                ) : (
-                  t('check.rc.sourceFirst', { label: view.source.label })
-                )}
-                {view.source.country
-                  ? ` · ${t('check.rc.sourceCountry', { country: localizeCountry(t, view.source.country) })}`
-                  : null}
-              </>
-            ) : null}
-          </p>
+        {view.state !== 'unconfirmed' && view.basis === 'label' ? (
+          <p className="rc-source">{t('check.rc.labelSource')}</p>
+        ) : null}
+        {view.state !== 'unconfirmed' && view.sourceRows.length ? (
+          // One row per counted source: the chip number is sourceRows.length.
+          <ol className="rc-sources" data-testid="madein-sources">
+            {view.sourceRows.map((src, i) => {
+              const text = t('check.rc.sourceNth', { n: i + 1, label: src.label });
+              return (
+                <li key={src.url ?? src.label} className="rc-source">
+                  {src.url ? (
+                    <a href={src.url} target="_blank" rel="noreferrer" title={src.url}>
+                      {text}
+                    </a>
+                  ) : (
+                    text
+                  )}
+                  {src.host ? <span className="rc-source-host"> · {src.host}</span> : null}
+                  {src.country
+                    ? ` · ${t('check.rc.sourceCountry', { country: localizeCountry(t, src.country) })}`
+                    : null}
+                </li>
+              );
+            })}
+          </ol>
         ) : null}
 
         {view.state === 'unconfirmed' ? (

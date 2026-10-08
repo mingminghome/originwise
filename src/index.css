@@ -5195,6 +5195,18 @@ p {
   color: inherit;
   font-weight: 600;
 }
+/* 製造地 source rows: one per counted source, never truncated (the saved
+   image grows with them). */
+.rc-sources {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+.rc-sources .rc-source {
+  margin: 0;
+}
 .rc-candidates {
   margin-top: 0.2rem;
   padding-top: 0.55rem;
