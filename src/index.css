@@ -5207,6 +5207,11 @@ p {
 .rc-sources .rc-source {
   margin: 0;
 }
+/* Domain and 生產國 move as a unit (no lone 「國」 on its own line). */
+.rc-source-host,
+.rc-source-country {
+  white-space: nowrap;
+}
 .rc-candidates {
   margin-top: 0.2rem;
   padding-top: 0.55rem;

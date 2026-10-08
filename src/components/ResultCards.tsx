@@ -198,10 +198,23 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
                   ) : (
                     text
                   )}
-                  {src.host ? <span className="rc-source-host"> · {src.host}</span> : null}
-                  {src.country
-                    ? ` · ${t('check.rc.sourceCountry', { country: localizeCountry(t, src.country) })}`
-                    : null}
+                  {src.host || src.pathHint ? (
+                    <>
+                      {' · '}
+                      <span className="rc-source-host">
+                        {src.host ?? ''}
+                        {src.pathHint ?? ''}
+                      </span>
+                    </>
+                  ) : null}
+                  {src.country ? (
+                    <>
+                      {' · '}
+                      <span className="rc-source-country">
+                        {t('check.rc.sourceCountry', { country: localizeCountry(t, src.country) })}
+                      </span>
+                    </>
+                  ) : null}
                 </li>
               );
             })}

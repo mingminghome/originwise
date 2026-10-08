@@ -368,6 +368,22 @@ async function mountPhoneCapture(
   }
 }
 
+/**
+ * Computed style properties html-to-image copies onto each cloned node.
+ *
+ * In Chrome its default path rewrites every font-size to floor(px) − 0.1
+ * (13.6px → 12.9px, 36.8px → 35.9px). The saved text then renders smaller
+ * than the layout it was measured at, while each box keeps its measured
+ * height, so a row that wrapped to one more line on screen shows an empty
+ * band in the PNG (the Sheer 來源 2 row on #33). The computed `font`
+ * shorthand carries the exact size, so it goes LAST and overrides the
+ * rounded font-size. When Chrome cannot serialize the shorthand (it returns
+ * ''), the old rounded size stays, so nothing loses its font.
+ */
+export function captureStyleProperties(computed: Iterable<string>): string[] {
+  return [...[...computed].filter((p) => p !== 'font'), 'font'];
+}
+
 export async function captureElementPng(
   el: HTMLElement,
   opts?: { pixelRatio?: number }
@@ -407,6 +423,10 @@ export async function captureElementPng(
       frame.iframe.style.height = `${padded.height}px`;
     }
     const blob = await toBlob(target, {
+      // Exact font sizes in the PNG (see captureStyleProperties).
+      includeStyleProperties: captureStyleProperties(
+        Array.from(frame.clone.ownerDocument.defaultView!.getComputedStyle(frame.clone))
+      ),
       pixelRatio: ratio,
       width: padded.width,
       height: padded.height,

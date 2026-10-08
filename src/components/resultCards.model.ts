@@ -216,7 +216,18 @@ function candidateRows(result: CheckResult, candidates: Candidate[], unconfirmed
 }
 
 /** host: the page's domain, shown when the title is not already the domain. */
-export type SourceRow = { label: string; url?: string; host?: string; country?: string };
+export type SourceRow = {
+  label: string;
+  url?: string;
+  host?: string;
+  /**
+   * Short URL part ("/…/01050000006850") shown after the domain when another
+   * row has the same domain and the same (or a truncated) title, so two
+   * pages never read as the same page twice.
+   */
+  pathHint?: string;
+  country?: string;
+};
 
 /** Rows (and the count chip) stop here; the chip never claims more than shown. */
 export const MAX_SOURCE_ROWS = 3;
@@ -238,10 +249,63 @@ function supportingRows(
     const parts = splitSourceLine(sources.find((s) => s.includes(url)) ?? url);
     const host = sourceLabel({ title: '', url: parts.url ?? url });
     const label = sourceLabel(parts) || host || url;
-    rows.push({ label, url: parts.url ?? url, host: host && host !== label ? host : undefined, country: h.country });
+    // Canonical country (中国 / タイ → China / Thailand) so every locale names it.
+    rows.push({
+      label,
+      url: parts.url ?? url,
+      host: host && host !== label ? host : undefined,
+      country: canonicalCountry(h.country) ?? h.country,
+    });
     if (rows.length === MAX_SOURCE_ROWS) break;
   }
-  return rows;
+  return withPathHints(rows);
+}
+
+/** Title key for "nearly the same": no spaces / ellipses, case-folded. */
+function titleKey(label: string): string {
+  return label.replace(/\s+|…|\.\.\./g, '').toLowerCase();
+}
+
+function urlHost(url?: string): string {
+  try {
+    return url ? new URL(url).hostname.replace(/^www\./, '') : '';
+  } catch {
+    return '';
+  }
+}
+
+/** First URL path segment (or the query) that differs from the other URLs. */
+function distinguishingPart(url: string, others: string[]): string {
+  const split = (u: string) => {
+    try {
+      const x = new URL(u);
+      return { segs: x.pathname.split('/').filter(Boolean), query: x.search };
+    } catch {
+      return { segs: [] as string[], query: '' };
+    }
+  };
+  const me = split(url);
+  const them = others.map(split);
+  const short = (v: string) => (v.length > 20 ? `${v.slice(0, 19)}…` : v);
+  for (let i = 0; i < me.segs.length; i++) {
+    if (them.some((o) => o.segs[i] !== me.segs[i])) return `/${i ? '…/' : ''}${short(me.segs[i]!)}`;
+  }
+  return me.query ? short(me.query) : '';
+}
+
+function withPathHints(rows: SourceRow[]): SourceRow[] {
+  return rows.map((row, i) => {
+    const host = urlHost(row.url);
+    const key = titleKey(row.label);
+    const twins = rows.filter((o, j) => {
+      if (j === i || !o.url || urlHost(o.url) !== host) return false;
+      const k = titleKey(o.label);
+      return k === key || k.startsWith(key) || key.startsWith(k);
+    });
+    if (!host || !row.url || !twins.length) return row;
+    const hint = distinguishingPart(row.url, twins.map((o) => o.url!));
+    return hint ? { ...row, host: row.host ?? (row.label === host ? undefined : host), pathHint: hint } : row;
+  });
 }
 
 export function buildMadeInView(result: CheckResult): MadeInView {
