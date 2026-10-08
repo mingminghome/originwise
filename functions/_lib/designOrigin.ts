@@ -101,8 +101,9 @@ const FORWARD_CUES = new RegExp(
     // Bare English brand field ("Brand: Germany", "BRAND : GERMANY"): the same; a brand
     // name ("Brand: Cybex") names no country, so nothing is shown. Not "Brand name:".
     '\\bbrand[ \\t]*[:：]',
-    // 設計 right before a country name (「設計德國」「设计德国」): design info.
-    `(?:設計|设计)(?=${CJK_COUNTRY})`,
+    // 設計 right before a country name (「設計德國」「设计德国」): design info. Skip when
+    // the country is itself the made-in (「人體工學設計中國製造」「设计中国制造」「設計德國產」).
+    `(?:設計|设计)(?=(?:${CJK_COUNTRY})(?![ \\t\u3000]?(?:製品|製造|制造|製|制|產|产|産)))`,
     // Label fields: 「設計：德國」「設計地：德國」「研發：德國」, "Design: Germany".
     '(?:設計|设计|研發|研发)(?:地|國|国)?\\s*[:：]',
     // Brand / design origin fields: 「品牌產地：德國」「設計產地：日本」「品牌來源地：德國」
