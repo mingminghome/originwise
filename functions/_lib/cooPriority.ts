@@ -12,7 +12,7 @@
 import { MADE_IN_CODE_LABEL, madeInCodeMatches, NOT_PRODUCT_FIELD, PART_FIELD_WORDS } from './countryLabel';
 import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN, countryNameLabel } from './countryNames';
 import { NOT_MADE_TAIL, stripDesignPhrases } from './designOrigin';
-import { canonicalCountry } from './countryLabel';
+import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
 import { normalizeRegion, type RegionCode } from './regions';
 import {
   cooConflictChinaText,
@@ -224,7 +224,7 @@ export function canonCountry(label: string | undefined): string {
   // English (aliases too), Japanese, Traditional and Simplified (德國 / 德国 / ドイツ /
   // Germany, 英國 / イギリス / Great Britain / United Kingdom, Türkiye / Turkey / 土耳其),
   // the made-in codes (UK) and the free-text table.
-  const named = countryNameLabel(s) ?? countryNameLabel(CJK_TO_LABEL[s] ?? '') ?? MADE_IN_CODE_LABEL[s] ?? canonicalCountry(s);
+  const named = countryNameLabel(s) ?? countryNameLabel(CJK_TO_LABEL[s] ?? '') ?? MADE_IN_CODE_LABEL[s] ?? wholeCountryName(s);
   if (!named) return s.toLowerCase();
   // 中華人民共和国 / 中華民国 / マカオ: the same four places by their English label.
   const namedRegion = normalizeRegion(named);
@@ -233,16 +233,43 @@ export function canonCountry(label: string | undefined): string {
   return CANON_COUNTRY[key] ?? key;
 }
 
-/** The name a 爭議 side is shown as (synthesize: canonicalCountry ?? countryNameLabel ?? raw). */
-function shownKey(label: string): string {
-  const region = canonCountry(label);
-  if (region === 'CN' || region === 'HK' || region === 'TW' || region === 'MO') return region;
-  return (canonicalCountry(label) ?? countryNameLabel(label) ?? label).trim().toLowerCase();
+/**
+ * A free-text table name only when it is the whole string: 'Viet Nam' is Vietnam, but
+ * 'New Mexico' is not Mexico, 'Netherlands Antilles' is not the Netherlands and
+ * "Democratic People's Republic of Korea" is not South Korea (dedupe never merges them).
+ */
+function wholeCountryName(raw: string): string | undefined {
+  const s = raw.trim().replace(/^the\s+/i, '').replace(/[\s.。,，]+$/, '');
+  if (!s) return undefined;
+  const code = COUNTRY_CODE_TO_LABEL[s.toLowerCase()];
+  if (code) return code;
+  return COUNTRY_NAME_PATTERNS.find((row) => {
+    const m = row.pattern.exec(s);
+    return m !== null && m.index === 0 && m[0].length === s.length;
+  })?.label;
 }
 
-/** Two 爭議 sides are one place when their key or their shown name is the same. */
-function sameSide(a: string, b: string): boolean {
-  return canonCountry(a) === canonCountry(b) || shownKey(a) === shownKey(b);
+/**
+ * Two 爭議 sides are one place when their key is the same. (Round 20 also compared the
+ * shown name; canonCountry is built from the same display names, so that never differed.)
+ */
+export function sameSide(a: string, b: string): boolean {
+  return canonCountry(a) === canonCountry(b);
+}
+
+/**
+ * Final check: a 爭議 whose sides are all one country is no 爭議 ('Made in Germany\n
+ * 德國製造' → Germany); its claims are put back (chars from text) to be read as one claim.
+ * A one-country 爭議 inside a real one stays blanked.
+ */
+export function keepRealDisputes(disputes: FieldDispute[], chars: string[], text: string): FieldDispute[] {
+  const kept = disputes.filter((d) => d.sides.length >= 2 && d.sides.some((x) => !sameSide(x, d.sides[0]!)));
+  for (const d of disputes) {
+    if (kept.includes(d)) continue;
+    if (kept.some((k) => k.start < d.end && d.start < k.end)) continue;
+    for (let i = d.start; i < d.end; i++) chars[i] = text[i]!;
+  }
+  return kept;
 }
 
 const CJK_TO_LABEL: Record<string, string> = {
@@ -566,6 +593,9 @@ const PART_BRACKET = new RegExp(`^\\s*[（(【\\[][^）)】\\]]*${PART_WORD}[^�
  *   is never read.
  * Blanking keeps the length, so offsets stay.
  */
+/** "Not made in" / "never made in" / "is not made in" / "isn't made in": a negated claim, on its line. */
+const NEGATED_EN_BEFORE = /(?:\bnot|\bnever|n['’]t)[ \t]+$/i;
+
 function resolveFieldValues(input: string): FieldPass {
   const text = usPlacesAsUsa(input);
   const chars = text.split('');
@@ -706,7 +736,11 @@ function resolveFieldValues(input: string): FieldPass {
       const cue = e[0].slice(0, e[0].length - e[1]!.length);
       const lineHead = now.slice(now.lastIndexOf('\n', e.index!) + 1, e.index!);
       if (PART_BEFORE.test(lineHead) || CJK_PART_FIELD_BEFORE.test(lineHead)) continue;
-      if (/[A-Za-z]/.test(cue)) en.push({ country: label, start: e.index!, end: e.index! + e[0].length });
+      if (/[A-Za-z]/.test(cue)) {
+        // 'Not made in Germany\n中國製造' is China: a negated claim is never a side.
+        if (NEGATED_EN_BEFORE.test(lineHead)) continue;
+        en.push({ country: label, start: e.index!, end: e.index! + e[0].length });
+      }
       else if (/[\u4e00-\u9fff\u3040-\u30ff]/.test(cue)) cjk.push({ country: label, start: e.index!, end: e.index! + e[0].length });
     }
     for (const e of now.matchAll(new RegExp(COO_SUFFIX.source, 'g'))) {
@@ -722,10 +756,19 @@ function resolveFieldValues(input: string): FieldPass {
     const a = en[0];
     const b = a && cjk.find((c) => canonCountry(c.country) !== canonCountry(a.country));
     if (a && b && !cjk.some((c) => canonCountry(c.country) === canonCountry(a.country))) {
-      const [x, y] = a.start < b.start ? [a, b] : [b, a];
-      blank(a.start, a.end);
-      blank(b.start, b.end);
-      disputes.push({ sides: sides([x.country, y.country]), start: x.start, end: y.end });
+      // Every other whole-product claim joins this one 爭議, merged by country, in order:
+      // 'Made in China\nMade in Germany\n德國製造' is 中國 / 德國 (the second English claim
+      // never headlines), 'Made in UK\n英國製造\nMade in Vietnam' is 英國 / 越南.
+      const all = [...en, ...cjk];
+      for (const c of madeInCodeMatches(now)) {
+        const lineHead = now.slice(now.lastIndexOf('\n', c.index) + 1, c.index);
+        if (PART_BEFORE.test(lineHead) || CJK_PART_FIELD_BEFORE.test(lineHead) || OTHER_FIELD_BEFORE.test(lineHead)) continue;
+        if (NEGATED_EN_BEFORE.test(lineHead)) continue;
+        all.push({ country: MADE_IN_CODE_LABEL[c.code]!, start: c.index, end: c.index + c.length });
+      }
+      all.sort((x, y) => x.start - y.start);
+      for (const c of all) blank(c.start, c.end);
+      disputes.push({ sides: sides(all.map((c) => c.country)), start: all[0]!.start, end: Math.max(...all.map((c) => c.end)) });
     }
   }
   // Repeated made-in fields, adjacent or not (「產地：中國\n重量：5kg\n產地：日本」): two
@@ -753,7 +796,7 @@ function resolveFieldValues(input: string): FieldPass {
       if (normalizeRegion(label) === 'UNKNOWN') continue;
       const lineHead = now.slice(now.lastIndexOf('\n', e.index!) + 1, e.index!);
       if (PART_BEFORE.test(lineHead) || CJK_PART_FIELD_BEFORE.test(lineHead)) continue;
-      if (/\b(?:not|never)[ \t]+$/i.test(lineHead)) continue;
+      if (NEGATED_EN_BEFORE.test(lineHead)) continue;
       // After another spec field on its line (「乳首：シリコーンゴム 中国工場製」): a component.
       if (OTHER_FIELD_BEFORE.test(lineHead)) continue;
       claims.push({ country: label, start: e.index!, end: e.index! + e[0].length, suffix: false });
@@ -762,7 +805,7 @@ function resolveFieldValues(input: string): FieldPass {
     for (const c of madeInCodeMatches(now)) {
       const lineHead = now.slice(now.lastIndexOf('\n', c.index) + 1, c.index);
       if (PART_BEFORE.test(lineHead) || CJK_PART_FIELD_BEFORE.test(lineHead) || OTHER_FIELD_BEFORE.test(lineHead)) continue;
-      if (/\b(?:not|never)[ \t]+$/i.test(lineHead)) continue;
+      if (NEGATED_EN_BEFORE.test(lineHead)) continue;
       claims.push({ country: MADE_IN_CODE_LABEL[c.code]!, start: c.index, end: c.index + c.length, suffix: false });
     }
     for (const e of now.matchAll(new RegExp(COO_SUFFIX.source, 'g'))) {
@@ -791,14 +834,8 @@ function resolveFieldValues(input: string): FieldPass {
       });
     }
   }
-  // Backstop: a 爭議 whose sides all show as one country is no 爭議 ('Made in Germany\n
-  // 德國製造' → Germany): its claims are read again, as if it had never been settled.
-  const kept = disputes.filter((d) => d.sides.length >= 2 && d.sides.some((x) => !sameSide(x, d.sides[0]!)));
-  for (const d of disputes) {
-    if (kept.includes(d)) continue;
-    if (kept.some((k) => k.start < d.end && d.start < k.end)) continue;
-    for (let i = d.start; i < d.end; i++) chars[i] = text[i]!;
-  }
+  // Backstop: a 爭議 whose sides are all one country is no 爭議 (see keepRealDisputes).
+  const kept = keepRealDisputes(disputes, chars, text);
   return { text: chars.join(''), disputes: kept };
 }
 
@@ -843,7 +880,7 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     if (region === 'UNKNOWN') continue;
     // "Not made in China" / "never made in China" is no claim.
     // Same line only: "Do not\nMade in China" still reads China.
-    if (/\b(?:not|never)[ \t]+$/i.test(raw.slice(Math.max(0, m.index - 8), m.index))) continue;
+    if (NEGATED_EN_BEFORE.test(raw.slice(Math.max(0, m.index - 8), m.index))) continue;
     const start = Math.max(0, m.index - 80);
     const end = Math.min(raw.length, m.index + m[0].length + 80);
     const window = raw.slice(start, end);

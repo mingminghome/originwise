@@ -1005,7 +1005,7 @@ export type CooClaim = {
 // Full country list (countryNames.ts), right after the cue only ("Origin: People's
 // Republic of China" / "Origin: Republic of China" by their full names too).
 const MADE_IN_NAME_ANY_CASE = new RegExp(
-  `(?<!\\b(?:not|never)[ \\t])\\b(?:(?:made|manufactured|assembled|produced)[\\s-]+in|(?<!(?:brand|design)\\s+)country\\s+of\\s+origin|(?<!(?:brand|design)\\s+(?:of\\s+)?)origin(?=\\s*[:：])|coo(?=\\s*[:：]))\\s*[:：]?\\s*(?:the\\s+)?(${COUNTRY_LIST_LATIN})(?![A-Za-z-])`,
+  `(?<!(?:\\bnot|\\bnever|n['’]t)[ \\t])\\b(?:(?:made|manufactured|assembled|produced)[\\s-]+in|(?<!(?:brand|design)\\s+)country\\s+of\\s+origin|(?<!(?:brand|design)\\s+(?:of\\s+)?)origin(?=\\s*[:：])|coo(?=\\s*[:：]))\\s*[:：]?\\s*(?:the\\s+)?(${COUNTRY_LIST_LATIN})(?![A-Za-z-])`,
   'gi'
 );
 
@@ -1026,7 +1026,7 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
       // full country names only (lower-case codes such as "made in cn" stay
       // rejected). First, so a longer name wins over a one-word fragment.
       MADE_IN_NAME_ANY_CASE,
-      /(?<![Nn]ot[ \t]|NOT[ \t]|[Nn]ever[ \t]|NEVER[ \t])\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|(?<!(?:[Bb]rand|BRAND|[Dd]esign|DESIGN)\s+)(?:[Cc]ountry of [Oo]rigin|COUNTRY OF ORIGIN)\s*[:：]?|(?<!(?:[Bb]rand|BRAND|[Dd]esign|DESIGN)\s+(?:of\s+|OF\s+)?)(?:[Oo]rigin|ORIGIN)\s*[:：])\s*(?:[Tt]he\s+|THE\s+)?([A-Z][A-Za-z]{2,}(?: [A-Z][a-z]+| [A-Z]{2,}(?![a-z]))?)(?![A-Za-z]|-(?!made\b)[A-Za-z])/g,
+      /(?<![Nn]ot[ \t]|NOT[ \t]|[Nn]ever[ \t]|NEVER[ \t]|[Nn]['’]t[ \t]|N['’]T[ \t])\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|(?<!(?:[Bb]rand|BRAND|[Dd]esign|DESIGN)\s+)(?:[Cc]ountry of [Oo]rigin|COUNTRY OF ORIGIN)\s*[:：]?|(?<!(?:[Bb]rand|BRAND|[Dd]esign|DESIGN)\s+(?:of\s+|OF\s+)?)(?:[Oo]rigin|ORIGIN)\s*[:：])\s*(?:[Tt]he\s+|THE\s+)?([A-Z][A-Za-z]{2,}(?: [A-Z][a-z]+| [A-Z]{2,}(?![a-z]))?)(?![A-Za-z]|-(?!made\b)[A-Za-z])/g,
       // Not 品牌產地 / 設計產地 (附加資訊) or 配件產地 / 電池產地 (a component): NOT_PRODUCT_FIELD.
       new RegExp(
         `${NOT_PRODUCT_FIELD}(?:原産国|生産国|製造国|製造國|制造国|原産地|生産地|原產地|原產國|生產國|生產国|生產地|產地|産地|製造地|原产国|原产地|生产国|生产地|产地)(?:名)?\\s*[:：・／/]?\\s*([^\\s:：、。,，|/／()（）<>[\\]]{1,12})`,

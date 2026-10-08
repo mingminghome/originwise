@@ -11,9 +11,10 @@ export const COUNTRY_NAME_PATTERNS: Array<{ label: string; pattern: RegExp }> = 
   { label: 'Taiwan', pattern: /\btaiwan\b|(?<!people.?s\s+)\brepublic\s+of\s+china\b|\br\.o\.c\b\.?|^roc$|台灣|台湾|臺灣|中華民國|中华民国/i },
   { label: 'Macau', pattern: /\bmacau\b|\bmacao\b|澳門|澳门/i },
   { label: 'Japan', pattern: /\bjapan\b|日本/i },
-  // North Korea first, and never inside South Korea's pattern ("Made in North Korea" is not 韓國).
-  { label: 'North Korea', pattern: /north[\s-]*korea|\bn\.?\s*korea\b|\bdprk\b|\bd\.p\.r\.k\b|北韓|北韩|北朝鮮|北朝鲜|朝鮮民主|朝鲜民主/i },
-  { label: 'South Korea', pattern: /south\s*korea|(?<!north[\s-]*|\bn\.?\s*)\bkorea\b|韓國|韩国/i },
+  // North Korea first, and never inside South Korea's pattern ("Made in North Korea" /
+  // "Democratic People's Republic of Korea" / "D.P.R. Korea" are not 韓國; "Republic of Korea" is).
+  { label: 'North Korea', pattern: /north[\s-]*korea|\bn\.?\s*korea\b|\bdprk\b|\bd\.p\.r\.k\b|democratic\s+people.?s\s+republic\s+of\s+korea|\bd\.?\s?p\.?\s?r\.?\s+korea\b|北韓|北韩|北朝鮮|北朝鲜|朝鮮民主|朝鲜民主/i },
+  { label: 'South Korea', pattern: /south\s*korea|(?<!north[\s-]*|\bn\.?\s*|people.?s\s+republic\s+of\s+|\bd\.?\s?p\.?\s?r\.?\s+)\bkorea\b|韓國|韩国/i },
   { label: 'Vietnam', pattern: /\bviet\s?nam\b|越南/i },
   { label: 'Thailand', pattern: /\bthailand\b|泰國|泰国|タイ/i },
   { label: 'Indonesia', pattern: /\bindonesia\b|印尼|印度尼西亞/i },
@@ -165,9 +166,13 @@ export function madeInCodeMatches(text: string): Array<{ code: string; index: nu
     'gm'
   );
   const out: Array<{ code: string; index: number; length: number }> = [];
-  for (const m of String(text ?? '').matchAll(re)) {
+  const s = String(text ?? '');
+  for (const m of s.matchAll(re)) {
     const code = m[1] ?? m[2];
-    if (code && MADE_IN_CODE_LABEL[code]) out.push({ code, index: m.index ?? 0, length: m[0].length });
+    // "Not made in USA" / "never made in UK" / "isn't made in CN" (same line): no claim.
+    const at = m.index ?? 0;
+    if (/(?:\bnot|\bnever|n['’]t)[ \t]+$/i.test(s.slice(s.lastIndexOf('\n', at - 1) + 1, at))) continue;
+    if (code && MADE_IN_CODE_LABEL[code]) out.push({ code, index: at, length: m[0].length });
   }
   return out;
 }

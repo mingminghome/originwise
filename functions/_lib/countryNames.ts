@@ -19,7 +19,7 @@ const ROWS: readonly Row[] = [
   ['Taiwan', 'TW', ['taiwan', 'republic of china', 'r.o.c.', 'r.o.c', 'roc'], ['台湾', '中華民国'], ['台灣', '臺灣', '中華民國'], ['台湾', '中华民国']],
   ['Japan', 'JP', ['japan'], ['日本'], ['日本'], ['日本']],
   ['South Korea', 'KR', ['south korea', 'korea', 'republic of korea'], ['韓国', '大韓民国'], ['韓國', '南韓'], ['韩国']],
-  ['North Korea', 'KP', ['north korea', 'n. korea', 'n.korea', 'n korea', 'dprk', 'd.p.r.k.', "democratic people's republic of korea"], ['北朝鮮'], ['北韓', '朝鮮民主主義人民共和國'], ['朝鲜', '北朝鲜', '北韩']],
+  ['North Korea', 'KP', ['north korea', 'n. korea', 'n.korea', 'n korea', 'dprk', 'd.p.r.k.', "democratic people's republic of korea", 'd.p.r. korea'], ['北朝鮮'], ['北韓', '朝鮮民主主義人民共和國'], ['朝鲜', '北朝鲜', '北韩']],
   ['Vietnam', 'VN', ['vietnam', 'viet nam'], ['ベトナム'], ['越南'], ['越南']],
   ['Thailand', 'TH', ['thailand'], ['タイ'], ['泰國'], ['泰国']],
   ['Cambodia', 'KH', ['cambodia'], ['カンボジア'], ['柬埔寨'], ['柬埔寨']],
