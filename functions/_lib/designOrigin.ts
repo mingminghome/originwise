@@ -98,6 +98,11 @@ const FORWARD_CUES = new RegExp(
     'デザイン(?:は|：|:)',
     // Bare brand field (「ブランド：ドイツ」「品牌：德國」): 附加資訊 (德國品牌), never a made-in.
     '(?:ブランド|品牌)\\s*[:：]',
+    // Bare English brand field ("Brand: Germany", "BRAND : GERMANY"): the same; a brand
+    // name ("Brand: Cybex") names no country, so nothing is shown. Not "Brand name:".
+    '\\bbrand[ \\t]*[:：]',
+    // 設計 right before a country name (「設計德國」「设计德国」): design info.
+    `(?:設計|设计)(?=${CJK_COUNTRY})`,
     // Label fields: 「設計：德國」「設計地：德國」「研發：德國」, "Design: Germany".
     '(?:設計|设计|研發|研发)(?:地|國|国)?\\s*[:：]',
     // Brand / design origin fields: 「品牌產地：德國」「設計產地：日本」「品牌來源地：德國」
@@ -130,6 +135,8 @@ const PREFIX_CUES = new RegExp(
     `\\b(?:${EN_COUNTRY})[ \\t-]+(?:engineering|engineered|design|designed|designs|brand|brands|company|technology|heritage|developed|innovation|r\\s*&\\s*d)\\b`,
     `(?:${CJK_COUNTRY})(?:的)?(?:設計|设计|研發|研发|工程|工藝|工艺|技術|技术|品牌|廠牌|厂牌|廠商|厂商|公司|企業|企业|血統|血统|デザイン|ブランド|メーカー|發源|发源)`,
     `(?:${CJK_COUNTRY})(?:的)?${MAKER_WORD}`,
+    // 「ドイツで設計」「ドイツでデザイン」: design info.
+    `(?:${CJK_COUNTRY})で(?:設計|デザイン)`,
     // A value tagged as brand / design: 「產地：德國（品牌）中國（製造）」, "Germany (brand)".
     `(?:${CJK_COUNTRY})[ \\t]*[（(]\\s*(?:品牌|設計|设计|研發|研发|brand|design(?:ed)?)\\s*[）)]`,
     `\\b(?:${EN_COUNTRY})[ \\t]*[（(]\\s*(?:brand|design(?:ed)?)\\s*[）)]`,
