@@ -19,7 +19,7 @@ const ROWS: readonly Row[] = [
   ['Taiwan', 'TW', ['taiwan'], ['台湾'], ['台灣', '臺灣'], ['台湾']],
   ['Japan', 'JP', ['japan'], ['日本'], ['日本'], ['日本']],
   ['South Korea', 'KR', ['south korea', 'korea', 'republic of korea'], ['韓国', '大韓民国'], ['韓國', '南韓'], ['韩国']],
-  ['North Korea', 'KP', ['north korea', 'dprk', 'd.p.r.k.', "democratic people's republic of korea"], ['北朝鮮'], ['北韓', '朝鮮民主主義人民共和國'], ['朝鲜', '北韩']],
+  ['North Korea', 'KP', ['north korea', 'n. korea', 'n.korea', 'n korea', 'dprk', 'd.p.r.k.', "democratic people's republic of korea"], ['北朝鮮'], ['北韓', '朝鮮民主主義人民共和國'], ['朝鲜', '北朝鲜', '北韩']],
   ['Vietnam', 'VN', ['vietnam', 'viet nam'], ['ベトナム'], ['越南'], ['越南']],
   ['Thailand', 'TH', ['thailand'], ['タイ'], ['泰國'], ['泰国']],
   ['Cambodia', 'KH', ['cambodia'], ['カンボジア'], ['柬埔寨'], ['柬埔寨']],
@@ -139,6 +139,8 @@ const ROWS: readonly Row[] = [
   ['Australia', 'AU', ['australia'], ['オーストラリア'], ['澳洲', '澳大利亞'], ['澳大利亚']],
   ['New Zealand', 'NZ', ['new zealand'], ['ニュージーランド'], ['紐西蘭'], ['新西兰']],
   ['Fiji', 'FJ', ['fiji'], ['フィジー'], ['斐濟'], ['斐济']],
+  // Not a country, but a made-in value on labels ("Made in the EU" / "Made in European Union").
+  ['European Union', 'EU', ['european union'], ['欧州連合'], ['歐盟'], ['欧盟']],
 ];
 
 const norm = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase();

@@ -83,6 +83,8 @@ export const es = {
       disputeSidePages: '{country} (páginas: {n})',
       disputeSideLabel: '{country} (etiqueta del envase)',
       disputeSideLabelPages: '{country} (etiqueta del envase; páginas: {n})',
+      disputeSideLabelExact: '{country} (etiqueta del envase; páginas con el modelo exacto: {n})',
+      disputeSideLabelMixed: '{country} (etiqueta del envase; páginas: {n}, con el modelo exacto: {e})',
       disputeSep: '; ',
       designInfo: 'Información adicional: diseño / ingeniería según la marca: {country}. No es el lugar de fabricación.',
       brandInfo: 'Información adicional: origen de la marca según se indica: {country}. No es el lugar de fabricación.',

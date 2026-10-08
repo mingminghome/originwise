@@ -83,6 +83,8 @@ export const hu = {
       disputeSidePages: '{country} (oldalak: {n})',
       disputeSideLabel: '{country} (csomagolás címkéje)',
       disputeSideLabelPages: '{country} (csomagolás címkéje; oldalak: {n})',
+      disputeSideLabelExact: '{country} (csomagolás címkéje; pontos modellű oldalak: {n})',
+      disputeSideLabelMixed: '{country} (csomagolás címkéje; oldalak: {n}, ebből pontos modellű: {e})',
       disputeSep: '; ',
       designInfo: 'Kiegészítő információ: tervezés / fejlesztés a márka szerint: {country}. Ez nem a gyártás helye.',
       brandInfo: 'Kiegészítő információ: a márka származása a leírás szerint: {country}. Ez nem a gyártás helye.',

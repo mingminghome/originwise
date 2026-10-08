@@ -83,6 +83,8 @@ export const fi = {
       disputeSidePages: '{country} (sivuja: {n})',
       disputeSideLabel: '{country} (pakkauksen etiketti)',
       disputeSideLabelPages: '{country} (pakkauksen etiketti; sivuja: {n})',
+      disputeSideLabelExact: '{country} (pakkauksen etiketti; sivuja täsmälleen tällä mallilla: {n})',
+      disputeSideLabelMixed: '{country} (pakkauksen etiketti; sivuja: {n}, täsmälleen tällä mallilla: {e})',
       disputeSep: '; ',
       designInfo: 'Lisätieto: suunnittelu / kehitys brändin mukaan: {country}. Tämä ei ole valmistusmaa.',
       brandInfo: 'Lisätieto: brändin alkuperä ilmoituksen mukaan: {country}. Tämä ei ole valmistusmaa.',

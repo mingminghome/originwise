@@ -429,7 +429,8 @@ describe('label 爭議 card layout and merging with a page 爭議', () => {
       JSON.stringify(v.dispute)
     );
     const t = text(r);
-    assert.match(t, /爭議：中國（包裝標示、1 個網頁）；日本（包裝標示）；越南（1 個(型號相符的)?網頁）/, t);
+    // Round 10: a label side's matching-model pages are worded like a page-only side.
+    assert.match(t, /爭議：中國（包裝標示、1 個型號相符的網頁）；日本（包裝標示）；越南（1 個(型號相符的)?網頁）/, t);
     assert.ok(!t.includes('%'), t);
   });
   it('the merged line in English names both sources', () => {
@@ -437,7 +438,7 @@ describe('label 爭議 card layout and merging with a page 爭議', () => {
       ocrText: 'CYBEX Melio\n產地：中國 日本製',
       pages: [page(URLS.mami, 'Cybex Melio 嬰兒推車 | MamiLove', '商品規格\n產地：中國、越南\n重量：5.9 kg')],
     });
-    assert.match(text(r, en), /China \(package label; pages: 1\)/);
+    assert.match(text(r, en), /China \(package label; exact-model pages: 1\)/);
   });
 });
 
@@ -462,7 +463,7 @@ describe('label 爭議 outranks web pages: matching-model pages never replace it
     assert.equal(v.state, 'unconfirmed', JSON.stringify(v));
     assert.deepEqual(sides(v), [['China', true, 2, 2], ['Japan', true, 0, 0]], JSON.stringify(v.dispute));
     const t = text(r);
-    assert.ok(t.includes('爭議：中國（包裝標示、2 個網頁）；日本（包裝標示）'), t);
+    assert.ok(t.includes('爭議：中國（包裝標示、2 個型號相符的網頁）；日本（包裝標示）'), t);
     assert.ok(!t.includes('%'), t);
   });
   it('label 中國 日本製 + 1 page Vietnam → the page side is merged in', () => {
@@ -536,8 +537,33 @@ describe('爭議 subtitle: 「來源說法不一」 when the label is a side, �
   });
 });
 
+describe('round 10: merged 爭議 wording and EU in every language', () => {
+  const A = (t: string) => page(URLS.mami, 'Cybex Melio 嬰兒推車 | MamiLove', t);
+  const B = (t: string) => page('https://www.babyhome.com.tw/item/cybex', 'Melio stroller', t);
+  it('a label side whose pages match the model reads 「包裝標示、N 個型號相符的網頁」 like a page-only side', () => {
+    const r = runPages({ ocrText: 'CYBEX Melio\n產地：中國 日本製', pages: [A('Made in China')] });
+    const t = text(r);
+    assert.ok(t.includes('中國（包裝標示、1 個型號相符的網頁）；日本（包裝標示）'), t);
+  });
+  it('a label side with a page that does not name the model keeps 「包裝標示、N 個網頁」', () => {
+    const r = runPages({ ocrText: 'CYBEX Melio\n產地：中國 日本製', pages: [B('Made in China')] });
+    const v = buildMadeInView(r);
+    const side = v.dispute?.find((d) => d.country === 'China');
+    if (side && side.pages && !side.exactPages) assert.ok(text(r).includes('中國（包裝標示、1 個網頁）'), text(r));
+  });
+  it('EU is shown in the reader\'s language (歐盟, Europäische Union …), never the English name outside English', () => {
+    const r = runPages({ ocrText: 'CYBEX Melio\nCOO: China (EU-made)', pages: [] });
+    assert.ok(text(r).includes('歐盟') && !text(r).includes('European Union'), text(r));
+    for (const lng of locales) {
+      const t = text(r, createT(lng));
+      if (lng === 'en') assert.ok(t.includes('European Union'), lng);
+      else assert.ok(!t.includes('European Union'), `${lng}: ${t}`);
+    }
+  });
+});
+
 describe('dispute / design wording in all 16 locales', () => {
-  const KEYS = ['dispute', 'disputeSideExact', 'disputeSideMixed', 'disputeSidePages', 'disputeSideLabel', 'disputeSideLabelPages', 'designInfo', 'brandInfo', 'infoSource'];
+  const KEYS = ['dispute', 'disputeSideExact', 'disputeSideMixed', 'disputeSidePages', 'disputeSideLabel', 'disputeSideLabelPages', 'disputeSideLabelExact', 'disputeSideLabelMixed', 'designInfo', 'brandInfo', 'infoSource'];
   it('every locale has its own wording, soft, never 非確認', () => {
     for (const lng of locales) {
       const t = createT(lng);

@@ -83,6 +83,8 @@ export const nl = {
       disputeSidePages: '{country} (pagina’s: {n})',
       disputeSideLabel: '{country} (verpakkingslabel)',
       disputeSideLabelPages: '{country} (verpakkingslabel; pagina’s: {n})',
+      disputeSideLabelExact: '{country} (verpakkingslabel; pagina’s met exact dit model: {n})',
+      disputeSideLabelMixed: '{country} (verpakkingslabel; pagina’s: {n}, met exact dit model: {e})',
       disputeSep: '; ',
       designInfo: 'Extra info: ontwerp / engineering volgens het merk: {country}. Dit is niet waar het gemaakt is.',
       brandInfo: 'Extra info: herkomst van het merk volgens opgave: {country}. Dit is niet waar het gemaakt is.',

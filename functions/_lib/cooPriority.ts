@@ -9,7 +9,7 @@
  * stamp, clear madeIn and keep layered candidates — do not fake a stamp.
  */
 
-import { MADE_IN_CODE_LABEL, madeInCodeMatches } from './countryLabel';
+import { MADE_IN_CODE_LABEL, madeInCodeMatches, NOT_PRODUCT_FIELD } from './countryLabel';
 import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN, countryNameLabel } from './countryNames';
 import { NOT_MADE_TAIL, stripDesignPhrases } from './designOrigin';
 import { canonicalCountry } from './countryLabel';
@@ -81,7 +81,7 @@ const HYPHEN_WORD_GUARD = `(?![A-Za-z]|-(?!made\\b|(?:${COUNTRY_LIST_LATIN})(?![
 const VALUE_COUNTRY_TOKEN = `(?:${COUNTRY_LIST_CJK}|(?:${COUNTRY_TOKEN}|${COUNTRY_LIST_LATIN})${HYPHEN_WORD_GUARD})`;
 
 /** Made-in cues (made in / 產地 / 原産国 / COO / Origin …) that a country value follows. */
-const COO_CUE_SRC = `(?:(?:製造|制造|生產|生产|生産|組裝|组装|產|产|製|制)(?:於|于|在)|生產國|生产国|生産国|生產国|(?:製造地|生產地|生产地|製造|制造|生產|生产|生産)(?=\\s*[:：])|(?<!brand\\s)origin(?=\\s*[:：])|made[\\s-]?in|manufactured[\\s-]?in|produced[\\s-]?in|assembled[\\s-]?in|country\\s+of\\s+origin|country\\s+of\\s+publication|coo|製造国|製造國|原産国名?|原產國|产地|產地|生产地|生產地|生産(?:[・･/／]組み?立て?)?|組み?立て?|組裝|组装)`;
+const COO_CUE_SRC = `(?:(?:製造|制造|生產|生产|生産|組裝|组装|產|产|製|制)(?:於|于|在)|生產國|生产国|生産国|生產国|(?:製造地|生產地|生产地|製造|制造|生產|生产|生産)(?=\\s*[:：])|(?<!(?:brand|design)\\s)origin(?=\\s*[:：])|made[\\s-]?in|manufactured[\\s-]?in|produced[\\s-]?in|assembled[\\s-]?in|country\\s+of\\s+origin|country\\s+of\\s+publication|coo|${NOT_PRODUCT_FIELD}(?:製造国|製造國|原産国名?|原產國|原产国|产地|產地|生产地|生產地)|生産(?:[・･/／]組み?立て?)?|組み?立て?|組裝|组装)`;
 
 /** Made-in cue, then the country value. */
 const COO_LINE = new RegExp(`${COO_CUE_SRC}\\s*[:：]?\\s*(?:the\\s+)?(${VALUE_COUNTRY_TOKEN})`, 'gi');
@@ -112,29 +112,58 @@ const US_NAME = 'united\\s+states(?:\\s+of\\s+america)?|u\\.s\\.a\\.?|usa|u\\.s\
  */
 const US_TOWN_NAMES = ['georgia', 'jordan', 'lebanon', 'peru', 'mexico', 'panama', 'cuba', 'poland', 'wales', 'chile', 'canton'];
 const US_PLACE = new RegExp(
-  `(${COO_CUE_SRC}\\s*[:：]?\\s*(?:the\\s+)?)((?:${US_STATE_NAME}|${US_TOWN_NAMES.join('|')})\\s*,\\s*(?:the\\s+)?)(${US_NAME}|${US_STATE_NAME}|${US_STATE_ABBR})(?![A-Za-z])`,
+  `(${COO_CUE_SRC}\\s*[:：]?\\s*(?:the\\s+)?)((?:${US_STATE_NAME}|(?:${US_TOWN_NAMES.join('|')})(?:\\s+city)?)(\\s*,\\s*|\\s*[-–—]\\s*|\\s*[（(]\\s*|\\s+)(?:the\\s+)?)(${US_NAME}|${US_STATE_NAME}|${US_STATE_ABBR})(?![A-Za-z])`,
   'gi'
 );
+/** Listed towns that are no country name: before a bare USA they are a US place. */
+const TOWNS_NOT_COUNTRIES = ['canton', 'wales'];
+const US_NAME_ONLY = new RegExp(`^(?:${US_NAME})$`, 'i');
+/** "Made in" / "Assembled in" / 製造於 …: a made-in phrase, not a field (Origin: / COO: / 產地：). */
+const MADE_IN_PHRASE = /^(?:(?:made|manufactured|produced|assembled)[\s-]?in|(?:製造|制造|生產|生产|生産|組裝|组装|產|产|製|制)(?:於|于|在))/i;
 /**
- * 「Made in Georgia, USA」「Made in Jordan, Minnesota」「Made in Texas, USA」: a US
- * place. The town and state become one "USA" value (same length, so offsets and
- * page quotes stay). A US state name itself counts only before USA.
+ * A US place after a made-in cue; the town and state become one "USA" value (same
+ * length, so offsets and page quotes stay):
+ * - a US state name before USA, after "Made in" only: 「Made in Georgia, USA」
+ *   "Made in Georgia (USA)" "Georgia - USA" "Made in Texas, USA";
+ * - a listed town (or "<town> City") before a US state name or upper-case code,
+ *   comma only: 「Made in Jordan, Minnesota」「Made in Mexico, NY」「Made in Panama City, Florida」.
+ * Not a country-named town before a bare USA ("Made in Mexico, USA" is Mexico), and
+ * never from a bare USA inside a field ("Origin: Mexico, USA" is a list of two
+ * countries); a town that is no country ("Made in Canton, USA") stays a US place.
  */
 export function usPlacesAsUsa(text: string): string {
-  return text.replace(US_PLACE, (all, cue: string, town: string, where: string) => {
-    const name = town.replace(/\s*,\s*(?:the\s+)?$/i, '').toLowerCase().replace(/\s+/g, ' ');
-    if (!US_TOWN_NAMES.includes(name) && !new RegExp(`^(?:${US_NAME})$`, 'i').test(where)) return all;
-    // A short state code or "US" only in upper case ("Made in Georgia, in …" is no state).
-    if (/^[A-Za-z]{2}$/.test(where) && where !== where.toUpperCase()) return all;
-    if (/^u\.?s\.?$/i.test(where) && where !== where.toUpperCase()) return all;
+  return text.replace(US_PLACE, (all, cue: string, town: string, sep: string, where: string) => {
+    const place = town
+      .replace(/(?:\s*,\s*|\s*[-–—]\s*|\s*[（(]\s*|\s+)(?:the\s+)?$/i, '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
+    const madeIn = MADE_IN_PHRASE.test(cue.trim());
+    if (US_NAME_ONLY.test(where)) {
+      // A listed town that is no country ("Canton, USA") is a US place anywhere.
+      const townOnly = TOWNS_NOT_COUNTRIES.includes(place);
+      if (!townOnly && (!madeIn || !US_STATES.includes(place))) return all;
+      // "US" only in upper case ("Made in Georgia, us …").
+      if (/^u\.?s\.?$/i.test(where) && where !== where.toUpperCase()) return all;
+    } else {
+      if (!/,/.test(sep)) return all;
+      const base = place.replace(/\s+city$/, '');
+      if (!US_TOWN_NAMES.includes(base)) return all;
+      // A short state code only in upper case ("Made in Georgia, in …" is no state).
+      if (/^[A-Za-z]{2}$/.test(where) && where !== where.toUpperCase()) return all;
+    }
     const rest = town.length + where.length;
     return `${cue}${' '.repeat(rest - 3)}USA`;
   });
 }
 
-/** A US value with a later ambiguous name ("USA, Georgia", "USA (Jordan)"): a location detail. */
+/**
+ * A US field value with a later name that is a US state or a listed US town
+ * ("USA, Georgia", "USA (Jordan)", "USA, Lebanon"): a location detail. Other
+ * countries after USA ("Origin: USA, Mexico") are a second country.
+ */
+const US_FIELD_DETAIL = new Set([...US_STATES, 'jordan', 'lebanon']);
 function usLocationDetail(first: string, other: string): boolean {
-  return canonCountry(first) === 'united states' && US_TOWN_NAMES.includes(other.toLowerCase());
+  return canonCountry(first) === 'united states' && US_FIELD_DETAIL.has(other.toLowerCase());
 }
 
 /** "US-made" / "UK-made" / "EU-made": short forms in the 'X-made' claim form only. */
@@ -225,7 +254,7 @@ const CLAUSE_SEP = '[\\s（(\\[【「,，、/／;；.。:：–—-]';
 const CLAUSE_SEP_NO_SPACE = '[（(\\[【「,，、/／;；.。:：–—-]';
 /** A made word right after a later country: 「日本製」「日本製造」「日本生產」「日本組裝」. */
 // 製品 has one meaning: 「日本製品」 is a made-in claim (「日本製品牌」 is a brand).
-const MADE_WORD_AT = /^\s*(?:国内|國內)?(?:工場|工廠|工厂|廠|厂)?(?:製品(?!牌)|製造|制造|生產|生产|生産|組裝|组装|組立|製|制|產|产|産)/;
+const MADE_WORD_AT = /^\s*(?:国内|國內)?(?:工場|工廠|工厂|廠|厂)?(?:製品(?!牌|取扱|取り扱|販売店|専門店)|製造|制造|生產|生产|生産|組裝|组装|組立|製|制|產|产|産)/;
 /**
  * A CJK claim ends here: end of value, a space (「日本製 保固一年」) or punctuation,
  * after an optional です / である. A noun attached with no space (日本製モーター,
@@ -259,11 +288,8 @@ const NEXT_CLAUSE_EN = new RegExp(
   `^\\s*${EN_LEAD}${EN_MADE_IN}(${VALUE_COUNTRY_TOKEN})\\s*[.!]?\\s*$|^\\s*(${VALUE_COUNTRY_TOKEN})[\\s-]made\\s*[.!]?\\s*$`,
   'i'
 );
-/** The next line is one more made-in field with its own country (「產地：日本」 "Origin: Japan"). */
-const NEXT_CLAUSE_FIELD = new RegExp(
-  `^\\s*(?:country\\s+of\\s+origin|origin|coo|產地|产地|原産国名?|原產國|原产国|製造国|製造國|生產國|生产国|生産国|生產地|生产地|製造地)\\s*[:：]\\s*(?:the\\s+)?(${VALUE_COUNTRY_TOKEN})\\s*[.!]?\\s*$`,
-  'i'
-);
+/** A second country joined by a hyphen or slash right after a made-in value ("China-Japan"). */
+const PAIR_AFTER = new RegExp(`^[ \\t]*[-–—/／][ \\t]*(${VALUE_COUNTRY_TOKEN})`, 'i');
 /** Part / material words: a later country tied to one is a component, not a made-in. */
 const PART_WORD =
   '(?:生地|布料|面料|布|材料|原料|素材|部品|零件|配件|零組件|零组件|パーツ|fabrics?|parts?|materials?|components?|leather|yarn)';
@@ -361,28 +387,41 @@ function resolveFieldValues(input: string): FieldPass {
   };
   const hasCountry = new RegExp(ANY_COUNTRY.source, 'i');
   let blankedTo = 0;
+  // Made-in fields that each name one country (「產地：中國」 … 「產地：日本」), settled after the loop.
+  const singles: Array<{ country: string; start: number; end: number; part: boolean }> = [];
   const re = new RegExp(COO_LINE.source, 'gi');
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
-    if (m.index < blankedTo || !FIELD_CUE.test(m[0])) continue;
+    if (m.index < blankedTo) continue;
     const first = normalizeCooLabel(m[1]);
     if (normalizeRegion(first) === 'UNKNOWN') continue;
+    if (!FIELD_CUE.test(m[0])) {
+      // "Made in China-Japan" / "Made in China/Japan": two countries in one claim.
+      const pair = PAIR_AFTER.exec(text.slice(m.index + m[0].length));
+      if (pair && canonCountry(normalizeCooLabel(pair[1]!)) !== canonCountry(first)) {
+        const end = m.index + m[0].length + pair[0].length;
+        blank(m.index, end);
+        disputes.push({ sides: sides([first, normalizeCooLabel(pair[1]!)]), start: m.index, end });
+        blankedTo = end;
+      }
+      continue;
+    }
     const valueStart = m.index + m[0].length;
     const after = text.slice(valueStart);
     // The value ends at a line / sentence break or the next "名稱：" field.
     const stop = /[\n。；;|]|[\u4e00-\u9fffA-Za-z]{2,6}\s*[:：]/.exec(after);
     const value = stop ? after.slice(0, stop.index) : after.slice(0, 40);
     const valueEnd = valueStart + value.length;
-    // 「產地：中國。日本製」「COO: China; Made in Japan」「產地：中國\n日本製」
-    // 「產地：中國\n產地：日本」: the next clause / line counts only when it is one
-    // standalone made-in claim or one more made-in field.
+    // 「產地：中國。日本製」「COO: China; Made in Japan」「產地：中國\n日本製」: the next
+    // clause / line counts only when it is one standalone made-in claim. (A second
+    // made-in field anywhere later is settled after the loop.)
     let next: { country: string; end: number } | undefined;
     if (stop && /^[\n。；;]$/.test(stop[0])) {
       const nextStart = valueEnd + 1;
       const rest = text.slice(nextStart);
       const nextStop = /[\n。；;|]/.exec(rest);
       const clause = nextStop ? rest.slice(0, nextStop.index) : rest;
-      const hit = NEXT_CLAUSE_CJK.exec(clause) ?? NEXT_CLAUSE_EN.exec(clause) ?? NEXT_CLAUSE_FIELD.exec(clause);
+      const hit = NEXT_CLAUSE_CJK.exec(clause) ?? NEXT_CLAUSE_EN.exec(clause);
       const found = hit && (hit[1] ?? hit[2]);
       if (found && canonCountry(normalizeCooLabel(found)) !== canonCountry(first)) {
         next = { country: normalizeCooLabel(found), end: nextStart + clause.length };
@@ -403,12 +442,18 @@ function resolveFieldValues(input: string): FieldPass {
       disputes.push({ sides: sides([first, ...list]), start: m!.index, end });
       blankedTo = end;
     };
+    // This field names one country (its rest is a part, a note or a location).
+    const single = () =>
+      singles.push({ country: first, start: m!.index, end: valueEnd, part: PART_BRACKET.test(value) });
     if (!others.length) {
       if (next) dispute([next.country], next.end);
-      // Only a part country (「中國／日本（部品）」): the first country wins; the part is never read.
-      else if (value.match(ANY_COUNTRY)?.some((c) => canonCountry(normalizeCooLabel(c)) !== canonCountry(first))) {
-        blank(valueStart, valueEnd);
-        blankedTo = valueEnd;
+      else {
+        single();
+        // Only a part country (「中國／日本（部品）」): the first country wins; the part is never read.
+        if (value.match(ANY_COUNTRY)?.some((c) => canonCountry(normalizeCooLabel(c)) !== canonCountry(first))) {
+          blank(valueStart, valueEnd);
+          blankedTo = valueEnd;
+        }
       }
       continue;
     }
@@ -425,9 +470,22 @@ function resolveFieldValues(input: string): FieldPass {
     if (claims.length || next) {
       dispute(next ? [...claims, next.country] : claims, next ? next.end : valueEnd);
     } else {
+      single();
       blank(valueStart, valueEnd);
       blankedTo = valueEnd;
     }
+  }
+  // Repeated made-in fields, adjacent or not (「產地：中國\n重量：5kg\n產地：日本」): two
+  // countries are a 爭議. A field whose country carries a part bracket
+  // (「產地：日本（部品）」) is a component next to a whole-product field.
+  const whole = singles.filter((f) => !f.part);
+  if (whole.length) {
+    for (const f of singles) if (f.part && canonCountry(f.country) !== canonCountry(whole[0]!.country)) blank(f.start, f.end);
+  }
+  const countries = sides(whole.map((f) => f.country));
+  if (countries.length >= 2) {
+    for (const f of whole) blank(f.start, f.end);
+    disputes.push({ sides: countries, start: whole[0]!.start, end: whole[whole.length - 1]!.end });
   }
   return { text: chars.join(''), disputes };
 }
@@ -492,6 +550,8 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     // 「非中國製」「不是中國製造」「中国製ではありません」: negated, no claim.
     if (/(?:非|不是|並非|并非)$/.test(raw.slice(Math.max(0, m.index - 2), m.index))) continue;
     if (/^\s*(?:では|じゃ)(?:ありません|ない|なく)/.test(raw.slice(m.index + m[0].length))) continue;
+    // 「日本製品牌」 (a brand) / 「日本製品取扱店」 (a store selling Japanese goods): no made-in.
+    if (/^品(?:牌|取扱|取り扱|販売店|専門店)/.test(raw.slice(m.index + m[0].length))) continue;
     const label = CJK_TO_LABEL[m[1]] ?? m[1];
     const region = normalizeRegion(label);
     if (region === 'UNKNOWN') continue;

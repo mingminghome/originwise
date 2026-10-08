@@ -170,13 +170,15 @@ function infoSourcePrefix(t: TFunction): { before: string; after: string } {
   return { before, after };
 }
 
-/** One 爭議 side: 「中國（1 個型號相符的網頁）」「中國（包裝標示）」「中國（包裝標示、1 個網頁）」. */
+/** One 爭議 side: 「中國（1 個型號相符的網頁）」「中國（包裝標示）」「中國（包裝標示、1 個型號相符的網頁）」. */
 function disputeSide(t: TFunction, d: DisputeSide): string {
   const country = localizeCountry(t, d.country);
   if (d.label) {
-    return d.pages
-      ? t('check.rc.disputeSideLabelPages', { country, n: d.pages })
-      : t('check.rc.disputeSideLabel', { country });
+    // Matching-model pages are worded as on a page-only side (「1 個型號相符的網頁」).
+    if (!d.pages) return t('check.rc.disputeSideLabel', { country });
+    if (!d.exactPages) return t('check.rc.disputeSideLabelPages', { country, n: d.pages });
+    if (d.exactPages >= d.pages) return t('check.rc.disputeSideLabelExact', { country, n: d.exactPages });
+    return t('check.rc.disputeSideLabelMixed', { country, n: d.pages, e: d.exactPages });
   }
   if (!d.exactPages) return t('check.rc.disputeSidePages', { country, n: d.pages });
   if (d.exactPages >= d.pages) return t('check.rc.disputeSideExact', { country, n: d.exactPages });

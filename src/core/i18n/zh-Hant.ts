@@ -83,6 +83,8 @@ export const zhHant = {
       disputeSidePages: '{country}（{n} 個網頁）',
       disputeSideLabel: '{country}（包裝標示）',
       disputeSideLabelPages: '{country}（包裝標示、{n} 個網頁）',
+      disputeSideLabelExact: '{country}（包裝標示、{n} 個型號相符的網頁）',
+      disputeSideLabelMixed: '{country}（包裝標示、{n} 個網頁，其中 {e} 個型號相符）',
       disputeSep: '；',
       designInfo: '附加資訊：品牌標示「{country}設計／研發」，這不是製造地。',
       brandInfo: '附加資訊：品牌標示「{country}品牌」，這不是製造地。',

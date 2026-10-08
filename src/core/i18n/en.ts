@@ -86,6 +86,8 @@ export const en: MessageTree = {
       disputeSidePages: '{country} (pages: {n})',
       disputeSideLabel: '{country} (package label)',
       disputeSideLabelPages: '{country} (package label; pages: {n})',
+      disputeSideLabelExact: '{country} (package label; exact-model pages: {n})',
+      disputeSideLabelMixed: '{country} (package label; pages: {n}, exact model: {e})',
       disputeSep: '; ',
       designInfo: 'Extra info: design / engineering named by the brand: {country}. This is not where it is made.',
       brandInfo: 'Extra info: brand origin as described: {country}. This is not where it is made.',

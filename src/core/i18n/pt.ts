@@ -83,6 +83,8 @@ export const pt = {
       disputeSidePages: '{country} (páginas: {n})',
       disputeSideLabel: '{country} (rótulo da embalagem)',
       disputeSideLabelPages: '{country} (rótulo da embalagem; páginas: {n})',
+      disputeSideLabelExact: '{country} (rótulo da embalagem; páginas com o modelo exato: {n})',
+      disputeSideLabelMixed: '{country} (rótulo da embalagem; páginas: {n}, com o modelo exato: {e})',
       disputeSep: '; ',
       designInfo: 'Informação adicional: design / engenharia segundo a marca: {country}. Não é o local de fabrico.',
       brandInfo: 'Informação adicional: origem da marca indicada: {country}. Não é o local de fabrico.',
