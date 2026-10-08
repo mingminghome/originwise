@@ -12,6 +12,14 @@ import type { TFunction } from '../core/i18n';
 import { SectionShare } from './SectionShare';
 import { localizeServerText } from '../core/localizeServerText';
 import { localizeCountry } from '../core/i18n/countries';
+import { ModelRefLabel } from './ModelRef';
+import {
+  backedCandidate,
+  partCountryEvidence,
+  partsListCandidates,
+  sameCountryLabel,
+  type PartEvidence,
+} from './resultCards.model';
 
 /** Ownership-class chinaRelations types (aligned with server STRONG_REL + minority). */
 const OWNERSHIP_REL_TYPES = new Set([
@@ -60,13 +68,15 @@ export type OwnershipLine =
     };
 
 export type PartsLine =
-  | { kind: 'components'; value: string }
+  | { kind: 'components'; value: string; evidence?: PartEvidence }
   | {
       kind: 'candidate';
       label: string;
       rating: string;
       confidence: number;
       source: string;
+      /** Only the model named it: 模型參考 + ⓘ, no grade, no %. */
+      modelOnly?: boolean;
     }
   | {
       kind: 'part';
@@ -75,6 +85,8 @@ export type PartsLine =
       where?: string;
       chinaRelated?: boolean;
       note?: string;
+      /** What backs `where` (shared with the 產地分層 零件 row). */
+      evidence?: PartEvidence;
     };
 
 export type OriginLayersModel = {
@@ -219,38 +231,61 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
 
   const finalCoo = isConfirmedMadeIn(p?.madeIn);
 
+  // Every 零件 row with a country shows EITHER its own country's sourced
+  // grade + % (or 確認 · 依包裝標示 from the label) OR 模型參考 + ⓘ.
   const parts: PartsLine[] = [];
   const components = isConfirmedMadeIn(p?.componentsOrigin);
   if (components) {
-    parts.push({ kind: 'components', value: components });
-  }
-  // Label-read parts already answer it; queried
-  // candidates (e.g. "Japan · likely 55% · parts") would only add noise.
-  const skipPartCandidates = result.partsEvidence === 'label';
-  for (const cand of skipPartCandidates ? [] : p?.originCandidates ?? []) {
-    if (isOwnershipCandidate(cand)) continue;
-    // confirmed_coo mirrors Final COO — keep out of parts to avoid “made in” confusion
-    if (cand.source === 'confirmed_coo') continue;
-    // Manufacturer country only echoes the HQ (older cached results).
-    if (cand.source === 'manufacturer') continue;
+    const backed =
+      result.partsEvidence === 'label'
+        ? undefined
+        : partsListCandidates(result)
+            .filter((x) => sameCountryLabel(x.label, components) || components.includes(x.label))
+            .map((x) => backedCandidate(result, x.label, true))
+            .find(Boolean);
     parts.push({
-      kind: 'candidate',
-      label: cand.label,
-      rating: cand.rating,
-      confidence: cand.confidence,
-      source: cand.source,
+      kind: 'components',
+      value: components,
+      evidence:
+        result.partsEvidence === 'label'
+          ? { kind: 'label' }
+          : backed
+            ? { kind: 'graded', rating: backed.rating, confidence: backed.confidence, source: backed.source }
+            : { kind: 'model' },
     });
   }
-  for (const part of p?.parts ?? []) {
-    parts.push({
+  const partLines: PartsLine[] = (p?.parts ?? []).map((part) => {
+    const where = part.madeIn || part.originCountry || undefined;
+    return {
       kind: 'part',
       name: part.name,
       partKind: part.kind,
-      where: part.madeIn || part.originCountry || undefined,
+      where,
       chinaRelated: part.chinaRelated,
       note: part.note?.trim() || undefined,
-    });
+      evidence: where ? partCountryEvidence(result, where) : undefined,
+    };
+  });
+  const coveredByRow = (country: string) =>
+    partLines.some((l) => l.kind === 'part' && l.where && sameCountryLabel(l.where, country)) ||
+    Boolean(components && sameCountryLabel(components, country));
+  // Bare country rows: one per country; a more specific part row (or the
+  // components line) for the same country replaces it (no duplicate 泰國).
+  // Label-read parts already answer it, so no queried candidates then.
+  const seen: string[] = [];
+  for (const cand of partsListCandidates(result)) {
+    if (seen.some((x) => sameCountryLabel(x, cand.label))) continue;
+    seen.push(cand.label);
+    if (coveredByRow(cand.label)) continue;
+    const best = backedCandidate(result, cand.label);
+    parts.push(
+      best
+        ? { kind: 'candidate', label: best.label, rating: best.rating, confidence: best.confidence, source: best.source }
+        : { kind: 'candidate', label: cand.label, rating: cand.rating, confidence: cand.confidence, source: cand.source, modelOnly: true }
+    );
   }
+  parts.push(...partLines);
+  const partsLines = parts;
 
   // Label-photo (OCR) parts are packaging evidence, not a model guess.
   const partsModelOnly =
@@ -262,7 +297,7 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
       ? cleanSources(result.sources, 8)
       : [];
 
-  return { brandOps, ownership, finalCoo, parts, partsModelOnly, partsSources };
+  return { brandOps, ownership, finalCoo, parts: partsLines, partsModelOnly, partsSources };
 }
 
 function formatBrandOps(line: BrandOpsLine, t: TFunction): string {
@@ -311,11 +346,22 @@ function formatOwnership(line: OwnershipLine, t: TFunction): string {
   }
 }
 
+/** The row's own evidence: grade + % (web) or 確認 · 依包裝標示 (label). */
+function gradeBits(ev: PartEvidence | undefined, t: TFunction): string[] {
+  if (!ev || ev.kind === 'model') return [];
+  if (ev.kind === 'label') return [t('check.rc.tagConfirmed'), t('check.matchBasis.label')];
+  const key = `check.candidateRating.${ev.rating}`;
+  const rating = t(key);
+  return [rating === key ? ev.rating : rating, `${Math.round(ev.confidence * 100)}%`];
+}
+
 function formatParts(line: PartsLine, t: TFunction): string {
   switch (line.kind) {
     case 'components':
-      return `${t('check.componentsOrigin')}: ${line.value}`;
+      return [`${t('check.componentsOrigin')}: ${line.value}`, ...gradeBits(line.evidence, t)].join(' · ');
     case 'candidate': {
+      // Model-only: country only; the 模型參考 label is added by the row.
+      if (line.modelOnly) return localizeCountry(t, line.label);
       const ratingKey = `check.candidateRating.${line.rating}`;
       const rating = t(ratingKey);
       const srcKey = `check.candidateSource.${line.source}`;
@@ -329,12 +375,22 @@ function formatParts(line: PartsLine, t: TFunction): string {
         const label = t(k);
         bits.push(label === k ? line.partKind : label);
       }
-      if (line.where) bits.push(localizeCountry(t, line.where));
+      if (line.where) bits.push(localizeCountry(t, line.where), ...gradeBits(line.evidence, t));
       if (line.chinaRelated) bits.push(t('check.graphChinaLinked'));
       if (line.note) bits.push(localizeServerText(t, line.note));
       return bits.join(' · ');
     }
   }
+}
+
+type LayerItem = { text: string; modelRef?: boolean };
+
+function partsItem(line: PartsLine, t: TFunction): LayerItem {
+  return {
+    text: formatParts(line, t),
+    modelRef:
+      line.kind === 'candidate' ? Boolean(line.modelOnly) : line.evidence?.kind === 'model',
+  };
 }
 
 function LayerRow({
@@ -347,7 +403,7 @@ function LayerRow({
 }: {
   label: string;
   hint?: string;
-  items: string[];
+  items: Array<string | LayerItem>;
   empty?: string;
   variant: 'brand' | 'ownership' | 'coo' | 'parts';
   t: TFunction;
@@ -360,9 +416,19 @@ function LayerRow({
       </div>
       {items.length ? (
         <ul className="origin-layer-list">
-          {items.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
+          {items.map((raw, i) => {
+            const item = typeof raw === 'string' ? { text: raw } : raw;
+            return item.modelRef ? (
+              <li key={`${i}-${item.text}`} className="is-model">
+                <span className="origin-model-row">
+                  <span>{item.text}</span>
+                  <ModelRefLabel t={t} />
+                </span>
+              </li>
+            ) : (
+              <li key={`${i}-${item.text}`}>{item.text}</li>
+            );
+          })}
         </ul>
       ) : empty ? (
         <p className="muted origin-layer-empty">{empty}</p>
@@ -390,7 +456,7 @@ export function OriginLayers({
 
   const brandItems = model.brandOps.map((l) => formatBrandOps(l, t));
   const ownershipItems = model.ownership.map((l) => formatOwnership(l, t));
-  const partsItems = model.parts.map((l) => formatParts(l, t));
+  const partsItems = model.parts.map((l) => partsItem(l, t));
   const notice = webQuotaNotice(result);
   const searchQuotaUsedUp = notice === 'searchQuotaUsedUp';
   const aiCreditsUsedUp = notice === 'aiCreditsUsedUp';
@@ -398,7 +464,7 @@ export function OriginLayers({
   if (detailOnly) {
     // No China verdict here: part rows show their country only.
     const detailParts = model.parts.map((l) =>
-      formatParts(l.kind === 'part' ? { ...l, chinaRelated: false } : l, t)
+      partsItem(l.kind === 'part' ? { ...l, chinaRelated: false } : l, t)
     );
     return (
       <div className="origin-layers origin-layers--detail" data-testid="origin-layers">

@@ -18,9 +18,10 @@ import {
   buildLayerRows,
   buildMadeInView,
   cleanValue,
+  modelOnlyPartCandidate,
   type LayerTag,
 } from './resultCards.model';
-import { InfoTip } from './InfoTip';
+import { ModelRefLabel } from './ModelRef';
 import { SectionShare } from './SectionShare';
 
 function pct(n?: number): number | null {
@@ -207,31 +208,24 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
             {view.candidates.length ? (
               <ul>
                 {view.candidates.map((c) => {
-                  const model = c.source === 'model_memory';
+                  // Model made-in guess, or a parts row only the model named.
+                  const model = modelOnlyPartCandidate(result, c);
                   const hedged = c.rating === 'likely' || c.rating === 'possible';
                   return (
                     <li key={`${c.label}-${c.source}`} className={model ? 'is-model' : undefined}>
                       {/* Country + model label share one cell; the label may wrap inside it, never apart. */}
                       <span className={`rc-cand-country${model ? ' is-model' : ''}`}>
                         <span className="rc-cand-name">{localizeCountry(t, c.label)}</span>
-                        {model ? (
-                          <>
-                            <span
-                              className="rc-cand-label"
-                              data-testid="model-ref"
-                              title={t('check.rc.modelRefHelp')}
-                            >
-                              {t('check.rc.modelRef')}
-                            </span>
-                            <InfoTip label={t('check.rc.moreInfo')} text={t('check.rc.modelRefHelp')} />
-                          </>
-                        ) : null}
+                        {model ? <ModelRefLabel t={t} /> : null}
                       </span>
-                      <span className="rc-cand-meta">
-                        {t(`check.candidateRating.${c.rating}`)}
-                        {hedged ? t('check.rc.notConfirmed') : null}
-                        {model ? null : <> · {t(`check.candidateSource.${c.source}`)}</>}
-                      </span>
+                      {/* A model-only guess carries its 模型參考 label only: no likelihood
+                          grade, since nothing weighed it (web/label rows keep theirs). */}
+                      {model ? null : (
+                        <span className="rc-cand-meta">
+                          {t(`check.candidateRating.${c.rating}`)}
+                          {hedged ? t('check.rc.notConfirmed') : null} · {t(`check.candidateSource.${c.source}`)}
+                        </span>
+                      )}
                     </li>
                   );
                 })}
@@ -278,13 +272,36 @@ export function LayersCard({ result, t }: { result: CheckResult; t: TFunction })
             const country = r.country ? localizeCountry(t, r.country) : '';
             const value = [r.value, country].filter(Boolean).join(' · ') || '—';
             return (
-              <div key={r.key} className="rc-row rc-layer-row">
+              <div key={r.key} className={`rc-row rc-layer-row${r.modelRef ? ' is-model' : ''}`}>
                 <dt className="rc-row-label">{t(LAYER_LABEL[r.key])}</dt>
-                <dd className="rc-row-value">{value}</dd>
-                <span className={`rc-tag is-${r.tag}`}>
-                  {t(TAG_KEY[r.tag])}
-                  {r.tag === 'likely' ? t('check.rc.notConfirmed') : null}
-                </span>
+                {r.modelRef ? (
+                  // Model-only parts: value + 模型參考 + ⓘ in one cell, no tag/grade.
+                  <dd className="rc-row-value rc-layer-model">
+                    <span>{value}</span>
+                    <ModelRefLabel t={t} />
+                  </dd>
+                ) : (
+                  <>
+                    <dd className="rc-row-value">{value}</dd>
+                    <span className={`rc-tag is-${r.tag}`}>
+                      {r.grade ? (
+                        // Parts: the part country's own grade + %, same as 零件候選.
+                        <>
+                          {t(`check.candidateRating.${r.grade.rating}`)}
+                          {r.grade.rating === 'likely' || r.grade.rating === 'possible'
+                            ? t('check.rc.notConfirmed')
+                            : null}
+                          {` · ${Math.round(r.grade.confidence * 100)}%`}
+                        </>
+                      ) : (
+                        <>
+                          {t(TAG_KEY[r.tag])}
+                          {r.tag === 'likely' ? t('check.rc.notConfirmed') : null}
+                        </>
+                      )}
+                    </span>
+                  </>
+                )}
               </div>
             );
           })}

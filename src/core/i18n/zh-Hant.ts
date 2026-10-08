@@ -264,7 +264,7 @@ export const zhHant = {
     layerFinalCoo: '最終原產地（COO）',
     layerParts: '零件候選',
     partsModelOnlyBanner:
-      '零件產地為模型推測，非包裝／Search 確認。',
+      '零件產地只是模型的推測，未經網頁或包裝標示確認。',
     searchQuotaUsedUp:
       'AI 搜尋額度已用盡，暫時未能提供更準確的資訊，請於每日額度重設後再查詢。',
     aiCreditsUsedUp:
