@@ -7,6 +7,7 @@ import { afterEach, describe, it, mock } from 'node:test';
 import {
   CITED_FETCH_MS,
   CITED_MAX_REDIRECTS,
+  CITED_TOTAL_MS,
   FIRECRAWL_SCRAPE_ENDPOINT,
   MAX_CITED_SOURCES,
   citedFetcher,
@@ -19,7 +20,7 @@ import { PRODUCT_FACT_RULES } from './prompts';
 import { runCheckOrchestrator } from './orchestrator';
 import type { WebCooClaim } from './schema';
 import type { FetchedPage } from './search/types';
-import { gateClaims } from './search/extract';
+import { fetchSourcePage, gateClaims } from './search/extract';
 import { applyWebCooGate } from './synthesize';
 
 const ENTITY = 'Cybex Melio';
@@ -337,6 +338,42 @@ describe('AI-cited made-in pages: checked before they count', () => {
     const ok = await check([{ url: chain(8) }]);
     assert.deepEqual(two, [chain(8), 'https://hop8.example.com/final']);
     assert.equal(ok.verified.length, 1);
+  });
+
+  it(`plain fetch: one total budget (${CITED_TOTAL_MS} ms) across every hop and the body read`, async () => {
+    assert.equal(CITED_TOTAL_MS, 8000);
+    // Each hop answers just inside the per-hop timeout; the total budget still ends the chain.
+    const seen: string[] = [];
+    mock.method(globalThis, 'fetch', (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      seen.push(url);
+      return new Promise<Response>((resolve, reject) => {
+        const t = setTimeout(
+          () => resolve(new Response(null, { status: 302, headers: { Location: `https://hop${seen.length}.example.com/x` } })),
+          40
+        );
+        init?.signal?.addEventListener('abort', () => {
+          clearTimeout(t);
+          reject(new Error('aborted'));
+        });
+      });
+    });
+    const t0 = Date.now();
+    const out = await fetchSourcePage('https://hop0.example.com/x', '', '', {
+      ms: 60, totalMs: 130, allowHop: () => true, maxRedirects: 50,
+    });
+    assert.ok(Date.now() - t0 < 300, `took ${Date.now() - t0} ms`);
+    assert.ok(seen.length <= 4, `hops ${seen.length}`);
+    assert.equal(out.text, '');
+    mock.restoreAll();
+    // A body that never finishes is cut off by the same budget.
+    mock.method(globalThis, 'fetch', async () =>
+      new Response(new ReadableStream({ start() {} }), { status: 200, headers: { 'content-type': 'text/html' } })
+    );
+    const t1 = Date.now();
+    const stalled = await fetchSourcePage('https://slow.example.com/x', '', '', { ms: 60, totalMs: 100, allowHop: () => true });
+    assert.ok(Date.now() - t1 < 300, `took ${Date.now() - t1} ms`);
+    assert.equal(stalled.text, '');
   });
 
   it('URL safety: IP forms, wildcard DNS, credentials and ports are refused', () => {

@@ -37,7 +37,7 @@ import {
 import { applyCooPriority, extractCooClaimsFromText } from './cooPriority';
 import { hqFoldedIntoParent } from './chinaChip';
 import { tierFromCodes } from './tierRules';
-import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS } from './countryLabel';
+import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
 import { SERVER_TEXT, webFailText } from './serverText';
 import { notesNameMadeIn, omittedPartNote } from './noteText';
 import { exactModelConflict, siteOf } from './search/extract';
@@ -1408,13 +1408,14 @@ export function applyWebCooGate(
   }
   // Barcode-confirmed claim fills an empty made-in.
   if (!madeIn && !stripped && confirmed.length) {
-    madeIn = confirmed[0]!.country;
+    // Page text may say 中国 / 中華人民共和國; the headline uses one name (China).
+    madeIn = canonicalCountry(confirmed[0]!.country) ?? confirmed[0]!.country;
     madeInBasis = 'barcode';
   }
   // Two domains agreeing on the exact model fill an empty made-in, or replace
   // an AI answer they contradict (that answer is kept as a candidate row).
   if (!madeIn && byModelClaims.length) {
-    madeIn = byModelClaims[0]!.country;
+    madeIn = canonicalCountry(byModelClaims[0]!.country) ?? byModelClaims[0]!.country;
     madeInBasis = 'model';
     madeInSupport = 'web';
     stripped = false;

@@ -413,3 +413,30 @@ describe('產地說明 fold follows the 製造地 card (Tester #35 item 3)', () 
     }
   });
 });
+
+describe('made-in card: 中国 / 中國 / China / 中华人民共和国 are one candidate', () => {
+  const urls = ['https://a.example.com/1', 'https://b.example.org/2', 'https://c.example.net/3', 'https://d.example.jp/4'];
+  const forms = ['中国', '中國', 'China', '中华人民共和国'];
+  for (const [label, claim] of [['loose', (c: string, u: string): WebCooClaim => ({ country: c, basis: 'name', status: 'likely', url: u })], ['exact', exact]] as const) {
+    it(`${label} pages`, () => {
+      const r = run(undefined, forms.map((c, i) => claim(c, urls[i]!)));
+      const v = buildMadeInView(r);
+      const china = v.candidates.filter((c) => /china|中国|中國|中华/i.test(c.label));
+      if (label === 'exact') {
+        // All four exact pages agree once merged: confirmed, no disagreement, no candidate rows.
+        assert.equal(v.state, 'confirmed', JSON.stringify(v));
+        assert.match(v.country ?? '', /China|中國|中国/);
+        assert.equal(china.length, 0);
+      } else {
+        assert.equal(v.state, 'unconfirmed');
+        assert.equal(china.length, 1, JSON.stringify(v.candidates.map((c) => c.label)));
+      }
+      const html = flat(React.createElement(MadeInCard, { result: r, t: createT('zh-Hant') }));
+      assert.equal((html.match(/中国/g) ?? []).length, 0, html);
+      assert.equal((html.match(/中华人民共和国/g) ?? []).length, 0, html);
+      const en = flat(React.createElement(MadeInCard, { result: r, t: createT('en') }));
+      assert.match(en, /China/);
+      assert.doesNotMatch(en, /中国|中國|中华/, en);
+    });
+  }
+});

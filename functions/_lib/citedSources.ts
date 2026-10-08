@@ -153,6 +153,8 @@ async function firecrawlScrape(key: string, url: string): Promise<FetchedPage | 
 
 /** Redirect hops a cited fetch follows (each re-checked with isPublicHttpUrl). */
 export const CITED_MAX_REDIRECTS = 3;
+/** Total time budget for one cited link across every hop. */
+export const CITED_TOTAL_MS = 8000;
 
 /** Plain page fetch (Brave / Gemini runs), 4 s timeout; null when it does not load. */
 async function plainFetch(url: string): Promise<FetchedPage | null> {
@@ -160,6 +162,7 @@ async function plainFetch(url: string): Promise<FetchedPage | null> {
     ms: CITED_FETCH_MS,
     allowHop: isPublicHttpUrl,
     maxRedirects: CITED_MAX_REDIRECTS,
+    totalMs: CITED_TOTAL_MS,
   });
   // fetchSourcePage keeps the (empty) title on failure; no body → did not load.
   return page.text.trim() ? page : null;

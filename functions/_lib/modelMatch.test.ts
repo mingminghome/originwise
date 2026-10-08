@@ -24,6 +24,8 @@ import {
   regexCooClaims,
   settleExactConflict,
   siteOf,
+  otherModelName,
+  exactModelConflict,
 } from './search/extract';
 import type { FetchedPage } from './search/types';
 import type { WebCooClaim } from './schema';
@@ -146,6 +148,48 @@ describe('exact-model matching (brand + model, variant-safe)', () => {
     assert.deepEqual(g.excluded.map((e) => e.model), ['Melio Carbon']);
   });
 
+  // Tester re-review (12:53): accessories, Gold / Platinum editions, separators, Outdoor, modifier allowlist.
+  for (const t of [
+    'Cybex Melio Cot Black', 'Cybex Melio Cot', 'Cybex Melio Cots', 'cybex-melio-cot',
+    'Cybex Melio Carrycot', 'Cybex Melio Carry Cot Black', 'cybex melio carry cot', 'Cybex Melio Carrycots',
+    'Cybex Melio Seat Pack Black', 'Cybex Melio Seat Pack', 'cybex melio seat pack', 'Cybex Melio Seat Packs', 'Cybex Melio Seat',
+    'Cybex Melio Pack', 'Cybex Melio Packs',
+    'Cybex Melio Footmuff Black', 'Cybex Melio Footmuffs',
+    'Cybex Melio Raincover', 'Cybex Melio Rain Cover', 'cybex melio rain cover', 'Cybex Melio Raincovers',
+    'Cybex Melio Adapter', 'Cybex Melio Adapters', 'Cybex Melio Bumper', 'Cybex Melio Bumpers',
+    'Cybex Melio Stand', 'Cybex Melio Insert', 'Cybex Melio Liner', 'Cybex Melio Cover', 'Cybex Melio Covers',
+    'Cybex Melio Bag', 'Cybex Melio Bags', 'Cybex Melio Case', 'Cybex Melio Cases', 'Cybex Melio Strap',
+    'Cybex Melio Mount', 'Cybex Melio Charger', 'Cybex Melio Cable', 'Cybex Melio Replacement', 'CYBEX MELIO FOOTMUFF',
+    'Cybex Melio Platinum', 'Cybex Melio Platinum Black', 'Cybex Melio Gold', 'Cybex Melio Gold Black', 'CYBEX MELIO GOLD',
+    'Cybex Melio, Carbon', 'Cybex Melio; Carbon', 'Cybex Melio: Carbon Moon Black', 'Cybex Melio・Carbon',
+    'Cybex Melio Xyz Black', 'Cybex Melio Urban Grey', 'Cybex Melio Racing Red',
+  ]) {
+    it(`accessory / edition / unknown modifier — NOT exact Melio: ${JSON.stringify(t)}`, () => {
+      assert.equal(exactModelPage(t, MELIO), false, JSON.stringify(modelMentions(t, MELIO)));
+    });
+  }
+  for (const t of [
+    'Cybex Melio Moon Gold',
+    'Cybex Melio Moon Black', 'CYBEX MELIO MOON BLACK', 'Cybex Melio Mirage Grey',
+    'Cybex Melio 月光黑', 'Cybex Melio 深空灰', 'Cybex Melio 黑色',
+    'Cybex Melio Lava Grey', 'Cybex Melio Ocean Blue', 'Cybex Melio Midnight Navy', 'Cybex Melio Jet Black',
+    'Cybex Melio, 輕量推車', 'Cybex Melio | Babyhaus', 'Cybex Melio – Babyhaus', 'Cybex Melio - momo購物網',
+  ]) {
+    it(`colour / separator — still exact Melio: ${JSON.stringify(t)}`, () => {
+      assert.equal(exactModelPage(t, MELIO), true, JSON.stringify(modelMentions(t, MELIO)));
+    });
+  }
+  it('Outdoor is an edition: Tapo C200 Outdoor White is not C200; C200 itself is', () => {
+    assert.equal(exactModelPage('Tapo C200 Outdoor White', 'Tapo C200'), false);
+    assert.equal(exactModelPage('tapo-c200-outdoor', 'Tapo C200'), false);
+    assert.equal(exactModelPage('Tapo C200 White 監視器', 'Tapo C200'), true);
+  });
+  it('the excluded row names the accessory / edition (Melio Cot, Melio Seat Pack, Melio Platinum)', () => {
+    assert.equal(otherModelName(MELIO, modelMentions('Cybex Melio Cot Black', MELIO).variants[0]!), 'Melio Cot');
+    assert.equal(otherModelName(MELIO, modelMentions('Cybex Melio Seat Pack Black', MELIO).variants[0]!), 'Melio Seat Pack');
+    assert.equal(otherModelName(MELIO, modelMentions('Cybex Melio Platinum Black', MELIO).variants[0]!), 'Melio Platinum');
+  });
+
   it("'Liberty 4 NC' is not 'Liberty 4'; 'Liberty 4' itself and with a category word is", () => {
     assert.equal(exactModelPage('Anker Liberty 4 NC', 'Anker Liberty 4'), false);
     assert.equal(exactModelPage('Soundcore Liberty 4 NC earbuds', 'Soundcore Liberty 4'), false);
@@ -263,7 +307,8 @@ describe('made-in gate: the AI answer is one source, the web verifies it', () =>
       byModel('中國', 'https://momoshop.com.tw/1'),
       byModel('China', 'https://mamilove.com.tw/2'),
     ]);
-    assert.equal(g.product?.madeIn, '中國');
+    // One headline name for 中國 / China pages (the card localizes it).
+    assert.equal(g.product?.madeIn, 'China');
     assert.equal(g.madeInBasis, 'model');
     assert.equal(g.madeInSupport, 'web');
   });
@@ -476,5 +521,23 @@ describe('bounded made-in follow-up query', () => {
     assert.deepEqual(merged.map((p) => p.text), ['A', 'B', 'C']);
     const many = Array.from({ length: 30 }, (_, i) => page(`https://s${i}.example/`, String(i)));
     assert.equal(mergePages(many.slice(0, 10), many.slice(10)).length, MAX_MERGED_PAGES);
+  });
+});
+
+describe('country forms merge (中国 = 中國 = China = 中华人民共和国)', () => {
+  const FORMS = ['中国', '中國', 'China', '中华人民共和国', '中華人民共和國', 'PRC'];
+  it('one country for the conflict check', () => {
+    const coo: WebCooClaim[] = FORMS.map((c, i) => ({ country: c, basis: 'name', status: 'likely', exactModel: true, url: `https://s${i}.example.com/x` }));
+    assert.equal(exactModelConflict(coo), false);
+  });
+  it('synthesize keeps one China candidate', () => {
+    const coo: WebCooClaim[] = FORMS.slice(0, 4).map((c, i) => ({ country: c, basis: 'name', status: 'likely', url: `https://s${i}.example.com/x` }));
+    const r = synthesize({
+      jobId: 'cn', geoScope: 'prc', locale: 'zh-Hant', webEnriched: true, webBrief: 'x', sources: [],
+      partials: { product: { name: 'Cybex Melio', brand: 'Cybex', confidence: 0.8, originCandidates: [{ label: '中国', confidence: 0.5, source: 'parts', rating: 'possible' }] } },
+      webCoo: coo,
+    });
+    const china = (r.product?.originCandidates ?? []).filter((c) => /china|中国|中國|中华/i.test(c.label));
+    assert.equal(china.length, 1, JSON.stringify(r.product?.originCandidates));
   });
 });

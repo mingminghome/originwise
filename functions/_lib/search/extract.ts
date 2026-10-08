@@ -412,8 +412,21 @@ export function mergePages(
 const MODEL_EDITION_WORDS = new Set([
   'carbon', 'plus', 'pro', 'max', 'mini', 'lite', 'ultra', 'air', 'neo', 'se', 'gt', 'gtx',
   'evo', 'eezy', 'street', 'edition', 'deluxe', 'premium', 'xl', 'xs', 'duo', 'twin', 'lux',
-  'luxe', 'elite', 'prime', 'nc', 'anc',
+  'luxe', 'elite', 'prime', 'nc', 'anc', 'outdoor', 'outdoors',
+  // Gold / Platinum editions (Melio Gold, Melio Platinum Black). Gold is read
+  // as a colour only at the end of a modifier phrase (Moon Gold).
+  'gold', 'platinum',
+  // Accessories sold under the model name: a different product (Melio Cot,
+  // Melio Seat Pack, Melio Footmuff), singular and plural.
+  ...[
+    'cot', 'carrycot', 'seat', 'pack', 'footmuff', 'raincover', 'adapter', 'adaptor', 'bumper',
+    'stand', 'insert', 'liner', 'cover', 'bag', 'case', 'strap', 'mount', 'charger', 'cable',
+    'replacement',
+  ].flatMap((w) => [w, /(s|x|ch|sh)$/.test(w) ? `${w}es` : `${w}s`]),
 ]);
+
+/** Two-word accessory names that start with a plain word (carry cot, rain cover, seat pack). */
+const ACCESSORY_PHRASE_RE = /^(carry ?cots?|rain ?covers?|seat ?packs?|foot ?muffs?|car ?seat ?adapt[eo]rs?)(?![A-Za-z])/i;
 
 /**
  * Words allowed right after "<brand> <model>" (any case): product types,
@@ -425,7 +438,7 @@ const MODEL_GENERIC_WORDS = new Set([
   // product types
   'stroller', 'strollers', 'pushchair', 'pushchairs', 'pram', 'prams', 'buggy', 'buggies',
   'pram', 'carriage', 'bottle', 'bottles', 'baby', 'infant', 'toddler', 'kids', 'child',
-  'earbuds', 'earphones', 'headphones', 'camera', 'cam', 'speaker', 'phone', 'case',
+  'earbuds', 'earphones', 'headphones', 'camera', 'cam', 'speaker', 'phone',
   'kinderwagen', 'sportwagen', 'buggy', 'flasche', 'babyflasche', 'poussette', 'biberon',
   'passeggino', 'carrozzina', 'biberon', 'cochecito', 'silla', 'carrito', 'carrinho',
   'wózek', 'wozek', 'butelka', 'kočárek', 'kocarek', 'láhev', 'barnvagn', 'sittvagn',
@@ -454,6 +467,8 @@ function normModelTextKeepCase(s: string): string {
   // Line breaks stay: a title line ends the model name ("Cybex Melio\nHergestellt in …").
   // ™ / ® / © first: NFKC would turn ™ into "TM" glued to the model name.
   return nfkc((s || '').replace(/[™®©℠]/g, ' '))
+    // A spaced dash in a title separates the shop name ("Cybex Melio – Babyhaus").
+    .replace(/ [-‐‑‒–—]+ /g, ' | ')
     .replace(/[-‐‑‒–—_·・/／]+/g, ' ')
     .replace(/[^\S\n]+/g, ' ')
     .replace(/ ?\n[\s]*/g, '\n');
@@ -472,23 +487,26 @@ const YEAR_RE = /^(19|20)\d\d$/;
  */
 const BASE_COLOUR_WORDS = new Set([
   'black', 'grey', 'gray', 'white', 'blue', 'navy', 'beige', 'red', 'green', 'pink', 'brown',
-  'silver', 'gold', 'purple', 'yellow', 'orange', 'sand', 'cream', 'ivory', 'khaki', 'olive',
+  'silver', 'purple', 'yellow', 'orange', 'sand', 'cream', 'ivory', 'khaki', 'olive',
   'taupe', 'charcoal', 'graphite', 'anthracite', 'turquoise', 'teal', 'mint', 'lavender', 'lilac',
-  'rose', 'bordeaux', 'burgundy', 'maroon', 'violet', 'copper', 'bronze', 'platinum', 'stone',
+  'rose', 'bordeaux', 'burgundy', 'maroon', 'violet', 'copper', 'bronze', 'stone',
   'mocha', 'espresso', 'caramel', 'champagne', 'pearl', 'denim', 'indigo', 'aqua', 'coral',
   'peach', 'nude', 'mauve', 'plum', 'sage', 'ochre', 'rust', 'camel', 'oatmeal', 'linen',
 ]);
 
 /**
- * A capitalised modifier in front of a colour word (Moon, Deep, Mirage,
- * Magic, Space; MOON in an all-caps title). Edition words never are.
+ * Known colour-name modifiers (Moon Black, Deep Black, Mirage Grey). Only
+ * these may stand in front of a colour word; any other capitalised word is
+ * read as another variant (Melio Xyz Black is not Melio).
  */
-function colourModifier(w: string, allCaps: boolean): boolean {
-  return (
-    (/^[A-Z][a-z]+$/.test(w) || (allCaps && /^[A-Z]{2,}$/.test(w))) &&
-    !MODEL_EDITION_WORDS.has(w.toLowerCase()) &&
-    !/^(ver|version|gen|mk)$/i.test(w)
-  );
+const COLOUR_MODIFIERS = new Set([
+  'moon', 'deep', 'mirage', 'magic', 'space', 'sky', 'seashell', 'lava', 'stone', 'sepia', 'ocean',
+  'forest', 'midnight', 'pure', 'soho', 'classic', 'dark', 'light', 'pale', 'soft', 'warm', 'cool',
+  'jet', 'pearl', 'almond', 'fog', 'nature', 'river', 'autumn', 'sunset', 'ice',
+]);
+
+function colourModifier(w: string): boolean {
+  return /^[A-Za-z]+$/.test(w) && COLOUR_MODIFIERS.has(w.toLowerCase());
 }
 
 /**
@@ -500,9 +518,11 @@ function colourPhraseAt(s: string): boolean {
   if (!words) return false;
   const ws = words.slice(1).filter((w): w is string => Boolean(w));
   for (let n = 0; n < ws.length; n++) {
-    if (!BASE_COLOUR_WORDS.has(ws[n]!.toLowerCase())) continue;
-    const allCaps = /^[A-Z]+$/.test(ws[n]!);
-    return ws.slice(0, n).every((w) => colourModifier(w, allCaps));
+    const c = ws[n]!.toLowerCase();
+    // Gold ends a colour phrase only after a modifier (Moon Gold); alone it is an edition.
+    const colour = BASE_COLOUR_WORDS.has(c) || (c === 'gold' && n > 0);
+    if (!colour) continue;
+    return ws.slice(0, n).every(colourModifier);
   }
   return false;
 }
@@ -513,8 +533,13 @@ function colourPhraseAt(s: string): boolean {
  * another variant ("Carbon", "V2", "NC", "4", "(Carbon)").
  */
 function variantAfter(rest: string): string | null {
-  const s = rest.replace(/^[ ®™©]+/, '');
-  if (!s || s.startsWith('\n')) return null;
+  // A line break or a title separator (" | ") ends the model name; commas and
+  // other separators do not ("Cybex Melio, Carbon" reads as Carbon).
+  if (/^ ?(\n|\|)/.test(rest)) return null;
+  const s = rest.replace(/^[\s®™©,，、;；:：·・.。!！?？]+/, '');
+  if (!s || s.startsWith('|')) return null;
+  const acc = ACCESSORY_PHRASE_RE.exec(s);
+  if (acc) return acc[1]!;
   // Bracketed: a year is fine ((2024)); Latin / digit content is an edition.
   const br = /^[(（[［]\s*([^)）\]］]{1,24})\s*[)）\]］]/.exec(s);
   if (br) {
@@ -537,8 +562,8 @@ function variantAfter(rest: string): string | null {
   if (/^(mk|gen|ver|version)$/i.test(w) && /^ ?\d/.test(s.slice(w.length))) {
     return `${w} ${/^ ?(\d+)/.exec(s.slice(w.length))![1]}`;
   }
-  if (MODEL_GENERIC_WORDS.has(lw)) return null;
   if (MODEL_EDITION_WORDS.has(lw)) return w;
+  if (MODEL_GENERIC_WORDS.has(lw)) return null;
   // Colour phrase (Moon Black, Deep Black, Mirage Grey): descriptive.
   if (colourPhraseAt(s)) return null;
   // Alphanumeric suffix (C2, 4K, X1) or a short all-caps token (NC, S).
@@ -734,6 +759,8 @@ export async function fetchSourcePage(
      */
     allowHop?: (url: string) => boolean;
     maxRedirects?: number;
+    /** Total time across every hop (manual redirects only). */
+    totalMs?: number;
   } = {}
 ): Promise<FetchedPage> {
   const title = stripHtml(rawTitle);
@@ -744,15 +771,18 @@ export async function fetchSourcePage(
     'User-Agent': 'OriginWise/1.0 (+https://originwise.pages.dev)',
   };
   let res: Response | null = null;
+  let deadline = Infinity;
   if (opts.allowHop) {
     let at = url;
     const max = opts.maxRedirects ?? 3;
+    deadline = Date.now() + (opts.totalMs ?? ms * (max + 1));
     for (let hop = 0; ; hop++) {
-      if (!opts.allowHop(at)) {
+      const left = deadline - Date.now();
+      if (!opts.allowHop(at) || left <= 0) {
         res = null;
         break;
       }
-      res = await fetchWithTimeout(at, { headers, redirect: 'manual' }, ms);
+      res = await fetchWithTimeout(at, { headers, redirect: 'manual' }, Math.min(ms, left));
       const loc = res && res.status >= 300 && res.status < 400 ? res.headers.get('location') : null;
       if (!loc) break;
       if (hop >= max) {
@@ -783,7 +813,17 @@ export async function fetchSourcePage(
     const ct = res.headers.get('content-type') || '';
     if (!ct || /text\/html|text\/plain|xhtml/i.test(ct)) {
       try {
-        const raw = await res.text();
+        // The body read shares the total budget (manual-redirect fetches).
+        const left = deadline - Date.now();
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const raw = Number.isFinite(left)
+          ? await Promise.race([
+              res.text(),
+              new Promise<string>((_, reject) => {
+                timer = setTimeout(() => reject(new Error('budget')), Math.max(0, left));
+              }),
+            ]).finally(() => clearTimeout(timer))
+          : await res.text();
         const isHtml = /html/i.test(ct) || /<html|<body|<div/i.test(raw.slice(0, 2000));
         body = isHtml ? stripHtml(raw) : raw.slice(0, 200_000);
         blocks = isHtml ? htmlBlocks(raw) : textBlocks(body);
