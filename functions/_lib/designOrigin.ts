@@ -9,7 +9,7 @@
  *
  * Client-safe (no Worker APIs): the cards use it on cached answers too.
  */
-import { canonicalCountry } from './countryLabel';
+import { COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
 
 export type DesignKind = 'design' | 'brand';
 
@@ -36,7 +36,7 @@ const EN_COUNTRIES: Array<[RegExp, string]> = [
   [/^(netherlands|holland|dutch)$/i, 'Netherlands'],
   [/^(belgium|belgian)$/i, 'Belgium'],
   [/^(austria|austrian)$/i, 'Austria'],
-  [/^(united kingdom|uk|britain|great britain|british|england)$/i, 'United Kingdom'],
+  [/^(united kingdom|britain|great britain|british|england)$/i, 'United Kingdom'],
   [/^(united states|usa|u\.s\.a?\.?|america|american|california|silicon valley)$/i, 'United States'],
   [/^(south korea|korea|korean)$/i, 'South Korea'],
   [/^(china|chinese|prc)$/i, 'China'],
@@ -50,7 +50,7 @@ const EN_COUNTRY =
   'united kingdom|great britain|united states|south korea|hong kong|silicon valley|u\\.s\\.a?\\.?|' +
   'germany|german|japan|japanese|sweden|swedish|denmark|danish|norway|norwegian|finland|finnish|' +
   'switzerland|swiss|italy|italian|france|french|spain|spanish|netherlands|holland|dutch|belgium|belgian|' +
-  'austria|austrian|uk|britain|british|england|usa|america|american|california|korea|korean|china|chinese|' +
+  'austria|austrian|britain|british|england|usa|america|american|california|korea|korean|china|chinese|' +
   'prc|taiwan|taiwanese|australia|australian|canada|canadian|israel|israeli';
 
 /** CJK country names (zh / ja) → English label. */
@@ -78,7 +78,7 @@ const FORWARD_CUES = new RegExp(
     '\\bresearch\\s+(?:and|&)\\s+development\\s+(?:in|centre|center)\\b',
     '\\b(?:headquartered|founded|established)\\s+in\\b',
     '\\bheadquarters?\\s+(?:in|is\\s+in|are\\s+in)\\b',
-    '\\b(?:company|brand)\\s+based\\s+in\\b',
+    '\\bbased\\s+in\\b',
     '\\bbrand\\s+(?:from|of)\\b',
     '(?:設計|设计|研發|研发|開發|开发|研製|研制)(?:中心|團隊|团队)?(?:於|于|自|在|位於|位于|設於|设于)',
     '(?:品牌|設計|设计|技術|技术)(?:源自|來自|来自|源於|源于|發源於|发源于|創立於|创立于)',
@@ -97,12 +97,17 @@ const PREFIX_CUES = new RegExp(
   'gi'
 );
 
-/** Where a forward phrase stops: clause punctuation, "but", or a made-in word. */
-const PHRASE_END =
-  /[,;，；。、！!？?\n|（(]|\.\s|\.$|\bbut\b|\bwhile\b|\bmade\s*in\b|\bmanufactured\b|\bassembled\b|\bproduced\b|\bcountry\s+of\s+origin\b|但|製造|制造|產地|产地|組裝|组装|生產|生产|原產|原产|原産|生産|[国國]製/i;
+/**
+ * Where a forward phrase must stop whatever follows: a sentence end, a
+ * semicolon, "but", or a made-in word (a made-in clause is never eaten).
+ */
+const PHRASE_HARD_END =
+  /[;；。！!？?\n|]|\.\s|\.$|\bbut\b|\bwhile\b|\bmade\s*in\b|\bmanufactured\b|\bassembled\b|\bproduced\b|\bcountry\s+of\s+origin\b|但|製造|制造|產地|产地|組裝|组装|生產|生产|原產|原产|原産|生産|[国國]製/i;
+/** A clause break: where a phrase with no country in it ends. */
+const PHRASE_SOFT_END = /[,，、（(]/;
 const PHRASE_MAX = 80;
 
-const BRAND_CUE = /brand|company|headquarter|founded|established|品牌|ブランド|總部|总部|源自|來自|来自|源於|源于|發源|发源|創立|创立|血統|血统|heritage/i;
+const BRAND_CUE = /brand|company|headquarter|based|founded|established|品牌|ブランド|總部|总部|源自|來自|来自|源於|源于|發源|发源|創立|创立|血統|血统|heritage/i;
 
 type Span = { start: number; end: number; prefix: boolean };
 
@@ -112,9 +117,16 @@ function spans(text: string): Span[] {
   for (const m of text.matchAll(FORWARD_CUES)) {
     const start = m.index ?? 0;
     const from = start + m[0].length;
-    const rest = text.slice(from, from + PHRASE_MAX);
-    const stop = PHRASE_END.exec(rest);
-    out.push({ start, end: from + (stop ? stop.index : rest.length), prefix: false });
+    let rest = text.slice(from, from + PHRASE_MAX);
+    const hard = PHRASE_HARD_END.exec(rest);
+    if (hard) rest = rest.slice(0, hard.index);
+    // "Founded in 1947 in Bayreuth, Germany, made in China": the phrase runs
+    // past a comma to the first country and stops there; with no country it
+    // ends at the first clause break.
+    const place = firstCountry(rest);
+    const soft = PHRASE_SOFT_END.exec(rest);
+    const end = place ? place.end : soft ? soft.index : rest.length;
+    out.push({ start, end: from + end, prefix: false });
   }
   PREFIX_CUES.lastIndex = 0;
   for (const m of text.matchAll(PREFIX_CUES)) {
@@ -122,6 +134,14 @@ function spans(text: string): Span[] {
     out.push({ start, end: start + m[0].length, prefix: true });
   }
   return out.sort((a, b) => a.start - b.start);
+}
+
+/** First country name in the text (names only, never 2-letter codes). */
+function firstCountry(text: string): { index: number; end: number } | undefined {
+  const en = new RegExp(`\\b(${EN_COUNTRY})\\b`, 'i').exec(text);
+  const cjk = new RegExp(`(${CJK_COUNTRY})`).exec(text);
+  const m = en && cjk ? (en.index <= cjk.index ? en : cjk) : (en ?? cjk);
+  return m ? { index: m.index, end: m.index + m[0].length } : undefined;
 }
 
 function countryIn(phrase: string): string | undefined {
@@ -191,6 +211,7 @@ export function quoteBacksCountry(quote: string, country: string): boolean {
   const cjk = new RegExp(`(${CJK_COUNTRY})`, 'g');
   const named = [...rest.matchAll(en), ...rest.matchAll(cjk)].map((m) => countryIn(m[1]!));
   if (named.some((c) => c && (c === want || canonicalCountry(c) === canonicalCountry(want)))) return true;
-  // Other spellings (中國大陸, PRC …) through the shared table.
-  return canonicalCountry(rest) !== undefined && canonicalCountry(rest) === canonicalCountry(want);
+  // Other spellings (中國大陸 …) through the shared name table (no 2-letter codes).
+  const row = COUNTRY_NAME_PATTERNS.find((r) => r.label === (canonicalCountry(want) ?? want));
+  return Boolean(row && row.pattern.test(rest));
 }

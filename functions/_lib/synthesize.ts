@@ -281,7 +281,13 @@ function matchCountryLabel(token: string): string | undefined {
   return undefined;
 }
 
-function extractCountryLabelsFromText(blob: string): string[] {
+/**
+ * Country names in free text. 2-letter / ISO codes ("IT company" → Italy,
+ * "DE", "my") never count in notes or other free text; only the
+ * componentsOrigin field, a country list the model writes ("CN / TH / VN"),
+ * reads codes, and only as whole list items.
+ */
+function extractCountryLabelsFromText(blob: string, opts: { codes?: boolean } = {}): string[] {
   if (!blob || !blob.trim()) return [];
   const found: string[] = [];
   const seen = new Set<string>();
@@ -294,22 +300,15 @@ function extractCountryLabelsFromText(blob: string): string[] {
   for (const row of COUNTRY_NAME_PATTERNS) {
     if (row.pattern.test(blob)) add(row.label);
   }
-  // Slash / comma lists: "CN / TH / VN" or "China, Thailand"
+  if (!opts.codes) return found;
+  // componentsOrigin lists only: "Often CN / TH / VN (unconfirmed)". Upper-case
+  // code items count; "IT" never does (IT company / IT parts, not Italy).
   for (const raw of blob.split(/[/|,;、＋+與和]|\band\b/i)) {
-    const cleaned = raw.replace(/[()（）]/g, ' ').trim();
-    const label = matchCountryLabel(cleaned);
-    if (label) add(label);
-    // "Often CN" / "mainly VN" — pick trailing ISO token
-    const m = cleaned.match(/\b([A-Za-z]{2,3})\b\s*$/);
-    if (m) {
+    for (const m of raw.matchAll(/(?<![A-Za-z])([A-Z]{2,3})(?![A-Za-z])/g)) {
+      if (m[1] === 'IT') continue;
       const fromCode = COUNTRY_CODE_TO_LABEL[m[1].toLowerCase()];
       if (fromCode) add(fromCode);
     }
-  }
-  // Bare ISO codes anywhere: "... CN / TH / VN ..."
-  for (const m of blob.matchAll(/(?:^|[^A-Za-z])([A-Za-z]{2,3})(?=[^A-Za-z]|$)/g)) {
-    const fromCode = COUNTRY_CODE_TO_LABEL[m[1].toLowerCase()];
-    if (fromCode) add(fromCode);
   }
   return found;
 }
@@ -403,7 +402,7 @@ function collectOriginCandidates(
   }
 
   if (!isVagueOriginLabel(p.componentsOrigin)) {
-    for (const label of extractCountryLabelsFromText(String(p.componentsOrigin))) {
+    for (const label of extractCountryLabelsFromText(String(p.componentsOrigin), { codes: true })) {
       // Do not promote to confirmed — components line is candidate only
       if (out.get(label)?.rating === 'confirmed') continue;
       pushCandidate(

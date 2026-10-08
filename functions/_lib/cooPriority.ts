@@ -41,7 +41,7 @@ const SOURCE_RANK: Record<CooClaimSource, number> = {
 
 /** Labels that look like packaging / OCR made-in lines. */
 const OCR_CONTEXT =
-  /\b(made[\s-]?in|country\s+of\s+origin|coo|製造国|製造國|原産国|原產國|产地|產地|生产地|生產地)\b/i;
+  /\b(made[\s-]?in|manufactured[\s-]?in|assembled[\s-]?in|produced[\s-]?in|country\s+of\s+origin|coo|製造国|製造國|原産国|原產國|产地|產地|生产地|生產地)\b/i;
 
 /** Retailer / product-page style fields (Amazon "Country of Publication", etc.). */
 const RETAILER_CONTEXT =
@@ -60,7 +60,7 @@ const OWNERSHIP_CONTEXT =
  * Keep generic: English + common CJK forms. No product hardcodes.
  */
 const COUNTRY_TOKEN =
-  '(?:mainland\\s+china|people.?s\\s+republic\\s+of\\s+china|hong\\s+kong|macau|macao|taiwan|thailand|vietnam|indonesia|malaysia|philippines|india|japan|korea|south\\s+korea|china|prc|cn|jp|th|vn|id|my|ph|in|kr|tw|hk|mo|美國|美国|日本|韓國|韩国|泰國|泰国|越南|印尼|馬來西亞|马来西亚|菲律賓|菲律宾|印度|中國大陸|中国大陆|中國|中国|台灣|台湾|香港|澳門|澳门)';
+  '(?:mainland\\s+china|people.?s\\s+republic\\s+of\\s+china|hong\\s+kong|macau|macao|taiwan|thailand|vietnam|indonesia|malaysia|philippines|india|japan|south\\s+korea|korea|china|prc|germany|france|italy|spain|united\\s+kingdom|sweden|switzerland|poland|czech\\s+republic|united\\s+states|usa|mexico|美國|美国|日本|韓國|韩国|泰國|泰国|越南|印尼|馬來西亞|马来西亚|菲律賓|菲律宾|印度|中國大陸|中国大陆|中國|中国|台灣|台湾|香港|澳門|澳门|德國|德国|法國|法国|義大利|意大利|英國|英国)(?![A-Za-z])';
 
 /** CJK country names as written on Japanese / Chinese packaging. */
 const CJK_COUNTRY_TOKEN =
@@ -68,7 +68,7 @@ const CJK_COUNTRY_TOKEN =
 
 /** Suffix form on labels: 「日本製」「中国工場製」「タイ製」. */
 const COO_LINE = new RegExp(
-  `(?:made[\\s-]?in|assembled[\\s-]?in|country\\s+of\\s+origin|country\\s+of\\s+publication|coo|製造国|製造國|原産国名?|原產國|产地|產地|生产地|生產地|生産(?:[・･/／]組み?立て?)?|組み?立て?|組裝|组装)\\s*[:：]?\\s*(${CJK_COUNTRY_TOKEN}|${COUNTRY_TOKEN})`,
+  `(?:made[\\s-]?in|manufactured[\\s-]?in|produced[\\s-]?in|assembled[\\s-]?in|country\\s+of\\s+origin|country\\s+of\\s+publication|coo|製造国|製造國|原産国名?|原產國|产地|產地|生产地|生產地|生産(?:[・･/／]組み?立て?)?|組み?立て?|組裝|组装)\\s*[:：]?\\s*(${CJK_COUNTRY_TOKEN}|${COUNTRY_TOKEN})`,
   'gi'
 );
 

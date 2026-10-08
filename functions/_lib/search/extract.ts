@@ -1007,7 +1007,7 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
     // Design / brand wording is blanked first ("Designed in Germany, made in China" → China).
     const t = stripDesignPhrases(nfkc(p.text));
     const patterns: RegExp[] = [
-      /\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|[Cc]ountry of [Oo]rigin\s*[:：]?)\s*([A-Z][A-Za-z]+(?: [A-Z][a-z]+)?)/g,
+      /\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|[Cc]ountry of [Oo]rigin\s*[:：]?)\s*([A-Z][A-Za-z]{2,}(?: [A-Z][a-z]+)?)/g,
       /(?:原産国|生産国|製造国|原産地|生産地|原產地|原產國|生產國|生產地|產地|製造地)(?:名)?\s*[:：・／/]?\s*([^\s:：、。,，|/／()（）<>[\]]{1,12})/g,
     ];
     for (const re of patterns) {
