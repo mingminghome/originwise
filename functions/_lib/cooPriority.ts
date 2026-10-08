@@ -9,7 +9,7 @@
  * stamp, clear madeIn and keep layered candidates — do not fake a stamp.
  */
 
-import { MADE_IN_CODE_LABEL, madeInCodeMatches, NOT_PRODUCT_FIELD } from './countryLabel';
+import { MADE_IN_CODE_LABEL, madeInCodeMatches, NOT_PRODUCT_FIELD, PART_FIELD_WORDS } from './countryLabel';
 import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN, countryNameLabel } from './countryNames';
 import { NOT_MADE_TAIL, stripDesignPhrases } from './designOrigin';
 import { canonicalCountry } from './countryLabel';
@@ -337,15 +337,55 @@ const US_ADDRESS_AFTER = new RegExp(
 );
 const US_ADDRESS_END = /^[ \t]*(?:[.;)）。]|$|,[ \t]*(?:united\s+states(?:\s+of\s+america)?|u\.s\.a\.?|usa)(?![A-Za-z]))/i;
 /**
- * The next non-empty line after an address carries on the place list when it starts
- * — past whitespace, punctuation and joiners (& / - ( AND OR AND/OR 和 及 或 、) — with
- * a country, a part word, PARTS or FROM ("…, OR\nCHINA", "…, IN\nPARTS FROM CHINA",
- * "…, OR\n& CHINA"). "Made in China" / 「中國製造」 on the next line is its own claim.
+ * A newline after the state. Only a code that is also an English word (OR IN ME OK
+ * HI DE CO) can carry the place list over it ("MADE IN USA, MEXICO, OR\nCHINA" is
+ * "…, or China"); TN / NY / FL, every other code and every full state name always
+ * end the address at a newline. A word code carries only when the next non-empty
+ * line — past whitespace, punctuation, joiners (& / - ( AND OR AND/OR 和 及 或 、)
+ * and THE — starts with:
+ * - a country that is not the US or the EU ("…, OR\nCHINA", "…, OR\nTHE PRC");
+ * - PARTS / FROM before such a country ("…, IN\nPARTS FROM CHINA");
+ * - a demonym / IMPORTED / FOREIGN before a part word, or OTHER COUNTRIES
+ *   ("…, OR\nCHINESE PARTS", "…, OR\nIMPORTED PARTS");
+ * - a spec line "Word: value" (: or ：) whose value names such a country
+ *   ("…, OR\nBattery: China"); any other spec line ends it ("Battery: Li-ion").
+ * US / USA / U.S. / U.S.A. / United States (also after PARTS / FROM), the EU, a
+ * made-in field or claim of its own ("Origin: …", 「中國製造」) and anything else end it.
  */
-const NEXT_LINE_JOINERS = /^(?:[\s\p{P}\p{S}]|(?:and\/or|and|or)(?![A-Za-z])|[和及或、])*/iu;
+const ENGLISH_WORD_CODES = new Set(['OR', 'IN', 'ME', 'OK', 'HI', 'DE', 'CO']);
+const NEXT_LINE_JOINERS = /^(?:[\s\p{P}\p{S}]|(?:and\/or|and|or|the)(?![A-Za-z])|[和及或、])*/iu;
+const NEXT_LINE_FROM = /^(?:parts?[ \t]+)?(?:from[ \t]+)?(?:the[ \t]+)?/i;
+const NEXT_LINE_US_EU = /^(?:united\s+states(?:\s+of\s+america)?|u\.s\.a\.?|u\.s\.|usa|us|e\.u\.|eu|european\s+union)(?![A-Za-z])/i;
+const NEXT_LINE_OWN_FIELD = /^(?:country\s+of\s+origin|origin|coo|made\s+in|產地|产地|原產地|原产地|原産地|原産国|原產國|原产国)\s*[:：]/i;
+const SPEC_LINE = /^[^\n:：]{1,30}[:：]([^\n]*)/;
+const DEMONYM = 'chinese|japanese|korean|taiwanese|vietnamese|thai|indian|mexican|canadian|german|italian|french|european|imported|foreign';
 // Built on first use: PART_WORD is declared further down.
-let nextLinePlaceRe: RegExp | undefined;
-const nextLinePlace = () => (nextLinePlaceRe ??= new RegExp(`^(?:${VALUE_COUNTRY_TOKEN}|E\\.U\\.|EU(?![A-Za-z])|${PART_WORD}|parts?(?![A-Za-z])|from(?![A-Za-z]))`, 'i'));
+let nextLineCountryRe: RegExp | undefined;
+const nextLineCountry = () => (nextLineCountryRe ??= new RegExp(`^(?:${VALUE_COUNTRY_TOKEN})`, 'i'));
+let nextLinePartsRe: RegExp | undefined;
+const nextLineParts = () =>
+  (nextLinePartsRe ??= new RegExp(`^(?:(?:${DEMONYM})[ \\t]+${PART_WORD}|other[ \\t]+countr(?:y|ies)(?![A-Za-z]))`, 'i'));
+/** A non-US, non-EU country at the start of the text. */
+function startsWithOtherCountry(text: string): boolean {
+  if (NEXT_LINE_US_EU.test(text)) return false;
+  const c = nextLineCountry().exec(text);
+  return Boolean(c && !isUs(normalizeCooLabel(c[0])));
+}
+/** True when the next line carries a word-code address on as a place list. */
+function nextLineCarries(lines: string): boolean {
+  const line = /^\s*([^\n]*)/.exec(lines)![1]!.trim();
+  if (NEXT_CLAUSE_CJK.test(line) || NEXT_LINE_OWN_FIELD.test(line)) return false;
+  const spec = SPEC_LINE.exec(line);
+  if (spec) {
+    const others = [...spec[1]!.matchAll(ANY_COUNTRY)].filter((c) => !isUs(normalizeCooLabel(c[0])));
+    return others.length > 0;
+  }
+  const next = lines.replace(NEXT_LINE_JOINERS, '');
+  if (startsWithOtherCountry(next)) return true;
+  const from = NEXT_LINE_FROM.exec(next)![0];
+  if (from && startsWithOtherCountry(next.slice(from.length))) return true;
+  return nextLineParts().test(next);
+}
 function usAddressAfter(second: string, rest: string): boolean {
   if (!US_TOWN_COUNTRIES.has(canonCountry(second))) return false;
   const m = US_ADDRESS_AFTER.exec(rest);
@@ -356,11 +396,8 @@ function usAddressAfter(second: string, rest: string): boolean {
   if (US_ADDRESS_END.test(after)) return true;
   const wrap = /^[ \t]*\r?\n/.exec(after);
   if (!wrap) return false;
-  const lines = after.slice(wrap[0].length);
-  // A next line that is its own made-in claim (「中國製造」) ends the address, as "Made in China" does.
-  const line = /^\s*([^\n]*)/.exec(lines)![1]!;
-  if (NEXT_CLAUSE_CJK.test(line)) return true;
-  return !nextLinePlace().test(lines.replace(NEXT_LINE_JOINERS, ''));
+  if (!ENGLISH_WORD_CODES.has(m[1]!)) return true;
+  return !nextLineCarries(after.slice(wrap[0].length));
 }
 /**
  * Country names that are also US towns: one FIRST, with a bare USA second, keeps
@@ -414,6 +451,10 @@ const PART_AFTER = new RegExp(
   `^\\s*(?:国内|國內)?(?:工場|工廠|工厂|廠|厂)?(?:製造|制造|製|制|生產|生产|生産|產|产|産)(?:の|的)?\\s*${PART_WORD}`,
   'i'
 );
+/** A CJK part field right before a value (「電池：」「配件產地：」). */
+const CJK_PART_FIELD_BEFORE = new RegExp(`(?:${PART_FIELD_WORDS.join('|')})[^\\n：:]{0,4}[:：]\\s*$`);
+/** A part word right after a CJK made-in (「中國製部品」「日本製モーター」). */
+const PART_AFTER_SUFFIX = new RegExp(`^\\s*(?:の|的)?\\s*(?:${PART_WORD}|${PART_FIELD_WORDS.join('|')}|モーター)`, 'i');
 const PART_BEFORE = new RegExp(`${PART_WORD}\\s*(?:[:：]|made\\s+in|from)?\\s*(?:the\\s+)?$`, 'i');
 
 /**
@@ -615,6 +656,42 @@ function resolveFieldValues(input: string): FieldPass {
     const end = at + e[0].length + pair[0].length;
     blank(at, end);
     disputes.push({ sides: sides(['European Union', second]), start: at, end });
+  }
+  // An English made-in claim and a CJK one naming another country ("Made in USA\n中國製造",
+  // "Made in Germany 中國製造", "Made in USA\n產地：中國"): two claims, a 爭議 — the
+  // label never picks one by spelling. A CJK claim tied to a part (「電池：中國製」
+  // 「中國製部品」 "motor 中國製") is a component, not a claim.
+  {
+    const now = chars.join('');
+    const en: Array<{ country: string; start: number; end: number }> = [];
+    const cjk: Array<{ country: string; start: number; end: number }> = [];
+    for (const e of now.matchAll(new RegExp(COO_LINE.source, 'gi'))) {
+      const label = normalizeCooLabel(e[1]!);
+      if (normalizeRegion(label) === 'UNKNOWN') continue;
+      const cue = e[0].slice(0, e[0].length - e[1]!.length);
+      const lineHead = now.slice(now.lastIndexOf('\n', e.index!) + 1, e.index!);
+      if (PART_BEFORE.test(lineHead) || CJK_PART_FIELD_BEFORE.test(lineHead)) continue;
+      if (/[A-Za-z]/.test(cue)) en.push({ country: label, start: e.index!, end: e.index! + e[0].length });
+      else if (/[\u4e00-\u9fff\u3040-\u30ff]/.test(cue)) cjk.push({ country: label, start: e.index!, end: e.index! + e[0].length });
+    }
+    for (const e of now.matchAll(new RegExp(COO_SUFFIX.source, 'g'))) {
+      const head = now.slice(now.lastIndexOf('\n', e.index!) + 1, e.index!);
+      const tail = now.slice(e.index! + e[0].length);
+      if (/(?:非|不是|並非|并非)$/.test(head) || /^\s*(?:では|じゃ)(?:ありません|ない|なく)/.test(tail)) continue;
+      if (/^(?:業|业|品(?:牌|取扱|取り扱|販売店|専門店))/.test(tail)) continue;
+      if (PART_BEFORE.test(head) || CJK_PART_FIELD_BEFORE.test(head) || PART_AFTER_SUFFIX.test(tail)) continue;
+      const label = normalizeCooLabel(CJK_TO_LABEL[e[1]!] ?? e[1]!);
+      if (normalizeRegion(label) === 'UNKNOWN') continue;
+      cjk.push({ country: label, start: e.index!, end: e.index! + e[0].length });
+    }
+    const a = en[0];
+    const b = a && cjk.find((c) => canonCountry(c.country) !== canonCountry(a.country));
+    if (a && b && !cjk.some((c) => canonCountry(c.country) === canonCountry(a.country))) {
+      const [x, y] = a.start < b.start ? [a, b] : [b, a];
+      blank(a.start, a.end);
+      blank(b.start, b.end);
+      disputes.push({ sides: sides([x.country, y.country]), start: x.start, end: y.end });
+    }
   }
   // Repeated made-in fields, adjacent or not (「產地：中國\n重量：5kg\n產地：日本」): two
   // countries are a 爭議. A field whose country carries a part bracket
