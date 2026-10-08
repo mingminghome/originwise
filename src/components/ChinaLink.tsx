@@ -11,6 +11,8 @@
  */
 import { hqFoldedIntoParent, parentNamedInCompany } from '../../functions/_lib/chinaChip';
 import { inScope, normalizeRegion, type GeoScope } from '../../functions/_lib/regions';
+import { cleanSources, splitSourceLine } from '../../functions/_lib/sourceLine';
+import { tierFromCodes } from '../../functions/_lib/tierRules';
 import type { CheckResult, RelationTier } from '../core/types';
 
 export type LinkStatus = 'china' | 'notChina' | 'unconfirmed';
@@ -129,41 +131,6 @@ export function buildChinaLinks(result: CheckResult): {
 }
 
 /**
- * Tier reasons that speak about where the product is made (made-in,
- * manufacturer location, "product origin", parts). The China card never
- * repeats them: made-in is decided only in the 製造地 card (barcode / label).
- */
-export const MADE_IN_REASONS: ReadonlySet<string> = new Set([
-  'made_in_cn',
-  'manufacturer_cn',
-  'origin_cn',
-  'component_cn',
-]);
-
-/**
- * Reason codes for the China card + whether made-in reasons were held back.
- * hqFolded (see brandHqFolded): the China HQ is the parent's, so 「公司總部位於
- * 中國大陸」 (hq_cn) becomes the parent line (parent_majority_cn). Older
- * cached answers still carry hq_cn for these; the server no longer emits it.
- */
-export function chinaCardReasons(
-  codes: readonly string[] | undefined,
-  opts: { hqFolded?: boolean } = {}
-): {
-  shown: string[];
-  madeInHidden: boolean;
-} {
-  const all = codes ?? [];
-  let shown = all.filter((c) => !MADE_IN_REASONS.has(c));
-  if (opts.hqFolded && shown.includes('hq_cn')) {
-    shown = shown.flatMap((c) =>
-      c !== 'hq_cn' ? [c] : shown.includes('parent_majority_cn') ? [] : ['parent_majority_cn']
-    );
-  }
-  return { shown, madeInHidden: all.some((c) => MADE_IN_REASONS.has(c)) };
-}
-
-/**
  * Result as the China card should read it: only company-level places, so a
  * reason line like 「明確地點訊號在中國大陸以外：…」 never lists a made-in
  * country, and a folded parent HQ is not shown as the brand's HQ.
@@ -186,19 +153,192 @@ export function companyView(result: CheckResult): CheckResult {
 export const COMPANY_DIRECT_MIN_CONFIDENCE = 0.75;
 
 /**
- * Tier + confidence shown on the badge. A China HQ or China-controlling
- * parent is a direct link, so the badge never reads weaker than the China
- * card (older cached results could say 'indirect' / 50%).
+ * Company rows count as sourced (tag 確認) only after web research that left
+ * at least one Source line. Model memory alone is 有提及 and gets no floor.
  */
+export function companyFactsSourced(result: CheckResult): boolean {
+  return (
+    result.knowledgeBasis === 'web_enriched' &&
+    cleanSources(Array.isArray(result.sources) ? result.sources : [], 8).length > 0
+  );
+}
+
+/**
+ * Made-in confirmed by a barcode page or the package label. A made-in without
+ * that basis is a model reference only (candidate row, never a verdict).
+ */
+export function confirmedMadeIn(
+  result: CheckResult
+): { country: string; basis: 'barcode' | 'label' } | undefined {
+  const p = result.product;
+  const madeIn = clean(p?.madeIn);
+  if (!madeIn) return undefined;
+  if (p?.madeInBasis === 'barcode' || p?.madeInBasis === 'label') {
+    return { country: madeIn, basis: p.madeInBasis };
+  }
+  const meta = result.meta;
+  if (
+    meta?.searchMatch === 'barcode' &&
+    (meta.searchCoo ?? []).some((c) => c.status === 'confirmed' && c.basis === 'barcode')
+  ) {
+    return { country: madeIn, basis: 'barcode' };
+  }
+  return undefined;
+}
+
+/**
+ * Stake words (全資 / 多數控股 / 少數股權) only when a Source line says so.
+ * Source lines carry titles only here, so this matches the title text.
+ */
+const STAKE_RE: Record<'wholly' | 'majority' | 'minority', RegExp> = {
+  wholly: /wholly[\s-]*owned|\b100\s*%|全資|全资|完全子会社|100%子会社/i,
+  majority: /majority[\s-]*(?:owned|stake|share|control)|多數股權|多数股权|過半|过半|過半數/i,
+  minority: /minority[\s-]*(?:stake|share|interest)|少數股權|少数股权|參股|参股/i,
+};
+
+export function stakeInSources(result: CheckResult, control?: string): boolean {
+  if (control !== 'wholly' && control !== 'majority' && control !== 'minority') return false;
+  const re = STAKE_RE[control];
+  return cleanSources(Array.isArray(result.sources) ? result.sources : [], 12).some((line) =>
+    re.test(splitSourceLine(line).title ?? line)
+  );
+}
+
+export type ChinaCardChip = 'chinaCompany' | 'chinaControlled' | 'madeInChina';
+
+/** One line in the China card; each maps to a row / fact shown in the card. */
+export type ChinaCardReason =
+  | { kind: 'code'; code: string }
+  | { kind: 'parent' }
+  | { kind: 'brandOrigin'; country: string }
+  | { kind: 'madeIn'; country: string; basis: 'barcode' | 'label' }
+  | { kind: 'pointer' };
+
+export type ChinaCardView = {
+  chips: ChinaCardChip[];
+  tier: RelationTier;
+  /** undefined → no confidence chip (made-in-only link: see the 製造地 card). */
+  confidence?: number;
+  hqFolded: boolean;
+  hq: string;
+  owner?: { name: string; country: string; control?: string };
+  /** 'stated' stake word, neutral 「控股」, or nothing. */
+  stake: { kind: 'stated'; control: string } | { kind: 'neutral' } | { kind: 'none' };
+  brandOrigin: string;
+  reasons: ChinaCardReason[];
+};
+
+/** Codes that never speak for a shown row; kept as caveats. */
+const META_CODES = new Set([
+  'verify_conflict',
+  'taiwan_as_country',
+  'conflict_no_strong',
+  'insufficient',
+  'ownership_not_assessed',
+]);
+
+/**
+ * The China card, built only from facts it shows on screen:
+ * - hq_cn → 總部 row (not when the HQ was reassigned to the parent)
+ * - parent_majority_cn → 控股／母公司 row (one line per fact; a folded hq_cn or
+ *   a named-parent ownership_strong_cn is the same fact)
+ * - ownership_weak_cn → only with a named China parent holding a minority stake
+ * - origin_cn → 品牌來源地 row
+ * - made_in_cn → only label / barcode confirmed, as one 製造地 line
+ * Unnamed ownership relations are dropped and do not feed tier / confidence.
+ */
+export function buildChinaCard(result: CheckResult): ChinaCardView {
+  const scope = scopeOf(result);
+  const isCn = (v?: string) => Boolean(v) && isChinaCountry(v, scope);
+  const { chip, hqFolded } = buildChinaLinks(result);
+  const c = result.company;
+  const codes = result.tierReasons ?? [];
+  const has = (k: string) => codes.includes(k);
+
+  const hq = hqFolded ? '' : clean(c?.hqCountry);
+  const parents = (c?.parents ?? []).filter((x) => x.name?.trim());
+  const picked = pickOwner(result);
+  const owner =
+    picked ??
+    (parents[0]
+      ? { name: parents[0].name.trim(), country: clean(parents[0].country), control: parents[0].control }
+      : undefined);
+  const controlling =
+    owner !== undefined &&
+    (hqFolded || owner.control === 'majority' || owner.control === 'wholly');
+  const ownerCnControlling = controlling && isCn(owner!.country);
+  const ownerCnMinority = owner !== undefined && owner.control === 'minority' && isCn(owner.country);
+  const brandOrigin = clean(result.product?.originCountry);
+  const made = confirmedMadeIn(result);
+  const madeCn = made !== undefined && isCn(made.country);
+
+  // Codes as the card reads them (what may feed tier / confidence).
+  const cardCodes: string[] = [];
+  const add = (k: string) => {
+    if (!cardCodes.includes(k)) cardCodes.push(k);
+  };
+  for (const k of codes) {
+    if (k === 'hq_cn') add(hqFolded ? 'parent_majority_cn' : 'hq_cn');
+    else if (k === 'ownership_strong_cn') {
+      if (ownerCnControlling) add('parent_majority_cn');
+    } else if (k === 'ownership_weak_cn') {
+      if (ownerCnMinority) add('ownership_weak_cn');
+    } else if (k === 'made_in_cn') {
+      if (madeCn) add('made_in_cn');
+    } else add(k);
+  }
+  if (madeCn) add('made_in_cn');
+  const same =
+    cardCodes.length === codes.length && cardCodes.every((k) => codes.includes(k));
+  let tier: RelationTier = same ? result.relationTier : tierFromCodes(cardCodes);
+  if (chip || madeCn) tier = 'direct';
+
+  const chips: ChinaCardChip[] = [];
+  if (chip) chips.push(chip);
+  if (madeCn) chips.push('madeInChina');
+
+  let confidence: number | undefined =
+    typeof result.confidence === 'number' ? result.confidence : undefined;
+  if (!chip && madeCn) {
+    // Made-in-only link: the number lives once, in the 製造地 card.
+    confidence = undefined;
+  } else if (chip && confidence !== undefined && companyFactsSourced(result)) {
+    confidence = Math.max(confidence, COMPANY_DIRECT_MIN_CONFIDENCE);
+  }
+
+  const reasons: ChinaCardReason[] = [];
+  if (cardCodes.includes('hq_cn') && isCn(hq)) reasons.push({ kind: 'code', code: 'hq_cn' });
+  if (cardCodes.includes('parent_majority_cn') && ownerCnControlling) reasons.push({ kind: 'parent' });
+  if (cardCodes.includes('ownership_weak_cn') && ownerCnMinority) {
+    reasons.push({ kind: 'code', code: 'ownership_weak_cn' });
+  }
+  if (has('origin_cn') && isCn(brandOrigin)) reasons.push({ kind: 'brandOrigin', country: brandOrigin });
+  if (madeCn) reasons.push({ kind: 'madeIn', country: made!.country, basis: made!.basis });
+  const nonCnShown = [hq, brandOrigin].some((v) => {
+    const r = normalizeRegion(v);
+    return r !== 'UNKNOWN' && !inScope(r, scope);
+  });
+  if (has('explicit_non_cn_geo') && nonCnShown) reasons.push({ kind: 'code', code: 'explicit_non_cn_geo' });
+  for (const k of codes) if (META_CODES.has(k)) reasons.push({ kind: 'code', code: k });
+  const madeInTalk = ['made_in_cn', 'manufacturer_cn', 'component_cn'].some(has);
+  if (madeInTalk && !madeCn) reasons.push({ kind: 'pointer' });
+
+  const stake: ChinaCardView['stake'] = !owner
+    ? { kind: 'none' }
+    : stakeInSources(result, owner.control)
+      ? { kind: 'stated', control: owner.control! }
+      : controlling
+        ? { kind: 'neutral' }
+        : { kind: 'none' };
+
+  return { chips, tier, confidence, hqFolded, hq, owner, stake, brandOrigin, reasons };
+}
+
+/** Tier + confidence of the China card (also used by the history list). */
 export function displayTier(result: CheckResult): {
   tier: RelationTier;
   confidence?: number;
 } {
-  const { chip } = buildChinaLinks(result);
-  if (!chip) return { tier: result.relationTier, confidence: result.confidence };
-  const conf =
-    typeof result.confidence === 'number'
-      ? Math.max(result.confidence, COMPANY_DIRECT_MIN_CONFIDENCE)
-      : undefined;
-  return { tier: 'direct', confidence: conf };
+  const v = buildChinaCard(result);
+  return { tier: v.tier, confidence: v.confidence };
 }

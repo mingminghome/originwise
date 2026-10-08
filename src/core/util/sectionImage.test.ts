@@ -90,3 +90,22 @@ describe('sectionImage helpers', () => {
     assert.deepEqual(FLATTEN_ONTO_LIGHT, [255, 255, 255]);
   });
 });
+
+describe('capture excludes on-screen UI (ⓘ tips, open tooltips)', () => {
+  it('removes data-section-share="ui" and role="tooltip" nodes', async () => {
+    const { stripCaptureUi, CAPTURE_UI_SELECTOR } = await import('./sectionImage');
+    const removed: string[] = [];
+    const node = (id: string) => ({ remove: () => removed.push(id) });
+    let asked = '';
+    stripCaptureUi({
+      querySelectorAll(sel: string) {
+        asked = sel;
+        return [node('share'), node('info'), node('tip')];
+      },
+    });
+    assert.equal(asked, CAPTURE_UI_SELECTOR);
+    assert.match(CAPTURE_UI_SELECTOR, /data-section-share="ui"/);
+    assert.match(CAPTURE_UI_SELECTOR, /role="tooltip"/);
+    assert.deepEqual(removed, ['share', 'info', 'tip']);
+  });
+});

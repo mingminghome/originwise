@@ -117,6 +117,7 @@ describe('buildLayerRows', () => {
   it('tags web company facts 確認, missing parts 未確認, controlling parent row', () => {
     const rows = buildLayerRows(
       base({
+        sources: ['Cybex — https://example.com/about'],
         product: { originCountry: 'Germany' },
         company: {
           hqCountry: 'Germany',
@@ -170,7 +171,12 @@ describe('China card', () => {
   it('shows 中國公司 + 直接 for a China HQ even when the server said 50%', () => {
     const out = html(
       createElement(ChinaCard, {
-        result: { ...unconfirmed, confidence: 0.5, relationTier: 'indirect' },
+        result: {
+          ...unconfirmed,
+          confidence: 0.5,
+          relationTier: 'indirect',
+          sources: ['TP-Link about — https://example.com/about'],
+        },
         t: zh,
       })
     );
@@ -178,6 +184,17 @@ describe('China card', () => {
     assert.ok(out.includes('直接'));
     assert.ok(out.includes('信心 75%'));
     assert.ok(out.includes('中國'));
+  });
+
+  it('no 75% floor when the HQ comes from model memory only (no Source line)', () => {
+    const out = html(
+      createElement(ChinaCard, {
+        result: { ...unconfirmed, confidence: 0.5, relationTier: 'indirect', sources: undefined },
+        t: zh,
+      })
+    );
+    assert.ok(out.includes('中國公司'));
+    assert.ok(out.includes('信心 50%'));
   });
 
   it('Cybex-style German HQ + Chinese majority parent → 中資控股', () => {
@@ -209,8 +226,9 @@ describe('ResultPanel order', () => {
     const iFold = out.indexOf('class="rc-fold"');
     assert.ok(iChina > 0 && iChina < iMade && iMade < iLayers && iLayers < iFold);
     assert.doesNotMatch(out, /<details class="rc-fold"[^>]*open/);
-    // Exactly one tier badge on the page (in the China card).
-    assert.equal(out.split('class="tier-badge ').length - 1, 1);
+    // Exactly one tier pill on the page (in the China card), neutral style.
+    assert.equal(out.split('data-testid="china-tier"').length - 1, 1);
+    assert.equal(out.split('class="tier-badge').length - 1, 0);
   });
 });
 
@@ -270,5 +288,150 @@ describe('China card: brand-own China HQ stays 中國公司', () => {
     const out = renderToStaticMarkup(createElement(ChinaCard, { result: r, t: zh }));
     assert.ok(out.includes('中國公司'));
     assert.ok(!out.includes('產品來源標示為'));
+  });
+});
+
+const live = (name: string) =>
+  JSON.parse(readFileSync(new URL(`./fixtures/${name}.json`, import.meta.url), 'utf8')) as {
+    query: string;
+    result: CheckResult;
+  };
+
+describe('China card fairness (real payloads)', () => {
+  const cybex = live('cybex-melio-live').result;
+  const tapo = live('tapo-live').result;
+  const sheer = live('sheer-live').result;
+  const card = (r: CheckResult) => html(createElement(ChinaCard, { result: r, t: zh }));
+
+  it('neutral pills: no tier badge / alarm class; chips use the plain chip style', () => {
+    for (const r of [cybex, tapo, sheer]) {
+      const out = card(r);
+      assert.doesNotMatch(out, /tier-badge|rc-chip--solid/);
+      assert.match(out, /class="rc-chip rc-tier-chip is-direct" data-testid="china-tier">直接</);
+    }
+  });
+
+  it('footnote at the bottom in zh-Hant (exact) and en', () => {
+    const out = card(tapo);
+    assert.ok(
+      out.includes('此卡只描述公司所在地、持股與製造地，不代表對產品品質、安全或公司的評價。')
+    );
+    assert.ok(out.lastIndexOf('china-footnote') > out.lastIndexOf('rc-reasons'));
+    const en = html(createElement(ChinaCard, { result: tapo, t: createT('en') }));
+    assert.ok(
+      en.includes(
+        'This card only describes where the company is based, who owns it and where the product is made. It is not a judgement of product quality, safety or the company.'
+      )
+    );
+  });
+
+  it('Cybex: control fact once, neutral 控股 (no source states 全資), no 公司總部位於中國', () => {
+    const out = card(cybex);
+    assert.equal(out.split('控股母公司位於中國大陸。').length - 1, 1);
+    assert.ok(!out.includes('報告中有較強的中國大陸股權或控制關聯'));
+    assert.ok(!out.includes('報告中有較弱的關聯'));
+    assert.ok(out.includes('中國 · 控股'));
+    assert.ok(!out.includes('全資'));
+    assert.doesNotMatch(out, /公司總部位於[：:]?\s*中國/);
+    assert.ok(out.includes('信心 95%'));
+  });
+
+  it('Tapo: 中國公司, 總部 + 品牌來源地 lines, no ownership lines, 75% (sourced)', () => {
+    const out = card(tapo);
+    assert.ok(out.includes('中國公司'));
+    assert.ok(out.includes('公司總部位於：中國。'));
+    assert.ok(out.includes('品牌來源地：中國。'));
+    assert.ok(!out.includes('產品來源標示為'));
+    assert.ok(!out.includes('股權或控制關聯'));
+    assert.ok(out.includes('信心 75%'));
+  });
+
+  it('Sheer: 中國製造 chip, one made-in line (barcode), no own confidence chip', () => {
+    const out = card(sheer);
+    assert.ok(out.includes('中國製造'));
+    assert.ok(out.includes('製造地：中國（依條碼比對，見下方製造地卡）'));
+    assert.ok(!out.includes('產品製造／生產地為'));
+    assert.ok(!out.includes('data-testid="china-confidence"'));
+    assert.ok(!out.includes('較弱的關聯'));
+    const label = html(
+      createElement(ChinaCard, {
+        result: { ...sheer, product: { ...sheer.product, madeInBasis: 'label' } },
+        t: zh,
+      })
+    );
+    assert.ok(label.includes('製造地：中國（依包裝標示，見下方製造地卡）'));
+  });
+
+  it('Cybex 製造地 candidates: 較可能（非確認） sits next to the rating word', () => {
+    const out = html(createElement(MadeInCard, { result: cybex, t: zh }));
+    assert.ok(out.includes('較可能（非確認） · 零件／物料'), out);
+    assert.doesNotMatch(out, /(?:較可能|可能) · /);
+  });
+});
+
+describe('model-only made-in (item 9)', () => {
+  // Model says China; web search found nothing; no label.
+  const modelOnly = base({
+    relationTier: 'none',
+    confidence: 0.7,
+    tierReasons: ['explicit_non_cn_geo'],
+    sources: [],
+    product: { name: 'Bottle', madeIn: 'China', notes: ['Some SKUs are made in China'] },
+    company: { name: 'Pigeon', hqCountry: 'Japan' },
+    meta: { searchProvider: 'brave', searchCoo: [] },
+  });
+
+  it('headline 未確認, one 中國 row labelled 模型參考（未經確認）, no %, tier unchanged', () => {
+    const view = buildMadeInView(modelOnly);
+    assert.equal(view.state, 'unconfirmed');
+    assert.deepEqual(view.candidates, [{ label: 'China', rating: 'possible', source: 'model_memory' }]);
+    const out = html(createElement(MadeInCard, { result: modelOnly, t: zh }));
+    assert.ok(out.includes('rc-headline is-unconfirmed">未確認'));
+    assert.ok(out.includes('模型參考（未經確認）'));
+    assert.doesNotMatch(out.slice(out.indexOf('rc-candidates')), /\d+\s*%/);
+    const china = html(createElement(ChinaCard, { result: modelOnly, t: zh }));
+    assert.ok(!china.includes('中國製造'));
+    assert.ok(!china.includes('製造地：'));
+    assert.ok(china.includes('data-testid="china-tier">無關') || china.includes('is-none'));
+  });
+
+  it('country and label share one cell (no separate row); tooltip is tap/keyboard UI excluded from captures', () => {
+    const out = html(createElement(MadeInCard, { result: modelOnly, t: zh }));
+    assert.match(
+      out,
+      /<span class="rc-cand-country is-model"><span class="rc-cand-name">中國<\/span><span class="rc-cand-label" data-testid="model-ref" title="[^"]+">模型參考（未經確認）<\/span><span class="rc-info" data-section-share="ui">/
+    );
+    // aria wiring: button labelled, described by the full sentence, collapsed.
+    const id = out.match(/aria-describedby="([^"]+)"/)?.[1];
+    assert.ok(id);
+    assert.match(out, /<button type="button" class="rc-info-btn" aria-label="說明"/);
+    assert.match(out, /aria-expanded="false"/);
+    assert.ok(
+      out.includes(
+        `id="${id}" role="tooltip" class="rc-info-text" hidden="">未經網頁或包裝標示確認，只是模型的推測；請以包裝上的標示為準。</span>`
+      )
+    );
+  });
+
+  it('HQ echo with no product-specific mention is dropped (#28)', () => {
+    const echo = base({
+      product: { name: 'Bottle', madeIn: 'Japan' },
+      company: { name: 'Pigeon', hqCountry: 'Japan' },
+    });
+    assert.deepEqual(buildMadeInView(echo).candidates, []);
+  });
+
+  it('merges into an existing web row for the same country (no duplicate 中國 rows)', () => {
+    const merged = base({
+      product: {
+        name: 'Bottle',
+        madeIn: '中國',
+        originCandidates: [{ label: 'China', confidence: 0.6, source: 'web_name', rating: 'possible' }],
+      },
+      company: { name: 'Pigeon', hqCountry: 'Japan' },
+    });
+    const rows = buildMadeInView(merged).candidates;
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]?.source, 'web_name');
   });
 });

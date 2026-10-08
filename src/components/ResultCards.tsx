@@ -13,95 +13,104 @@ import type { CheckResult } from '../core/types';
 import { localeOfT, type TFunction } from '../core/i18n';
 import { localizeCountry } from '../core/i18n/countries';
 import { formatTierReason } from '../core/i18n/tierReasons';
-import {
-  buildChinaLinks,
-  chinaCardReasons,
-  companyView,
-  displayTier,
-  isChinaCountry,
-  pickOwner,
-} from './ChinaLink';
+import { buildChinaCard, companyView, isChinaCountry } from './ChinaLink';
 import {
   buildLayerRows,
   buildMadeInView,
   cleanValue,
   type LayerTag,
 } from './resultCards.model';
+import { InfoTip } from './InfoTip';
 import { SectionShare } from './SectionShare';
-import { TierBadge } from './TierBadge';
 
 function pct(n?: number): number | null {
   return typeof n === 'number' && Number.isFinite(n) ? Math.round(n * 100) : null;
 }
 
 export function ChinaCard({ result, t }: { result: CheckResult; t: TFunction }) {
-  const { chip, hqFolded } = buildChinaLinks(result);
-  const shown = displayTier(result);
-  const conf = pct(shown.confidence);
+  const v = buildChinaCard(result);
+  const conf = pct(v.confidence);
   const scope = result.geoScope === 'greater_china' ? 'greater_china' : 'prc';
-  const c = result.company;
+  const company = result.company?.name?.trim() || result.product?.brand?.trim() || '';
+  const title = t('check.chinaLink.title');
+  const view = companyView(result);
+
   // Folded answer (company "Goodbaby International / Cybex", HQ China, brand
   // origin Germany): that China HQ is the parent's, so the brand's own HQ is
   // shown as unconfirmed and the China HQ sits on the parent row.
-  const hq = hqFolded ? '' : cleanValue(c?.hqCountry);
-  const company = c?.name?.trim() || result.product?.brand?.trim() || '';
-  const parents = (c?.parents ?? []).filter((x) => x.name?.trim());
-  const picked = pickOwner(result);
-  const fallback = parents[0];
-  const owner = picked
-    ? picked
-    : fallback
-      ? { name: fallback.name.trim(), country: cleanValue(fallback.country), control: fallback.control }
-      : undefined;
-  const reasons = chinaCardReasons(result.tierReasons, { hqFolded });
-  const brandOrigin = cleanValue(result.product?.originCountry);
-  const title = t('check.chinaLink.title');
-
   const rows: Array<{ key: string; label: string; value: string; china: boolean; detail?: string }> = [
     {
       key: 'hq',
       label: t('check.chinaLink.hq'),
-      value: hq ? localizeCountry(t, hq) : t('check.chinaLink.unconfirmed'),
-      china: Boolean(hq) && isChinaCountry(hq, scope),
-      detail: hqFolded
+      value: v.hq ? localizeCountry(t, v.hq) : t('check.chinaLink.unconfirmed'),
+      china: Boolean(v.hq) && isChinaCountry(v.hq, scope),
+      detail: v.hqFolded
         ? [company, t('check.chinaLink.hqParentNote')].filter(Boolean).join(' · ')
         : company || undefined,
     },
   ];
-  if (owner) {
-    const oc = cleanValue(owner.country);
-    const control =
-      owner.control && owner.control !== 'unknown' ? t(`check.graphEdge.${owner.control}`) : '';
+  if (v.owner) {
+    const oc = cleanValue(v.owner.country);
+    const stake =
+      v.stake.kind === 'stated'
+        ? t(`check.graphEdge.${v.stake.control}`)
+        : v.stake.kind === 'neutral'
+          ? t('check.chinaLink.controlling')
+          : '';
     rows.push({
       key: 'owner',
       label: t('check.chinaLink.owner'),
-      value: owner.name.trim(),
+      value: v.owner.name,
       china: Boolean(oc) && isChinaCountry(oc, scope),
-      detail: [oc ? localizeCountry(t, oc) : '', control.startsWith('check.') ? '' : control]
-        .filter(Boolean)
-        .join(' · ') || undefined,
+      detail: [oc ? localizeCountry(t, oc) : '', stake].filter(Boolean).join(' · ') || undefined,
     });
   }
   rows.push({
     key: 'brandOrigin',
     label: t('check.chinaLink.brandOrigin'),
-    value: brandOrigin ? localizeCountry(t, brandOrigin) : t('check.chinaLink.unconfirmed'),
-    china: Boolean(brandOrigin) && isChinaCountry(brandOrigin, scope),
+    value: v.brandOrigin ? localizeCountry(t, v.brandOrigin) : t('check.chinaLink.unconfirmed'),
+    china: Boolean(v.brandOrigin) && isChinaCountry(v.brandOrigin, scope),
   });
+
+  const lines: Array<{ key: string; text: string; pointer?: boolean }> = [];
+  for (const r of v.reasons) {
+    const line =
+      r.kind === 'parent'
+        ? { key: 'parent', text: t('check.chinaLink.reasonParent') }
+        : r.kind === 'brandOrigin'
+          ? { key: 'brandOrigin', text: t('check.chinaLink.reasonBrandOrigin', { place: localizeCountry(t, r.country) }) }
+          : r.kind === 'madeIn'
+            ? {
+                key: 'madeIn',
+                text: t(
+                  r.basis === 'label' ? 'check.chinaLink.madeInLineLabel' : 'check.chinaLink.madeInLineBarcode',
+                  { place: localizeCountry(t, r.country) }
+                ),
+              }
+            : r.kind === 'pointer'
+              ? { key: 'pointer', text: t('check.chinaLink.madeInBelow'), pointer: true }
+              : { key: r.code, text: formatTierReason(r.code, t, view) };
+    // One bullet per fact: identical wording is shown once.
+    if (!lines.some((l) => l.text === line.text)) lines.push(line);
+  }
 
   return (
     <SectionShare label={title} t={t} className="rc-card rc-china">
       <div data-testid="china-card">
         <p className="rc-eyebrow">{title}</p>
         <div className="rc-verdict">
-          {chip ? (
-            <span className={`rc-chip rc-chip--solid rc-china-chip is-${chip}`} data-testid="china-chip">
+          {v.chips.map((chip) => (
+            <span key={chip} className={`rc-chip rc-china-chip is-${chip}`} data-testid="china-chip">
               {t(`check.chinaLink.${chip}`)}
             </span>
-          ) : null}
-          <TierBadge tier={shown.tier} label={t(`tier.${shown.tier}`)} size="lg" />
+          ))}
+          <span className={`rc-chip rc-tier-chip is-${v.tier}`} data-testid="china-tier">
+            {t(`tier.${v.tier}`)}
+          </span>
           {conf != null ? (
-            <span className="rc-chip">{t('check.confidence', { n: conf })}</span>
+            <span className="rc-chip" data-testid="china-confidence">
+              {t('check.confidence', { n: conf })}
+            </span>
           ) : null}
         </div>
         <dl className="rc-rows">
@@ -115,18 +124,18 @@ export function ChinaCard({ result, t }: { result: CheckResult; t: TFunction }) 
             </div>
           ))}
         </dl>
-        {reasons.shown.length || reasons.madeInHidden ? (
+        {lines.length ? (
           <ul className="rc-reasons" aria-label={t('check.reasons')}>
-            {reasons.shown.map((r) => (
-              <li key={r}>{formatTierReason(r, t, companyView(result))}</li>
-            ))}
-            {reasons.madeInHidden ? (
-              <li key="made-in-below" className="rc-reasons-pointer">
-                {t('check.chinaLink.madeInBelow')}
+            {lines.map((l) => (
+              <li key={l.key} className={l.pointer ? 'rc-reasons-pointer' : undefined}>
+                {l.text}
               </li>
-            ) : null}
+            ))}
           </ul>
         ) : null}
+        <p className="rc-footnote" data-testid="china-footnote">
+          {t('check.chinaLink.footnote')}
+        </p>
       </div>
     </SectionShare>
   );
@@ -197,14 +206,35 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
             <p className="rc-sub">{t('check.rc.candidatesTitle')}</p>
             {view.candidates.length ? (
               <ul>
-                {view.candidates.map((c) => (
-                  <li key={`${c.label}-${c.source}`}>
-                    <span>{localizeCountry(t, c.label)}</span>
-                    <span className="rc-cand-meta">
-                      {t(`check.candidateRating.${c.rating}`)} · {t(`check.candidateSource.${c.source}`)}
-                    </span>
-                  </li>
-                ))}
+                {view.candidates.map((c) => {
+                  const model = c.source === 'model_memory';
+                  const hedged = c.rating === 'likely' || c.rating === 'possible';
+                  return (
+                    <li key={`${c.label}-${c.source}`} className={model ? 'is-model' : undefined}>
+                      {/* Country + model label share one cell; the label may wrap inside it, never apart. */}
+                      <span className={`rc-cand-country${model ? ' is-model' : ''}`}>
+                        <span className="rc-cand-name">{localizeCountry(t, c.label)}</span>
+                        {model ? (
+                          <>
+                            <span
+                              className="rc-cand-label"
+                              data-testid="model-ref"
+                              title={t('check.rc.modelRefHelp')}
+                            >
+                              {t('check.rc.modelRef')}
+                            </span>
+                            <InfoTip label={t('check.rc.moreInfo')} text={t('check.rc.modelRefHelp')} />
+                          </>
+                        ) : null}
+                      </span>
+                      <span className="rc-cand-meta">
+                        {t(`check.candidateRating.${c.rating}`)}
+                        {hedged ? t('check.rc.notConfirmed') : null}
+                        {model ? null : <> · {t(`check.candidateSource.${c.source}`)}</>}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <p className="rc-empty">{t('check.rc.noCandidates')}</p>
@@ -251,7 +281,10 @@ export function LayersCard({ result, t }: { result: CheckResult; t: TFunction })
               <div key={r.key} className="rc-row rc-layer-row">
                 <dt className="rc-row-label">{t(LAYER_LABEL[r.key])}</dt>
                 <dd className="rc-row-value">{value}</dd>
-                <span className={`rc-tag is-${r.tag}`}>{t(TAG_KEY[r.tag])}</span>
+                <span className={`rc-tag is-${r.tag}`}>
+                  {t(TAG_KEY[r.tag])}
+                  {r.tag === 'likely' ? t('check.rc.notConfirmed') : null}
+                </span>
               </div>
             );
           })}

@@ -285,6 +285,18 @@ function copyStyles(from: Document, to: Document, cssWidth: number): Promise<voi
 }
 
 /**
+ * Drop on-screen UI from a capture clone: Save / Share buttons and ⓘ info
+ * tips with their (possibly open) tooltip text. Exported for tests.
+ */
+export const CAPTURE_UI_SELECTOR = '[data-section-share="ui"], [role="tooltip"]';
+
+export function stripCaptureUi(root: {
+  querySelectorAll(selector: string): Iterable<{ remove(): void }>;
+}): void {
+  for (const node of [...root.querySelectorAll(CAPTURE_UI_SELECTOR)]) node.remove();
+}
+
+/**
  * Hidden phone viewport. Media queries follow the iframe, not the parent window
  * and not the element's CSS width.
  */
@@ -330,9 +342,7 @@ async function mountPhoneCapture(
     doc.body.style.cssText = box;
 
     const clone = source.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll('[data-section-share="ui"]').forEach((node) => {
-      node.remove();
-    });
+    stripCaptureUi(clone);
     doc.body.appendChild(clone);
     if (doc.fonts?.ready) await settle(doc.fonts.ready, 2000);
 

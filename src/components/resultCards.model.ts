@@ -10,7 +10,8 @@ import {
   splitSourceLine,
 } from '../../functions/_lib/sourceLine';
 import type { CheckResult } from '../core/types';
-import { brandHqFolded, pickOwner } from './ChinaLink';
+import { normalizeRegion } from '../../functions/_lib/regions';
+import { brandHqFolded, companyFactsSourced, confirmedMadeIn, pickOwner } from './ChinaLink';
 
 const VAGUE_RE =
   /^(unknown|n\/?a|na|none|null|unclear|not\s+(known|stated|confirmed)|unconfirmed|未知|不明|不詳|不清楚|未確認|未确认|-|—)?$/i;
@@ -48,6 +49,62 @@ function sameLabel(a?: string, b?: string): boolean {
   return Boolean(a && b && a.trim().toLowerCase() === b.trim().toLowerCase());
 }
 
+type CandRow = MadeInView['candidates'][number];
+
+function sameCountryLabel(a: string, b: string): boolean {
+  if (sameLabel(a, b)) return true;
+  const ra = normalizeRegion(a);
+  return ra !== 'UNKNOWN' && ra === normalizeRegion(b);
+}
+
+const RATING_RANK: Record<string, number> = { confirmed: 4, likely: 3, possible: 2, mentioned: 1 };
+
+/**
+ * 查到的產地候選（未確認）. One row per country. A model-only made-in (no
+ * barcode page, no label) is a 'possible' 模型參考 row only:
+ * - an HQ / manufacturer-country echo with no product-specific mention is
+ *   dropped (#28),
+ * - a web row for the same country absorbs it (no duplicate 中國 rows).
+ * Older cached answers may carry it as madeIn or a 'confirmed_coo' candidate.
+ */
+function candidateRows(result: CheckResult, candidates: Candidate[], unconfirmedMadeIn: string): CandRow[] {
+  const rows: CandRow[] = [];
+  const put = (row: CandRow) => {
+    const i = rows.findIndex((r) => sameCountryLabel(r.label, row.label));
+    if (i === -1) {
+      rows.push(row);
+      return;
+    }
+    const prev = rows[i]!;
+    // A web row keeps its own label; otherwise the stronger rating wins.
+    if (prev.source === 'web_name') return;
+    if (row.source === 'web_name' || (RATING_RANK[row.rating] ?? 0) > (RATING_RANK[prev.rating] ?? 0)) {
+      rows[i] = row;
+    }
+  };
+  const modelLabels: string[] = [];
+  for (const c of candidates) {
+    if (c.source === 'confirmed_coo' || c.source === 'model_memory') {
+      modelLabels.push(c.label);
+      continue;
+    }
+    if (NOT_MADE_IN.has(String(c.source))) continue;
+    put({ label: c.label, rating: c.rating, source: c.source });
+  }
+  if (unconfirmedMadeIn) modelLabels.push(unconfirmedMadeIn);
+  const hq = cleanValue(result.company?.hqCountry);
+  const mfg = cleanValue(result.product?.manufacturerCountry);
+  for (const label of modelLabels) {
+    const echo = (hq && sameCountryLabel(label, hq)) || (mfg && sameCountryLabel(label, mfg));
+    const productSpecific = rows.some((r) => sameCountryLabel(r.label, label));
+    if (echo && !productSpecific) continue;
+    put({ label, rating: 'possible', source: 'model_memory' });
+  }
+  return rows
+    .sort((a, b) => (RATING_RANK[b.rating] ?? 0) - (RATING_RANK[a.rating] ?? 0))
+    .slice(0, 4);
+}
+
 export function buildMadeInView(result: CheckResult): MadeInView {
   const p = result.product;
   const meta = result.meta;
@@ -65,13 +122,9 @@ export function buildMadeInView(result: CheckResult): MadeInView {
     return label ? { label, url: parts.url, country } : undefined;
   };
 
-  if (madeIn) {
-    const basis: MadeInBasis | undefined =
-      p?.madeInBasis === 'barcode' || p?.madeInBasis === 'label'
-        ? p.madeInBasis
-        : meta?.searchMatch === 'barcode' && searchCoo.some((c) => c.status === 'confirmed')
-          ? 'barcode'
-          : undefined;
+  const made = confirmedMadeIn(result);
+  if (made) {
+    const basis: MadeInBasis = made.basis;
     const confirmed = candidates.find((c) => c.rating === 'confirmed');
     const barcodeHit = searchCoo.find((c) => c.status === 'confirmed' && c.basis === 'barcode');
     return {
@@ -117,10 +170,7 @@ export function buildMadeInView(result: CheckResult): MadeInView {
     };
   }
 
-  const rows = candidates
-    .filter((c) => !NOT_MADE_IN.has(String(c.source)))
-    .slice(0, 4)
-    .map((c) => ({ label: c.label, rating: c.rating, source: c.source }));
+  const rows = candidateRows(result, candidates, madeIn);
   return {
     state: 'unconfirmed',
     basis: rows.some((c) => c.source === 'web_name') ? 'name' : undefined,
@@ -147,7 +197,8 @@ export type LayerRowView = {
 export function buildLayerRows(result: CheckResult): LayerRowView[] {
   const p = result.product;
   const c = result.company;
-  const web = result.knowledgeBasis === 'web_enriched';
+  // 確認 = web research with a Source line (same rule as the company floor).
+  const web = companyFactsSourced(result);
   const factTag: LayerTag = web ? 'confirmed' : 'mentioned';
   const rows: LayerRowView[] = [];
 

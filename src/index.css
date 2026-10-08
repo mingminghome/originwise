@@ -5091,10 +5091,19 @@ p {
   border-color: var(--text);
   color: var(--bg-card);
 }
-.rc-china-chip {
-  font-size: 0.95rem;
+/* China card chips and the tier pill are factual labels: the same neutral
+   pill as the confidence chip (no alarm colour). */
+.rc-china-chip,
+.rc-tier-chip {
   font-weight: 700;
-  padding: 0.3rem 0.8rem;
+}
+.rc-footnote {
+  margin: 0.65rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--text-muted);
 }
 .rc-rows {
   margin: 0;
@@ -5210,7 +5219,63 @@ p {
   font-size: 0.92rem;
   font-weight: 600;
 }
+/* Country + 模型參考（未經網頁或標示確認） share one cell: the label may wrap
+   to a second line inside it, never into a separate row, never truncated
+   (also in the saved 780px image). */
+.rc-cand-country {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.4rem;
+  row-gap: 0.1rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.rc-cand-name {
+  white-space: nowrap;
+}
+.rc-cand-label {
+  font-weight: 500;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.rc-info {
+  display: contents;
+}
+.rc-info-btn {
+  appearance: none;
+  border: 0;
+  background: none;
+  margin: 0;
+  padding: 0.05rem 0.25rem;
+  min-width: 1.6rem;
+  min-height: 1.6rem;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.rc-info-btn:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+/* Opens in the flow under the label inside the same cell: never floats past
+   the card edge, never truncated. */
+.rc-info-text {
+  flex-basis: 100%;
+  font-weight: 500;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.rc-info-text[hidden] {
+  display: none;
+}
 .rc-cand-meta {
+  flex: 0 0 auto;
   font-weight: 500;
   font-size: 0.82rem;
   color: var(--text-muted);
