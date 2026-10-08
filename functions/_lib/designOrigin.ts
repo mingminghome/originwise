@@ -9,7 +9,7 @@
  *
  * Client-safe (no Worker APIs): the cards use it on cached answers too.
  */
-import { COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
+import { COUNTRY_NAME_PATTERNS, PART_FIELD_WORDS, canonicalCountry } from './countryLabel';
 
 export type DesignKind = 'design' | 'brand';
 
@@ -261,8 +261,35 @@ function countryIn(phrase: string): string | undefined {
 }
 
 const MADE_IN_NEARBY = /\bmade[\s-]?in\b|\bmanufactured[\s-]?in\b|製造|制造|中國製|中国製|中国制造|中國製造/i;
+/** A part word right before a made-in on its line ("motor made in China", 「電池：中國製」). */
+const PART_BEFORE_MADE = new RegExp(
+  `(?:${PART_FIELD_WORDS.join('|')}|(?<![A-Za-z])(?:parts?|components?|motors?|batter(?:y|ies)|fabrics?|materials?|lens(?:es)?|chips?|movements?|electronics|accessor(?:y|ies)))[ \t]*[:：]?[ \t]*$`,
+  'i'
+);
+/** A whole-product made-in follows (not only a part's: "Origin: Japan; motor made in China"). */
+function wholeMadeInFollows(rest: string): boolean {
+  for (const m of rest.matchAll(new RegExp(MADE_IN_NEARBY.source, 'gi'))) {
+    const head = rest.slice(0, m.index!);
+    const line = head.slice(Math.max(head.lastIndexOf('\n'), head.search(/[.;；。](?=[^.;；。]*$)/)) + 1);
+    if (!PART_BEFORE_MADE.test(line)) return true;
+  }
+  return false;
+}
 /** Bare "Origin: …" field (not Country/Brand/Design of origin). */
 const BARE_ORIGIN_FIELD = /(?<!(?:country|brand|design)\s+(?:of\s+)?)(?<![A-Za-z])origin\s*[:：][^\n]*/gi;
+/** The Origin value up to a sentence break; a dot inside a name ("U.S.A") or a comma does not end it. */
+const ORIGIN_TO_BREAK = /^origin\s*[:：](?:[^\n.;；。]|\.(?=\S))*/i;
+/**
+ * The Origin part of a bare Origin: line that gives way to a Made in: the whole line when a
+ * made-in follows on a later line (round 17); "Origin: Germany. Made in China" on one line
+ * only up to the break, and only before a whole-product made-in (not "…; motor made in China").
+ */
+function originGivingWay(line: string, after: string): string | undefined {
+  if (MADE_IN_NEARBY.test(after)) return line;
+  const short = ORIGIN_TO_BREAK.exec(line)?.[0];
+  if (short && short.length < line.length && /^[ \t]*[.;；。]/.test(line.slice(short.length)) && wholeMadeInFollows(line.slice(short.length))) return short;
+  return undefined;
+}
 
 /**
  * The text with every design / brand phrase blanked (same length, so offsets
@@ -278,8 +305,9 @@ export function stripDesignPhrases(text: string): string {
     // Only when an explicit Made in claim follows ("Origin: Germany\nMade in China"), not
     // when Made in came first ("Made in USA\nOrigin: China") or sits inside the Origin
     // value ("Origin: China, made in Germany").
-    if (!MADE_IN_NEARBY.test(s.slice(offset + m.length))) return m;
-    return m.replace(/[^\n]/g, ' ');
+    const part = originGivingWay(m, s.slice(offset + m.length));
+    if (!part) return m;
+    return part.replace(/[^\n]/g, ' ') + m.slice(part.length);
   });
   const found = spans(s);
   if (!found.length) return s;
@@ -301,8 +329,9 @@ export function designMentions(text: string): DesignMention[] {
   const s = String(text ?? '');
   const out: DesignMention[] = [];
   for (const m of s.matchAll(BARE_ORIGIN_FIELD)) {
-    if (!MADE_IN_NEARBY.test(s.slice(m.index! + m[0].length))) continue;
-    const phrase = m[0].trim();
+    const part = originGivingWay(m[0], s.slice(m.index! + m[0].length));
+    if (!part) continue;
+    const phrase = part.trim();
     for (const country of countriesIn(phrase)) {
       if (out.some((d) => d.country === country && d.kind === 'brand')) continue;
       out.push({ country, kind: 'brand', phrase: phrase.slice(0, PHRASE_MAX) });

@@ -50,6 +50,8 @@ export const PART_FIELD_WORDS = [
   '芯片', '晶片', '鏡頭', '镜头', '機頭', '机头',
   // Box, hang tag, power supply / cord, housing (round 12).
   '包裝盒', '包装盒', '吊牌', '電源', '电源', '電源線', '电源线', '外殼', '外壳',
+  // Charger / battery pack (round 19): parts like 電池.
+  '充電器', '充电器', 'バッテリー',
 ];
 /**
  * Lookbehind: not right after a brand / design / part word (an optional 原 between).

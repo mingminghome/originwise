@@ -13,7 +13,7 @@
 
 import { isSearchResultUrl } from '../sourceLine';
 import { MADE_IN_CODE_LABEL, NOT_PRODUCT_FIELD, canonicalCountry, madeInCodeMatches } from '../countryLabel';
-import { madeInValueCountry, settleCooFields } from '../cooPriority';
+import { madeInValueCountry, partFieldMatches, settleCooFields } from '../cooPriority';
 import { COUNTRY_LIST_LATIN } from '../countryNames';
 import { designMentions, quoteBacksCountry, stripDesignPhrases } from '../designOrigin';
 import { extractJsonObject } from '../jsonExtract';
@@ -1013,6 +1013,7 @@ const MADE_IN_NAME_ANY_CASE = new RegExp(
 export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
   const out: CooClaim[] = [];
   pages.forEach((p, idx) => {
+    const pageFrom = out.length;
     // Design / brand wording is blanked first ("Designed in Germany, made in China" → China);
     // then a field value with a second country is settled: 「原産国：中国（日本企画）」
     // gives China; 「產地：德國 中國」 and 「產地：中國 日本製」 give one claim per side,
@@ -1044,8 +1045,14 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
     const seen = new Set<string>();
     // One claim per made-in cue: "MADE IN HONG KONG" is Hong Kong, not also "HONG".
     const cueAt = new Set<number>();
+    // A whole-product 爭議 side quotes its own claim (two made-in lines far apart); a bare
+    // 〜製 side (span null) is no page claim, as before.
     const fieldSides = settled.disputes.flatMap((d) =>
-      d.sides.map((side) => ({ 0: pre.slice(d.start, d.end), 1: side }))
+      d.sides.flatMap((side, i) => {
+        if (!d.spans) return [{ 0: pre.slice(d.start, d.end), 1: side }];
+        const span = d.spans[i];
+        return span ? [{ 0: pre.slice(span.start, span.end), 1: side, index: span.start }] : [];
+      })
     );
     const found: Array<{ 0: string; 1?: string; index?: number }> = [
       ...fieldSides,
@@ -1080,6 +1087,20 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
         sourceType: 'retailer',
       });
       if (out.length >= 8) return;
+    }
+    // Beside a USA-only claim, a part field (「電池產地：中國」) is a side, as on de6dba0
+    // (the label reads it the same way); next to any other made-in it is never read.
+    const own = out.slice(pageFrom);
+    if (own.length && own.every((c) => canonicalCountry(c.country) === canonicalCountry('United States'))) {
+      for (const f of partFieldMatches(t)) {
+        const country = madeInValueCountry(f.country);
+        if (!country) continue;
+        const key = canonicalCountry(country) ?? country.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ country, quote: pre.slice(f.index, f.index + f.length).trim().slice(0, 80), page: idx + 1, sourceType: 'retailer' });
+        if (out.length >= 8) return;
+      }
     }
   });
   return out;

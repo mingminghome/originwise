@@ -450,6 +450,8 @@ const PART_AFTER = new RegExp(
   `^\\s*(?:国内|國內)?(?:工場|工廠|工厂|廠|厂)?(?:製造|制造|製|制|生產|生产|生産|產|产|産)(?:の|的)?\\s*${PART_WORD}`,
   'i'
 );
+/** A 'Word：' spec field earlier on the line (the claim belongs to that field). */
+const OTHER_FIELD_BEFORE = /[^\s:：][ \t]*[:：]/;
 /** A CJK part field right before a value (「電池：」「配件產地：」). */
 const CJK_PART_FIELD_BEFORE = new RegExp(`(?:${PART_FIELD_WORDS.join('|')})[^\\n：:]{0,4}[:：]\\s*$`);
 /** A part word right after a CJK made-in (「中國製部品」「日本製モーター」). */
@@ -490,7 +492,16 @@ export function madeInValueCountry(value: string): string | undefined {
   return m ? normalizeCooLabel(m[1]!) : undefined;
 }
 
-export type FieldDispute = { sides: string[]; start: number; end: number };
+export type FieldDispute = {
+  sides: string[];
+  start: number;
+  end: number;
+  /**
+   * Two whole-product claims (see resolveFieldValues): each side's own claim span, which
+   * the page quotes; null for a bare CJK 〜製 side, which the page never reads.
+   */
+  spans?: Array<{ start: number; end: number } | null>;
+};
 type FieldPass = { text: string; disputes: FieldDispute[] };
 
 /** A later country in a field value is its own made-in claim (a standalone clause). */
@@ -704,6 +715,57 @@ function resolveFieldValues(input: string): FieldPass {
     for (const f of whole) blank(f.start, f.end);
     disputes.push({ sides: countries, start: whole[0]!.start, end: whole[whole.length - 1]!.end });
   }
+  // Any two whole-product made-in claims still left that name different countries
+  // ("Made in USA\nMade in Vietnam", 「日本製\n中國製」, "Made in USA\nOrigin: China"):
+  // a 爭議 on the label, as on the page; the label never picks one by English name.
+  // Same-country aliases merge (Made in China + 中國製造). Part claims ("Battery: made
+  // in China", 「電池：中國製」「中國製電池」) and negated ones are not whole-product.
+  {
+    const now = chars.join('');
+    const claims: Array<{ country: string; start: number; end: number; suffix: boolean }> = [];
+    for (const e of now.matchAll(new RegExp(COO_LINE.source, 'gi'))) {
+      const label = normalizeCooLabel(e[1]!);
+      if (normalizeRegion(label) === 'UNKNOWN') continue;
+      const lineHead = now.slice(now.lastIndexOf('\n', e.index!) + 1, e.index!);
+      if (PART_BEFORE.test(lineHead) || CJK_PART_FIELD_BEFORE.test(lineHead)) continue;
+      if (/\b(?:not|never)[ \t]+$/i.test(lineHead)) continue;
+      // After another spec field on its line (「乳首：シリコーンゴム 中国工場製」): a component.
+      if (OTHER_FIELD_BEFORE.test(lineHead)) continue;
+      claims.push({ country: label, start: e.index!, end: e.index! + e[0].length, suffix: false });
+    }
+    // "Made in UK" / "MADE IN CN": the made-in codes, as the claim reader reads them.
+    for (const c of madeInCodeMatches(now)) {
+      const lineHead = now.slice(now.lastIndexOf('\n', c.index) + 1, c.index);
+      if (PART_BEFORE.test(lineHead) || CJK_PART_FIELD_BEFORE.test(lineHead) || OTHER_FIELD_BEFORE.test(lineHead)) continue;
+      if (/\b(?:not|never)[ \t]+$/i.test(lineHead)) continue;
+      claims.push({ country: MADE_IN_CODE_LABEL[c.code]!, start: c.index, end: c.index + c.length, suffix: false });
+    }
+    for (const e of now.matchAll(new RegExp(COO_SUFFIX.source, 'g'))) {
+      const head = now.slice(now.lastIndexOf('\n', e.index!) + 1, e.index!);
+      const tail = now.slice(e.index! + e[0].length);
+      if (/(?:非|不是|並非|并非)$/.test(head) || /^\s*(?:では|じゃ)(?:ありません|ない|なく)/.test(tail)) continue;
+      if (/^(?:業|业|品(?:牌|取扱|取り扱|販売店|専門店))/.test(tail)) continue;
+      if (PART_BEFORE.test(head) || CJK_PART_FIELD_BEFORE.test(head) || PART_AFTER_SUFFIX.test(tail)) continue;
+      if (OTHER_FIELD_BEFORE.test(head)) continue;
+      // 「日本製商品ではありません」「日本製品ではない」: negated, no claim.
+      if (/^[^\n。．.、，,]{0,6}?(?:では|じゃ)(?:ありません|ない|なく)/.test(tail)) continue;
+      const label = normalizeCooLabel(CJK_TO_LABEL[e[1]!] ?? e[1]!);
+      if (normalizeRegion(label) === 'UNKNOWN') continue;
+      claims.push({ country: label, start: e.index!, end: e.index! + e[0].length, suffix: true });
+    }
+    claims.sort((x, y) => x.start - y.start);
+    const firsts = claims.filter((c, i) => claims.findIndex((o) => canonCountry(o.country) === canonCountry(c.country)) === i);
+    if (firsts.length >= 2) {
+      for (const c of claims) blank(c.start, c.end);
+      const shown = firsts.slice(0, 4);
+      disputes.push({
+        sides: shown.map((c) => c.country),
+        start: claims[0]!.start,
+        end: claims[claims.length - 1]!.end,
+        spans: shown.map((c) => (c.suffix ? null : { start: c.start, end: c.end })),
+      });
+    }
+  }
   return { text: chars.join(''), disputes };
 }
 
@@ -720,9 +782,20 @@ export function cooFieldDisputes(text: string): string[][] {
   return resolveFieldValues(stripDesignPhrases(String(text || ''))).disputes.map((d) => d.sides);
 }
 
+/** Sides of a whole-product 爭議 ("Made in USA\nMade in Bangladesh"): each one an explicit claim. */
+export function wholeClaimDisputeSides(text: string): string[] {
+  return resolveFieldValues(stripDesignPhrases(String(text || '')))
+    .disputes.filter((d) => d.spans)
+    .flatMap((d) => d.sides);
+}
+
 export function extractCooClaimsFromText(text: string): CooClaim[] {
   // Design / brand wording is never a COO claim ("Designed in Germany, made in China" → China).
-  const raw = resolveFieldValues(stripDesignPhrases(String(text || ''))).text;
+  const pass = resolveFieldValues(stripDesignPhrases(String(text || '')));
+  // Two whole-product claims disagree: that 爭議 is the answer; a part claim left over
+  // ("Made in USA\n電池：中國製\nMade in Mexico") never headlines it.
+  if (pass.disputes.some((d) => d.spans)) return [];
+  const raw = pass.text;
   if (!raw.trim()) return [];
   const out: CooClaim[] = [];
   const seen = new Set<string>();
@@ -796,6 +869,14 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     }
   }
   return out;
+}
+/** Part fields (「電池產地：中國」) with their country, for the page beside a USA-only claim. */
+export function partFieldMatches(text: string): Array<{ country: string; index: number; length: number }> {
+  return [...String(text ?? '').matchAll(partFieldClaim())].map((p) => ({
+    country: normalizeCooLabel(p[1]!),
+    index: p.index!,
+    length: p[0].length,
+  }));
 }
 let partFieldClaimRe: RegExp | undefined;
 const partFieldClaim = () =>

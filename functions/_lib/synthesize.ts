@@ -40,6 +40,7 @@ import {
   applyCooPriority,
   blankVerbFormMakers,
   cooFieldDisputes,
+  wholeClaimDisputeSides,
   extractCooClaimsFromText,
   usPlacesAsUsa,
 } from './cooPriority';
@@ -448,7 +449,14 @@ function collectOriginCandidates(
   for (const n of p.notes ?? []) {
     // Design / brand wording (「品牌源自德國」, "Engineered in Germany") is not a candidate.
     // 「德國製造於中國」: only 中國 is the made-in; 德國 is not even a mention.
-    for (const label of extractCountryLabelsFromText(blankVerbFormMakers(stripDesignPhrases(String(n))))) {
+    // A side of a whole-product 爭議 ("Made in USA\nMade in Bangladesh") is a mention even
+    // when the free-text name list does not know it: no side is dropped from the note.
+    const mentioned = extractCountryLabelsFromText(blankVerbFormMakers(stripDesignPhrases(String(n))));
+    for (const side of wholeClaimDisputeSides(String(n))) {
+      const label = matchCountryLabel(side) || side;
+      if (!mentioned.some((m) => sameCountry(m, label))) mentioned.push(label);
+    }
+    for (const label of mentioned) {
       if (out.get(label)?.rating === 'confirmed') continue;
       const echo = echoCountries.some((c) => sameCountry(label, c));
       if (echo && !out.has(label) && !notesNameMadeIn([n], label)) continue;
