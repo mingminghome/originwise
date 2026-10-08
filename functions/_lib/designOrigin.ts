@@ -83,6 +83,7 @@ const FORWARD_CUES = new RegExp(
     '(?:設計|设计|研發|研发|開發|开发|研製|研制)(?:中心|團隊|团队)?(?:於|于|自|在|位於|位于|設於|设于)',
     '(?:品牌|設計|设计|技術|技术)(?:源自|來自|来自|源於|源于|發源於|发源于|創立於|创立于)',
     '(?:總部|总部)(?:設於|设于|位於|位于|在)',
+    '(?:創立|创立|成立|創辦|创办|創建|创建)(?:於|于)',
     'デザイン(?:は|：|:)',
   ].join('|'),
   'gi'
@@ -92,7 +93,7 @@ const FORWARD_CUES = new RegExp(
 const PREFIX_CUES = new RegExp(
   [
     `\\b(?:${EN_COUNTRY})[\\s-]+(?:engineering|engineered|design|designed|designs|brand|brands|company|technology|heritage|developed|innovation|r\\s*&\\s*d)\\b`,
-    `(?:${CJK_COUNTRY})(?:的)?(?:設計|设计|研發|研发|工程|工藝|工艺|技術|技术|品牌|血統|血统|デザイン|ブランド|發源|发源)`,
+    `(?:${CJK_COUNTRY})(?:的)?(?:設計|设计|研發|研发|工程|工藝|工艺|技術|技术|品牌|廠牌|厂牌|廠商|厂商|公司|企業|企业|血統|血统|デザイン|ブランド|メーカー|發源|发源)`,
   ].join('|'),
   'gi'
 );
@@ -102,12 +103,21 @@ const PREFIX_CUES = new RegExp(
  * semicolon, "but", or a made-in word (a made-in clause is never eaten).
  */
 const PHRASE_HARD_END =
-  /[;；。！!？?\n|]|\.\s|\.$|\bbut\b|\bwhile\b|\bmade\s*in\b|\bmanufactured\b|\bassembled\b|\bproduced\b|\bcountry\s+of\s+origin\b|但|製造|制造|產地|产地|組裝|组装|生產|生产|原產|原产|原産|生産|[国國]製/i;
+  /[;；。！!？?\n|]|\.\s|\.$|\bbut\b|\bwhile\b|\bmade\b|\bmanufactured\b|\bassembled\b|\bproduced\b|\bcountry\s+of\s+origin\b|但|製造|制造|產地|产地|組裝|组装|生產|生产|原產|原产|原産|生産/i;
+/**
+ * A country that starts a made-in clause: 「中國製造」「台灣製」「中國生產」,
+ * "Germany-made". The phrase ends before it, so it is never eaten
+ * (「設計於德國中國製造」 → design 德國, made-in 中國).
+ */
+const MADE_COUNTRY = new RegExp(
+  `(?:${CJK_COUNTRY})\\s*(?:工場|工厂|廠|厂)?(?:製|制造|生產|生产|生産|產(?![品業])|产(?![品业]))|\\b(?:${EN_COUNTRY})[\\s-]+made\\b(?!\\s+in\\b)`,
+  'i'
+);
 /** A clause break: where a phrase with no country in it ends. */
 const PHRASE_SOFT_END = /[,，、（(]/;
 const PHRASE_MAX = 80;
 
-const BRAND_CUE = /brand|company|headquarter|based|founded|established|品牌|ブランド|總部|总部|源自|來自|来自|源於|源于|發源|发源|創立|创立|血統|血统|heritage/i;
+const BRAND_CUE = /brand|company|headquarter|based|founded|established|品牌|廠牌|厂牌|廠商|厂商|公司|企業|企业|ブランド|メーカー|總部|总部|源自|來自|来自|源於|源于|發源|发源|創立|创立|成立|創辦|创办|創建|创建|血統|血统|heritage/i;
 
 type Span = { start: number; end: number; prefix: boolean };
 
@@ -119,7 +129,9 @@ function spans(text: string): Span[] {
     const from = start + m[0].length;
     let rest = text.slice(from, from + PHRASE_MAX);
     const hard = PHRASE_HARD_END.exec(rest);
-    if (hard) rest = rest.slice(0, hard.index);
+    const made = MADE_COUNTRY.exec(rest);
+    const cut = Math.min(hard ? hard.index : rest.length, made ? made.index : rest.length);
+    rest = rest.slice(0, cut);
     // "Founded in 1947 in Bayreuth, Germany, made in China": the phrase runs
     // past a comma to the first country and stops there; with no country it
     // ends at the first clause break.

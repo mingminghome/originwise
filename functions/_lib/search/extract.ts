@@ -1000,6 +1000,11 @@ export type CooClaim = {
   sourceType: 'retailer' | 'manufacturer' | 'label';
 };
 
+const MADE_IN_SHORT: Record<string, string> = {
+  'U.K.': 'United Kingdom', UK: 'United Kingdom', 'U.S.A.': 'United States', 'U.S.': 'United States',
+  USA: 'United States', PRC: 'China', EU: 'European Union',
+};
+
 /** Deterministic fallback when the extraction model is unavailable. */
 export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
   const out: CooClaim[] = [];
@@ -1007,12 +1012,14 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
     // Design / brand wording is blanked first ("Designed in Germany, made in China" → China).
     const t = stripDesignPhrases(nfkc(p.text));
     const patterns: RegExp[] = [
-      /\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|[Cc]ountry of [Oo]rigin\s*[:：]?)\s*([A-Z][A-Za-z]{2,}(?: [A-Z][a-z]+)?)/g,
+      /\b(?:[Mm]ade in|MADE IN|[Mm]anufactured in|MANUFACTURED IN|[Aa]ssembled in|ASSEMBLED IN|[Cc]ountry of [Oo]rigin\s*[:：]?)\s*(U\.K\.|U\.S\.A\.|U\.S\.|(?:UK|USA|PRC|EU)(?![A-Za-z])|[A-Z][A-Za-z]{2,}(?: [A-Z][a-z]+)?)/g,
       /(?:原産国|生産国|製造国|原産地|生産地|原產地|原產國|生產國|生產地|產地|製造地)(?:名)?\s*[:：・／/]?\s*([^\s:：、。,，|/／()（）<>[\]]{1,12})/g,
     ];
     for (const re of patterns) {
       for (const m of t.matchAll(re)) {
-        const country = (m[1] || '').trim();
+        const raw = (m[1] || '').trim();
+        // Upper-case short forms only right after the cue ("Made in UK"); never IT / DE / my.
+        const country = MADE_IN_SHORT[raw] ?? raw;
         if (!country || /^(不明|なし|-|—|unknown)$/i.test(country)) continue;
         out.push({
           country,

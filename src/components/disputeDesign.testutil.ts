@@ -119,4 +119,6 @@ export const DISPUTE_CASES = {
     runPages({
       pages: [page(URLS.mami, 'Cybex Melio 嬰兒推車 | MamiLove', 'Designed in Germany, made in China. 5.9 kg。')],
     }),
+  /** Label photo 「設計於德國 中國製造」: 中國 95% from the label, 德國 as 附加資訊. */
+  dispute6: () => runPages({ madeIn: 'China', ocrText: 'CYBEX Melio\n設計於德國 中國製造', pages: [] }),
 };

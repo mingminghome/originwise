@@ -11,6 +11,7 @@ import { catalogs, createT } from '../core/i18n';
 import { ChinaCard, MadeInCard } from './ResultCards';
 import { buildChinaCard } from './ChinaLink';
 import { buildMadeInView } from './resultCards.model';
+import { SERVER_TEXT } from '../../functions/_lib/serverText';
 import { DISPUTE_CASES, JAN, URLS, page, runPages } from './disputeDesign.testutil';
 
 (globalThis as { React?: unknown }).React = React;
@@ -165,6 +166,61 @@ describe('design wording is never made-in (Cybex "Engineered in Germany")', () =
       assert.ok(!view.brandOrigin || !/germany|德國/i.test(view.brandOrigin));
       assert.ok(!view.reasons.some((x) => 'country' in x && /germany|德國/i.test(String(x.country))));
     }
+  });
+});
+
+describe('label photo: CJK design wording never eats the made-in country (95% from the label)', () => {
+  for (const [ocr, madeIn, made, design] of [
+    ['設計於德國 中國製造', 'China', '中國', '德國'],
+    ['設計於德國中國製造', 'China', '中國', '德國'],
+    ['設計於日本 台灣製', 'Taiwan', '台灣', '日本'],
+    ['設計於日本台灣製', 'Taiwan', '台灣', '日本'],
+    ['研發於德國中國生產', 'China', '中國', '德國'],
+    ['德國設計中國製造', 'China', '中國', '德國'],
+    ['Designed in Germany Made in China', 'China', '中國', '德國'],
+  ] as const) {
+    it(`「${ocr}」 → ${made} 95% (label) + 附加資訊 ${design}, no ${design} made-in candidate`, () => {
+      const r = runPages({ madeIn, ocrText: `CYBEX Melio\n${ocr}`, pages: [] });
+      const v = buildMadeInView(r);
+      assert.equal(v.state, 'confirmed', JSON.stringify(v));
+      assert.equal(v.basis, 'label');
+      assert.equal(v.country, madeIn);
+      assert.equal(Math.round((v.confidence ?? 0) * 100), 95);
+      assert.equal(v.dispute, undefined);
+      assert.ok(!v.candidates.some((c) => /germany|japan|德國|日本/i.test(c.label)), JSON.stringify(v.candidates));
+      assert.equal(v.designRows.length, 1, JSON.stringify(v.designRows));
+      const t = text(r);
+      assert.ok(t.includes(made) && t.includes('95%'), t);
+      assert.ok(t.includes(zh('check.rc.designInfo', { country: design })), t);
+      assert.ok(!t.includes('爭議') && !t.includes('有提及'), t);
+    });
+  }
+  it('the AI reading the design country as made-in never gets the label 95%', () => {
+    const r = runPages({ madeIn: 'Germany', ocrText: 'CYBEX Melio\n設計於德國 中國製造', pages: [] });
+    const v = buildMadeInView(r);
+    assert.ok(!(v.state === 'confirmed' && v.country === 'Germany' && v.basis === 'label'), JSON.stringify(v));
+  });
+  for (const note of ['德國廠牌 Cybex，輕量推車。', '德國廠商 Cybex 出品。', 'Cybex 創立於德國。', 'Cybex 成立於德國。']) {
+    it(`card: note ${JSON.stringify(note)} → no 「德國 · 有提及」 row, 品牌 附加資訊 instead`, () => {
+      const r = runPages({ notes: [note], pages: [] });
+      const v = buildMadeInView(r);
+      assert.ok(!v.candidates.some((c) => /germany|德國/i.test(c.label)), JSON.stringify(v.candidates));
+      const t = text(r);
+      assert.ok(!t.includes('有提及'), t);
+      assert.ok(t.includes(zh('check.rc.brandInfo', { country: '德國' })), t);
+    });
+  }
+  it('card: the server note "Made-in omitted: it matched…" shows no Italy', () => {
+    const r = runPages({ notes: [SERVER_TEXT.madeInOmittedBrand], pages: [] });
+    const v = buildMadeInView(r);
+    assert.ok(!v.candidates.some((c) => /italy|義大利|意大利/i.test(c.label)), JSON.stringify(v.candidates));
+    assert.ok(!/義大利|意大利/.test(text(r)) && !/Italy/.test(text(r, en)));
+  });
+  it('dispute6 render fixture: 中國 95% plus 附加資訊', () => {
+    const v = buildMadeInView(DISPUTE_CASES.dispute6());
+    assert.equal(v.basis, 'label');
+    assert.equal(Math.round((v.confidence ?? 0) * 100), 95);
+    assert.ok(text(DISPUTE_CASES.dispute6()).includes(DESIGN_ZH));
   });
 });
 

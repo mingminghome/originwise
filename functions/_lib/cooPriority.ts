@@ -72,7 +72,22 @@ const COO_LINE = new RegExp(
   'gi'
 );
 
-const COO_SUFFIX = new RegExp(`(${CJK_COUNTRY_TOKEN})(?:工場|工厂|廠)?製`, 'g');
+/** 「中國製造」「台灣製」「中國生產」「日本産」: country, then a made word. */
+const COO_SUFFIX = new RegExp(
+  `(${CJK_COUNTRY_TOKEN}|德國|德国|ドイツ|法國|法国|フランス|義大利|意大利|イタリア|英國|英国|イギリス|美國|美国|アメリカ)(?:工場|工厂|廠|厂)?(?:製|制造|生產|生产|生産|產(?![品業])|产(?![品业])|産(?![品業]))`,
+  'g'
+);
+
+/**
+ * Upper-case short forms count only right after a made-in cue ("Made in UK",
+ * "MADE IN U.S.A."); other 2-letter codes (IT, DE, my …) never do.
+ */
+const MADE_IN_CODE =
+  /(?:made|Made|MADE|manufactured|Manufactured|MANUFACTURED|assembled|Assembled|ASSEMBLED|produced|Produced|PRODUCED)[\s-]?(?:in|In|IN)\s*[:：]?\s*(U\.K\.|U\.S\.A\.|U\.S\.|UK|USA|PRC|EU)(?![A-Za-z])/g;
+const CODE_LABEL: Record<string, string> = {
+  'U.K.': 'United Kingdom', UK: 'United Kingdom', 'U.S.A.': 'United States', 'U.S.': 'United States',
+  USA: 'United States', PRC: 'China', EU: 'European Union',
+};
 
 /** Same country in English or CJK ("Japan" / 日本 / タイ vs Thailand). */
 const CANON_COUNTRY: Record<string, string> = {
@@ -139,6 +154,20 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     const end = Math.min(raw.length, m.index + m[0].length + 80);
     const window = raw.slice(start, end);
     const source = classifySource(window);
+    const key = `${source}:${region}:${label.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ label, region, source });
+  }
+  MADE_IN_CODE.lastIndex = 0;
+  while ((m = MADE_IN_CODE.exec(raw)) !== null) {
+    const label = CODE_LABEL[m[1]]!;
+    // "Made in USA" / "Made in PRC" already read by name above: one claim.
+    if (out.some((c) => canonCountry(c.label) === canonCountry(label))) continue;
+    const region = normalizeRegion(label);
+    const start = Math.max(0, m.index - 80);
+    const end = Math.min(raw.length, m.index + m[0].length + 80);
+    const source = classifySource(raw.slice(start, end));
     const key = `${source}:${region}:${label.toLowerCase()}`;
     if (seen.has(key)) continue;
     seen.add(key);

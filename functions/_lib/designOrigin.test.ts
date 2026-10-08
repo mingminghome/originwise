@@ -12,6 +12,9 @@ import { PRODUCT_FACT_RULES } from './prompts';
 import { gateClaims, regexCooClaims, type CooClaim } from './search/extract';
 import type { FetchedPage } from './search/types';
 import { __test, synthesize } from './synthesize';
+import { SERVER_TEXT } from './serverText';
+import { canonCountry } from './cooPriority';
+const sameCountry = (a: string, b: string) => canonCountry(a) === canonCountry(b);
 
 const page = (url: string, text: string): FetchedPage => ({ url, title: '', text });
 const MELIO = 'Cybex Melio';
@@ -199,5 +202,90 @@ describe('2-letter codes never map in notes or free text ("IT company" is not It
     assert.deepEqual(labels('Often CN / TH / VN (unconfirmed)'), ['China', 'Thailand', 'Vietnam']);
     assert.deepEqual(labels('IT parts from CN'), ['China']);
     assert.deepEqual(labels('it is mostly made in china'), ['China']);
+  });
+});
+
+describe('CJK design phrases end at their first country; a country + 製/製造/生產/產 is never eaten', () => {
+  for (const [text, design, made] of [
+    ['設計於德國 中國製造', 'Germany', '中國'],
+    ['設計於德國中國製造', 'Germany', '中國'],
+    ['設計於日本 台灣製', 'Japan', '台灣'],
+    ['設計於日本台灣製', 'Japan', '台灣'],
+    ['研發於德國中國生產', 'Germany', '中國'],
+    ['德國設計中國製造', 'Germany', '中國'],
+    ['設計於德國，中國產', 'Germany', '中國'],
+    ['Designed in Germany Made in China', 'Germany', 'China'],
+  ] as const) {
+    it(`${JSON.stringify(text)} → design ${design}, made-in ${made}`, () => {
+      const d = designMentions(text);
+      assert.deepEqual(d.map((x) => [x.country, x.kind]), [[design, 'design']]);
+      // The phrase stops right after its country: the made-in country is left whole.
+      assert.ok(stripDesignPhrases(text).includes(made), stripDesignPhrases(text));
+      assert.deepEqual(extractCooClaimsFromText(text).map((c) => c.label), [made]);
+    });
+  }
+  it('產品 / 產業 after a country are not made-in words', () => {
+    assert.deepEqual(extractCooClaimsFromText('德國產品設計'), []);
+    assert.deepEqual(extractCooClaimsFromText('中國產業'), []);
+  });
+});
+
+describe('德國廠牌 / 德國廠商 / 創立於 / 成立於 are brand / HQ wording, never a made-in mention', () => {
+  for (const note of ['德國廠牌 Cybex，輕量推車。', '德國廠商 Cybex 出品。', 'Cybex 創立於德國。', 'Cybex 成立於德國，2005 年起推出推車。']) {
+    it(`note ${JSON.stringify(note)} → brand info, no 德國 有提及 candidate`, () => {
+      const rows = __test.collectOriginCandidates({ name: 'Cybex Melio', notes: [note] }, { webEnriched: true });
+      assert.ok(!rows.some((r) => r.label === 'Germany'), JSON.stringify(rows));
+      assert.deepEqual(designMentions(note).map((x) => [x.country, x.kind]), [['Germany', 'brand']]);
+      assert.equal(notesNameMadeIn([note], 'Germany'), false);
+      assert.equal(notesNameOnlyAsDesign([note], 'Germany'), true);
+      const info = __test.collectDesignInfo({ name: 'Cybex Melio', notes: [note] }, undefined);
+      assert.deepEqual(info.map((x) => [x.country, x.kind]), [['Germany', 'brand']]);
+    });
+  }
+  it('成立於德國，中國製造 → brand Germany, made-in China only', () => {
+    assert.deepEqual(extractCooClaimsFromText('成立於德國，中國製造').map((c) => c.label), ['中國']);
+  });
+});
+
+describe('server note "Made-in omitted: it matched…" never names Italy', () => {
+  it('as a product note it gives no Italy (or any) candidate', () => {
+    const rows = __test.collectOriginCandidates({ name: 'X', notes: [SERVER_TEXT.madeInOmittedBrand] }, { webEnriched: true });
+    assert.ok(SERVER_TEXT.madeInOmittedBrand.startsWith('Made-in omitted: it matched'));
+    assert.deepEqual(rows, []);
+    assert.deepEqual(extractCooClaimsFromText(SERVER_TEXT.madeInOmittedBrand), []);
+  });
+});
+
+describe('"Made in UK" and the other upper-case short forms count only right after a made-in cue', () => {
+  for (const [text, label] of [
+    ['Made in UK', 'United Kingdom'],
+    ['MADE IN UK', 'United Kingdom'],
+    ['MADE IN U.K.', 'United Kingdom'],
+    ['Made in USA', 'United States'],
+    ['Made in U.S.A.', 'United States'],
+    ['Manufactured in PRC', 'China'],
+    ['Made in PRC', 'China'],
+    ['Made in EU', 'European Union'],
+    ['Assembled in UK', 'United Kingdom'],
+  ] as const) {
+    it(`${JSON.stringify(text)} → ${label}`, () => {
+      const claims = extractCooClaimsFromText(text);
+      assert.equal(claims.length, 1, JSON.stringify(claims));
+      assert.ok(sameCountry(claims[0]!.label, label), JSON.stringify(claims));
+      const rc = regexCooClaims([page('https://a.example.com/', `Cybex Melio\n${text}`)]);
+      assert.equal(rc.length, 1, JSON.stringify(rc));
+      assert.ok(sameCountry(rc[0]!.country, label), JSON.stringify(rc));
+    });
+  }
+  it('still rejected: it / IT / my / DE / lower-case uk, and UK away from a made-in cue', () => {
+    for (const t of ['Made in it', 'Made in IT', 'made in my kitchen', 'Made in DE', 'made in uk', 'Made in Ukraine-style', 'UK design team', 'Ships from UK']) {
+      const claims = extractCooClaimsFromText(t).filter((c) => /kingdom|italy|germany|malaysia/i.test(c.label));
+      assert.deepEqual(claims, [], t);
+    }
+    for (const t of ['Made in IT', 'Made in DE', 'made in my kitchen', 'UK design team', 'made in uk']) {
+      assert.deepEqual(regexCooClaims([page('https://a.example.com/', `Cybex Melio\n${t}`)]), [], t);
+    }
+    const rows = __test.collectOriginCandidates({ name: 'X', notes: ['UK design team', 'IT company'] }, { webEnriched: true });
+    assert.deepEqual(rows, []);
   });
 });

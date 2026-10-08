@@ -1630,7 +1630,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     input.queryText?.trim().slice(0, 80) ||
     'Result';
 
-  const designInfo = collectDesignInfo(p, input.webEnriched ? input.webDesign : undefined);
+  const designInfo = collectDesignInfo(p, input.webEnriched ? input.webDesign : undefined, input.ocrText);
 
   const originCandidates = collectOriginCandidates(p, {
     webEnriched: input.webEnriched,
@@ -1867,13 +1867,14 @@ const MAX_DESIGN_INFO = 2;
 
 /**
  * Design / brand country wording (附加資訊): product pages first (with their
- * link), then the model's designedIn and its notes. One row per country
+ * link), then the package label text, the model's designedIn and its notes. One row per country
  * ('design' wording wins over 'brand'); a country that is the confirmed
  * made-in is left out (「德國設計」 next to a German made-in says nothing).
  */
 function collectDesignInfo(
   p: ProductPartial | null | undefined,
-  webDesign: DesignInfo[] | undefined
+  webDesign: DesignInfo[] | undefined,
+  ocrText?: string
 ): DesignInfo[] {
   if (!p) return [];
   const rows: DesignInfo[] = [];
@@ -1899,6 +1900,8 @@ function collectDesignInfo(
     }
   };
   for (const d of webDesign ?? []) add(d);
+  // Package label photo: 「設計於德國 中國製造」 → design 德國 (made-in 中國 is the label's).
+  for (const d of designMentions(ocrText ?? '')) add({ country: d.country, kind: d.kind });
   if (p.designedIn && confirmedOriginLabel(p.designedIn)) add({ country: p.designedIn, kind: 'design' });
   for (const n of p.notes ?? []) {
     for (const d of designMentions(String(n))) add({ country: d.country, kind: d.kind });
