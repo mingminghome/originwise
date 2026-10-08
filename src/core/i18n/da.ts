@@ -42,9 +42,26 @@ export const da = {
     accept: 'Forstået — begynd at tjekke',
   },
   check: {
+    identifiedAs: 'Genkendt som: {name}',
+    chinaLink: {
+      title: 'Forbindelse til Kina',
+      chinaCompany: 'Kinesisk virksomhed',
+      chinaControlled: 'Kinesisk kontrolleret',
+      hq: 'Hovedsæde',
+      owner: 'Kontrollerende ejer',
+      brandOrigin: 'Mærkets oprindelse',
+      madeIn: 'Fremstillet i',
+      parts: 'Dele',
+      china: 'Kina',
+      unconfirmed: 'Ikke bekræftet',
+      partsChina: 'Nogle dele fremstillet i Kina',
+      hqParentNote: 'Hovedsædet i Kina i svaret tilhører moderselskabet',
+      madeInBelow: 'Fremstillingslandet afgøres kun i kortet »Fremstillet i« (stregkode eller emballageetiket).',
+    },
     matchBasis: {
       barcode: 'Matchet via stregkode',
       name: 'Matchet via produktnavn',
+      label: 'Ifølge emballagens mærkning',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',

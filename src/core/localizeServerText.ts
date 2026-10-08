@@ -12,6 +12,10 @@ import {
   type ServerTextKey,
 } from '../../functions/_lib/serverText';
 import type { TFunction } from './i18n';
+import { localizeCountry } from './i18n/countries';
+
+/** Summary fields whose value is a country name. */
+const COUNTRY_SUMMARY_KEYS = new Set(['madeIn', 'brandOrigin', 'hq']);
 
 const BY_TEXT = new Map<string, ServerTextKey>(
   (Object.entries(SERVER_TEXT) as [ServerTextKey, string][]).map(([k, v]) => [v, k])
@@ -37,7 +41,7 @@ function localizeCandidate(t: TFunction, bit: string): string {
   if (!m) return bit;
   const [, label, rating, pct, source] = m;
   return srv(t, 'candidate', {
-    label,
+    label: localizeCountry(t, label),
     rating: labelled(t, 'candidateRating', rating),
     pct,
     source: labelled(t, 'candidateSource', source),
@@ -77,7 +81,9 @@ function localizeSegment(t: TFunction, seg: string): string {
             .split('; ')
             .map((b) => localizeCandidate(t, b))
             .join(srv(t, 'listSep') || '; ')
-        : rest;
+        : COUNTRY_SUMMARY_KEYS.has(k)
+          ? localizeCountry(t, rest)
+          : rest;
     return srv(t, `sum.${k}`, { value }) || seg;
   }
 

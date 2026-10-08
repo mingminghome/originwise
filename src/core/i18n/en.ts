@@ -45,9 +45,26 @@ export const en: MessageTree = {
     accept: 'Got it — start checking',
   },
   check: {
+    identifiedAs: 'Identified as: {name}',
+    chinaLink: {
+      title: 'Link to China',
+      chinaCompany: 'Chinese company',
+      chinaControlled: 'Chinese-controlled',
+      hq: 'HQ',
+      owner: 'Controlling owner',
+      brandOrigin: 'Brand origin',
+      madeIn: 'Made in',
+      parts: 'Parts',
+      china: 'China',
+      unconfirmed: 'Unconfirmed',
+      partsChina: 'Some parts made in China',
+      hqParentNote: 'The China HQ in the answer is the parent company\'s',
+      madeInBelow: 'Where it is made is decided only in the Made in card (barcode or package label).',
+    },
     matchBasis: {
       barcode: 'Matched by barcode',
       name: 'Matched by product name',
+      label: 'Read from the package label',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',

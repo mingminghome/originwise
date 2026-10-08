@@ -42,9 +42,26 @@ export const fi = {
     accept: 'Selvä — aloita tarkistus',
   },
   check: {
+    identifiedAs: 'Tunnistettu: {name}',
+    chinaLink: {
+      title: 'Yhteys Kiinaan',
+      chinaCompany: 'Kiinalainen yritys',
+      chinaControlled: 'Kiinalaisessa määräysvallassa',
+      hq: 'Pääkonttori',
+      owner: 'Määräysvaltainen omistaja',
+      brandOrigin: 'Brändin alkuperä',
+      madeIn: 'Valmistusmaa',
+      parts: 'Osat',
+      china: 'Kiina',
+      unconfirmed: 'Vahvistamaton',
+      partsChina: 'Osa osista valmistettu Kiinassa',
+      hqParentNote: 'Vastauksen Kiinan pääkonttori kuuluu emoyhtiölle',
+      madeInBelow: 'Valmistusmaa ratkaistaan vain Valmistusmaa-kortissa (viivakoodi tai pakkausmerkintä).',
+    },
     matchBasis: {
       barcode: 'Täsmätty viivakoodilla',
       name: 'Täsmätty tuotenimellä',
+      label: 'Pakkausmerkinnän mukaan',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',

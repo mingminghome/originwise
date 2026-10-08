@@ -42,9 +42,26 @@ export const nl = {
     accept: 'Begrepen — starten',
   },
   check: {
+    identifiedAs: 'Herkend als: {name}',
+    chinaLink: {
+      title: 'Band met China',
+      chinaCompany: 'Chinees bedrijf',
+      chinaControlled: 'Onder Chinese zeggenschap',
+      hq: 'Hoofdkantoor',
+      owner: 'Eigenaar met zeggenschap',
+      brandOrigin: 'Herkomst merk',
+      madeIn: 'Gemaakt in',
+      parts: 'Onderdelen',
+      china: 'China',
+      unconfirmed: 'Niet bevestigd',
+      partsChina: 'Sommige onderdelen gemaakt in China',
+      hqParentNote: 'Het hoofdkantoor in China uit het antwoord is dat van het moederbedrijf',
+      madeInBelow: 'Het productieland wordt alleen bepaald in de kaart ‘Gemaakt in’ (barcode of verpakkingslabel).',
+    },
     matchBasis: {
       barcode: 'Gekoppeld via barcode',
       name: 'Gekoppeld via productnaam',
+      label: 'Volgens het verpakkingslabel',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',

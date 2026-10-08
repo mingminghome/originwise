@@ -44,15 +44,17 @@ describe('localizeServerText', () => {
       'Final COO unconfirmed · Candidates: Japan (likely 55% · parts); China (possible 30% · web_name) · Brand origin: Japan · HQ: Japan · Company: Pigeon';
     const out = localizeServerText(zh, summary);
     assert.match(out, /^最終產地未確認 · /);
-    assert.match(out, /候選產地：Japan（較可能，55%，零件／物料）；China（可能，30%，依品名比對的網頁）/);
-    assert.match(out, /品牌來源地：Japan/);
-    assert.match(out, /總部：Japan · 公司：Pigeon$/);
+    // Country names show in 繁中 too (候選產地：Japan → 日本, 總部：China → 中國).
+    assert.match(out, /候選產地：日本（較可能，55%，零件／物料）；中國（可能，30%，依品名比對的網頁）/);
+    assert.match(out, /品牌來源地：日本/);
+    assert.match(out, /總部：日本 · 公司：Pigeon$/);
     assert.doesNotMatch(out, /Candidates|Brand origin|HQ:|Company:/);
   });
 
   it('translates the China-link summary lines', () => {
     assert.equal(localizeServerText(zh, SERVER_TEXT.tierNone), '從現有資料中未發現與中國的關聯。');
-    assert.match(localizeServerText(zh, 'Made in: Thailand'), /^製造地：Thailand$/);
+    assert.match(localizeServerText(zh, 'Made in: Thailand'), /^製造地：泰國$/);
+    assert.match(localizeServerText(en, 'Made in: Thailand'), /^Made in: Thailand$/);
   });
 
   it('translates every web-fail caveat the synthesizer can emit', () => {

@@ -4,7 +4,9 @@
  */
 
 import type { CheckResult } from '../types';
-import type { TFunction } from './index';
+import { localeOfT, type TFunction } from './index';
+import { inScope, normalizeRegion } from '../../../functions/_lib/regions';
+import { localizeCountry } from './countries';
 
 const KNOWN = new Set([
   'made_in_cn',
@@ -23,8 +25,6 @@ const KNOWN = new Set([
   'ownership_not_assessed',
 ]);
 
-const CN_PLACE =
-  /\b(china|prc|mainland\s*china|people'?s\s*republic|中國|中国|中國大陸|中国大陆)\b/i;
 
 function uniquePlaces(result: CheckResult): string[] {
   const raw = [
@@ -39,9 +39,17 @@ function uniquePlaces(result: CheckResult): string[] {
   return [...new Set(raw)];
 }
 
-/** Places outside mainland China wording (for "non-CN geo" reason bullets). */
+/**
+ * Places outside the China scope (for "non-CN geo" reason bullets).
+ * Same region rules as the server tier, so 中國 / 中国 never land here
+ * (the old \b regex missed CJK names). Taiwan always counts as outside.
+ */
 function uniqueNonCnPlaces(result: CheckResult): string[] {
-  return uniquePlaces(result).filter((p) => !CN_PLACE.test(p));
+  const scope = result.geoScope === 'greater_china' ? 'greater_china' : 'prc';
+  return uniquePlaces(result).filter((p) => {
+    const r = normalizeRegion(p);
+    return r !== 'UNKNOWN' && !inScope(r, scope);
+  });
 }
 
 function humanizeCode(code: string): string {
@@ -59,9 +67,11 @@ export function formatTierReason(
   t: TFunction,
   result: CheckResult
 ): string {
-  const places = uniquePlaces(result);
-  const placeStr = places.join(', ');
-  const nonCnStr = uniqueNonCnPlaces(result).join(', ');
+  const loc = (p: string) => localizeCountry(t, p);
+  const listSep = localeOfT(t) === 'zh-Hant' ? '、' : ', ';
+  const places = uniquePlaces(result).map(loc);
+  const placeStr = [...new Set(places)].join(listSep);
+  const nonCnStr = [...new Set(uniqueNonCnPlaces(result).map(loc))].join(listSep);
 
   // Prefer detail variants when we have concrete place names
   if (code === 'explicit_non_cn_geo' && nonCnStr) {
@@ -72,21 +82,21 @@ export function formatTierReason(
   }
   if (code === 'made_in_cn') {
     const p = result.product?.madeIn || result.product?.manufacturedIn;
-    if (p) return t('check.reason.made_in_cn_detail', { place: p });
+    if (p) return t('check.reason.made_in_cn_detail', { place: loc(p) });
   }
   if (code === 'origin_cn' && result.product?.originCountry) {
     return t('check.reason.origin_cn_detail', {
-      place: result.product.originCountry,
+      place: loc(result.product.originCountry),
     });
   }
   if (code === 'manufacturer_cn') {
-    const p =
-      result.product?.manufacturerCountry || result.product?.manufacturer;
+    const country = result.product?.manufacturerCountry;
+    const p = country ? loc(country) : result.product?.manufacturer;
     if (p) return t('check.reason.manufacturer_cn_detail', { place: p });
   }
   if (code === 'hq_cn' && result.company?.hqCountry) {
     return t('check.reason.hq_cn_detail', {
-      place: result.company.hqCountry,
+      place: loc(result.company.hqCountry),
     });
   }
   if (code === 'taiwan_as_country' && placeStr) {

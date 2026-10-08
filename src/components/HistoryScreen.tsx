@@ -1,3 +1,4 @@
+import { displayTier } from './ChinaLink';
 import { Image as ImageIcon, Trash2 } from 'lucide-react';
 import { trackEvent } from '../core/analytics/track';
 import { localeTag } from '../core/i18n';
@@ -75,8 +76,8 @@ export function HistoryScreen({ state }: { state: AppState }) {
                   </span>
                   <span className="ask-history-tier">
                     <TierBadge
-                      tier={item.result.relationTier}
-                      label={t(`tier.${item.result.relationTier}`)}
+                      tier={displayTier(item.result).tier}
+                      label={t(`tier.${displayTier(item.result).tier}`)}
                       size="sm"
                     />
                   </span>

@@ -11,6 +11,7 @@ import type { CheckResult } from '../core/types';
 import type { TFunction } from '../core/i18n';
 import { SectionShare } from './SectionShare';
 import { localizeServerText } from '../core/localizeServerText';
+import { localizeCountry } from '../core/i18n/countries';
 
 /** Ownership-class chinaRelations types (aligned with server STRONG_REL + minority). */
 const OWNERSHIP_REL_TYPES = new Set([
@@ -271,12 +272,12 @@ function formatBrandOps(line: BrandOpsLine, t: TFunction): string {
     case 'company':
       return `${t('check.company')}: ${line.value}`;
     case 'hq':
-      return `${t('check.hq')}: ${line.value}`;
+      return `${t('check.hq')}: ${localizeCountry(t, line.value)}`;
     case 'brandOrigin':
-      return `${t('check.brandOrigin')}: ${line.value}`;
+      return `${t('check.brandOrigin')}: ${localizeCountry(t, line.value)}`;
     case 'manufacturer':
       return line.country
-        ? `${t('check.manufacturer')}: ${line.value} (${line.country})`
+        ? `${t('check.manufacturer')}: ${line.value} (${localizeCountry(t, line.country)})`
         : `${t('check.manufacturer')}: ${line.value}`;
   }
 }
@@ -285,7 +286,7 @@ function formatOwnership(line: OwnershipLine, t: TFunction): string {
   switch (line.kind) {
     case 'parent': {
       const bits = [line.name];
-      if (line.country) bits.push(line.country);
+      if (line.country) bits.push(localizeCountry(t, line.country));
       if (line.control) {
         const key = `check.graphEdge.${line.control}`;
         const label = t(key);
@@ -297,7 +298,7 @@ function formatOwnership(line: OwnershipLine, t: TFunction): string {
       const typeKey = `check.graphEdge.${line.type}`;
       const typeLabel = t(typeKey);
       const bits = [typeLabel === typeKey ? line.type.replace(/_/g, ' ') : typeLabel];
-      if (line.country) bits.push(line.country);
+      if (line.country) bits.push(localizeCountry(t, line.country));
       if (line.strength) bits.push(line.strength);
       if (line.note) bits.push(localizeServerText(t, line.note));
       return bits.join(' · ');
@@ -305,7 +306,7 @@ function formatOwnership(line: OwnershipLine, t: TFunction): string {
     case 'candidate': {
       const ratingKey = `check.candidateRating.${line.rating}`;
       const rating = t(ratingKey);
-      return `${line.label} · ${rating === ratingKey ? line.rating : rating} · ${Math.round(line.confidence * 100)}% · ${t('check.candidateSource.ownership')}`;
+      return `${localizeCountry(t, line.label)} · ${rating === ratingKey ? line.rating : rating} · ${Math.round(line.confidence * 100)}% · ${t('check.candidateSource.ownership')}`;
     }
   }
 }
@@ -319,7 +320,7 @@ function formatParts(line: PartsLine, t: TFunction): string {
       const rating = t(ratingKey);
       const srcKey = `check.candidateSource.${line.source}`;
       const src = t(srcKey);
-      return `${line.label} · ${rating === ratingKey ? line.rating : rating} · ${Math.round(line.confidence * 100)}% · ${src === srcKey ? line.source : src}`;
+      return `${localizeCountry(t, line.label)} · ${rating === ratingKey ? line.rating : rating} · ${Math.round(line.confidence * 100)}% · ${src === srcKey ? line.source : src}`;
     }
     case 'part': {
       const bits = [line.name];
@@ -328,7 +329,7 @@ function formatParts(line: PartsLine, t: TFunction): string {
         const label = t(k);
         bits.push(label === k ? line.partKind : label);
       }
-      if (line.where) bits.push(line.where);
+      if (line.where) bits.push(localizeCountry(t, line.where));
       if (line.chinaRelated) bits.push(t('check.graphChinaLinked'));
       if (line.note) bits.push(localizeServerText(t, line.note));
       return bits.join(' · ');
@@ -408,9 +409,10 @@ export function OriginLayers({
           items={
             model.finalCoo
               ? [
-                  result.product?.madeInBasis === 'barcode'
-                    ? `${model.finalCoo} · ${t('check.matchBasis.barcode')}`
-                    : model.finalCoo,
+                  result.product?.madeInBasis === 'barcode' ||
+                  result.product?.madeInBasis === 'label'
+                    ? `${localizeCountry(t, model.finalCoo)} · ${t(`check.matchBasis.${result.product.madeInBasis}`)}`
+                    : localizeCountry(t, model.finalCoo),
                 ]
               : []
           }

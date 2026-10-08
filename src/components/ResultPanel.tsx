@@ -1,4 +1,5 @@
 import type { CheckResult } from '../core/types';
+import { brandHqFolded, ChinaLink, chinaCardReasons, companyView, displayTier } from './ChinaLink';
 import type { TFunction } from '../core/i18n';
 import { formatTierReason } from '../core/i18n/tierReasons';
 import { AlternativeCards } from './AlternativeCards';
@@ -7,6 +8,7 @@ import { OriginMap } from './OriginMap';
 import { RelationGraph } from './RelationGraph';
 import { TierBadge } from './TierBadge';
 import { localizeServerText } from '../core/localizeServerText';
+import { resultTitle } from '../core/resultTitle';
 
 function agentLabel(id: string, t: TFunction): string {
   const key = `check.agent.${id}`;
@@ -105,11 +107,14 @@ export function ResultPanel({
   result,
   provider,
   cached,
+  query,
   t,
 }: {
   result: CheckResult;
   provider?: string | null;
   cached?: boolean;
+  /** What the user typed; shown as the headline (see resultTitle). */
+  query?: string | null;
   t: TFunction;
 }) {
   const agents = result.meta?.agents ?? [];
@@ -131,13 +136,21 @@ export function ResultPanel({
       )
       .filter(Boolean) ?? [];
   const searchName = searchProviderLabel(result.meta?.searchProvider, t);
+  const shown = displayTier(result);
+  const reasons = chinaCardReasons(result.tierReasons, { hqFolded: brandHqFolded(result) });
+  const title = resultTitle(result, query);
   const searchRequests = result.meta?.searchRequests;
 
   return (
     <div className="ask-result" role="status">
       <header className="result-verdict">
         <div className="ask-result-head">
-          <h2 className="ask-result-title">{result.title}</h2>
+          <h2 className="ask-result-title">{title.title}</h2>
+          {title.modelName ? (
+            <p className="muted ask-result-identified" data-testid="identified-as">
+              {t('check.identifiedAs', { name: title.modelName })}
+            </p>
+          ) : null}
           <p className="ask-result-meta muted">
             {[
               provider
@@ -153,19 +166,35 @@ export function ResultPanel({
         <div className="result-tier-hero">
           <p className="result-tier-label muted">{t('check.relationLabel')}</p>
           <TierBadge
-            tier={result.relationTier}
-            label={t(`tier.${result.relationTier}`)}
+            tier={shown.tier}
+            label={t(`tier.${shown.tier}`)}
             size="lg"
           />
-          {typeof result.confidence === 'number' ? (
+          {typeof shown.confidence === 'number' ? (
             <span className="muted result-tier-conf">
               {t('check.confidence', {
-                n: Math.round(result.confidence * 100),
+                n: Math.round(shown.confidence * 100),
               })}
             </span>
           ) : null}
         </div>
       </header>
+
+      <ChinaLink result={result} t={t} />
+
+      {reasons.shown.length || reasons.madeInHidden ? (
+        <section className="result-why">
+          <h3 className="result-section-title">{t('check.reasons')}</h3>
+          <ul className="tier-reasons-list">
+            {reasons.shown.map((r) => (
+              <li key={r}>{formatTierReason(r, t, companyView(result))}</li>
+            ))}
+            {reasons.madeInHidden ? (
+              <li key="made-in-below">{t('check.chinaLink.madeInBelow')}</li>
+            ) : null}
+          </ul>
+        </section>
+      ) : null}
 
       {result.summary ? (
         <p className="ask-result-summary">{localizeServerText(t, result.summary)}</p>
@@ -181,17 +210,6 @@ export function ResultPanel({
       ) : null}
 
       <OriginLayers result={result} t={t} />
-
-      {result.tierReasons?.length ? (
-        <section className="result-why">
-          <h3 className="result-section-title">{t('check.reasons')}</h3>
-          <ul className="tier-reasons-list">
-            {result.tierReasons.map((r) => (
-              <li key={r}>{formatTierReason(r, t, result)}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
 
       <AlternativeCards alternatives={result.alternatives} t={t} />
 

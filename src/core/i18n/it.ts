@@ -42,9 +42,26 @@ export const it = {
     accept: 'Capito — inizia a verificare',
   },
   check: {
+    identifiedAs: 'Identificato come: {name}',
+    chinaLink: {
+      title: 'Legame con la Cina',
+      chinaCompany: 'Azienda cinese',
+      chinaControlled: 'A controllo cinese',
+      hq: 'Sede',
+      owner: 'Proprietario di controllo',
+      brandOrigin: 'Origine del marchio',
+      madeIn: 'Prodotto in',
+      parts: 'Componenti',
+      china: 'Cina',
+      unconfirmed: 'Non confermato',
+      partsChina: 'Alcuni componenti prodotti in Cina',
+      hqParentNote: 'La sede in Cina indicata è quella della società madre',
+      madeInBelow: 'Il paese di produzione si stabilisce solo nella scheda «Prodotto in» (codice a barre o etichetta).',
+    },
     matchBasis: {
       barcode: 'Corrispondenza per codice a barre',
       name: 'Corrispondenza per nome del prodotto',
+      label: 'Secondo l’etichetta della confezione',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',

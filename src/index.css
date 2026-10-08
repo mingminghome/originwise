@@ -5034,3 +5034,60 @@ p {
   line-height: 1.4;
 }
 .alt-disclaimer{font-size:0.8rem;margin:0 0 0.65rem;line-height:1.4}.alt-geo{font-size:0.8rem;margin:0.25rem 0 0}
+
+/* China link first (top of a result) */
+.china-link {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+}
+.china-link-company {
+  display: inline-block;
+  margin: 0 0 0.5rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  background: rgba(200, 40, 40, 0.12);
+  color: #b42318;
+}
+:root[data-theme='dark'] .china-link-company {
+  background: rgba(240, 80, 80, 0.16);
+  color: #ff8a80;
+}
+.china-link-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.china-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+}
+.china-link-label {
+  min-width: 6.5rem;
+  color: var(--text);
+  opacity: 0.75;
+}
+.china-link-status {
+  font-weight: 700;
+}
+.china-link-status.is-china {
+  color: #b42318;
+}
+:root[data-theme='dark'] .china-link-status.is-china {
+  color: #ff8a80;
+}
+.china-link-status.is-unconfirmed {
+  font-weight: 600;
+  opacity: 0.7;
+}
+.china-link-detail {
+  font-size: 0.85rem;
+}

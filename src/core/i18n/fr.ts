@@ -42,9 +42,26 @@ export const fr = {
     accept: 'Compris — commencer',
   },
   check: {
+    identifiedAs: 'Identifié comme : {name}',
+    chinaLink: {
+      title: 'Lien avec la Chine',
+      chinaCompany: 'Entreprise chinoise',
+      chinaControlled: 'Sous contrôle chinois',
+      hq: 'Siège',
+      owner: 'Propriétaire de contrôle',
+      brandOrigin: 'Origine de la marque',
+      madeIn: 'Fabriqué en',
+      parts: 'Pièces',
+      china: 'Chine',
+      unconfirmed: 'Non confirmé',
+      partsChina: 'Certaines pièces fabriquées en Chine',
+      hqParentNote: 'Le siège en Chine indiqué est celui de la société mère',
+      madeInBelow: 'Le lieu de fabrication est établi uniquement dans la carte « Fabriqué en » (code-barres ou étiquette).',
+    },
     matchBasis: {
       barcode: 'Correspondance par code-barres',
       name: 'Correspondance par nom du produit',
+      label: 'D’après l’étiquette de l’emballage',
     },
     searchVia: {
       gemini: 'Google Search (Gemini)',

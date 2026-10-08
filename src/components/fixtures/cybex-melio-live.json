@@ -1,0 +1,80 @@
+{
+  "_note": "Trimmed real /api/check result for \"Cybex Melio\" from https://originwise.pages.dev on 2026-10-08 (zh-Hant). Company folded with its Chinese parent.",
+  "query": "Cybex Melio",
+  "result": {
+    "schemaVersion": 1,
+    "relationTier": "direct",
+    "title": "Cybex Melio 嬰兒推車",
+    "confidence": 0.95,
+    "tierReasons": [
+      "manufacturer_cn",
+      "hq_cn",
+      "parent_majority_cn",
+      "ownership_strong_cn",
+      "ownership_weak_cn",
+      "explicit_non_cn_geo"
+    ],
+    "regions": [
+      "OTHER",
+      "CN"
+    ],
+    "geoScope": "prc",
+    "knowledgeBasis": "web_enriched",
+    "partsEvidence": "web",
+    "summary": "Final COO unconfirmed · Candidates: China (likely 65% · parts); Germany (mentioned 38% · notes) · Brand origin: 德國 · Components/global line: 中國 · Parts: 碳纖維與鋁合金車架, 實心橡膠車輪與軸承, 座墊與遮陽篷布套（聚酯纖維） · HQ: 中國 · Company: Goodbaby International / Cybex",
+    "product": {
+      "name": "Cybex Melio 嬰兒推車",
+      "brand": "Cybex",
+      "originCountry": "德國",
+      "manufacturer": "好孩子國際控股有限公司 (Goodbaby International Holdings Ltd.)",
+      "manufacturerCountry": "中國",
+      "componentsOrigin": "中國",
+      "originCandidates": [
+        {
+          "label": "China",
+          "confidence": 0.65,
+          "source": "parts",
+          "rating": "likely"
+        },
+        {
+          "label": "Germany",
+          "confidence": 0.38,
+          "source": "notes",
+          "rating": "mentioned"
+        }
+      ]
+    },
+    "company": {
+      "name": "Goodbaby International / Cybex",
+      "legalName": "Goodbaby International Holdings Ltd. (好孩子國際控股有限公司)",
+      "hqCountry": "中國",
+      "parents": [
+        {
+          "name": "Goodbaby International Holdings Ltd. (好孩子國際控股有限公司)",
+          "country": "中國",
+          "control": "wholly"
+        }
+      ],
+      "chinaRelations": [
+        {
+          "type": "ownership",
+          "note": "Cybex 於 2014 年被中國好孩子國際收購，為其全資子公司與核心品牌。",
+          "country": "中國",
+          "strength": "strong"
+        },
+        {
+          "type": "manufacturing",
+          "note": "主要生產與組裝基地設於中國江蘇昆山。",
+          "country": "中國",
+          "strength": "strong"
+        },
+        {
+          "type": "hq",
+          "note": "母公司總部設於中國上海（註冊地為開曼群島，香港上市）。",
+          "country": "中國",
+          "strength": "strong"
+        }
+      ]
+    }
+  }
+}
