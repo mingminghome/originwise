@@ -114,6 +114,9 @@ const RATING_RANK: Record<string, number> = { confirmed: 4, likely: 3, possible:
  */
 function candidateRows(result: CheckResult, candidates: Candidate[], unconfirmedMadeIn: string): CandRow[] {
   const rows: CandRow[] = [];
+  // Model-only rows (model made-in guess, or parts when parts evidence is
+  // model-only) show 模型參考 + ⓘ; a web/label row for the same country wins.
+  const isModel = (r: CandRow) => modelOnlyPartCandidate(result, r);
   const put = (row: CandRow) => {
     const i = rows.findIndex((r) => sameCountryLabel(r.label, row.label));
     if (i === -1) {
@@ -121,9 +124,15 @@ function candidateRows(result: CheckResult, candidates: Candidate[], unconfirmed
       return;
     }
     const prev = rows[i]!;
-    // A web row keeps its own label; otherwise the stronger rating wins.
+    // A web row keeps its own label; a backed row absorbs a model row;
+    // otherwise the stronger rating wins.
     if (prev.source === 'web_name') return;
-    if (row.source === 'web_name' || (RATING_RANK[row.rating] ?? 0) > (RATING_RANK[prev.rating] ?? 0)) {
+    if (isModel(row) && !isModel(prev)) return;
+    if (
+      row.source === 'web_name' ||
+      (isModel(prev) && !isModel(row)) ||
+      (RATING_RANK[row.rating] ?? 0) > (RATING_RANK[prev.rating] ?? 0)
+    ) {
       rows[i] = row;
     }
   };

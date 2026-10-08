@@ -670,3 +670,122 @@ describe('產地分層 / 零件: model-only parts rows (Chief, folded into #32)'
     }
   });
 });
+
+describe('製造地 card: parts candidates only the model named (closes #32 decision 2)', () => {
+  const modelParts = base({
+    knowledgeBasis: 'model_memory',
+    partsEvidence: 'model',
+    product: {
+      name: 'Bottle',
+      originCandidates: [{ label: 'Thailand', confidence: 0.55, source: 'parts', rating: 'likely' }],
+      parts: [{ name: 'Nipple', kind: 'part', madeIn: 'Thailand' }],
+    },
+  });
+  // Model parts say China, a web page says China too → one web row.
+  const agree = base({
+    knowledgeBasis: 'web_enriched',
+    partsEvidence: 'model',
+    product: {
+      name: 'Bottle',
+      originCandidates: [
+        { label: 'China', confidence: 0.55, source: 'parts', rating: 'likely' },
+        { label: 'China', confidence: 0.5, source: 'web_name', rating: 'possible' },
+      ],
+    },
+  });
+  // Web parts evidence: the parts row is backed and keeps its grade.
+  const webParts = base({
+    knowledgeBasis: 'web_enriched',
+    partsEvidence: 'web',
+    sources: ['Shop — https://shop.example.jp/p/1'],
+    product: {
+      name: 'Bottle',
+      originCandidates: [{ label: 'Thailand', confidence: 0.55, source: 'parts', rating: 'likely' }],
+    },
+  });
+  const lis = (out: string) =>
+    [...out.slice(out.indexOf('rc-candidates')).matchAll(/<li(?: class="is-model")?>.*?<\/li>/g)].map((m) => m[0]);
+  const textOf = (frag: string) => frag.replace(/<[^>]+>/g, '');
+  const strip = (markup: string) => {
+    // Save path (stripCaptureUi) removes the ⓘ wrapper and the tooltip.
+    let out = markup;
+    for (;;) {
+      const m = /<span\b[^>]*(?:data-section-share="ui"|role="tooltip")[^>]*>/.exec(out);
+      if (!m) {
+        const d = /<div\b[^>]*data-section-share="ui"[^>]*>/.exec(out);
+        if (!d) return out;
+        let depth = 1;
+        const re = /<div\b[^>]*>|<\/div>/g;
+        re.lastIndex = d.index + d[0].length;
+        let end = out.length;
+        for (let x = re.exec(out); x; x = re.exec(out)) {
+          depth += x[0].startsWith('</') ? -1 : 1;
+          if (!depth) { end = x.index + x[0].length; break; }
+        }
+        out = out.slice(0, d.index) + out.slice(end);
+        continue;
+      }
+      let depth = 1;
+      const re = /<span\b[^>]*>|<\/span>/g;
+      re.lastIndex = m.index + m[0].length;
+      let end = out.length;
+      for (let x = re.exec(out); x; x = re.exec(out)) {
+        depth += x[0].startsWith('</') ? -1 : 1;
+        if (!depth) { end = x.index + x[0].length; break; }
+      }
+      out = out.slice(0, m.index) + out.slice(end);
+    }
+  };
+
+  it('model-only parts row: country + 模型參考 + ⓘ, no grade / % / source (zh-Hant)', () => {
+    const view = buildMadeInView(modelParts);
+    assert.equal(view.state, 'unconfirmed');
+    const out = html(createElement(MadeInCard, { result: modelParts, t: zh }));
+    const rows = lis(out);
+    assert.equal(rows.length, 1, out);
+    assert.match(
+      rows[0]!,
+      /^<li class="is-model"><span class="rc-cand-country is-model"><span class="rc-cand-name">泰國<\/span><span class="rc-cand-label" data-testid="model-ref" title="[^"]+">模型參考（未經確認）<\/span><span class="rc-info" data-section-share="ui"><button type="button" class="rc-info-btn" aria-label="說明"/
+    );
+    assert.ok(!rows[0]!.includes('rc-cand-meta'), rows[0]);
+    assert.doesNotMatch(textOf(rows[0]!), /可能|\d\s*%|零件／物料/);
+  });
+
+  it('16 locales and the 780px save: no grade, %, ⓘ or tooltip on the model-only parts row', () => {
+    assert.equal(sectionShareCapture.phoneCssPx * sectionShareCapture.pixelRatio, 780);
+    const locales = Object.keys(catalogs) as Array<Parameters<typeof createT>[0]>;
+    assert.equal(locales.length, 16);
+    for (const lng of locales) {
+      const t = createT(lng);
+      const out = html(createElement(MadeInCard, { result: modelParts, t }));
+      const [row] = lis(out);
+      assert.ok(row?.startsWith('<li class="is-model"'), `${lng}: ${out}`);
+      assert.ok(row!.includes(t('check.rc.modelRef')) && !row!.includes('rc-cand-meta'), `${lng}: ${row}`);
+      const rest = textOf(row!).split(t('check.rc.modelRef')).join('').split(t('check.rc.modelRefHelp')).join('');
+      assert.ok(!rest.includes(t('check.candidateRating.likely')), `${lng}: ${rest}`);
+      assert.ok(!rest.includes(t('check.candidateSource.parts')), `${lng}: ${rest}`);
+      assert.doesNotMatch(rest, /\d\s*%/);
+      const saved = strip(out);
+      assert.ok(!saved.includes('ⓘ') && !saved.includes('role="tooltip"'), `${lng}: ${saved}`);
+      assert.ok(!textOf(saved).includes(t('check.rc.modelRefHelp')), lng);
+      const [savedRow] = lis(saved);
+      assert.ok(savedRow!.includes(t('check.rc.modelRef')), lng);
+      assert.doesNotMatch(textOf(savedRow!), /\d\s*%/);
+      // Web-backed parts keep grade + source in every locale.
+      const [web] = lis(html(createElement(MadeInCard, { result: webParts, t })));
+      assert.ok(!web!.startsWith('<li class="is-model"'), lng);
+      assert.ok(
+        textOf(web!).includes(`${t('check.candidateRating.likely')}${t('check.rc.notConfirmed')} · ${t('check.candidateSource.parts')}`),
+        `${lng}: ${web}`
+      );
+    }
+  });
+
+  it('model parts + web on the same country stay one web row with its grade', () => {
+    const rows = buildMadeInView(agree).candidates;
+    assert.deepEqual(rows, [{ label: 'China', rating: 'possible', source: 'web_name' }]);
+    const out = html(createElement(MadeInCard, { result: agree, t: zh }));
+    assert.ok(!out.includes('data-testid="model-ref"'), out);
+    assert.ok(out.includes('<span class="rc-cand-meta">可能（非確認） · '), out);
+  });
+});

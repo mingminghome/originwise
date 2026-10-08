@@ -18,6 +18,7 @@ import {
   buildLayerRows,
   buildMadeInView,
   cleanValue,
+  modelOnlyPartCandidate,
   type LayerTag,
 } from './resultCards.model';
 import { ModelRefLabel } from './ModelRef';
@@ -207,7 +208,8 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
             {view.candidates.length ? (
               <ul>
                 {view.candidates.map((c) => {
-                  const model = c.source === 'model_memory';
+                  // Model made-in guess, or a parts row only the model named.
+                  const model = modelOnlyPartCandidate(result, c);
                   const hedged = c.rating === 'likely' || c.rating === 'possible';
                   return (
                     <li key={`${c.label}-${c.source}`} className={model ? 'is-model' : undefined}>
