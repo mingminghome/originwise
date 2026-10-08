@@ -139,8 +139,16 @@ export const nl = {
     agentsUsed: '{n} agenten',
     agentsTitle: 'Gebruikte AI-pool',
     agentsSummary: '{total} aanroepen · {ok} ok · {fail} mislukt',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'sterke band',
+      moderate: 'matige band',
+      weak: 'zwakke band',
+    },
     agentsHint:
       'Elke rij is een gratis-server-AI-aanroep. Mislukkingen komen vaak door quota, modeltoegang of timeout; we proberen anderen of een fallback. Live web vereist Gemini Search grounding (niet hetzelfde als tekst-RPM).',
+    agentsHintVia:
+      'Elke rij is een gratis-server-AI-aanroep. Mislukkingen komen vaak door quota, modeltoegang of timeout; we proberen anderen of een fallback. De live webzoekopdracht liep via {provider}.',
     agentOk: 'OK',
     agentFail: 'Mislukt ({err})',
     agentSkipped: 'Overgeslagen ({err})',
@@ -167,6 +175,7 @@ export const nl = {
       monolith: 'Volledige check (één aanroep)',
       dual_core: 'Product + bedrijf',
       dual_alts: 'Alternatieven met minder CN-link',
+      web: 'Zoeken op het web',
       unknownProvider: 'Onbekende AI',
     },
     provider: {

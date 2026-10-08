@@ -13,6 +13,7 @@ import type { CheckResult } from '../core/types';
 import { normalizeRegion } from '../../functions/_lib/regions';
 import { zhCountryText } from '../../functions/_lib/zhHant';
 import { canonicalCountry } from '../../functions/_lib/countryLabel';
+import { notesNameMadeIn } from '../../functions/_lib/noteText';
 import { brandHqFolded, companyFactsSourced, confirmedMadeIn, pickOwner } from './ChinaLink';
 
 const VAGUE_RE =
@@ -107,10 +108,36 @@ const RATING_RANK: Record<string, number> = { confirmed: 4, likely: 3, possible:
 /** Candidate sources the 零件 list never shows (ownership / made-in / HQ echo). */
 const PARTS_LIST_SKIP = new Set(['ownership', 'confirmed_coo', 'manufacturer']);
 
+/**
+ * A 'notes' candidate that only echoes the HQ / manufacturer / brand-origin
+ * country (「品牌設計及總部設於日本」 → 日本 · 有提及 · 38%). Same rule as the
+ * server (synthesize collectOriginCandidates), applied again here for cached
+ * results: kept only when another product-specific candidate has that
+ * country or a note ties it to manufacturing in the same clause.
+ */
+export function notesEchoCandidate(result: CheckResult, c: Pick<Candidate, 'label' | 'source'>): boolean {
+  if (c.source !== 'notes') return false;
+  const p = result.product;
+  const echo = [result.company?.hqCountry, p?.manufacturerCountry, p?.originCountry]
+    .map(cleanValue)
+    .some((x) => x && sameCountryLabel(c.label, x));
+  if (!echo) return false;
+  const backed = (p?.originCandidates ?? []).some(
+    (x) =>
+      x.source !== 'notes' &&
+      !PARTS_LIST_SKIP.has(String(x.source)) &&
+      x.source !== 'model_memory' &&
+      sameCountryLabel(x.label, c.label)
+  );
+  return !backed && !notesNameMadeIn(p?.notes, c.label);
+}
+
 /** Candidates the 零件 rows may use (none when parts were read from the label). */
 export function partsListCandidates(result: CheckResult): Candidate[] {
   if (result.partsEvidence === 'label') return [];
-  return (result.product?.originCandidates ?? []).filter((c) => !PARTS_LIST_SKIP.has(String(c.source)));
+  return (result.product?.originCandidates ?? []).filter(
+    (c) => !PARTS_LIST_SKIP.has(String(c.source)) && !notesEchoCandidate(result, c)
+  );
 }
 
 /**
@@ -199,6 +226,7 @@ function candidateRows(result: CheckResult, candidates: Candidate[], unconfirmed
       continue;
     }
     if (NOT_MADE_IN.has(String(c.source))) continue;
+    if (notesEchoCandidate(result, c)) continue;
     put({ label: c.label, rating: c.rating, source: c.source });
   }
   if (unconfirmedMadeIn) modelLabels.push(unconfirmedMadeIn);
@@ -384,10 +412,15 @@ export function buildMadeInView(result: CheckResult): MadeInView {
   };
 }
 
+/** 零件 rows in 產地分層: one per part country, at most this many. */
+export const MAX_PART_ROWS = 3;
+
 export type LayerTag = 'confirmed' | 'likely' | 'mentioned' | 'unconfirmed';
 export type LayerRowView = {
-  key: 'brandOrigin' | 'hq' | 'parts' | 'parent';
+  key: 'brandOrigin' | 'hq' | 'manufacturer' | 'parts' | 'parent';
   value: string;
+  /** Parts: every part name for this country (joined by the view). */
+  names?: string[];
   /** Country part of the value (localized by the view). */
   country?: string;
   tag: LayerTag;
@@ -427,15 +460,29 @@ export function buildLayerRows(result: CheckResult): LayerRowView[] {
       : { key: 'hq', value: '', tag: 'unconfirmed' }
   );
 
-  const partWithCountry = (p?.parts ?? []).find(
-    (x) => cleanValue(x.madeIn) || cleanValue(x.originCountry)
-  );
-  if (partWithCountry) {
-    const country = cleanValue(partWithCountry.madeIn) || cleanValue(partWithCountry.originCountry);
+  // 製造商: the maker the answer names (Pigeon Corporation · 日本), same tag
+  // rule as the company rows. No row when the answer names none.
+  const maker = cleanValue(p?.manufacturer);
+  const makerCountry = cleanValue(p?.manufacturerCountry);
+  if (maker || makerCountry) {
+    rows.push({ key: 'manufacturer', value: maker, country: makerCountry || undefined, tag: factTag });
+  }
+
+  // One 零件 row per part country (Softouch label: 乳首、キャップ、フード ·
+  // 中國 and びん · 日本), never only the first part.
+  const byCountry: Array<{ country: string; names: string[] }> = [];
+  for (const part of p?.parts ?? []) {
+    const country = cleanValue(part.madeIn) || cleanValue(part.originCountry);
+    if (!country) continue;
+    const group = byCountry.find((g) => sameCountryLabel(g.country, country));
+    if (group) group.names.push(part.name);
+    else byCountry.push({ country, names: [part.name] });
+  }
+  for (const { country, names } of byCountry.slice(0, MAX_PART_ROWS)) {
     // Same evidence as the 零件候選 list (partCountryEvidence): never a grade
     // borrowed from another country or from result-level partsEvidence.
     const ev = partCountryEvidence(result, country);
-    const base = { key: 'parts' as const, value: partWithCountry.name, country };
+    const base = { key: 'parts' as const, value: names.join(', '), names, country };
     if (ev.kind === 'label') rows.push({ ...base, tag: 'confirmed' });
     else if (ev.kind === 'graded')
       rows.push({
@@ -444,7 +491,8 @@ export function buildLayerRows(result: CheckResult): LayerRowView[] {
         grade: { rating: ev.rating, confidence: ev.confidence },
       });
     else rows.push({ ...base, tag: 'mentioned', modelRef: true });
-  } else {
+  }
+  if (!byCountry.length) {
     rows.push({ key: 'parts', value: '', tag: 'unconfirmed' });
   }
 

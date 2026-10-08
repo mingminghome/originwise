@@ -275,6 +275,7 @@ const TAG_KEY: Record<LayerTag, string> = {
 const LAYER_LABEL: Record<string, string> = {
   brandOrigin: 'check.chinaLink.brandOrigin',
   hq: 'check.chinaLink.hq',
+  manufacturer: 'check.manufacturer',
   parts: 'check.chinaLink.parts',
   parent: 'check.rc.parent',
 };
@@ -282,6 +283,7 @@ const LAYER_LABEL: Record<string, string> = {
 export function LayersCard({ result, t }: { result: CheckResult; t: TFunction }) {
   const rows = buildLayerRows(result);
   const title = t('check.originLayersTitle');
+  const listSep = localeOfT(t) === 'zh-Hant' ? '、' : ', ';
   return (
     <SectionShare label={title} t={t} className="rc-card rc-layers">
       <div data-testid="layers-card">
@@ -289,9 +291,10 @@ export function LayersCard({ result, t }: { result: CheckResult; t: TFunction })
         <dl className="rc-rows">
           {rows.map((r) => {
             const country = r.country ? localizeCountry(t, r.country) : '';
-            const value = [r.value, country].filter(Boolean).join(' · ') || '—';
+            const name = r.names?.length ? r.names.join(listSep) : r.value;
+            const value = [name, country].filter(Boolean).join(' · ') || '—';
             return (
-              <div key={r.key} className={`rc-row rc-layer-row${r.modelRef ? ' is-model' : ''}`}>
+              <div key={`${r.key}-${r.country ?? ''}`} className={`rc-row rc-layer-row${r.modelRef ? ' is-model' : ''}`}>
                 <dt className="rc-row-label">{t(LAYER_LABEL[r.key])}</dt>
                 {r.modelRef ? (
                   // Model-only parts: value + 模型參考 + ⓘ in one cell, no tag/grade.

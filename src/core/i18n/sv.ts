@@ -139,8 +139,16 @@ export const sv = {
     agentsUsed: '{n} agenter',
     agentsTitle: 'AI-pool som använts',
     agentsSummary: '{total} anrop · {ok} ok · {fail} misslyckade',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'stark koppling',
+      moderate: 'måttlig koppling',
+      weak: 'svag koppling',
+    },
     agentsHint:
       'Varje rad är ett gratisserver-AI-anrop. Misslyckanden beror ofta på kvot, modellåtkomst eller timeout; vi försöker andra eller en reserv. Live-web kräver Gemini Search grounding (inte samma sak som text-RPM).',
+    agentsHintVia:
+      'Varje rad är ett gratisserver-AI-anrop. Misslyckanden beror ofta på kvot, modellåtkomst eller timeout; vi försöker andra eller en reserv. Live-webbsökningen kördes via {provider}.',
     agentOk: 'OK',
     agentFail: 'Misslyckades ({err})',
     agentSkipped: 'Hoppad över ({err})',
@@ -167,6 +175,7 @@ export const sv = {
       monolith: 'Full koll (ett anrop)',
       dual_core: 'Produkt + företag',
       dual_alts: 'Alternativ med mindre CN-koppling',
+      web: 'Webbsökning',
       unknownProvider: 'Okänd AI',
     },
     provider: {

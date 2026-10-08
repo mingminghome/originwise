@@ -139,8 +139,16 @@ export const de = {
     agentsUsed: '{n} Agenten',
     agentsTitle: 'Genutzter KI-Pool',
     agentsSummary: '{total} Aufrufe · {ok} ok · {fail} fehlgeschlagen',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'starke Verbindung',
+      moderate: 'mittlere Verbindung',
+      weak: 'schwache Verbindung',
+    },
     agentsHint:
       'Jede Zeile ist ein kostenloser Server-KI-Aufruf. Fehlschläge bedeuten oft Quota, Modellzugang oder Timeout; wir versuchen andere oder einen Fallback. Live-Web braucht Gemini-Search-Grounding (nicht dasselbe wie Text-RPM).',
+    agentsHintVia:
+      'Jede Zeile ist ein kostenloser Server-KI-Aufruf. Fehlschläge bedeuten oft Quota, Modellzugang oder Timeout; wir versuchen andere oder einen Fallback. Die Live-Websuche lief über {provider}.',
     agentOk: 'OK',
     agentFail: 'Fehlgeschlagen ({err})',
     agentSkipped: 'Übersprungen ({err})',
@@ -167,6 +175,7 @@ export const de = {
       monolith: 'Vollcheck (ein Aufruf)',
       dual_core: 'Produkt + Unternehmen',
       dual_alts: 'Alternativen mit weniger CN-Bezug',
+      web: 'Websuche',
       unknownProvider: 'Unbekannte KI',
     },
     provider: {

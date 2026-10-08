@@ -11,7 +11,8 @@ import {
   SUMMARY_SEP,
   type ServerTextKey,
 } from '../../functions/_lib/serverText';
-import type { TFunction } from './i18n';
+import { localeOfT, type TFunction } from './i18n';
+import { zhDisplayText } from '../../functions/_lib/zhHant';
 import { localizeCountry } from './i18n/countries';
 
 /** Summary fields whose value is a country name. */
@@ -88,7 +89,8 @@ function localizeSegment(t: TFunction, seg: string): string {
   }
 
   // Server sentence glued to model text (e.g. a part note + " — " + reason).
-  let out = s;
+  // Model text: zh-Hant clean-up (Simplified slips, 未知 → 未確認) first.
+  let out = localeOfT(t) === 'zh-Hant' ? zhDisplayText(s) : s;
   for (const sentence of SENTENCES) {
     if (out.includes(sentence)) {
       const tr = srv(t, BY_TEXT.get(sentence)!);

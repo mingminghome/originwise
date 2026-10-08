@@ -5412,3 +5412,10 @@ p {
     font-size: 2rem;
   }
 }
+
+/* 產地分層 values: CJK breaks at the 「 · 」 / 、 between names and the
+   country, never inside 中國 (Softouch 「…フード · 中／國」). */
+.rc-layer-row .rc-row-value {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}

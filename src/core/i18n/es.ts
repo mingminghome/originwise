@@ -139,8 +139,16 @@ export const es = {
     agentsUsed: '{n} agentes',
     agentsTitle: 'Grupo de IA usado',
     agentsSummary: '{total} llamadas · {ok} ok · {fail} fallidas',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'vínculo fuerte',
+      moderate: 'vínculo moderado',
+      weak: 'vínculo débil',
+    },
     agentsHint:
       'Cada fila es una llamada de IA del servidor gratuito. Los fallos suelen ser cuota, acceso al modelo o tiempo de espera; seguimos probando otros o un respaldo. La web en vivo necesita Gemini Search grounding (no es lo mismo que el RPM de texto).',
+    agentsHintVia:
+      'Cada fila es una llamada de IA del servidor gratuito. Los fallos suelen ser cuota, acceso al modelo o tiempo de espera; seguimos probando otros o un respaldo. La búsqueda web en vivo se hizo con {provider}.',
     agentOk: 'OK',
     agentFail: 'Falló ({err})',
     agentSkipped: 'Omitido ({err})',
@@ -167,6 +175,7 @@ export const es = {
       monolith: 'Comprobación completa (una llamada)',
       dual_core: 'Producto + empresa',
       dual_alts: 'Alternativas con menor vínculo CN',
+      web: 'Búsqueda web',
       unknownProvider: 'IA desconocida',
     },
     provider: {

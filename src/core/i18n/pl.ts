@@ -139,8 +139,16 @@ export const pl = {
     agentsUsed: '{n} agentów',
     agentsTitle: 'Użyta pula AI',
     agentsSummary: '{total} wywołań · {ok} ok · {fail} nieudanych',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'silne powiązanie',
+      moderate: 'umiarkowane powiązanie',
+      weak: 'słabe powiązanie',
+    },
     agentsHint:
       'Każdy wiersz to jedno darmowe wywołanie AI serwera. Niepowodzenia często oznaczają limit, brak dostępu do modelu lub timeout; próbujemy innych albo zapasowego. Live web wymaga Gemini Search grounding (to nie to samo co RPM tekstu).',
+    agentsHintVia:
+      'Każdy wiersz to jedno darmowe wywołanie AI serwera. Niepowodzenia często oznaczają limit, brak dostępu do modelu lub timeout; próbujemy innych albo zapasowego. Wyszukiwanie w sieci na żywo wykonano przez {provider}.',
     agentOk: 'OK',
     agentFail: 'Niepowodzenie ({err})',
     agentSkipped: 'Pominięto ({err})',
@@ -167,6 +175,7 @@ export const pl = {
       monolith: 'Pełne sprawdzenie (jedno wywołanie)',
       dual_core: 'Produkt + firma',
       dual_alts: 'Alternatywy o mniejszym powiązaniu CN',
+      web: 'Wyszukiwanie w sieci',
       unknownProvider: 'Nieznane AI',
     },
     provider: {

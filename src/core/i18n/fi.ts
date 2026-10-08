@@ -139,8 +139,16 @@ export const fi = {
     agentsUsed: '{n} agenttia',
     agentsTitle: 'Käytetty tekoälyallas',
     agentsSummary: '{total} kutsua · {ok} ok · {fail} epäonnistui',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'vahva yhteys',
+      moderate: 'kohtalainen yhteys',
+      weak: 'heikko yhteys',
+    },
     agentsHint:
       'Jokainen rivi on ilmaispalvelimen tekoälykutsu. Epäonnistumiset johtuvat usein kiintiöstä, mallin käyttöoikeudesta tai aikakatkaisusta; yritämme muita tai varavaihtoehtoa. Live-verkko vaatii Gemini Search groundingin (ei sama kuin tekstin RPM).',
+    agentsHintVia:
+      'Jokainen rivi on ilmaispalvelimen tekoälykutsu. Epäonnistumiset johtuvat usein kiintiöstä, mallin käyttöoikeudesta tai aikakatkaisusta; yritämme muita tai varavaihtoehtoa. Live-verkkohaku tehtiin palvelulla {provider}.',
     agentOk: 'OK',
     agentFail: 'Epäonnistui ({err})',
     agentSkipped: 'Ohitettu ({err})',
@@ -167,6 +175,7 @@ export const fi = {
       monolith: 'Täysi tarkistus (yksi kutsu)',
       dual_core: 'Tuote + yritys',
       dual_alts: 'Vaihtoehdot, joissa vähemmän CN-yhteyttä',
+      web: 'Verkkohaku',
       unknownProvider: 'Tuntematon tekoäly',
     },
     provider: {

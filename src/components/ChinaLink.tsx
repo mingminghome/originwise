@@ -314,11 +314,9 @@ export function buildChinaCard(result: CheckResult): ChinaCardView {
   }
   if (has('origin_cn') && isCn(brandOrigin)) reasons.push({ kind: 'brandOrigin', country: brandOrigin });
   if (madeCn) reasons.push({ kind: 'madeIn', country: made!.country, basis: made!.basis });
-  const nonCnShown = [hq, brandOrigin].some((v) => {
-    const r = normalizeRegion(v);
-    return r !== 'UNKNOWN' && !inScope(r, scope);
-  });
-  if (has('explicit_non_cn_geo') && nonCnShown) reasons.push({ kind: 'code', code: 'explicit_non_cn_geo' });
+  // explicit_non_cn_geo is not a card line: its places are the 總部 and
+  // 品牌來源地 rows right above (德國 on Cybex, 日本 on Sheer / Softouch), and
+  // on a 直接 card it read like a reason for the tier.
   for (const k of codes) if (META_CODES.has(k)) reasons.push({ kind: 'code', code: k });
   const madeInTalk = ['made_in_cn', 'manufacturer_cn', 'component_cn'].some(has);
   if (madeInTalk && !madeCn) reasons.push({ kind: 'pointer' });

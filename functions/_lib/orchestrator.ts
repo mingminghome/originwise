@@ -23,6 +23,7 @@ import {
   type LlmImage,
 } from './llm';
 import type { CheckDimension, CheckResult, WebCooClaim } from './schema';
+import { WEB_KNOWLEDGE_NOTE, webKnowledgeNote } from './schema';
 import type { GeoScope } from './regions';
 import { normalizeLocale } from './locale';
 import { SERVER_TEXT, SUMMARY_PREFIX } from './serverText';
@@ -411,6 +412,10 @@ async function runQuery(
   if (web.provider) {
     result.meta.searchProvider = web.provider;
     result.meta.searchRequests = web.requests ?? 0;
+    // Name the search service that ran (not always Gemini's Google Search).
+    if (result.knowledgeCutoffNote === WEB_KNOWLEDGE_NOTE) {
+      result.knowledgeCutoffNote = webKnowledgeNote(web.provider);
+    }
   }
   if (web.used && web.coo?.length) {
     result.meta.searchCoo = web.coo;

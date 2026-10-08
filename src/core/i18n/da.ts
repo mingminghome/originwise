@@ -139,8 +139,16 @@ export const da = {
     agentsUsed: '{n} agenter',
     agentsTitle: 'Brugt AI-pulje',
     agentsSummary: '{total} kald · {ok} ok · {fail} mislykkede',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'stærk tilknytning',
+      moderate: 'moderat tilknytning',
+      weak: 'svag tilknytning',
+    },
     agentsHint:
       'Hver række er et gratis-server-AI-kald. Fejl skyldes ofte kvote, modeladgang eller timeout; vi prøver andre eller et fallback. Live-web kræver Gemini Search grounding (ikke det samme som tekst-RPM).',
+    agentsHintVia:
+      'Hver række er et gratis-server-AI-kald. Fejl skyldes ofte kvote, modeladgang eller timeout; vi prøver andre eller et fallback. Live-websøgningen kørte via {provider}.',
     agentOk: 'OK',
     agentFail: 'Mislykkedes ({err})',
     agentSkipped: 'Sprunget over ({err})',
@@ -167,6 +175,7 @@ export const da = {
       monolith: 'Fuldt tjek (ét kald)',
       dual_core: 'Produkt + virksomhed',
       dual_alts: 'Alternativer med mindre CN-link',
+      web: 'Websøgning',
       unknownProvider: 'Ukendt AI',
     },
     provider: {

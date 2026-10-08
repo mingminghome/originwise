@@ -139,8 +139,16 @@ export const ro = {
     agentsUsed: '{n} agenți',
     agentsTitle: 'Pool IA folosit',
     agentsSummary: '{total} apeluri · {ok} ok · {fail} eșuate',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'legătură puternică',
+      moderate: 'legătură moderată',
+      weak: 'legătură slabă',
+    },
     agentsHint:
       'Fiecare rând este un apel IA al serverului gratuit. Eșecurile înseamnă adesea cotă, acces la model sau timeout; încercăm altele sau un fallback. Web-ul live are nevoie de Gemini Search grounding (nu este același lucru cu RPM-ul de text).',
+    agentsHintVia:
+      'Fiecare rând este un apel IA al serverului gratuit. Eșecurile înseamnă adesea cotă, acces la model sau timeout; încercăm altele sau un fallback. Căutarea web live a rulat prin {provider}.',
     agentOk: 'OK',
     agentFail: 'Eșuat ({err})',
     agentSkipped: 'Omis ({err})',
@@ -167,6 +175,7 @@ export const ro = {
       monolith: 'Verificare completă (un apel)',
       dual_core: 'Produs + companie',
       dual_alts: 'Alternative cu legătură CN mai mică',
+      web: 'Căutare web',
       unknownProvider: 'IA necunoscută',
     },
     provider: {

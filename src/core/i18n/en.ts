@@ -142,8 +142,16 @@ export const en: MessageTree = {
     agentsUsed: '{n} agents',
     agentsTitle: 'AI pool used',
     agentsSummary: '{total} calls · {ok} ok · {fail} failed',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'strong link',
+      moderate: 'moderate link',
+      weak: 'weak link',
+    },
     agentsHint:
       'Each row is one free-server AI call. Failed calls often mean quota, model access, or timeout; we still try others or a single fallback. Live web needs Google Search on the Gemini key (separate from ordinary text quota).',
+    agentsHintVia:
+      'Each row is one free-server AI call. Failed calls often mean quota, model access, or timeout; we still try others or a single fallback. Live web search for this check ran on {provider}.',
     agentOk: 'OK',
     agentFail: 'Failed ({err})',
     agentSkipped: 'Skipped ({err})',
@@ -170,6 +178,7 @@ export const en: MessageTree = {
       monolith: 'Full check (one call)',
       dual_core: 'Product + company',
       dual_alts: 'Lower-CN alternatives',
+      web: 'Web search',
       unknownProvider: 'Unknown AI',
     },
     provider: {

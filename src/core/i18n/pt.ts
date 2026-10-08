@@ -139,8 +139,16 @@ export const pt = {
     agentsUsed: '{n} agentes',
     agentsTitle: 'Pool de IA usado',
     agentsSummary: '{total} chamadas · {ok} ok · {fail} falhadas',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'ligação forte',
+      moderate: 'ligação moderada',
+      weak: 'ligação fraca',
+    },
     agentsHint:
       'Cada linha é uma chamada de IA do servidor gratuito. Falhas costumam ser quota, acesso ao modelo ou tempo esgotado; tentamos outros ou uma alternativa. A web em direto precisa de Gemini Search grounding (não é o mesmo que RPM de texto).',
+    agentsHintVia:
+      'Cada linha é uma chamada de IA do servidor gratuito. Falhas costumam ser quota, acesso ao modelo ou tempo esgotado; tentamos outros ou uma alternativa. A pesquisa web em direto foi feita com {provider}.',
     agentOk: 'OK',
     agentFail: 'Falhou ({err})',
     agentSkipped: 'Ignorado ({err})',
@@ -167,6 +175,7 @@ export const pt = {
       monolith: 'Verificação completa (uma chamada)',
       dual_core: 'Produto + empresa',
       dual_alts: 'Alternativas com menor ligação CN',
+      web: 'Pesquisa na web',
       unknownProvider: 'IA desconhecida',
     },
     provider: {

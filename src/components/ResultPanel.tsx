@@ -44,6 +44,20 @@ function agentErrorLabel(code: string | undefined, t: TFunction): string {
   return label === key ? code : label;
 }
 
+/**
+ * Footnote under the AI pool. The default copy explains Gemini's Google
+ * Search grounding quota; when live search actually ran on Brave or
+ * Firecrawl it names that service instead.
+ */
+function agentsHint(
+  agents: NonNullable<NonNullable<CheckResult['meta']>['agents']>,
+  t: TFunction
+): string {
+  const web = agents.find((a) => a.id === 'web' && a.ok !== false);
+  const via = web?.provider && web.provider !== 'gemini' ? searchProviderLabel(web.provider, t) : null;
+  return via ? t('check.agentsHintVia', { provider: via }) : t('check.agentsHint');
+}
+
 function AgentsPoolCard({
   agents,
   t,
@@ -102,7 +116,7 @@ function AgentsPoolCard({
           );
         })}
       </ul>
-      <p className="muted agents-pool-hint">{t('check.agentsHint')}</p>
+      <p className="muted agents-pool-hint">{agentsHint(agents, t)}</p>
     </div>
   );
 }

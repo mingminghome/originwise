@@ -275,8 +275,17 @@ export const PART_CAP = 8;
 export const DEFAULT_DISCLAIMER_KEY = 'check.disclaimer';
 export const KNOWLEDGE_NOTE =
   'Based on general model knowledge only (no live web lookup). Brand origin, component plants, and final assembly/COO can differ by SKU/market — prefer packaging labels. Not a corporate registry or customs database. Informational — not legal, trade, or sanctions advice.';
-export const WEB_KNOWLEDGE_NOTE =
-  'Includes a live web research pass (Google Search via Gemini grounding) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.';
+const WEB_SEARCH_NAME: Record<string, string> = {
+  gemini: 'Google Search via Gemini grounding',
+  brave: 'Brave Search',
+  firecrawl: 'Firecrawl',
+};
+/** Web-enriched note naming the search service that actually ran. */
+export function webKnowledgeNote(provider = 'gemini'): string {
+  const name = WEB_SEARCH_NAME[provider] ?? WEB_SEARCH_NAME.gemini;
+  return `Includes a live web research pass (${name}) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.`;
+}
+export const WEB_KNOWLEDGE_NOTE = webKnowledgeNote('gemini');
 
 export function clampTier(raw: unknown): RelationTier {
   const s = String(raw ?? '')

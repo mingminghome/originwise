@@ -39,6 +39,7 @@ import { hqFoldedIntoParent } from './chinaChip';
 import { tierFromCodes } from './tierRules';
 import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS } from './countryLabel';
 import { SERVER_TEXT, webFailText } from './serverText';
+import { notesNameMadeIn, omittedPartNote } from './noteText';
 
 export type SynthesizeInput = {
   jobId: string;
@@ -401,9 +402,17 @@ function collectOriginCandidates(
     }
   }
 
+  // A note naming the HQ / manufacturer / brand-origin country is a company
+  // fact ("品牌設計及總部設於日本", "TP-Link 品牌總部設於中國"), not a part or
+  // made-in mention: same echo rule as the model made-in below (#28). It
+  // stays only when a product-specific row already has that country, or the
+  // note ties it to manufacturing in the same clause.
+  const echoCountries = [opts.hqCountry, p.manufacturerCountry, p.originCountry];
   for (const n of p.notes ?? []) {
     for (const label of extractCountryLabelsFromText(String(n))) {
       if (out.get(label)?.rating === 'confirmed') continue;
+      const echo = echoCountries.some((c) => sameCountry(label, c));
+      if (echo && !out.has(label) && !notesNameMadeIn([n], label)) continue;
       pushCandidate(out, label, Math.min(0.55, 0.28 + webBoost), 'notes', 'mentioned');
     }
   }
@@ -661,7 +670,9 @@ function sanitizeParts(
       originCountry = undefined;
       chinaRelated = undefined;
       if (!note || !/no Search\/OCR|unknown/i.test(note)) {
-        note = [note, why].filter(Boolean).join(' — ').slice(0, 160);
+        // The model's note about the dropped country goes too (no
+        // 「中國製」 next to 「未列出零件產地」).
+        note = omittedPartNote(note, why).slice(0, 160);
       }
     };
 
@@ -1760,6 +1771,8 @@ export function synthesize(input: SynthesizeInput): CheckResult {
 
 /** Exported for unit tests */
 export const __test = {
+  collectOriginCandidates,
+  sanitizeParts,
   extractFactors,
   decideTier,
   normalizeRegion,

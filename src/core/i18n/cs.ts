@@ -139,8 +139,16 @@ export const cs = {
     agentsUsed: '{n} agentů',
     agentsTitle: 'Použitý pool AI',
     agentsSummary: '{total} volání · {ok} ok · {fail} selhalo',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'silná vazba',
+      moderate: 'střední vazba',
+      weak: 'slabá vazba',
+    },
     agentsHint:
       'Každý řádek je jedno volání AI z bezplatného serveru. Selhání často znamenají kvótu, přístup k modelu nebo timeout; zkoušíme jiné nebo zálohu. Živý web potřebuje Gemini Search grounding (není totéž jako textové RPM).',
+    agentsHintVia:
+      'Každý řádek je jedno volání AI z bezplatného serveru. Selhání často znamenají kvótu, přístup k modelu nebo timeout; zkoušíme jiné nebo zálohu. Živé vyhledávání na webu proběhlo přes {provider}.',
     agentOk: 'OK',
     agentFail: 'Selhalo ({err})',
     agentSkipped: 'Přeskočeno ({err})',
@@ -167,6 +175,7 @@ export const cs = {
       monolith: 'Úplná kontrola (jedno volání)',
       dual_core: 'Produkt + společnost',
       dual_alts: 'Alternativy s menší vazbou na CN',
+      web: 'Vyhledávání na webu',
       unknownProvider: 'Neznámá AI',
     },
     provider: {

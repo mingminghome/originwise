@@ -137,8 +137,16 @@ export const zhHant = {
     agentsUsed: '{n} 個代理',
     agentsTitle: '使用的 AI 池',
     agentsSummary: '共 {total} 次呼叫 · 成功 {ok} · 失敗 {fail}',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: '強關聯',
+      moderate: '中等關聯',
+      weak: '弱關聯',
+    },
     agentsHint:
       '每一列是一次免費伺服器 AI 呼叫。失敗多半是配額、模型權限或逾時；我們會再試其他模型。即時網路搜尋需使用 Google 搜尋（Gemini）的額度，與一般文字額度分開計算。',
+    agentsHintVia:
+      '每一列是一次免費伺服器 AI 呼叫。失敗多半是配額、模型權限或逾時；我們會再試其他模型。這次的即時網路搜尋使用 {provider}。',
     agentOk: '成功',
     agentFail: '失敗（{err}）',
     agentSkipped: '略過（{err}）',
@@ -165,6 +173,7 @@ export const zhHant = {
       monolith: '完整查詢（單次）',
       dual_core: '產品 + 公司',
       dual_alts: '較低中國關聯替代',
+      web: '網路搜尋',
       unknownProvider: '未知 AI',
     },
     provider: {

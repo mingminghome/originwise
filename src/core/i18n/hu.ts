@@ -139,8 +139,16 @@ export const hu = {
     agentsUsed: '{n} ügynök',
     agentsTitle: 'Használt MI-készlet',
     agentsSummary: '{total} hívás · {ok} ok · {fail} sikertelen',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'erős kapcsolat',
+      moderate: 'közepes kapcsolat',
+      weak: 'gyenge kapcsolat',
+    },
     agentsHint:
       'Minden sor egy ingyenes szerveres MI-hívás. A hibák gyakran kvótát, modellhozzáférést vagy időtúllépést jelentenek; másokat vagy tartalékot próbálunk. Az élő web Gemini Search groundingot igényel (nem ugyanaz, mint a szöveges RPM).',
+    agentsHintVia:
+      'Minden sor egy ingyenes szerveres MI-hívás. A hibák gyakran kvótát, modellhozzáférést vagy időtúllépést jelentenek; másokat vagy tartalékot próbálunk. Az élő webes keresés a(z) {provider} szolgáltatással futott.',
     agentOk: 'OK',
     agentFail: 'Sikertelen ({err})',
     agentSkipped: 'Kihagyva ({err})',
@@ -167,6 +175,7 @@ export const hu = {
       monolith: 'Teljes ellenőrzés (egy hívás)',
       dual_core: 'Termék + cég',
       dual_alts: 'Kisebb CN-kapcsolatú alternatívák',
+      web: 'Webes keresés',
       unknownProvider: 'Ismeretlen MI',
     },
     provider: {
