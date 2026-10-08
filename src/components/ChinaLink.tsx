@@ -12,8 +12,6 @@
 import { hqFoldedIntoParent, parentNamedInCompany } from '../../functions/_lib/chinaChip';
 import { inScope, normalizeRegion, type GeoScope } from '../../functions/_lib/regions';
 import type { CheckResult, RelationTier } from '../core/types';
-import type { TFunction } from '../core/i18n';
-import { localizeCountry } from '../core/i18n/countries';
 
 export type LinkStatus = 'china' | 'notChina' | 'unconfirmed';
 export type ChinaLinkRow = {
@@ -203,38 +201,4 @@ export function displayTier(result: CheckResult): {
       ? Math.max(result.confidence, COMPANY_DIRECT_MIN_CONFIDENCE)
       : undefined;
   return { tier: 'direct', confidence: conf };
-}
-
-export function ChinaLink({ result, t }: { result: CheckResult; t: TFunction }) {
-  const { rows, chip, hqFolded } = buildChinaLinks(result);
-  if (!rows.length) return null;
-  return (
-    <section className="china-link" data-testid="china-link">
-      <h3 className="result-section-title">{t('check.chinaLink.title')}</h3>
-      {chip ? (
-        <p className={`china-link-company is-${chip}`} data-testid="china-chip">
-          {t(`check.chinaLink.${chip}`)}
-        </p>
-      ) : null}
-      <ul className="china-link-rows">
-        {rows.map((r) => (
-          <li key={r.key} className={`china-link-row is-${r.status}`}>
-            <span className="china-link-label">{t(`check.chinaLink.${r.key}`)}</span>
-            <span className={`china-link-status is-${r.status}`}>
-              {r.key === 'parts'
-                ? t('check.chinaLink.partsChina')
-                : r.status === 'unconfirmed'
-                  ? t('check.chinaLink.unconfirmed')
-                  : localizeCountry(t, r.value)}
-            </span>
-            {r.key === 'hq' && hqFolded ? (
-              <span className="china-link-detail muted">{t('check.chinaLink.hqParentNote')}</span>
-            ) : r.detail ? (
-              <span className="china-link-detail muted">{r.detail}</span>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
 }
