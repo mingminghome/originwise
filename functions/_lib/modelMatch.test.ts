@@ -104,6 +104,48 @@ describe('exact-model matching (brand + model, variant-safe)', () => {
       assert.equal(exactModelPage(t, MELIO), false, JSON.stringify(modelMentions(t, MELIO)));
     });
   }
+  // Tester (12:46): shop titles put the colour after the model.
+  for (const t of [
+    'Cybex Melio Moon Black',
+    'Cybex Melio Deep Black',
+    'Cybex Melio Mirage Grey',
+    'Cybex Melio Magic Black',
+    'Cybex Melio Space Grey',
+    'Cybex Melio Seashell Beige',
+    'Cybex Melio Navy',
+    'Cybex Melio Black',
+    'CYBEX MELIO MOON BLACK',
+    'Cybex Melio Moon Black 嬰兒推車 2024',
+    'Cybex Melio Sky Blue stroller',
+  ]) {
+    it(`colour phrase after the model is descriptive, still exact Melio: ${JSON.stringify(t)}`, () => {
+      assert.equal(exactModelPage(t, MELIO), true, JSON.stringify(modelMentions(t, MELIO)));
+    });
+  }
+  for (const t of [
+    'Cybex Melio Carbon Moon Black',
+    'Cybex Melio Carbon Deep Black',
+    'Cybex Melio Eezy Black',
+    'Cybex Melio V2 Moon Black',
+    'Cybex Melio NC Black',
+    'Cybex Melio Pro Grey',
+    'Cybex Melio Lux Navy',
+    'Cybex Melio S Black',
+    'CYBEX MELIO CARBON MOON BLACK',
+    'Cybex Melio Street Silver',
+  ]) {
+    it(`a variant stays a variant even with a colour after it: ${JSON.stringify(t)}`, () => {
+      assert.equal(exactModelPage(t, MELIO), false, JSON.stringify(modelMentions(t, MELIO)));
+    });
+  }
+  it('a colour page counts in the gate; the Carbon colour page is still excluded as Melio Carbon', () => {
+    const moon = page('https://www.momoshop.com.tw/goods/9', 'Cybex Melio Moon Black 輕量嬰兒推車\n產地：中國');
+    const carbon = page('https://shop.example.jp/c', 'Cybex Melio Carbon Moon Black ベビーカー\n原産国：中国');
+    const g = gateClaims('Cybex Melio', [], [moon, carbon], regexCooClaims([moon, carbon]));
+    assert.deepEqual(g.kept.map((k) => [k.page, k.exactModel]), [[1, true]]);
+    assert.deepEqual(g.excluded.map((e) => e.model), ['Melio Carbon']);
+  });
+
   it("'Liberty 4 NC' is not 'Liberty 4'; 'Liberty 4' itself and with a category word is", () => {
     assert.equal(exactModelPage('Anker Liberty 4 NC', 'Anker Liberty 4'), false);
     assert.equal(exactModelPage('Soundcore Liberty 4 NC earbuds', 'Soundcore Liberty 4'), false);

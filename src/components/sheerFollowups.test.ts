@@ -248,6 +248,13 @@ describe('(f): Softouch label', () => {
     assert.ok(out.includes('びん · 日本'), out);
   });
 
+  it('產地說明 零件候選 keeps the label parts rows (びん · 日本, 乳首、キャップ、フード · 中國) with no made-in rows', () => {
+    const out = details(SOFTOUCH);
+    assert.match(out, /びん[^\n]*日本/, out);
+    assert.match(out, /乳首、キャップ、フード[^\n]*中國/, out);
+    assert.doesNotMatch(out, /依品名比對|模型知識/, out);
+  });
+
   it('總部 stays 有提及: no search ran and the label does not state the HQ', () => {
     const hq = buildLayerRows(SOFTOUCH).find((r) => r.key === 'hq');
     assert.equal(hq?.tag, 'mentioned');

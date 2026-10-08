@@ -466,6 +466,48 @@ function normModelText(s: string): string {
 const YEAR_RE = /^(19|20)\d\d$/;
 
 /**
+ * Base colour words. Shop titles put the colour after the model ("Cybex
+ * Melio Moon Black", "Deep Black", "Mirage Grey"): a phrase that ends in one
+ * of these is descriptive, not another model.
+ */
+const BASE_COLOUR_WORDS = new Set([
+  'black', 'grey', 'gray', 'white', 'blue', 'navy', 'beige', 'red', 'green', 'pink', 'brown',
+  'silver', 'gold', 'purple', 'yellow', 'orange', 'sand', 'cream', 'ivory', 'khaki', 'olive',
+  'taupe', 'charcoal', 'graphite', 'anthracite', 'turquoise', 'teal', 'mint', 'lavender', 'lilac',
+  'rose', 'bordeaux', 'burgundy', 'maroon', 'violet', 'copper', 'bronze', 'platinum', 'stone',
+  'mocha', 'espresso', 'caramel', 'champagne', 'pearl', 'denim', 'indigo', 'aqua', 'coral',
+  'peach', 'nude', 'mauve', 'plum', 'sage', 'ochre', 'rust', 'camel', 'oatmeal', 'linen',
+]);
+
+/**
+ * A capitalised modifier in front of a colour word (Moon, Deep, Mirage,
+ * Magic, Space; MOON in an all-caps title). Edition words never are.
+ */
+function colourModifier(w: string, allCaps: boolean): boolean {
+  return (
+    (/^[A-Z][a-z]+$/.test(w) || (allCaps && /^[A-Z]{2,}$/.test(w))) &&
+    !MODEL_EDITION_WORDS.has(w.toLowerCase()) &&
+    !/^(ver|version|gen|mk)$/i.test(w)
+  );
+}
+
+/**
+ * "<0–2 capitalised modifiers> <base colour>" right after the model: a colour
+ * phrase (descriptive). "Carbon Moon Black" is not: Carbon is an edition word.
+ */
+function colourPhraseAt(s: string): boolean {
+  const words = /^([A-Za-z]+)(?: ([A-Za-z]+))?(?: ([A-Za-z]+))?/.exec(s);
+  if (!words) return false;
+  const ws = words.slice(1).filter((w): w is string => Boolean(w));
+  for (let n = 0; n < ws.length; n++) {
+    if (!BASE_COLOUR_WORDS.has(ws[n]!.toLowerCase())) continue;
+    const allCaps = /^[A-Z]+$/.test(ws[n]!);
+    return ws.slice(0, n).every((w) => colourModifier(w, allCaps));
+  }
+  return false;
+}
+
+/**
  * What follows the matched "<brand> <model>": null when it is allowed (CJK
  * text, punctuation, a generic word, a year), else the token that names
  * another variant ("Carbon", "V2", "NC", "4", "(Carbon)").
@@ -497,6 +539,8 @@ function variantAfter(rest: string): string | null {
   }
   if (MODEL_GENERIC_WORDS.has(lw)) return null;
   if (MODEL_EDITION_WORDS.has(lw)) return w;
+  // Colour phrase (Moon Black, Deep Black, Mirage Grey): descriptive.
+  if (colourPhraseAt(s)) return null;
   // Alphanumeric suffix (C2, 4K, X1) or a short all-caps token (NC, S).
   if (/\d/.test(w) || /^[A-Z]{1,4}$/.test(w)) return w;
   // A capitalised name-like token (Carbon, Eezy, Street, CARBON).
