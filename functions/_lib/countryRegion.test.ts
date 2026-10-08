@@ -35,7 +35,9 @@ describe('ROC is Taiwan, PRC is China', () => {
   });
   it('country-name table: roc / r.o.c. / republic of china are Taiwan aliases', () => {
     for (const s of ['roc', 'r.o.c.', 'republic of china']) assert.equal(countryNameLabel(s), 'Taiwan', s);
-    assert.equal(countryNameLabel("people's republic of china"), 'China');
+    for (const s of ["people's republic of china", 'people’s republic of china', 'people s republic of china', 'peoples republic of china']) {
+      assert.equal(countryNameLabel(s), 'China', s);
+    }
   });
   it('made-in value reader: ROC → Taiwan, PRC → China', () => {
     for (const s of ['ROC', 'R.O.C.', 'Republic of China', 'Republic of China (Taiwan)']) {

@@ -112,7 +112,7 @@ const US_NAME = 'united\\s+states(?:\\s+of\\s+america)?|u\\.s\\.a\\.?|usa|u\\.s\
  */
 const US_TOWN_NAMES = ['georgia', 'jordan', 'lebanon', 'peru', 'mexico', 'panama', 'cuba', 'poland', 'wales', 'chile', 'canton'];
 const US_PLACE = new RegExp(
-  `(${COO_CUE_SRC}\\s*[:：]?\\s*(?:the\\s+)?)((?:${US_STATE_NAME}|(?:${US_TOWN_NAMES.join('|')})(?:\\s+city)?)(\\s*,\\s*|\\s*[-–—/／]\\s*|\\s*[（(]\\s*|\\s+)(?:the\\s+)?)(${US_NAME}|${US_STATE_NAME}|${US_STATE_ABBR})(?![A-Za-z])`,
+  `(${COO_CUE_SRC}\\s*[:：]?\\s*(?:the\\s+)?)((?:${US_STATE_NAME}|(?:${US_TOWN_NAMES.join('|')})(?:\\s+city)?)(\\s*,\\s*|\\s*[-–—/／]\\s*|\\s*[（(]\\s*|\\s+and\\s+|\\s*&\\s*|\\s+)(?:the\\s+)?)(${US_NAME}|${US_STATE_NAME}|${US_STATE_ABBR})(?![A-Za-z])`,
   'gi'
 );
 /** Listed towns that are no country name: before a bare USA they are a US place. */
@@ -130,6 +130,7 @@ const CJK_US_PLACE = new RegExp(
  * A US place after a made-in cue or in a made-in field; the place becomes one
  * "USA" / 美國 value (same length, so offsets and page quotes stay):
  * - a US state name before USA: 「Made in Georgia, USA」 "Georgia (USA)" "Georgia/USA"
+ *   "Georgia and USA" "Texas & USA"
  *   "Origin: Georgia, USA" "Origin: Texas, USA" "COO: California, USA";
  * - a listed town (or "<town> City") before a US state name or upper-case code,
  *   comma only: 「Made in Jordan, Minnesota」「Made in Mexico, NY」「Made in Panama City, Florida」;
@@ -141,7 +142,7 @@ const CJK_US_PLACE = new RegExp(
 export function usPlacesAsUsa(text: string): string {
   const out = text.replace(US_PLACE, (all, cue: string, town: string, sep: string, where: string) => {
     const place = town
-      .replace(/(?:\s*,\s*|\s*[-–—/／]\s*|\s*[（(]\s*|\s+)(?:the\s+)?$/i, '')
+      .replace(/(?:\s*,\s*|\s*[-–—/／]\s*|\s*[（(]\s*|\s+and\s+|\s*&\s*|\s+)(?:the\s+)?$/i, '')
       .toLowerCase()
       .replace(/\s+/g, ' ');
     if (US_NAME_ONLY.test(where)) {
@@ -309,7 +310,18 @@ const EU_FIELD_PAIR = new RegExp(`^[ \\t]*(?:[-–—/／,，、&+]|\\band\\b|\\
 /** The EU named in a field value ("China / EU"); upper case only. */
 const EU_IN_VALUE = /(?<![A-Za-z.])(?:E\.U\.|EU)(?![A-Za-z])/g;
 /** USA, then a second country after a comma, and, & or or ("Made in USA, China"). */
-const US_JOIN_AFTER = new RegExp(`^[ \\t]*(,|，|&|\\band\\b|\\bor\\b)[ \\t]*(?:the[ \\t]+)?(${VALUE_COUNTRY_TOKEN})`, 'i');
+const US_JOIN_AFTER = new RegExp(`^[ \\t]*(,|，|&|\\band\\b|\\bor\\b)[ \\t]*(?:the[ \\t]+)?(${VALUE_COUNTRY_TOKEN}|E\\.U\\.|EU(?![A-Za-z]))`, 'i');
+/**
+ * A US address right after a town name: ", <US state name or upper-case code>"
+ * ("Made in USA, Lebanon, TN", "USA, Panama City, FL").
+ */
+const US_ADDRESS_AFTER = new RegExp(`^(?:[ \\t]+city)?[ \\t]*,[ \\t]*(${US_STATE_NAME}|${US_STATE_ABBR})(?![A-Za-z])`, 'i');
+function usAddressAfter(rest: string): boolean {
+  const m = US_ADDRESS_AFTER.exec(rest);
+  if (!m) return false;
+  // A short state code only in upper case ("…, Mexico, ny" is no state).
+  return !/^[A-Za-z]{2}$/.test(m[1]!) || m[1] === m[1]!.toUpperCase();
+}
 /**
  * Country names that are also US towns: one FIRST, with a bare USA second, keeps
  * the country ("Made in Mexico/USA", "Mexico - USA", "Mexico, USA" are Mexico).
@@ -322,6 +334,8 @@ const isUs = (x: string) => canonCountry(x) === 'united states';
  * - the same country twice ("China / PRC") is one;
  * - a part / material word after the second ("Made in USA, China parts") makes it a component;
  * - USA with a US state ("Made in USA/Georgia", "USA, Texas") is the US;
+ * - USA, then a town with a US state after it ("Made in USA, Lebanon, TN") is a US address;
+ * - the EU counts as a second place ("Made in USA, EU" is 爭議, as "EU / China");
  * - a town-list country first, bare USA second ("Made in Mexico/USA") keeps the country;
  * - a bare ", USA" tag after any country ("Made in China, USA", "Mexico, USA and
  *   China") keeps the country (an importer / market line);
@@ -334,10 +348,13 @@ function proseSecond(first: string, tail: string): { second: string; length: num
   const hit = slash ?? join;
   if (!hit) return undefined;
   const found = slash ? slash[1]! : join![2]!;
+  // The EU only in upper case ("…, eu" is no place).
+  if (/^e\.?u\.?$/i.test(found) && found !== found.toUpperCase()) return undefined;
   const second = pairLabel(found);
   if (canonCountry(second) === canonCountry(first)) return undefined;
   if (new RegExp(`^[ \\t]*${PART_WORD}`, 'i').test(tail.slice(hit[0].length))) return undefined;
   if (isUs(first) && US_STATES.includes(second.toLowerCase())) return undefined;
+  if (isUs(first) && usAddressAfter(tail.slice(hit[0].length))) return undefined;
   if (isUs(second) && US_TOWN_COUNTRIES.has(canonCountry(first)) && (slash || /^[,，]$/.test(join![1]!))) return undefined;
   if (join) {
     if (!isUs(first) && !isUs(second)) return undefined;

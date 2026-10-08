@@ -13,7 +13,7 @@
 type Row = readonly [label: string, iso: string, en: readonly string[], ja: readonly string[], hant: readonly string[], hans: readonly string[]];
 
 const ROWS: readonly Row[] = [
-  ['China', 'CN', ['china', 'mainland china', 'prc', 'p.r.c.', 'p.r. china', "people's republic of china"], ['中国', '中華人民共和国'], ['中國', '中國大陸', '中華人民共和國'], ['中国', '中国大陆', '中华人民共和国']],
+  ['China', 'CN', ['china', 'mainland china', 'prc', 'p.r.c.', 'p.r. china', "people's republic of china", 'people’s republic of china', 'people s republic of china', 'peoples republic of china'], ['中国', '中華人民共和国'], ['中國', '中國大陸', '中華人民共和國'], ['中国', '中国大陆', '中华人民共和国']],
   ['Hong Kong', 'HK', ['hong kong'], ['香港'], ['香港'], ['香港']],
   ['Macau', 'MO', ['macau', 'macao'], ['マカオ'], ['澳門'], ['澳门']],
   ['Taiwan', 'TW', ['taiwan', 'republic of china', 'r.o.c.', 'r.o.c', 'roc'], ['台湾', '中華民国'], ['台灣', '臺灣', '中華民國'], ['台湾', '中华民国']],
