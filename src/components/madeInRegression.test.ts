@@ -2211,11 +2211,59 @@ const ROWS: Row[] = [
   ["page", "Made in USA, Lebanon, OR\nBattery: China", "United States,Lebanon", "neutral,neutral 爭議", null],
   ["label", "Made in USA, Lebanon, OR\nMotor: Japan", null, "爭議 United States,Lebanon", null],
   ["page", "Made in USA, Lebanon, OR\nMotor: Japan", "United States,Lebanon", "neutral,neutral 爭議", null],
-  // current behaviour (deferred: a part's own made-in): 'Battery: made in China' wins the label; 「電池：中國製」 is a part field, never the B2 爭議 (US, as a1b198e)
+  // 'Battery: made in China' wins the label (as de6dba0); 「電池：中國製」 reads the same as the
+  // English form on the label (China, as de6dba0) and is never the B2 爭議.
+  // EDITED round 17 (page): a spec line with its own made-in phrase ends the address, so
+  // Lebanon / Mexico is never a page side (was United States,Lebanon,China 爭議).
   ["label", "Made in USA, Lebanon, OR\nBattery: made in China", "China", "label 95%", null],
-  ["page", "Made in USA, Lebanon, OR\nBattery: made in China", "United States,Lebanon,China", "neutral,neutral,neutral 爭議", null],
-  ["label", "Made in USA, Lebanon, TN\n電池：中國製", "United States", "label 95%", null],
+  ["page", "Made in USA, Lebanon, OR\nBattery: made in China", "United States,China", "neutral,neutral 爭議", null],
+  // EDITED round 17 (label): was United States 95% (de6dba0 gave China 95%)
+  ["label", "Made in USA, Lebanon, TN\n電池：中國製", "China", "label 95%", null],
   ["page", "Made in USA, Lebanon, TN\n電池：中國製", "United States", "likely", null],
+  // ── Round 17: a part's own made-in phrase after the address; CJK part field = English part field
+  ["label", "Made in USA, Mexico, OR\nBattery: made in China", "China", "label 95%", null],
+  ["page", "Made in USA, Mexico, OR\nBattery: made in China", "United States,China", "neutral,neutral 爭議", null],
+  ["label", "Made in USA, Lebanon, OR\nBattery: Made in China", "China", "label 95%", null],
+  ["page", "Made in USA, Lebanon, OR\nBattery: Made in China", "United States,China", "neutral,neutral 爭議", null],
+  ["label", "MADE IN USA, MEXICO, OR\nBATTERY: MADE IN CHINA", "China", "label 95%", null],
+  ["page", "MADE IN USA, MEXICO, OR\nBATTERY: MADE IN CHINA", "United States,China", "neutral,neutral 爭議", null],
+  ["label", "Made in USA, Lebanon, IN\nMotor: made in Japan", "Japan", "label 95%", null],
+  ["page", "Made in USA, Lebanon, IN\nMotor: made in Japan", "United States,Japan", "neutral,neutral 爭議", null],
+  // "China made" is the part's own made-in (ends the address) but no label claim: US
+  ["label", "Made in USA, Lebanon, OR\nBattery: China made", "United States", "label 95%", null],
+  ["page", "Made in USA, Lebanon, OR\nBattery: China made", "United States", "likely", null],
+  ["label", "Made in USA, Lebanon, OR\n電池：中國製", "China", "label 95%", null],
+  ["page", "Made in USA, Lebanon, OR\n電池：中國製", "United States", "likely", null],
+  ["label", "Made in USA, Mexico, OR\n電池：中國製", "China", "label 95%", null],
+  ["page", "Made in USA, Mexico, OR\n電池：中國製", "United States", "likely", null],
+  ["label", "Made in USA, Lebanon, OR\n電池：中國製造", "China", "label 95%", null],
+  ["page", "Made in USA, Lebanon, OR\n電池：中國製造", "United States", "likely", null],
+  ["label", "Made in USA, Lebanon, TN\nBattery: made in China", "China", "label 95%", null],
+  ["page", "Made in USA, Lebanon, TN\nBattery: made in China", "United States,China", "neutral,neutral 爭議", null],
+  ["label", "Made in USA, Mexico, NY\n電池：中國製", "China", "label 95%", null],
+  ["page", "Made in USA, Mexico, NY\n電池：中國製", "United States", "likely", null],
+  ["label", "Made in USA\n電池：中國製", "China", "label 95%", null],
+  ["page", "Made in USA\n電池：中國製", "United States", "likely", null],
+  ["label", "Made in USA\n電池：中國製造", "China", "label 95%", null],
+  ["page", "Made in USA\n電池：中國製造", "United States", "likely", null],
+  ["label", "Made in USA\nBattery: made in China", "China", "label 95%", null],
+  ["page", "Made in USA\nBattery: made in China", "United States,China", "neutral,neutral 爭議", null],
+  // must keep (round 16): a bare country value still carries the place list
+  ["label", "Made in USA, Lebanon, OR\nBattery: China", null, "爭議 United States,Lebanon", null],
+  ["page", "Made in USA, Lebanon, OR\nBattery: China", "United States,Lebanon", "neutral,neutral 爭議", null],
+  // (a) pre-check: de6dba0 showed no claim on the label here (US likely on page); stays US
+  ["label", "Made in USA, Mexico, NY\n中國", "United States", "label 95%", null],
+  ["page", "Made in USA, Mexico, NY\n中國", "United States", "likely", null],
+  ["label", "Made in USA, Mexico, NY\n日本", "United States", "label 95%", null],
+  ["label", "Made in USA, Mexico, NY\n及中國", "United States", "label 95%", null],
+  ["label", "Made in USA, Mexico, NY\nEU", "United States", "label 95%", null],
+  ["label", "Made in USA, Mexico, NY\nFROM CHINA", "United States", "label 95%", null],
+  ["label", "Made in USA, Mexico, NY\nPARTS FROM CHINA", "United States", "label 95%", null],
+  ["label", "Made in USA, Lebanon, TN\nPARTS FROM CHINA", "United States", "label 95%", null],
+  ["label", "Made in USA\nJapan", "United States", "label 95%", null],
+  ["page", "Made in USA\nJapan", "United States", "likely", null],
+  ["label", "Made in USA\n中國", "United States", "label 95%", null],
+  ["page", "Made in USA\n中國", "United States", "likely", null],
   // B2: English made-in + CJK made-in (next line or same line) naming another country → 爭議 on label and page
   ["label", "Made in USA\n中國製造", null, "爭議 United States,China", null],
   ["page", "Made in USA\n中國製造", "United States,China", "neutral,neutral 爭議", null],

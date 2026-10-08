@@ -348,7 +348,8 @@ const US_ADDRESS_END = /^[ \t]*(?:[.;)）。]|$|,[ \t]*(?:united\s+states(?:\s+o
  * - a demonym / IMPORTED / FOREIGN before a part word, or OTHER COUNTRIES
  *   ("…, OR\nCHINESE PARTS", "…, OR\nIMPORTED PARTS");
  * - a spec line "Word: value" (: or ：) whose value names such a country
- *   ("…, OR\nBattery: China"); any other spec line ends it ("Battery: Li-ion").
+ *   ("…, OR\nBattery: China"); any other spec line ends it ("Battery: Li-ion"), and so
+ *   does a part's own made-in ("Battery: made in China", 「電池：中國製」).
  * US / USA / U.S. / U.S.A. / United States (also after PARTS / FROM), the EU, a
  * made-in field or claim of its own ("Origin: …", 「中國製造」) and anything else end it.
  */
@@ -358,6 +359,7 @@ const NEXT_LINE_FROM = /^(?:parts?[ \t]+)?(?:from[ \t]+)?(?:the[ \t]+)?/i;
 const NEXT_LINE_US_EU = /^(?:united\s+states(?:\s+of\s+america)?|u\.s\.a\.?|u\.s\.|usa|us|e\.u\.|eu|european\s+union)(?![A-Za-z])/i;
 const NEXT_LINE_OWN_FIELD = /^(?:country\s+of\s+origin|origin|coo|made\s+in|產地|产地|原產地|原产地|原産地|原産国|原產國|原产国)\s*[:：]/i;
 const SPEC_LINE = /^[^\n:：]{1,30}[:：]([^\n]*)/;
+const SPEC_MADE_IN = /\bmade\b|製造|制造|製|生產|生产|生産/i;
 const DEMONYM = 'chinese|japanese|korean|taiwanese|vietnamese|thai|indian|mexican|canadian|german|italian|french|european|imported|foreign';
 // Built on first use: PART_WORD is declared further down.
 let nextLineCountryRe: RegExp | undefined;
@@ -377,6 +379,9 @@ function nextLineCarries(lines: string): boolean {
   if (NEXT_CLAUSE_CJK.test(line) || NEXT_LINE_OWN_FIELD.test(line)) return false;
   const spec = SPEC_LINE.exec(line);
   if (spec) {
+    // A part's own made-in ("Battery: made in China", 「電池：中國製」) is a claim of its
+    // own, not more of the place list: the address ends.
+    if (SPEC_MADE_IN.test(spec[1]!)) return false;
     const others = [...spec[1]!.matchAll(ANY_COUNTRY)].filter((c) => !isUs(normalizeCooLabel(c[0])));
     return others.length > 0;
   }
@@ -813,6 +818,8 @@ export function bestCooClaim(
   usable.sort(
     (a, b) =>
       SOURCE_RANK[a.source] - SOURCE_RANK[b.source] ||
+      // By the country's English name, so 「中國製」 ranks as "China made" does.
+      canonCountry(a.label).localeCompare(canonCountry(b.label)) ||
       a.label.localeCompare(b.label)
   );
   return usable[0];
