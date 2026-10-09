@@ -39,6 +39,11 @@ Products often have SEPARATE layers. Report each layer; never substitute one for
    - madeInSources = at most 2 pages behind your madeIn answer, each {"url","title","quote"}:
      url = the page address exactly as you saw it (web research Sources); title = its title;
      quote = the exact words on that page that name the country (e.g. "產地：中國", "Made in China").
+     Each url must be the product page for THIS model that the quote was copied from: never a site root /
+     homepage, a category or listing page, or a search page (those are never counted).
+     When a Sources line shows only a site name or domain as its title (a grounding redirect link such as
+     https://vertexaisearch.cloud.google.com/grounding-api-redirect/…), copy that redirect link exactly;
+     never rebuild a URL from the domain or title.
      Never invent, guess or rebuild a URL; every cited URL is fetched and checked.
      Use [] when madeIn is unknown or you have no page for it.
 4) componentsOrigin = where major parts / the global line may be built when different from final madeIn.

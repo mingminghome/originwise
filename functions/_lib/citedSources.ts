@@ -12,8 +12,12 @@
  *      http(s) only, every redirect hop re-checked.
  * Either way the page must name the exact model (brand + model, no other
  * variant, not a multi-variant listing) and the AI's country in a made-in
- * line (or carry the quoted made-in words), and no made-in line for another
- * country. Links that match a search result are checked first; at most
+ * line (or carry the quoted made-in words) that sits under this model (not
+ * under another model's heading or block), and no made-in line for another
+ * country. A link (or a landing URL) that is a homepage, a listing root or a
+ * search page never counts and is not fetched (pageUrl.ts). A Gemini
+ * grounding redirect from the Sources with no text kept is fetched like any
+ * other link and judged on its landing page. Links that match a search result are checked first; at most
  * MAX_CITED_SOURCES are checked, so the worst case is MAX_CITED_SOURCES
  * extra fetches per check. A verified page becomes an exact-model web claim
  * (WebCooClaim.cited); a failed one is listed as 「AI 引用，未能驗證」 and never
@@ -28,9 +32,11 @@ import {
   fetchSourcePage,
   fetchWithTimeout,
   pageListsMultipleVariants,
+  quoteInModelScope,
   regexCooClaims,
   stripHtml,
 } from './search/extract';
+import { isGroundingRedirect, notProductPageUrl } from './pageUrl';
 import { isSearchResultUrl } from './sourceLine';
 import type { FetchedPage, SearchEnv, SearchProviderId } from './search/types';
 
@@ -83,12 +89,19 @@ export function citedPageConfirms(
   const lines = regexCooClaims([page]);
   // A made-in line for another country on the page: not support.
   if (lines.some((c) => !sameCountry(c.country, country))) return false;
-  if (lines.some((c) => sameCountry(c.country, country))) return true;
+  // The line must sit under this model, not under another model's heading or
+  // block ("Cybex Callisto … made in China" on a page that also links Melio).
+  if (lines.some((c) => sameCountry(c.country, country) && quoteInModelScope(text, entity, c.quote))) return true;
   // No made-in line the regex reads: the model's own quote must be on the page
   // and name the country.
   const q = (quote || '').trim();
   // Design / brand wording in the quote never counts ("Engineered in Germany").
-  return q.length >= 3 && compact(text).includes(compact(q)) && sameCountry(stripDesignPhrases(q), country);
+  return (
+    q.length >= 3 &&
+    compact(text).includes(compact(q)) &&
+    sameCountry(stripDesignPhrases(q), country) &&
+    quoteInModelScope(text, entity, q)
+  );
 }
 
 /** Wildcard-DNS services that resolve any name to a chosen (often private) IP. */
@@ -147,7 +160,9 @@ async function firecrawlScrape(key: string, url: string): Promise<FetchedPage | 
     const landed = data.data?.metadata?.url || data.data?.metadata?.sourceURL;
     if (landed && !isPublicHttpUrl(landed)) return null;
     const title = stripHtml(data.data?.metadata?.title || '');
-    return { url, title, text: [title, md].filter(Boolean).join('\n') };
+    // Where Firecrawl landed (metadata.url), so a redirect to a homepage is seen.
+    const finalUrl = data.data?.metadata?.url && data.data.metadata.url !== url ? data.data.metadata.url : undefined;
+    return { url, ...(finalUrl ? { finalUrl } : {}), title, text: [title, md].filter(Boolean).join('\n') };
   } catch {
     return null;
   }
@@ -219,12 +234,21 @@ export async function verifyCitedSources(opts: {
   }
   const searchKeys = new Set([...opts.searchUrls.map(normalizeUrl), ...pageByKey.keys()]);
   const blocked = new Set([...(opts.droppedUrls ?? []), ...(opts.excludedUrls ?? [])].map(normalizeUrl));
+  // A homepage, listing root or search page is never one product's page:
+  // never counts, never fetched, and never takes one of the check slots.
+  const noPath = cited.filter((c) => notProductPageUrl(c.url));
   // Links that match a search result first; then the rest, in the model's order.
-  const ordered = [...cited]
+  // A Gemini grounding redirect with no text kept is checked like any other
+  // link (fetched, judged on its landing page).
+  const ordered = cited
+    .filter((c) => !notProductPageUrl(c.url))
     .map((c, i) => ({ c, i, key: normalizeUrl(c.url) }))
-    .map((x) => ({ ...x, hit: searchKeys.has(x.key) }))
+    .map((x) => ({ ...x, hit: searchKeys.has(x.key) && !(isGroundingRedirect(x.c.url) && !pageByKey.has(x.key)) }))
     .sort((a, b) => Number(b.hit) - Number(a.hit) || a.i - b.i)
     .slice(0, MAX_CITED_SOURCES);
+  // Listed as unverified only in the slots the checked links leave free
+  // (at most MAX_CITED_SOURCES rows in all, as before).
+  out.unverified.push(...noPath.slice(0, MAX_CITED_SOURCES - ordered.length));
   for (const { c, key, hit } of ordered) {
     if (hit) {
       // Excluded near-miss page, or the gate dropped its made-in claim: never counts.
@@ -244,7 +268,7 @@ export async function verifyCitedSources(opts: {
       }
       // Same check as a fetched page, on the text / snippet we already have.
       const page = pageByKey.get(key);
-      if (page && citedPageConfirms(page, opts.entity, country, c.quote)) {
+      if (page && !notProductPageUrl(page.finalUrl) && citedPageConfirms(page, opts.entity, country, c.quote)) {
         out.verified.push({ country, basis: 'name', status: 'likely', url: page.url, exactModel: true, cited: 'search' });
       } else {
         out.unverified.push(c);
@@ -257,12 +281,14 @@ export async function verifyCitedSources(opts: {
     }
     out.fetches += 1;
     const page = await opts.fetchPage(c.url).catch(() => null);
-    if (page && citedPageConfirms(page, opts.entity, country, c.quote)) {
+    // Redirected (or Firecrawl landed) on a homepage / listing / search page.
+    if (page && !notProductPageUrl(page.finalUrl) && citedPageConfirms(page, opts.entity, country, c.quote)) {
       out.verified.push({
         country,
         basis: 'name',
         status: 'likely',
-        url: c.url,
+        // A grounding redirect counts as the page it lands on (domain count, 來源 row).
+        url: isGroundingRedirect(c.url) && page.finalUrl ? page.finalUrl : c.url,
         exactModel: true,
         cited: 'fetched',
       });

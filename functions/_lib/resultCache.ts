@@ -32,8 +32,11 @@ function sortedDims(dims: CheckDimension[]): string {
  *     evidenceOnly on searchCoo
  * v10: design / brand wording is never made-in (product.designInfo,
  *     附加資訊), 爭議 line on disagreeing pages
+ * v11: AI-cited / search made-in evidence must be a product page (no
+ *     homepage, listing or search page) and sit under this model; the prompt
+ *     asks for the product page and the exact grounding redirect link
  */
-export const CACHE_KEY_VERSION = 'check:v10';
+export const CACHE_KEY_VERSION = 'check:v11';
 
 export async function cacheKeyHash(parts: CacheLookupKey): Promise<string> {
   const material = [
