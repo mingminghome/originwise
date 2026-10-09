@@ -1,7 +1,6 @@
 /**
- * Made-in regression table for PR #36 (generated from Tester's probe strings in
- * /tmp/pr36probe: cases*.txt, codes3.txt, strip.mts, plus every Tester string
- * from earlier rounds of this PR and round 4).
+ * Made-in regression table for PR #36 (Tester probe strings from this PR
+ * and earlier rounds, including the round-4 batch).
  *
  * Expected values are what we want under the current rule, never copied from
  * de6dba0 (de6dba0 read "Made in the USA" as Thailand and "MADE IN MY KITCHEN"
@@ -511,7 +510,9 @@ const ROWS: Row[] = [
   ["page", "German engineering, Made in China", "China", "likely", "d:Germany"],
   ["note", "German engineering, Made in China", "China", "possible", "d:Germany"],
   ["label", "Designed by Apple in California. Assembled in China", "China", "label 95%", "d:United States"],
-  ["page", "Designed by Apple in California. Assembled in China", "China", "likely", "d:United States"],
+  // r30 Chief ruling: the page path queries Cybex Melio, so "Designed by Apple in …" names another company and the
+  // page claim is not this model's (an Apple query still verifies: citedHardening r30 test, row R35-07).
+  ["page", "Designed by Apple in California. Assembled in China", null, null, "d:United States"],
   ["note", "Designed by Apple in California. Assembled in China", "China", "possible", "d:United States"],
   ["label", "Manufactured in Germany", "Germany", "label 95%", null],
   ["page", "Manufactured in Germany", "Germany", "likely", null],
@@ -778,7 +779,7 @@ const ROWS: Row[] = [
   ["label", "製造元：Cybex GmbH（ドイツ）", null, null, null],
   ["label", "国産", null, null, null],
   ["label", "国内製造", null, null, null],
-  // ── Tester r4 fresh batch at c3e5afa (/tmp/pr36probe/r4-fresh-*.out), rows not already above
+  // ── Tester r4 fresh batch, rows not already above
   ["label", "产地：中国", "China", "label 95%", null],
   ["page", "产地：中国", "China", "likely", null],
   ["note", "产地：中国", "China", "possible", null],

@@ -87,7 +87,7 @@ const COO_CUE_SRC = `(?:(?:製造|制造|生產|生产|生産|組裝|组装|產|
 const COO_LINE = new RegExp(`${COO_CUE_SRC}\\s*[:：]?\\s*(?:the\\s+)?(${VALUE_COUNTRY_TOKEN})`, 'gi');
 
 /** US states (and DC), longest first. Abbreviations only in upper case after a comma. */
-const US_STATES = [
+export const US_STATES = [
   'alabama', 'alaska', 'arizona', 'arkansas', 'california', 'colorado', 'connecticut', 'delaware',
   'florida', 'georgia', 'hawaii', 'idaho', 'illinois', 'indiana', 'iowa', 'kansas', 'kentucky',
   'louisiana', 'maine', 'maryland', 'massachusetts', 'michigan', 'minnesota', 'mississippi',
@@ -110,7 +110,7 @@ const US_NAME = 'united\\s+states(?:\\s+of\\s+america)?|u\\.s\\.a\\.?|usa|u\\.s\
  * USA, are read as a US place ("Made in Jordan, Minnesota"); "Made in China, USA"
  * and "Made in Vietnam, Texas" still mean China / Vietnam.
  */
-const US_TOWN_NAMES = ['georgia', 'jordan', 'lebanon', 'peru', 'mexico', 'panama', 'cuba', 'poland', 'wales', 'chile', 'canton'];
+export const US_TOWN_NAMES = ['georgia', 'jordan', 'lebanon', 'peru', 'mexico', 'panama', 'cuba', 'poland', 'wales', 'chile', 'canton'];
 const US_PLACE = new RegExp(
   `(${COO_CUE_SRC}\\s*[:：]?\\s*(?:the\\s+)?)((?:${US_STATE_NAME}|(?:${US_TOWN_NAMES.join('|')})(?:\\s+city)?)(\\s*,\\s*|\\s*[-–—/／]\\s*|\\s*[（(]\\s*|\\s+and\\s+|\\s*&\\s*|\\s+)(?:the\\s+)?)(${US_NAME}|${US_STATE_NAME}|${US_STATE_ABBR})(?![A-Za-z])`,
   'gi'
