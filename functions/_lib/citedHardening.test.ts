@@ -821,3 +821,53 @@ describe('A1 Gemini grounding redirect cites (r23)', () => {
     assert.equal(pct(v), 80);
   });
 });
+
+describe('r34: designer on the claim line, prose first word, compatible values, spec-table rows', () => {
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const blocks: Array<[string, string]> = [
+    ['Designed by Callisto in Germany, made in China', 'made in China'],
+    ['Made in China, designed by Callisto in Germany', 'Made in China'],
+    ['Designed by Priam in Germany, made in China', 'made in China'],
+    ['Callisto, the city stroller\nMade in China', 'Made in China'],
+    ['Callisto is the lighter one\nMade in China', 'Made in China'],
+    ['Compatible with Callisto\nMade in China', 'Made in China'],
+  ];
+  for (const [body, q] of blocks) it(`must block: ${JSON.stringify(body)}`, () => assert.equal(quoteInModelScope(H + body, 'Cybex Melio', q), false));
+  const keeps: Array<[string, string]> = [
+    ['Designed by Cybex in Germany, made in China', 'made in China'],
+    ['Designed by Cybex GmbH in Bayreuth, Germany\nMade in China', 'Made in China'],
+    ['Manufacturer: CYBEX GmbH, Bayreuth\nMade in China', 'Made in China'],
+    ['Compatible with all Cybex car seats\nMade in China', 'Made in China'],
+    ['Weighing 5.9 kg, it folds with one hand.\nMade in China', 'Made in China'],
+  ];
+  for (const [body, q] of keeps) it(`keeps verifying: ${JSON.stringify(body)}`, () => assert.equal(quoteInModelScope(H + body, 'Cybex Melio', q), true));
+
+  const LA = 'Little Acorns Classic Cotbed';
+  const LH = 'Little Acorns Classic Cotbed, White\nProduct description\nThe cot bed has a clean, painted finish.\nKey Features:\nAdjustable to 3 mattress heights\nConverts to toddler bed\n';
+  const table = 'Product specification\nAssembly type\nAssembly Required\nBrand\nLittle Acorns\nCare instructions\nWipe Clean only\nComposition\npine wood, mfc, MDF\nCountry of origin\nPoland';
+  const CQ = 'Country of origin \n Poland';
+  it('spec table: label cells are safe and plain values pass (John Lewis shape)', () => {
+    assert.equal(quoteInModelScope(LH + table, LA, CQ), true);
+    assert.equal(quoteInModelScope(LH + table, 'Little Acorns Milano Classic Cot Bed', CQ), true); // scope only; the model gate drops the page
+  });
+  const laBlocks = [
+    'Converts to a toddler bed, like our Milano range\nCountry of origin: Poland',
+    'Complete the look with the Classic Dresser and Wardrobe\nCountry of origin: Poland',
+    'Product specification\nSeries\nMilano\nCountry of origin\nPoland',
+    'Product specification\nCompatible with\nMilano Dresser\nCountry of origin\nPoland',
+    'Product specification\nBrand\nLittle Acorns Milano\nCountry of origin\nPoland',
+    'Milano\nProduct specification\nCountry of origin\nPoland',
+    'Description\nMilano is the lighter one\nProduct specification\nCountry of origin\nPoland',
+    'Care instructions\nWipe Clean only\nCountry of origin\nPoland',
+  ];
+  for (const b of laBlocks)
+    it(`spec guardrails block: ${JSON.stringify(b)}`, () => {
+      const q = b.includes('origin: Poland') ? 'Country of origin: Poland' : CQ;
+      assert.equal(quoteInModelScope('Little Acorns Classic Cotbed, White\n' + b, LA, q), false);
+    });
+  it('gate: the Milano query never counts the Classic Cotbed page', () => {
+    const pages: FetchedPage[] = [{ url: 'https://www.johnlewis.com/little-acorns-classic-cotbed-white/p6318946', title: 'Little Acorns Classic Cotbed, White', text: LH + table }];
+    assert.equal(gateClaims('Little Acorns Milano Classic Cot Bed', [], pages, regexCooClaims(pages)).kept.length, 0);
+    assert.equal(gateClaims(LA, [], pages, regexCooClaims(pages)).kept.length, 1);
+  });
+});
