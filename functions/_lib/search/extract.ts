@@ -764,9 +764,8 @@ const SECTION_RE =
 /** r34: a section that holds a spec table (not a description or features section). */
 const SPEC_SECTION_RE =
   /^(?:specifications?|specs|tech(?:nical)? (?:specs|specifications?|details|data)|product (?:details|information|info|specifications?)|details|dimensions|規格|產品規格|商品規格|商品詳細|產品資訊|商品資訊|仕様|スペック|produktdetails|technische daten)\s*[:：]?$/i;
-/** r34 guardrail A: labels whose value names a product (series, model, compatible, matches): the value keeps the allowlist. */
-const NAME_LABEL_RE =
-  /^(?:series|line|range|collection|model|models|model name|model number|compatible(?: with)?|compatibility|fits|works with|also available(?: in| as)?|matches|matching|goes with|pairs? with|part of|系列|型號|型号|適用|适用|相容|兼容|搭配|対応|シリーズ|型番)(?![A-Za-z])/i;
+/** A user-content line above the specs: a customer review or a Q&A entry ("Customer review 2:", "Review:", "Q:"). */
+const REVIEW_LINE_RE = /^(?:(?:customer\s+|verified\s+)?reviews?(?:\s+\d+)?\s*[:：]|q(?:uestion)?\s*[:：]|a(?:nswer)?\s*[:：]|評價|評論|顧客評論|レビュー)/i;
 /** A spec-table label cell: a short field name, letters only, no sentence punctuation ("Country of origin", "Care instructions"). */
 function specLabelShape(l: string): boolean {
   return /^[\p{L}][\p{L} &/()'’-]{0,40}$/u.test(l) && l.split(/\s+/).length <= 5;
@@ -1271,6 +1270,12 @@ const isPlace = (x: string): boolean => {
 
 /** Latin words that are never a product name (nav, spec, colour, plain English). */
 const SAFE_LATIN_WORDS = new Set([
+  // r34b furniture / care / assembly vocabulary (spec tables of nursery furniture: "Assembly Required", "Wipe Clean only", "pine wood, MDF").
+  'bed', 'beds', 'cotbed', 'cotbeds', 'dresser', 'dressers', 'wardrobe', 'wardrobes', 'drawer', 'drawers', 'chest', 'changing', 'table',
+  'tables', 'shelf', 'shelves', 'cabinet', 'mattress', 'mattresses', 'rail', 'rails', 'teething', 'assembly', 'required',
+  'self', 'wipe', 'clean', 'cleaning', 'spot', 'wash', 'washable', 'machine', 'care', 'instructions', 'instruction', 'mdf', 'mfc',
+  'pine', 'oak', 'beech', 'birch', 'walnut', 'wood', 'wooden', 'solid', 'plywood', 'veneer', 'painted', 'lacquered', 'matt', 'gloss',
+  'finish', 'natural', 'composition',
   'light', 'lightweight', 'ultra', 'new', 'all', 'our', 'your', 'this', 'that', 'these', 'it', 'its', 'a', 'an', 'is', 'are', 'was',
   'be', 'to', 'on', 'at', 'as', 'or', 'not', 'no', 'yes', 'up', 'off', 'per', 'only', 'more', 'less', 'most', 'very', 'just', 'now',
   'shipping', 'ships', 'ship', 'founded', 'established', 'free', 'returns', 'return', 'days', 'day', 'orders', 'order', 'over', 'add', 'cart', 'buy', 'shop', 'home', 'menu',
@@ -1434,10 +1439,14 @@ function wordAndCode(w: string, next: string | undefined, prose: boolean, safe: 
 }
 
 /** Closed set of words that commonly start an English sentence (pronouns, determiners, connectives, imperatives). */
-const SENTENCE_START = /^(?:the|a|an|this|that|these|those|it|its|we|our|you|your|they|their|he|she|his|her|i|my|there|here|what|when|where|why|how|which|who|if|as|so|but|and|or|also|then|now|just|please|note|keep|use|do|don|pay|add|get|buy|shop|see|order|choose|enjoy|make|take|read|learn|discover|find|check|visit|click|view|explore|contact|call|try|register|sign|follow|watch|ask|save|never|always|each|every|all|both|some|any|no|not|one|with|for|from|in|on|at|by|to|of|after|before|while|because|although|though|once|unlike|like|perfect|ideal|great|easy|simply|thanks|whether|even|only)$/i;
+const SENTENCE_START = /^(?:the|a|an|this|that|these|those|it|its|we|our|you|your|they|their|he|she|his|her|i|my|there|here|what|when|where|why|how|which|who|if|as|so|but|and|or|also|then|now|just|please|note|keep|use|do|don|pay|add|get|buy|shop|see|order|choose|enjoy|make|take|complete|read|learn|discover|find|check|visit|click|view|explore|contact|call|try|register|sign|follow|watch|ask|save|never|always|each|every|all|both|some|any|no|not|one|with|for|from|in|on|at|by|to|of|after|before|while|because|although|though|once|unlike|like|perfect|ideal|great|easy|simply|thanks|whether|even|only)$/i;
 /** A sentence's first word exempt from the allowlist: a closed-class opener or an inflected verb / adverb shape. */
+/** A third-person verb opening a feature line ("Converts to", "Comes with"); not a name before a copula ("Balios is"). */
+function verbS(w: string, next: string | undefined): boolean {
+  return /^[A-Z][a-z]{2,}s$/.test(w) && !!next && /^[a-z]/.test(next) && !/^(?:is|are|was|were|has|have)$/.test(next);
+}
 function sentenceStartWord(w: string): boolean {
-  return SENTENCE_START.test(w) || /^[A-Z][a-z]{2,}(?:ing|ed|ly|able|ible)$/.test(w);
+  return SENTENCE_START.test(w) || /^[A-Z][a-z]{2,}(?:ing|ed|ly|able|ible|ive|ful|ous)$/.test(w);
 }
 
 /** Prose, not a heading: a lowercase word follows, and the line is a sentence, a clause, or has function words. */
@@ -1543,7 +1552,8 @@ function segmentSafe(
   brandNames: Set<string>,
   own: Set<string>,
   isBrand: (name: string) => boolean = () => false,
-  tailOfOurs = false
+  tailOfOurs = false,
+  loneLowercase = false
 ): string | null {
   // r30 ruling: a name before a store word is the store only when it is the brand or a listed retailer.
   const isStore = (name: string): boolean => {
@@ -1601,11 +1611,17 @@ function segmentSafe(
       // "Stroller X", "CotS"). A spec label keeps its value ("Size S", "Age 6M").
       const coded = wordAndCode(w, nx, prose, safeLatin);
       if (coded) return coded;
-      if (!/[A-Z]/.test(w)) continue;
+      if (!/[A-Z]/.test(w)) {
+        // r34b: a lowercase word standing by itself (an all-lowercase line or field value of up to three words, no
+        // digits: "callisto", "Style: milano") is safe only when it is ordinary vocabulary. Prose keeps its plain words.
+        const alone = loneLowercase && words.length <= 3 && !/[A-Z0-9]/.test(sen.replace(/[:：]\s*$/, '')) && !words.some((x) => FUNCTION_WORD.test(x)) && !/\.[a-z]/.test(sen);
+        if (alone && /^[a-z][a-z'’-]{2,}$/.test(w) && !/n['’]t$/.test(w) && !safeLatin(w) && !FUNCTION_WORD.test(w) && !SENTENCE_START.test(w) && !isBrand(w)) return w;
+        continue;
+      }
       // The first word of a real sentence is capitalised by grammar. A heading or a title-case line is not.
       // r34: only a common sentence-start word or an inflected word ("Weighing", "Folded") is exempt;
       // another capitalised first word is checked ("Callisto is the lighter one", "Callisto, the city stroller").
-      if (i === 0 && prose && /^[A-Z][a-z]+$/.test(w) && sentenceStartWord(w)) continue;
+      if (i === 0 && (prose || words.slice(1).some((x) => /^[a-z]/.test(x))) && /^[A-Z][a-z]+$/.test(w) && (sentenceStartWord(w) || verbS(w, nx))) continue;
       if (/^[A-Z]{1,2}$/.test(w)) continue;
       // Contractions ("Don't", "Can't", "Wasn't") are function words.
       if (/^[A-Za-z]+n['’]t$/.test(w)) continue;
@@ -1751,6 +1767,17 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
     : null;
   const keepPlace = (m: string) => (placeBesideBrand(t, m, brand, brandNames) ? m : ' ');
   const unsafe = (seg: string, claim = false, tailOfOurs = false): string | null => {
+    // r34b (Chief ruling): lowercase earns no pass. In "designed by x" the x is dropped only when it is the brand,
+    // in any case ("designed by callisto in germany" keeps callisto).
+    for (const m of seg.matchAll(/\b(?:designed|engineered|developed|made|manufactured|produced|assembled)\s+by\s+([a-z][a-z0-9'’-]*)/g)) {
+      const x = m[1]!;
+      if (!isBrand(x) && !FUNCTION_WORD.test(x) && !COMPANY_FORM.has(x) && !safeLatin(x)) return x;
+    }
+    // After "compatible with" / "works with" / "fits", any case goes through the allowlist.
+    for (const m of seg.matchAll(/\b(?:compatible\s+with|works\s+with|fits|pairs?\s+(?:well\s+)?with)\s+(?:(?:all|most|any|the)\s+)?([a-z][a-z0-9'’-]*)/g)) {
+      const x = m[1]!;
+      if (!isBrand(x) && !FUNCTION_WORD.test(x) && !safeLatin(x)) return x;
+    }
     let x = seg.replace(ourRe, ' ').replace(ORIGIN_PHRASE_LATIN, originLatinFor(isBrand)).replace(STORE_LATIN_RE, ' ').replace(resetRe(COUNTRY_SPAN_RE), ' ');
     // Off the claim line, drop a place only from a place phrase or a company address.
     // r34: judged after origin phrases ("Designed by Cybex GmbH") and a leading field label ("Manufacturer:") are removed.
@@ -1767,7 +1794,7 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
       const w = m[1]!;
       if (colourOnly(w) && !CJK_SAFE_ALL_EXACT.has(w)) return w;
     }
-    return segmentSafe(x, safeLatin, brandNames, own, isBrand, tailOfOurs);
+    return segmentSafe(x, safeLatin, brandNames, own, isBrand, tailOfOurs, !claim);
   };
   const allowed = (at: number, len: number, L: number): boolean => {
     const before = ourAt.filter((o) => o.end <= at);
@@ -1785,17 +1812,18 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
     for (let i = fromLine; i <= L; i += 1) {
       if (table && i !== L) {
         const tl = lines[i]!.trim();
+        // r34b: above the spec section every line gets the usual name check; the running-text pass (S10) is off,
+        // so a full stop is no exemption. Section headings and blank lines are skipped.
         if (i < table.start) {
-          // r34: above the spec section, description / feature text is not checked once the claim is a real
-          // spec-table row of this model's page; a title-case line (a bare name) still is.
-          if (tl === '' || boundary[i] || running(tl) || /\S\s+\S.*[:：]$/.test(tl)) continue;
-          const ws = tl.replace(LEAD_MARK, '').match(/[A-Za-z][A-Za-z'’]*/g) ?? [];
-          if (ws.slice(1).some((w) => /^[a-z]/.test(w))) {
-            // Prose: only its first word can be a name ("Milano is the lighter one"). A verb or adjective
-            // shape ("Converts to", "Adjustable to") or a sentence opener is not.
-            const w0 = ws[0]!;
-            const verbS = w0.endsWith('s') && !/^(?:is|are|was|were|has|have)$/i.test(ws[1] ?? '');
-            if (/^[A-Z][a-z]+$/.test(w0) && !sentenceStartWord(w0) && !verbS && !/(?:able|ible)$/.test(w0) && !safeLatin(w0)) return false;
+          if (tl === '' || boundary[i]) continue;
+          // Running description text: its Latin names are checked (a full stop is no exemption); CJK prose has no
+          // word breaks, so its plain runs are not read as names here.
+          // This product's own lists above the section keep their earlier-block pass (compatible / accessories).
+          if (listLine[i] && !otherList[i]) continue;
+          // A customer review or Q&A line is user content, not the product's description (r23 guard A2ii-g8).
+          if (REVIEW_LINE_RE.test(tl.replace(LEAD_MARK, ''))) continue;
+          if (running(tl) && i !== fromLine) {
+            if (unsafe(lines[i]!.replace(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]+/gu, ' '))) return false;
             continue;
           }
         } else {
@@ -1803,11 +1831,10 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
           const role = table.role.get(i);
           if (role === 'label') continue;
           if (role === 'value' || role === 'row') {
+            // Every row gets the name check on its label and its value, whatever the label ("Milano: Yes", "Style: Milano").
             const lab = role === 'row' ? tl.split(/[:：]/)[0]!.trim() : table.labelOf.get(i) ?? '';
-            const val = role === 'row' ? tl.slice(tl.search(/[:：]/) + 1) : tl;
-            if (NAME_LABEL_RE.test(lab)) {
-              if (unsafe(val)) return false;
-            } else if (!specValueSafe(val)) return false;
+            const val = role === 'row' ? tl.slice(tl.search(/[:：]/) + 1).trim() : tl;
+            if (unsafe(`${lab}: ${val}`)) return false;
             continue;
           }
         }
@@ -1844,7 +1871,7 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
         if (listLine[i] && !(compatList[i] && i >= lastBoundary) && (otherList[i] || !/[:：]\s*\S/.test(seg))) continue;
         // Only the value is checked: the label itself ("Compatible with", "適用") is not a name.
         if (compatList[i]) seg = seg.replace(LEAD_MARK, '').replace(COMPAT_LABEL_RE, ' ');
-        if (i < lastBoundary && running(seg)) continue;
+        if (i < lastBoundary && running(seg) && !table) continue;
       }
       if (unsafe(seg, i === L, !!(anchor && i === fromLine))) return false;
     }
@@ -1858,11 +1885,26 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
    */
   function specTableRows(L: number, fromLine: number): { start: number; role: Map<number, 'label' | 'value' | 'row'>; labelOf: Map<number, string> } | null {
     let start = -1;
-    for (let i = L - 1; i > fromLine; i -= 1) if (boundary[i]) {
-      start = i;
-      break;
+    for (let i = L - 1; i > fromLine; i -= 1) {
+      if (!boundary[i]) continue;
+      const h = lines[i]!.replace(LEAD_MARK, '').trim();
+      const hc = h.search(/[:：]/);
+      const nx = (lines[i + 1] ?? '').trim();
+      // A field label that is also a section word ("Material", "Dimensions", "Material: MDF") is a row inside the
+      // table: a one- or two-word label whose next line is its value, or an inline "Label: value".
+      const cell = specLabelShape(h) && h.split(/\s+/).length <= 2 && i + 1 < L && !!nx && !boundary[i + 1];
+      const inlineRow = hc > 0 && specLabelShape(h.slice(0, hc).trim()) && !!h.slice(hc + 1).trim();
+      if ((cell || inlineRow) && start < 0) {
+        const above = lines.slice(fromLine + 1, i).some((x, k) => boundary[fromLine + 1 + k] && SPEC_SECTION_RE.test(x.replace(LEAD_MARK, '').trim()));
+        if (above) continue;
+      }
+      if (SPEC_SECTION_RE.test(h)) {
+        start = i;
+        break;
+      }
+      return null;
     }
-    if (start < 0 || !SPEC_SECTION_RE.test(lines[start]!.replace(LEAD_MARK, '').trim())) return null;
+    if (start < 0) return null;
     const head = lines[start]!.trim().toLowerCase();
     const role = new Map<number, 'label' | 'value' | 'row'>();
     const labelOf = new Map<number, string>();
@@ -1889,14 +1931,10 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
     if (pending !== null) return null;
     const cl = lines[L]!.trim();
     const colon = cl.search(/[:：]/);
-    if (!(specLabelShape(cl) || (colon > 0 && specLabelShape(cl.slice(0, colon).trim())))) return null;
+    // The claim itself must be a row: "Label: value", or a label cell whose value is the next line.
+    const cellRow = specLabelShape(cl) && !/[:：]/.test(cl) && L + 1 < lines.length && /^\s*\S/.test(lines[L + 1]!) && !/^(?:made|manufactured|assembled|produced)\b/i.test(cl);
+    if (!(cellRow || (colon > 0 && specLabelShape(cl.slice(0, colon).trim()) && cl.slice(colon + 1).trim()))) return null;
     return { start, role, labelOf };
-  }
-  /** A spec value is safe unless it names a product: the brand with another word, or a word the page writes next to the brand. */
-  function specValueSafe(v: string): boolean {
-    if (new RegExp(`(?<![A-Za-z])${brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Za-z])`, 'i').test(v) || [...brandNames].some((b) => v.includes(b))) return !unsafe(v);
-    for (const w of v.match(/[A-Z][A-Za-z0-9'’-]*/g) ?? []) if (placeBesideBrand(t, w, brand, brandNames) && !safeLatin(w)) return false;
-    return true;
   }
   function structural(at: number): boolean {
     const L = lineAt(at);

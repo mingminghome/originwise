@@ -858,7 +858,6 @@ describe('r34: designer on the claim line, prose first word, compatible values, 
     'Product specification\nBrand\nLittle Acorns Milano\nCountry of origin\nPoland',
     'Milano\nProduct specification\nCountry of origin\nPoland',
     'Description\nMilano is the lighter one\nProduct specification\nCountry of origin\nPoland',
-    'Care instructions\nWipe Clean only\nCountry of origin\nPoland',
   ];
   for (const b of laBlocks)
     it(`spec guardrails block: ${JSON.stringify(b)}`, () => {
@@ -870,4 +869,39 @@ describe('r34: designer on the claim line, prose first word, compatible values, 
     assert.equal(gateClaims('Little Acorns Milano Classic Cot Bed', [], pages, regexCooClaims(pages)).kept.length, 0);
     assert.equal(gateClaims(LA, [], pages, regexCooClaims(pages)).kept.length, 1);
   });
+});
+
+describe('r34b: every spec row named-checked, prose names checked, lowercase earns no pass', () => {
+  const LA = 'Little Acorns Classic Cotbed';
+  const head = 'Little Acorns Classic Cotbed, White\nProduct description\nThe cot bed has a clean, painted finish.\nComplete the look with the Classic Dresser and Wardrobe, each sold separately.\nProduct specification\nBrand\nLittle Acorns\n';
+  const claim = 'Country of origin\nPoland';
+  const CQ = 'Country of origin \n Poland';
+  const at = (row: string) => quoteInModelScope(head + row + '\n' + claim, LA, CQ);
+  for (const row of ['Style\nMilano', 'Name\nMilano', 'Product\nMilano Cot Bed', 'Product: Milano Cot Bed', 'Milano\nYes', 'Milano: Yes', 'Finish\nMilano White', 'Finish: Milano White', 'Style\nmilano'])
+    it(`spec row blocks: ${JSON.stringify(row)}`, () => assert.equal(at(row), false));
+  for (const row of ['Colour\nWhite', 'Material\nMDF/pine', 'Material: MDF, pine', 'Dimensions\nH91 x W77 x D144cm', 'Care instructions\nWipe Clean only'])
+    it(`spec row verifies: ${JSON.stringify(row)}`, () => assert.equal(at(row), true));
+  for (const line of ['Milano is the lighter one.', 'The Milano is lighter.', 'Also available: Milano Cot Bed.'])
+    it(`description prose blocks: ${JSON.stringify(line)}`, () =>
+      assert.equal(quoteInModelScope(head.replace('Product specification', `${line}\nProduct specification`) + claim, LA, CQ), false));
+  it('description prose with plain words verifies', () => assert.equal(quoteInModelScope(head + claim, LA, CQ), true));
+
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const tail = ['', '\nYou may also like\nCybex Callisto'];
+  const lcBlocks: Array<[string, string]> = [
+    ['designed by callisto in germany, made in china', 'made in china'],
+    ['designed by callisto in germany\nMade in China', 'Made in China'],
+    ['compatible with callisto\nMade in China', 'Made in China'],
+    ['callisto\nMade in China', 'Made in China'],
+  ];
+  for (const t of tail)
+    for (const [b, q] of lcBlocks)
+      it(`lowercase blocks${t ? ' (Callisto elsewhere)' : ' (only mention)'}: ${JSON.stringify(b)}`, () => assert.equal(quoteInModelScope(H + b + t, 'Cybex Melio', q), false));
+  for (const [b, q] of [
+    ['designed by cybex in germany, made in china', 'made in china'],
+    ['compatible with all cybex car seats\nMade in China', 'Made in China'],
+    ['the stroller folds flat and is light\nMade in China', 'Made in China'],
+    ['Amazon.com\nMade in China', 'Made in China'],
+  ] as Array<[string, string]>)
+    it(`lowercase plain words verify: ${JSON.stringify(b)}`, () => assert.equal(quoteInModelScope(H + b, 'Cybex Melio', q), true));
 });
