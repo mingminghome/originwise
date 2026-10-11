@@ -1018,6 +1018,14 @@ function modelSpans(t: string, entity: string, lineAt: (i: number) => number, li
     // "CotS") is another model. Company, store and line tails ("GmbH", "Official Store",
     // "Platinum Melio") are not. One span on this line; the word is not learned, so a
     // later "in Bayreuth" or "lightweight" is untouched.
+    // r38 (Chief): a country right after the brand is another model ("the Cybex Japan is our other pram"),
+    // unless a company or store word follows it ("Cybex Japan official store", "Cybex UK Ltd",
+    // "CYBEX China 官方旗舰店") or it closes an address / footer line ("Contact: Cybex UK", "…, Cybex UK").
+    if (brandCountryModel(t, m.index ?? 0, restLine)) {
+      const p = place(m.index ?? 0);
+      spans.push({ start: m.index ?? 0, kind: 'other', line: p.line, heads: true, named: true });
+      continue;
+    }
     const built = otherProductTail(restLine, model[0]!, brand);
     if (built) {
       const p = place(m.index ?? 0);
@@ -1535,6 +1543,41 @@ function proseSentence(words: string[], sentence: string): boolean {
  * lone accessory word ("Cot"). Company, store, line and site tails return null.
  * The queried model ends the tail ("Platinum Melio").
  */
+const BRAND_COUNTRY_RE = new RegExp(`^[ \t]*(?:${COUNTRY_SPAN_RE.source})(?![A-Za-z])`, 'i');
+const COUNTRY_CODE_RE = /^[ \t]*([A-Za-z]{2,3})(?![A-Za-z0-9])/;
+const STORE_CJK_TAIL = /^[ \t]*(?:官方|旗艦店|旗舰店|專賣店|专卖店|官網|官网|公式|ストア|ショップ|オンラインストア)/u;
+/** The line text before the brand is a field label or footer mark ("Contact:", "Address:", "© 2026"). */
+const ADDRESS_LEAD = /(?:[:：]|©|\(c\)|copyright\b[^\n]*)[^\n]*$/i;
+/**
+ * r38: true when the brand is followed by a country name or code that names a model (another product).
+ * A country code counts in upper case, or in lower case when it is not an English word ("uk", "usa"; not "in", "us").
+ * Exceptions (existing vocabularies, no new lists): a COMPANY_FORM / STORE_ROLE word or a CJK store word right after
+ * the country, or an address / footer line (a label or © before the brand, or a comma next to it) where the country
+ * ends the line or is followed by a comma, or after a company role ("Distributed by Cybex Germany").
+ */
+function brandCountryModel(t: string, at: number, restLine: string): boolean {
+  let len = 0;
+  const full = BRAND_COUNTRY_RE.exec(restLine);
+  if (full) len = full[0].length;
+  else {
+    const c = COUNTRY_CODE_RE.exec(restLine);
+    const w = c?.[1];
+    if (!c || !w || !canonicalCountry(w)) return false;
+    if (w !== w.toUpperCase() && ENGLISH_WORDS.has(w.toLowerCase())) return false;
+    len = c[0].length;
+  }
+  const after = restLine.slice(len);
+  const next = /^[ \t]*([A-Za-z]+)/.exec(after)?.[1]?.toLowerCase();
+  if (next && (COMPANY_FORM.has(next) || STORE_ROLE.has(next))) return false;
+  if (STORE_CJK_TAIL.test(after)) return false;
+  const lead = t.slice(t.lastIndexOf('\n', at - 1) + 1, at);
+  const closes = /^[ \t]*(?:[,，][^\n]*|[.。]?[ \t]*)$/.test(after);
+  // A company role ("Distributed by Cybex Germany", "Sold by CYBEX Germany") is the company, not a model.
+  const roleBy = /\bby\s*$/i.test(lead);
+  if (closes && (ADDRESS_LEAD.test(lead) || roleBy || /[,，]\s*$/.test(lead) || /^[ \t]*[,，]/.test(after))) return false;
+  return true;
+}
+
 function otherProductTail(restLine: string, modelWord: string, brand: string): string | null {
   const raw = restLine.replace(/[.!。！]\s*$/, '').match(/[A-Za-z][A-Za-z0-9'’+-]*/g) ?? [];
   const words = raw.flatMap(splitModelToken);

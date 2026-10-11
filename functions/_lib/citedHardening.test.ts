@@ -1015,3 +1015,17 @@ describe('r37: format / ignorable characters, dashes, ® ™ breaks, look-alikes
   it('Designed in München. verifies', () => assert.equal(v('Designed in München.'), true));
   it('Designed in Callistoburg. still blocks (not on the place list)', () => assert.equal(v('Designed in Callistoburg.'), false));
 });
+
+describe('r38: a country right after the brand is another model unless a company / store word or an address line follows', () => {
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const q = 'Made in China';
+  const v = (b: string) => quoteInModelScope(`${H}${b}\n${q}`, 'Cybex Melio', q);
+  for (const c of ['China', 'Japan', 'Mexico', 'Turkey', 'Ivory Coast', "Côte d'Ivoire", 'UK', 'USA'])
+    for (const b of ['Cybex', 'cybex', 'CYBEX'])
+      for (const cc of [c, c.toLowerCase(), c.toUpperCase()])
+        it(`must block: the ${b} ${cc} is our other pram`, () => assert.equal(v(`the ${b} ${cc} is our other pram`), false));
+  for (const b of ['Cybex Japan official store', 'CYBEX China 官方旗舰店', 'Cybex Japan 公式ストア', 'Cybex UK Ltd', 'Contact: Cybex UK',
+    'Cybex GmbH, Bayreuth, Germany', 'Made by Cybex in China', 'Distributed by Cybex Germany', 'Designed by Cybex in Germany',
+    'Manufacturer: CYBEX GmbH, Bayreuth', 'colourway', 'foldable', 'our bestselling buggy', 'Designed in München.', 'Cybex in China'])
+    it(`must verify: ${b}`, () => assert.equal(v(b), true));
+});
