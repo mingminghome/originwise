@@ -10,7 +10,7 @@
  */
 
 import { MADE_IN_CODE_LABEL, madeInCodeMatches, NOT_PRODUCT_FIELD, PART_FIELD_WORDS } from './countryLabel';
-import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE, countryNameLabel, koreaListLine } from './countryNames';
+import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE, countryNameLabel, koreaListLine, blankKoreaListLines } from './countryNames';
 import { NOT_MADE_TAIL, stripDesignPhrases } from './designOrigin';
 import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
 import { normalizeRegion, type RegionCode } from './regions';
@@ -608,7 +608,8 @@ const PART_BRACKET = new RegExp(`^\\s*[（(【\\[][^）)】\\]]*${PART_WORD}[^�
 const NEGATED_EN_BEFORE = /(?:\bnot|\bnever|n['’]t)[ \t\u00a0]+$/i;
 
 function resolveFieldValues(input: string): FieldPass {
-  const text = usPlacesAsUsa(input);
+  // r44: a line naming 朝鮮 and another country gives no claim at all.
+  const text = usPlacesAsUsa(blankKoreaListLines(input));
   const chars = text.split('');
   const disputes: FieldDispute[] = [];
   const blank = (a: number, b: number) => {

@@ -184,27 +184,56 @@ export const COUNTRY_LIST_LATIN_RE = COUNTRY_LIST_LATIN.split('|')
  * r44 (Chief, closed rule): 朝鮮 / 朝鲜 is also the first half of many other words (朝鮮半島, 朝鮮族, 朝鮮人參, 朝鮮產業,
  * 北朝鮮族), so the North Korea names below count only as the WHOLE value: from the line start or a label colon
  * (spaces trimmed) to the end of the line, with at most one made-in word after the name (製 / 製造 / 產 / 生產 / 製品 /
- * 產品 and the 制 / 产 / 産 variants) and then only spaces, closing brackets or a trailing 。. After a space, inside
- * brackets or in a list value (朝鮮、中國) they give no country. Rare real values beyond this are accepted misses.
+ * 產品 and the 制 / 产 / 産 variants) and then only spaces, closing brackets or a trailing 。 ！ ； (or ASCII ! ;). After a space, inside
+ * brackets or in a list value (朝鮮、中國) they give no country. The value ends at the next label on the line
+ * (產地：朝鮮 品牌：Cybex is North Korea); a second label naming another place is caught by koreaListLine. Rare real values beyond this are accepted misses.
  */
 const BOUNDED_CJK = new Set(['朝鮮', '朝鲜', '北朝鮮', '北朝鲜', '朝鮮民主主義人民共和國', '朝鲜民主主义人民共和国']);
 const BOUNDED_SUFFIX = '(?:[製制][造品]?|[產产産]品?|生[產产産])';
 const boundedCjk = (n: string) =>
-  `(?<=(?:^|\\n|[:：])[ \\t\\u3000]*)${n}(?=${BOUNDED_SUFFIX}?[ \\t\\u3000)）\\]】」〕]*。?[ \\t\\u3000]*(?![^\\n]))`;
-
-/**
- * r44 (Chief): a line that lists places with 朝鮮 / 朝鲜 among them (產地：中國/朝鮮, 產地：朝鮮、中國) names two places and
- * never confirms just one of them. Scoped to 朝鮮 only; slash / list values for other countries read as before.
- */
-export function koreaListLine(text: string, index: number): boolean {
-  const ls = text.lastIndexOf('\n', index - 1) + 1;
-  const le = text.indexOf('\n', index);
-  const line = text.slice(ls, le < 0 ? text.length : le);
-  return /朝[鮮鲜]/.test(line) && /[/／、,，・&＆]/.test(line);
-}
+  `(?<=(?:^|\\n|[:：])[ \\t\\u3000]*)${n}(?=${BOUNDED_SUFFIX}?[ \\t\\u3000)）\\]】」〕]*[。！!；;]?(?:[ \\t\\u3000]+[^\\s:：]{1,8}[:：][^\\n]*)?[ \\t\\u3000]*(?![^\\n]))`;
 
 /** Every Japanese / Chinese name, longest first (no letter guard needed). */
 export const COUNTRY_LIST_CJK = [...new Set(ROWS.flatMap((r) => [...r[3], ...r[4], ...r[5]]))]
   .sort(byLength)
   .map((n) => (BOUNDED_CJK.has(n) ? boundedCjk(esc(n)) : esc(n)))
   .join('|');
+
+/** r44: the CJK names with no 朝鮮 bounds (koreaListLine's second-place check). */
+const COUNTRY_LIST_CJK_RAW = [...new Set(ROWS.flatMap((r) => [...r[3], ...r[4], ...r[5]]))].sort(byLength).map(esc).join('|');
+
+/**
+ * r44 (Chief, closed rule): a line that names 朝鮮 / 朝鲜 as a place AND another country never confirms any of them,
+ * whatever joins them (產地：中國/朝鮮, 產地：中國（朝鮮）, 產地：朝鮮及中國, 產地：朝鮮 原產地：中國). 朝鮮 is a place here
+ * when it is not the first half of another word: after it comes a made-in word, a joining word (及 / 和 / 與 / 与 /
+ * 或), punctuation, a space or the end of the line (延邊朝鮮族自治州 is no 朝鮮 place, so 產地：中國延邊朝鮮族自治州 is China).
+ * Scoped to 朝鮮 only: other countries' list values read as before.
+ */
+const KOREA_PLACE_RE = new RegExp(
+  `(?:北)?朝[鮮鲜](?:民主主[義义]人民共和[國国])?(?=${BOUNDED_SUFFIX}?(?:[^\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff]|[及和與与或]|$))`,
+  'g',
+);
+let otherCountryRe: RegExp | undefined;
+export function koreaListLine(text: string, index: number): boolean {
+  const ls = text.lastIndexOf('\n', index - 1) + 1;
+  const le = text.indexOf('\n', index);
+  const line = text.slice(ls, le < 0 ? text.length : le);
+  if (!/朝[鮮鲜]/.test(line)) return false;
+  KOREA_PLACE_RE.lastIndex = 0;
+  if (!KOREA_PLACE_RE.test(line)) return false;
+  // Every North Korea name blanked; any country left on the line is a second place.
+  const rest = line.replace(/(?:北)?朝[鮮鲜](?:民主主[義义]人民共和[國国])?|北[韓韩]/g, ' ');
+  otherCountryRe ??= new RegExp(`(?:${COUNTRY_LIST_CJK_RAW})|(?<![A-Za-z])(?:${COUNTRY_LIST_LATIN_RE})(?![A-Za-z])`, 'i');
+  return otherCountryRe.test(rest);
+}
+
+/** r44: every line koreaListLine rejects, blanked to spaces (same length) before any claim or field reader runs. */
+export function blankKoreaListLines(text: string): string {
+  if (!/朝[鮮鲜]/.test(text)) return text;
+  return text
+    .split('\n')
+    .map((line) => (koreaListLine(line, 0) ? ' '.repeat(line.length) : line))
+    .join('\n');
+}
+
+
