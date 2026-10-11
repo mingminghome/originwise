@@ -1002,6 +1002,8 @@ function modelSpans(t: string, entity: string, lineAt: (i: number) => number, li
   /** A CJK run that names another model: what is left after generic words (or the whole run when only one character is left: 城市旅行家). */
   const cjkName = (run: string): string | null => {
     const left = run.replace(CJK_GENERIC_RE, '');
+    // r39: a market edition (日版, 港行, 水貨) is a market, not a model name.
+    if (MARKET_EDITION_RE.test(run)) return null;
     if (!left || !cjkUnknown(run, aliases, ownCjk)) return null;
     const name = left.length >= 2 ? left : run;
     if (name.length < 2 || aliases.has(name) || ownCjk.has(name) || ownCjk.has(run) || canonicalCountry(name) || canonicalCountry(run)) return null;
@@ -1021,7 +1023,9 @@ function modelSpans(t: string, entity: string, lineAt: (i: number) => number, li
     // r38 (Chief): a country right after the brand is another model ("the Cybex Japan is our other pram"),
     // unless a company or store word follows it ("Cybex Japan official store", "Cybex UK Ltd",
     // "CYBEX China 官方旗舰店") or it closes an address / footer line ("Contact: Cybex UK", "…, Cybex UK").
-    if (brandCountryModel(t, m.index ?? 0, restLine)) {
+    // The brand group may take a CJK run after the brand ("Cybex 日版 "): read it back as the start of the rest.
+    const groupTail = BRAND_GROUP_TAIL_CJK_RE.exec(m[0])?.[0] ?? '';
+    if (brandCountryModel(t, m.index ?? 0, groupTail + restLine)) {
       const p = place(m.index ?? 0);
       spans.push({ start: m.index ?? 0, kind: 'other', line: p.line, heads: true, named: true });
       continue;
@@ -1256,6 +1260,8 @@ const CJK_SAFE_ALL = new RegExp(
 function cjkUnknown(run: string, brandNames: Set<string>, own: Set<string>): string | null {
   let r = run;
   for (const n of [...brandNames, ...own].sort((a, b) => b.length - a.length)) r = r.split(n).join(' ');
+  // r39: market editions (日版, 港行, 水貨) are a market, not a name; right after the brand brandCountryModel reads them.
+  r = r.replace(new RegExp(MARKET_EDITION_CJK, 'gu'), ' ');
   // Country names first (中国製造 → 中国 + 製造), longest match.
   let c = '';
   for (let i = 0; i < r.length; ) {
@@ -1539,6 +1545,20 @@ function proseSentence(words: string[], sentence: string): boolean {
 
 const BRAND_COUNTRY_RE = new RegExp(`^[ \t]*[,，]?[ \t]*(?:${COUNTRY_SPAN_RE.source})(?![A-Za-z])`, 'i');
 const COUNTRY_CODE_RE = /^[ \t]*[,，]?[ \t]*([A-Za-z]{2,3})(?![A-Za-z0-9])/;
+/**
+ * r39: market editions (日版, 港版, 台版/臺版, 陸版, 美版, 港行, 行貨/行货, 水貨/水货) name a market, never an origin. Right after
+ * the brand they name another product like a country does ("Cybex 日版 is our other pram"); after the model they are
+ * the model's edition ("Cybex Melio 日版"). A closed shape: one-character market + 版/行, or 行貨 / 水貨.
+ */
+const MARKET_EDITION_CJK = '[日港台臺陸陆美韓韩歐欧中澳][版行]|行貨|行货|水貨|水货';
+const BRAND_GROUP_TAIL_CJK_RE = new RegExp(`(?:${COUNTRY_LIST_CJK}|${MARKET_EDITION_CJK})[ \\t　]*$`, 'u');
+const MARKET_EDITION_RE = new RegExp(`^(?:${MARKET_EDITION_CJK})$`, 'u');
+/**
+ * r39: a Japanese / Chinese country name (existing COUNTRY_LIST_CJK) directly after the brand, with or without a space
+ * ("Cybex 日本", "CYBEX中國"). An origin or brand-origin suffix (日本製, 中國製造, 中国产, 德國設計, 德國品牌) is a claim or a descriptor, not a
+ * model name.
+ */
+const BRAND_COUNTRY_CJK_RE = new RegExp(`^[ \\t　]*[,，、]?[ \\t　]*(?:${COUNTRY_LIST_CJK}|${MARKET_EDITION_CJK})(?![製制產产造]|設計|设计|企画|研發|研发|品牌)`, 'u');
 /** Entity words allowed around "brand + country" in an address / company / store unit (existing vocabularies). */
 const ENTITY_LABEL_RE = /(?:\b(?:contact|address|manufacturer|importer|brand)|製造元|販売元|輸入元|発売元|進口商|进口商|品牌|ブランド)[ \t]*[:：]/giu;
 const ENTITY_YEAR_RE = /(?:©|\(c\)|\bcopyright\b)[ \t]*(?:19|20)\d\d\b/gi;
@@ -1559,7 +1579,7 @@ const PROSE_LINE_RE = /\b(?:our|my|your|their|we|i|you|it|they|he|she|this|that|
  */
 function brandCountryModel(t: string, at: number, restLine: string): boolean {
   let len = 0;
-  const full = BRAND_COUNTRY_RE.exec(restLine);
+  const full = BRAND_COUNTRY_RE.exec(restLine) ?? BRAND_COUNTRY_CJK_RE.exec(restLine);
   if (full) len = full[0].length;
   else {
     const c = COUNTRY_CODE_RE.exec(restLine);

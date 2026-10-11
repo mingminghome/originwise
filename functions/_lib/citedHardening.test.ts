@@ -1056,3 +1056,16 @@ describe('r38c: one whole-line rule for brand + country entity lines (p49)', () 
     'Cybex Japan 公式ストア', 'Brand: Cybex Germany', '品牌：Cybex Germany', 'ブランド: Cybex Japan', 'Sold by CYBEX Germany', 'Cybex GmbH, Bayreuth, Germany'])
     it(`must verify: ${b}`, () => assert.equal(v(b), true));
 });
+
+describe('r39: CJK country names and market editions right after the brand', () => {
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const q = 'Made in China';
+  const v = (b: string) => quoteInModelScope(`${H}${b}\n${q}`, 'Cybex Melio', q);
+  for (const b of ['Cybex 日本', 'Cybex日本', 'CYBEX 中国', 'the Cybex 中國 is our other pram', 'Cybex 台灣版', 'Cybex 臺灣', 'Cybex 日本限定',
+    'Cybex 日版 is our other pram', 'Cybex 港版', '賣比克斯 日本', 'cybex 韩国'])
+    it(`must block: ${b}`, () => assert.equal(v(b), false));
+  for (const b of ['CYBEX 日本 公式ストア', 'CYBEX 中国 官方旗舰店', 'CYBEX日本公式ストア', 'Cybex Melio 日版', 'Cybex Melio 港行'])
+    it(`must verify: ${b}`, () => assert.equal(v(b), true));
+  for (const c of ['產地：中國', '原産国：日本', '原產地：香港', '日本製', '中国製造', '台灣製造', '臺灣製造'])
+    it(`origin line verifies (cited): ${c}`, () => assert.equal(quoteInModelScope(`${H}${c}`, 'Cybex Melio', c), true));
+});
