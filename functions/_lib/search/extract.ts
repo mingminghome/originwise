@@ -1556,9 +1556,10 @@ const MARKET_EDITION_RE = new RegExp(`^(?:${MARKET_EDITION_CJK})$`, 'u');
 /**
  * r39: a Japanese / Chinese country name (existing COUNTRY_LIST_CJK) directly after the brand, with or without a space
  * ("Cybex 日本", "CYBEX中國"). An origin or brand-origin suffix (日本製, 中國製造, 中国产, 德國設計, 德國品牌) is a claim or a descriptor, not a
- * model name.
+ * model name, unless
+ * prose follows it on the line (r40: "Cybex 日本製 is our other pram" names another model).
  */
-const BRAND_COUNTRY_CJK_RE = new RegExp(`^[ \\t　]*[,，、]?[ \\t　]*(?:${COUNTRY_LIST_CJK}|${MARKET_EDITION_CJK})(?![製制產产造]|設計|设计|企画|研發|研发|品牌)`, 'u');
+const BRAND_COUNTRY_CJK_RE = new RegExp(`^[ \\t　]*[,，、]?[ \\t　]*(?:${COUNTRY_LIST_CJK}|${MARKET_EDITION_CJK})(?!(?:[製制產产造]|設計|设计|企画|研發|研发|品牌)[^\\nA-Za-z]*$)`, 'u');
 /** Entity words allowed around "brand + country" in an address / company / store unit (existing vocabularies). */
 const ENTITY_LABEL_RE = /(?:\b(?:contact|address|manufacturer|importer|brand)|製造元|販売元|輸入元|発売元|進口商|进口商|品牌|ブランド)[ \t]*[:：]/giu;
 const ENTITY_YEAR_RE = /(?:©|\(c\)|\bcopyright\b)[ \t]*(?:19|20)\d\d\b/gi;
@@ -2575,7 +2576,7 @@ export function mapSearchHttpError(status: number, body: string): string {
 
 /** A quote must look like a COO statement (Made in / 原産国 / 〜製 …). */
 const COO_CUE =
-  /made\s*in|manufactured\s*in|assembled\s*in|country\s*of\s*origin|origin|\bcoo\b|原産|原產|原产|生産|生產|生产|製|制造|産地|產地|产地/i;
+  /made\s*in|manufactured\s*in|assembled\s*in|country\s*of\s*origin|origin|\bcoo\b|原産|原產|原产|生産|生產|生产|製|制造|制(?!度|程|品)|[產产産](?!品)|産地|產地|产地/i;
 
 /** Notes that look like a made-in claim are dropped (they skipped the JAN check). */
 const NOTE_COO_CUE =
@@ -2614,6 +2615,10 @@ const MADE_IN_NAME_ANY_CASE = new RegExp(
 );
 
 /** Deterministic fallback when the extraction model is unavailable. */
+const BARE_CJK_MADE_IN_RE = new RegExp(
+  `^[ \\t　]*(${COUNTRY_LIST_CJK})(?:製造|制造|製|制|生產|生产|生産|產|产|産)[ \\t　]*[。.!！]?[ \\t　]*$`,
+  'gmu'
+);
 export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
   const out: CooClaim[] = [];
   pages.forEach((p, idx) => {
@@ -2638,6 +2643,12 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
       ),
       // 「製造：中國」「生產：越南」: the field name needs its colon.
       /(?:製造|制造|生產|生产|生産)\s*[:：]\s*([^\s:：、。,，|/／()（）<>[\]]{1,12})/g,
+      // r40 (Chief: only a whole-product claim): a bare CJK made-in claim, a listed CJK country (COUNTRY_LIST_CJK) +
+      // 製造 / 制造 / 製 / 制 / 生產 / 生产 standing alone on its line ("日本製", "中国製造", "臺灣製造"). A part or
+      // material before it (面料：日本製, 輪子台灣製造), an edition (日版製造), marketing (日本技術, 採用日本製程) or an
+      // import phrase (日本原裝進口) is not the whole product and is not read. After an origin label it is the field
+      // pattern above (製造國：日本, 產地：日本製).
+      BARE_CJK_MADE_IN_RE,
     ];
     // Upper-case short forms only right after an explicit cue ("MADE IN CN",
     // "COO: VN", "Made in the UK"); never IT / DE / my, never in prose.

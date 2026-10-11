@@ -96,6 +96,10 @@ export function citedPageConfirms(
   // and name the country.
   const q = (quote || '').trim();
   // Design / brand wording in the quote never counts ("Engineered in Germany").
+  // r40 (Chief: only a whole-product claim confirms): a CJK quote counts only when the claim reader reads it as a
+  // made-in claim for this country (its own line or after an origin label), never a part / material (面料：日本製),
+  // marketing (日本品質, 採用日本製程) or import wording (日本原裝進口).
+  if (/[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}]/u.test(q) && !regexCooClaims([{ ...page, text: q }]).some((c) => sameCountry(c.country, country))) return false;
   return (
     q.length >= 3 &&
     compact(text).includes(compact(q)) &&
