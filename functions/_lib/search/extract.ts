@@ -1537,31 +1537,25 @@ function proseSentence(words: string[], sentence: string): boolean {
   return rest.filter((w) => FUNCTION_WORD.test(w)).length >= 2;
 }
 
-/**
- * Safe words after the brand that still name another product: an accessory phrase
- * ("Carry Cot"), a product word plus a code ("Cot S", "Stroller X", "CotS"), or a
- * lone accessory word ("Cot"). Company, store, line and site tails return null.
- * The queried model ends the tail ("Platinum Melio").
- */
 const BRAND_COUNTRY_RE = new RegExp(`^[ \t]*[,，]?[ \t]*(?:${COUNTRY_SPAN_RE.source})(?![A-Za-z])`, 'i');
 const COUNTRY_CODE_RE = /^[ \t]*[,，]?[ \t]*([A-Za-z]{2,3})(?![A-Za-z0-9])/;
-const STORE_CJK_TAIL = /^[ \t]*(?:官方|旗艦店|旗舰店|專賣店|专卖店|官網|官网|公式|ストア|ショップ|オンラインストア)[\p{Script=Han}\p{Script=Katakana}ー]*[ \t]*$/u;
-/** Only real address / company labels (Contact, Address, Manufacturer, Importer, Brand, plus the ZH/JA forms already in the
- * label vocabulary; Chief r38b: Brand/品牌/ブランド only when the country ends the line) or © / Copyright with a year. */
-const ADDRESS_LEAD = /(?:\b(?:contact|address|manufacturer|importer|brand)|製造元|販売元|輸入元|発売元|進口商|进口商|品牌|ブランド)[ \t]*[:：][ \t]*$|(?:©|\(c\)|copyright)[ \t]*(?:19|20)\d\d\b[^\n]*$/i;
-/** End of the line, allowing trailing punctuation. */
-const LINE_END = /^[ \t]*[.。!！,，;；]?[ \t]*$/;
+/** Entity words allowed around "brand + country" in an address / company / store unit (existing vocabularies). */
+const ENTITY_LABEL_RE = /(?:\b(?:contact|address|manufacturer|importer|brand)|製造元|販売元|輸入元|発売元|進口商|进口商|品牌|ブランド)[ \t]*[:：]/giu;
+const ENTITY_YEAR_RE = /(?:©|\(c\)|\bcopyright\b)[ \t]*(?:19|20)\d\d\b/gi;
+const ENTITY_ROLE_BY_RE = /^[ \t]*[A-Za-z]{3,}[ \t]+by\b/i;
+const ENTITY_CJK_STORE_RE = /(?:官方|旗艦店|旗舰店|專賣店|专卖店|官網|官网|公式|ストア|ショップ|オンラインストア)[\p{Script=Han}\p{Script=Katakana}ー]*/gu;
 /**
- * r38: true when the brand is followed by a country name or code that names a model (another product).
+ * A neighbouring line that reads as prose: a pronoun / possessive or a common verb. Articles alone do not make a
+ * neighbour prose: field and line labels carry them ("From the Cybex Platinum line", "Part of the Cybex Gold line").
+ */
+const PROSE_LINE_RE = /\b(?:our|my|your|their|we|i|you|it|they|he|she|this|that|is|are|was|were|be|been|has|have|had|love|loved|like|likes|bought|use|used|lighter|heavier)\b/i;
+/**
+ * r38c (Chief, one whole-line rule): a country right after the brand names another model, unless the whole unit
+ * (the line, or its sentence when a full stop splits it: "Country of origin: China. Brand: Cybex Germany") is that
+ * entity: brand + country with nothing around it but COMPANY_FORM / STORE_ROLE words, a label (Contact, Address,
+ * Manufacturer, Importer, Brand, and their existing ZH/JA forms), a role verb + "by" at the start, ©+year, address
+ * numbers, "registered in <country>", or CJK store words; and the neighbouring lines are not prose.
  * A country code counts in upper case, or in lower case when it is not an English word ("uk", "usa"; not "in", "us").
- * Exceptions (existing vocabularies, no new lists):
- * - a run of COMPANY_FORM / STORE_ROLE words (or a CJK store word) after the country that ends the line, or is followed
- *   by a comma or a past participle ("Cybex Japan official store", "Cybex UK Ltd registered in England");
- *   not "Cybex Japan Inc stroller", "Cybex China Store Edition";
- * - the country ends the line (trailing punctuation allowed) and the line reads as a company / address line: an
- *   address label (Contact/Address/Manufacturer/Importer) or ©+year before the brand, a role verb + "by"
- *   ("Sold by CYBEX Germany"), or a comma before the brand ("…, Cybex UK");
- * - the country is followed by a comma and an address with a number ("Cybex UK, 1 High Street").
  */
 function brandCountryModel(t: string, at: number, restLine: string): boolean {
   let len = 0;
@@ -1574,22 +1568,51 @@ function brandCountryModel(t: string, at: number, restLine: string): boolean {
     if (w !== w.toUpperCase() && ENGLISH_WORDS.has(w.toLowerCase())) return false;
     len = c[0].length;
   }
-  const after = restLine.slice(len);
-  const commaBefore = /^[ \t]*[,，]/.test(restLine);
-  const lead = t.slice(t.lastIndexOf('\n', at - 1) + 1, at);
-  // Company / store words close the line ("… official store", "… Ltd", "… Ltd registered in England").
-  const co = /^((?:[ \t]+[A-Za-z]+\.?)+?)([ \t]*[,，][^\n]*|[ \t]+[a-z]+ed\b[^\n]*|[ \t]*[.。]?[ \t]*)$/.exec(after);
-  if (!commaBefore && co && co[1]!.trim().split(/\s+/).every((w) => { const lw = w.replace(/\.$/, '').toLowerCase(); return COMPANY_FORM.has(lw) || STORE_ROLE.has(lw); })) return false;
-  if (!commaBefore && STORE_CJK_TAIL.test(after)) return false;
-  if (/^[ \t]*[,，][^\n]*\d/.test(after) && lead.trim() === '' && !commaBefore) return false;
-  if (!LINE_END.test(after)) return true;
-  if (ADDRESS_LEAD.test(lead)) return false;
-  // A role verb before "by" ("Sold by", "Distributed by"); a bare "by Cybex Mexico" is not a company line.
-  if (/\b[A-Za-z]{3,}[ \t]+by[ \t]*$/i.test(lead) && !/\b(?:the|a|an|our|my|pram|stroller)[ \t]+by[ \t]*$/i.test(lead)) return false;
-  if (/[,，][ \t]*$/.test(lead) || commaBefore) return false;
-  return true;
+  const ls = t.lastIndexOf('\n', at - 1) + 1;
+  const leAbs = t.indexOf('\n', at);
+  const le = leAbs < 0 ? t.length : leAbs;
+  let lead = t.slice(ls, at);
+  let after = restLine.slice(len);
+  // The unit is the sentence holding the brand: cut at a full stop + space on either side.
+  const stopL = lead.search(/[.。!?！？][ \t]+(?=\S)[^.。!?！？]*$/);
+  if (stopL >= 0) lead = lead.slice(stopL + 1);
+  const stopR = after.search(/[.。!?！？](?:[ \t]|$)/);
+  const afterTail = stopR >= 0 ? after.slice(stopR + 1) : '';
+  if (stopR >= 0) after = after.slice(0, stopR);
+  // A sentence after the unit on the same line is its own unit only when it is a label line, not prose.
+  if (afterTail.trim() && PROSE_LINE_RE.test(afterTail)) return true;
+  const strip = (x: string, start: boolean) => {
+    let y = x.replace(ENTITY_YEAR_RE, ' ').replace(ENTITY_LABEL_RE, ' ').replace(ENTITY_CJK_STORE_RE, ' ');
+    if (start) y = y.replace(ENTITY_ROLE_BY_RE, ' ');
+    y = y.replace(/\bregistered[ \t]+in[ \t]+([\p{L}' ]+)/giu, (m: string, pl: string) => (canonicalCountry(pl.trim()) || isPlace(pl.trim()) ? ' ' : m));
+    y = y.replace(/[A-Za-z]+\.?/g, (w: string) => {
+      const lw = w.replace(/\.$/, '').toLowerCase();
+      return COMPANY_FORM.has(lw) || STORE_ROLE.has(lw) ? ' ' : w;
+    });
+    return y.replace(/[\d\s,，.。:：;；\-–—()（）#/&]+/g, '');
+  };
+  if (strip(lead, true) !== '' || strip(after, false) !== '') return true;
+  // The unit must carry an entity marker; a bare "Cybex China" line is a model heading (p46 PLM2, ruled p26 row).
+  const marked = (x: string) => ENTITY_YEAR_RE.test(x) || ENTITY_LABEL_RE.test(x) || ENTITY_CJK_STORE_RE.test(x) || /\d/.test(x) ||
+    /\bregistered[ \t]+in\b/i.test(x) || (x.match(/[A-Za-z]+/g) ?? []).some((w) => COMPANY_FORM.has(w.toLowerCase()) || STORE_ROLE.has(w.toLowerCase()));
+  ENTITY_YEAR_RE.lastIndex = 0; ENTITY_LABEL_RE.lastIndex = 0; ENTITY_CJK_STORE_RE.lastIndex = 0;
+  const hasMark = marked(lead) || marked(after) || ENTITY_ROLE_BY_RE.test(lead);
+  ENTITY_YEAR_RE.lastIndex = 0; ENTITY_LABEL_RE.lastIndex = 0; ENTITY_CJK_STORE_RE.lastIndex = 0;
+  if (!hasMark) return true;
+  // (b) The neighbouring lines are not prose.
+  const prev = t.slice(t.lastIndexOf('\n', ls - 2) + 1, Math.max(ls - 1, 0));
+  const nextEnd = t.indexOf('\n', le + 1);
+  const next = le >= t.length ? '' : t.slice(le + 1, nextEnd < 0 ? t.length : nextEnd);
+  if (PROSE_LINE_RE.test(prev) || PROSE_LINE_RE.test(next)) return true;
+  return false;
 }
 
+/**
+ * Safe words after the brand that still name another product: an accessory phrase
+ * ("Carry Cot"), a product word plus a code ("Cot S", "Stroller X", "CotS"), or a
+ * lone accessory word ("Cot"). Company, store, line and site tails return null.
+ * The queried model ends the tail ("Platinum Melio").
+ */
 function otherProductTail(restLine: string, modelWord: string, brand: string): string | null {
   const raw = restLine.replace(/[.!。！]\s*$/, '').match(/[A-Za-z][A-Za-z0-9'’+-]*/g) ?? [];
   const words = raw.flatMap(splitModelToken);

@@ -1045,3 +1045,14 @@ it('r38b: Country of origin: China. Brand: Cybex Germany confirms China', () => 
   const c = 'Country of origin: China. Brand: Cybex Germany';
   assert.equal(quoteInModelScope(`Cybex Melio\nLightweight stroller\n${c}`, 'Cybex Melio', c), true);
 });
+
+describe('r38c: one whole-line rule for brand + country entity lines (p49)', () => {
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const q = 'Made in China';
+  const v = (b: string) => quoteInModelScope(`${H}${b}\n${q}`, 'Cybex Melio', q);
+  for (const b of ["Brand: Cybex Japan Edition", "Brand: Cybex China, our other pram", "Name: Cybex Japan", "Model: Cybex Japan", "Brand: Cybex China\nis our other pram", "Brand: Cybex China — our other pram", "Brand: Cybex China (our other pram)", "Brand name: Cybex China is our other pram", "Brand - Cybex China is our other pram", "BRAND: Cybex China is our other pram", "品牌名稱：Cybex China 是我們另一台推車", "Sold by Cybex China\nour other pram", "© 2026 Cybex China is our other pram", "Contact: Cybex Japan Edition", "Manufacturer: Cybex China Lightweight", "Cybex China registered as our other pram", "the Cybex Japan Inc", "the Cybex Japan Inc.", "Cybex China Ltd registered as our other pram", "our other pram is the Cybex China Ltd", "the Cybex Japan Inc, our other pram", "Cybex Japan Store, our other pram", "Brand: Cybex China\nOur other pram, lighter than Melio", "we love our other pram\nSold by Cybex China"])
+    it(`must block: ${JSON.stringify(b)}`, () => assert.equal(v(b), false));
+  for (const b of ['© 2026 Cybex GmbH', 'Cybex UK Ltd registered in England', 'Cybex Inc., USA', 'Contact: Cybex CN', 'CYBEX China 官方旗舰店',
+    'Cybex Japan 公式ストア', 'Brand: Cybex Germany', '品牌：Cybex Germany', 'ブランド: Cybex Japan', 'Sold by CYBEX Germany', 'Cybex GmbH, Bayreuth, Germany'])
+    it(`must verify: ${b}`, () => assert.equal(v(b), true));
+});
