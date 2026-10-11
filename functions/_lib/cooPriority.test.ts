@@ -196,10 +196,27 @@ describe('package label OCR (Pigeon Softouch glass)', () => {
 });
 
 describe('canonCountry: every name the display can produce maps to one key (round 20)', () => {
-  const unesc = (s: string) => s.replace(/\\s\+/g, ' ').replace(/\\(.)/g, '$1');
+  // r44: split on top-level `|` only (a bounded name like 朝鮮 has groups with `|` inside).
+  const splitTop = (s: string) => {
+    const out: string[] = [];
+    let depth = 0, cls = false, cur = '';
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i]!;
+      if (c === '\\') { cur += c + (s[++i] ?? ''); continue; }
+      if (cls) { if (c === ']') cls = false; }
+      else if (c === '[') cls = true;
+      else if (c === '(') depth++;
+      else if (c === ')') depth--;
+      else if (c === '|' && depth === 0) { out.push(cur); cur = ''; continue; }
+      cur += c;
+    }
+    return [...out, cur];
+  };
+  // r44: a bounded name (朝鮮) carries lookarounds; the name itself is what's between them.
+  const unesc = (s: string) => s.replace(/^\(\?<=.*?\]\*\)(?=[朝北])|\(\?=.*\)$/g, '').replace(/\\s\+/g, ' ').replace(/\\(.)/g, '$1');
   it('each countryNames name (English, Japanese, Traditional, Simplified) has its English label key', () => {
     for (const list of [COUNTRY_LIST_LATIN, COUNTRY_LIST_CJK]) {
-      for (const name of list.split('|').map(unesc)) {
+      for (const name of splitTop(list).map(unesc)) {
         const label = countryNameLabel(name);
         assert.ok(label, name);
         assert.equal(canonCountry(name), canonCountry(label), `${name} vs ${label}`);

@@ -19,7 +19,7 @@ const ROWS: readonly Row[] = [
   ['Taiwan', 'TW', ['taiwan', 'republic of china', 'r.o.c.', 'r.o.c', 'roc'], ['台湾', '中華民国'], ['台灣', '臺灣', '中華民國'], ['台湾', '中华民国']],
   ['Japan', 'JP', ['japan'], ['日本'], ['日本'], ['日本']],
   ['South Korea', 'KR', ['south korea', 'korea', 'republic of korea'], ['韓国', '大韓民国'], ['韓國', '南韓'], ['韩国']],
-  ['North Korea', 'KP', ['north korea', 'n. korea', 'n.korea', 'n korea', 'dprk', 'd.p.r.k.', "democratic people's republic of korea", 'd.p.r. korea'], ['北朝鮮'], ['北韓', '朝鮮民主主義人民共和國'], ['朝鲜', '北朝鲜', '北韩']],
+  ['North Korea', 'KP', ['north korea', 'n. korea', 'n.korea', 'n korea', 'dprk', 'd.p.r.k.', "democratic people's republic of korea", 'd.p.r. korea'], ['北朝鮮'], ['北韓', '朝鮮', '朝鮮民主主義人民共和國'], ['朝鲜', '北朝鲜', '北韩', '朝鲜民主主义人民共和国']],
   ['Vietnam', 'VN', ['vietnam', 'viet nam'], ['ベトナム'], ['越南'], ['越南']],
   ['Thailand', 'TH', ['thailand'], ['タイ'], ['泰國'], ['泰国']],
   ['Cambodia', 'KH', ['cambodia'], ['カンボジア'], ['柬埔寨'], ['柬埔寨']],
@@ -180,8 +180,93 @@ export const COUNTRY_LIST_LATIN_RE = COUNTRY_LIST_LATIN.split('|')
   .map((n) => n.replace(/[aeioucn]/g, (c) => ACCENTED[c]!))
   .join('|');
 
+/**
+ * r44 (Chief, closed rule): 朝鮮 / 朝鲜 is also the first half of many other words (朝鮮半島, 朝鮮族, 朝鮮人參, 朝鮮產業,
+ * 北朝鮮族), so the North Korea names below count only as the WHOLE value: from the line start or a label colon
+ * (spaces trimmed) to the end of the line, with at most one made-in word after the name (製 / 製造 / 產 / 生產 / 製品 /
+ * 產品 and the 制 / 产 / 産 variants) and then only spaces, closing brackets or a trailing 。 ！ ； (or ASCII ! ;). After a space, inside
+ * brackets or in a list value (朝鮮、中國) they give no country. The value ends at the next label on the line
+ * (產地：朝鮮 品牌：Cybex is North Korea); a second label naming another place is caught by koreaListLine. Rare real values beyond this are accepted misses.
+ */
+const BOUNDED_CJK = new Set(['朝鮮', '朝鲜', '北朝鮮', '北朝鲜', '朝鮮民主主義人民共和國', '朝鲜民主主义人民共和国']);
+const BOUNDED_SUFFIX = '(?:[製制][造品]?|[產产産]品?|生[產产産])';
+const boundedCjk = (n: string) =>
+  `(?<=(?:^|\\n|[:：])[ \\t\\u3000]*)${n}(?=${BOUNDED_SUFFIX}?[ \\t\\u3000)）\\]】」〕]*[。！!；;]?(?:[ \\t\\u3000]+[^\\s:：]{1,8}[:：][^\\n]*)?[ \\t\\u3000]*(?![^\\n]))`;
+
 /** Every Japanese / Chinese name, longest first (no letter guard needed). */
 export const COUNTRY_LIST_CJK = [...new Set(ROWS.flatMap((r) => [...r[3], ...r[4], ...r[5]]))]
   .sort(byLength)
-  .map(esc)
+  .map((n) => (BOUNDED_CJK.has(n) ? boundedCjk(esc(n)) : esc(n)))
   .join('|');
+
+/**
+ * r44 (Chief, closed rule): an origin value that names 朝鮮 / 朝鲜 as a place AND another country (in the same value or
+ * under another origin label on the line) never confirms any of them;
+ * whatever joins them (產地：中國/朝鮮, 產地：中國（朝鮮）, 產地：朝鮮及中國, 產地：朝鮮 原產地：中國). 朝鮮 is a place here
+ * when it is not the first half of another word: after it comes a made-in word, a joining word (及 / 和 / 與 / 与 /
+ * 或), punctuation, a space or the end of the line (延邊朝鮮族自治州 is no 朝鮮 place, so 產地：中國延邊朝鮮族自治州 is China).
+ * Other labels (品牌, 品名, 代理, 進口商, 經銷, 地址 …) end the value; a line with no label is read whole.
+ * Scoped to 朝鮮 only: other countries' list values read as before.
+ */
+const KOREA_PLACE_RE = new RegExp(
+  `(?:北)?朝[鮮鲜](?:民主主[義义]人民共和[國国])?(?=${BOUNDED_SUFFIX}?(?:[^\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff]|[及和與与或]|$))`,
+  'g',
+);
+/**
+ * r44 (Chief, closed list): origin labels, matched after folding 产/産→產, 国→國, 制→製; any label containing 產地, 產國
+ * or 原產 is one too. A second place under any of them blocks; every other label (品牌, 品名, 代理,
+ * 進口商, 經銷, 地址, 製造商地址, 販售 …) ends the origin value and never counts.
+ */
+const ORIGIN_LABEL_RE =
+  /^(?:原?產地|原產國|製造地|組裝地|加工地|生產地|製造國|made\s+in|country\s+of\s+origin)$|產地|產國|原產/i;
+/** 產 / 产 / 産, 國 / 国, 製 / 制, 組 / 组, 裝 / 装 folded before a label is matched (原產国, 产地國 …). */
+const foldLabel = (l: string) =>
+  l.trim().replace(/[产産]/g, '產').replace(/国/g, '國').replace(/制/g, '製').replace(/组/g, '組').replace(/装/g, '裝');
+const LINE_LABEL_RE = /(country\s+of\s+origin|made\s+in|[^\s:：]{1,8})[ \t\u3000]*[:：]/gi;
+/** A North Korea name as the whole value: at most one made-in word, then only spaces, closing brackets or 。！；. */
+const KOREA_WHOLE_VALUE_RE = new RegExp(
+  `^[ \\t\\u3000]*(?:北)?朝[鮮鲜](?:民主主[義义]人民共和[國国])?${BOUNDED_SUFFIX}?[ \\t\\u3000)）\\]】」〕]*[。！!；;]?[ \\t\\u3000]*$`,
+);
+
+/** The origin values on a labelled line (cut at the next label), or the whole line when it has no label. */
+function koreaOriginValues(line: string): string[] {
+  const labels = [...line.matchAll(LINE_LABEL_RE)];
+  if (!labels.length) return [line];
+  const out: string[] = [];
+  labels.forEach((m, i) => {
+    if (!ORIGIN_LABEL_RE.test(foldLabel(m[1]!))) return;
+    const to = i + 1 < labels.length ? labels[i + 1]!.index! : line.length;
+    out.push(line.slice(m.index! + m[0].length, to));
+  });
+  return out;
+}
+
+/**
+ * True when the line must give no country: an origin value names 朝鮮 / 朝鲜 as a place (not the first half of another
+ * word like 朝鮮族) and the origin values are not all a bare North Korea name. That covers a second place in the same
+ * value (any separator or bracket), a dangling list mark (產地：朝鮮、), and another place under a second origin label.
+ */
+export function koreaListLine(text: string, index: number): boolean {
+  const ls = text.lastIndexOf('\n', index - 1) + 1;
+  const le = text.indexOf('\n', index);
+  const line = text.slice(ls, le < 0 ? text.length : le);
+  if (!/朝[鮮鲜]/.test(line)) return false;
+  const values = koreaOriginValues(line);
+  const hasKorea = values.some((v) => {
+    KOREA_PLACE_RE.lastIndex = 0;
+    return KOREA_PLACE_RE.test(v);
+  });
+  if (!hasKorea) return false;
+  return !values.every((v) => KOREA_WHOLE_VALUE_RE.test(v) || !v.trim());
+}
+
+/** r44: every line koreaListLine rejects, blanked to spaces (same length) before any claim or field reader runs. */
+export function blankKoreaListLines(text: string): string {
+  if (!/朝[鮮鲜]/.test(text)) return text;
+  return text
+    .split('\n')
+    .map((line) => (koreaListLine(line, 0) ? ' '.repeat(line.length) : line))
+    .join('\n');
+}
+
+

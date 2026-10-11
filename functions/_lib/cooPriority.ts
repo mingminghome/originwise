@@ -10,7 +10,7 @@
  */
 
 import { MADE_IN_CODE_LABEL, madeInCodeMatches, NOT_PRODUCT_FIELD, PART_FIELD_WORDS } from './countryLabel';
-import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE, countryNameLabel } from './countryNames';
+import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE, countryNameLabel, koreaListLine, blankKoreaListLines } from './countryNames';
 import { NOT_MADE_TAIL, stripDesignPhrases } from './designOrigin';
 import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
 import { normalizeRegion, type RegionCode } from './regions';
@@ -276,7 +276,7 @@ const CJK_TO_LABEL: Record<string, string> = {
   中華人民共和国: '中国', 中華人民共和國: '中國', 中國大陸: '中國', 中国大陆: '中国', タイ: 'Thailand', ベトナム: 'Vietnam',
   インドネシア: 'Indonesia', マレーシア: 'Malaysia', フィリピン: 'Philippines',
   インド: 'India', 韓国: '韓國', 北韓: 'North Korea', 北韩: 'North Korea', 北朝鮮: 'North Korea', 北朝鲜: 'North Korea',
-  朝鲜: 'North Korea', 朝鮮民主主義人民共和國: 'North Korea', 朝鲜民主主义人民共和国: 'North Korea',
+  朝鲜: 'North Korea', 朝鮮: 'North Korea', 朝鮮民主主義人民共和國: 'North Korea', 朝鲜民主主义人民共和国: 'North Korea',
   中華民國: 'Taiwan', 中华民国: 'Taiwan',
 };
 
@@ -608,7 +608,8 @@ const PART_BRACKET = new RegExp(`^\\s*[（(【\\[][^）)】\\]]*${PART_WORD}[^�
 const NEGATED_EN_BEFORE = /(?:\bnot|\bnever|n['’]t)[ \t\u00a0]+$/i;
 
 function resolveFieldValues(input: string): FieldPass {
-  const text = usPlacesAsUsa(input);
+  // r44: a line naming 朝鮮 and another country gives no claim at all.
+  const text = usPlacesAsUsa(blankKoreaListLines(input));
   const chars = text.split('');
   const disputes: FieldDispute[] = [];
   const blank = (a: number, b: number) => {
@@ -893,6 +894,8 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     // "Not made in China" / "never made in China" is no claim.
     // Same line only: "Do not\nMade in China" still reads China.
     if (NEGATED_EN_BEFORE.test(raw.slice(Math.max(0, m.index - 8), m.index))) continue;
+    // r44: 產地：中國/朝鮮 names two places; never just one of them.
+    if (koreaListLine(raw, m.index)) continue;
     const start = Math.max(0, m.index - 80);
     const end = Math.min(raw.length, m.index + m[0].length + 80);
     const window = raw.slice(start, end);
@@ -920,6 +923,7 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
   }
   COO_SUFFIX.lastIndex = 0;
   while ((m = COO_SUFFIX.exec(raw)) !== null) {
+    if (koreaListLine(raw, m.index)) continue;
     // 「非中國製」「不是中國製造」「中国製ではありません」: negated, no claim.
     if (/(?:非|不是|並非|并非)$/.test(raw.slice(Math.max(0, m.index - 2), m.index))) continue;
     if (/^\s*(?:では|じゃ)(?:ありません|ない|なく)/.test(raw.slice(m.index + m[0].length))) continue;
