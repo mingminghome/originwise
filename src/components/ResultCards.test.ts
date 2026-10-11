@@ -123,9 +123,22 @@ describe('buildMadeInView', () => {
 });
 
 describe('buildLayerRows', () => {
-  it('tags web company facts 確認, missing parts 未確認, controlling parent row', () => {
+  it('web company facts without a verified quote are only 有提及, never 確認', () => {
     const rows = buildLayerRows(
       base({
+        sources: ['Cybex — https://example.com/about'],
+        product: { originCountry: 'Germany', manufacturer: 'Goodbaby', manufacturerCountry: 'China' },
+        company: { hqCountry: 'Germany' },
+      })
+    );
+    assert.ok(!rows.some((r) => r.tag === 'confirmed'), JSON.stringify(rows));
+    assert.equal(rows.find((r) => r.key === 'manufacturer')?.tag, 'mentioned');
+  });
+
+  it('tags web company facts 確認 with a verified quote, missing parts 未確認, controlling parent row', () => {
+    const rows = buildLayerRows(
+      base({
+        meta: { searchCoo: [{ country: 'China', basis: 'barcode', status: 'confirmed', url: 'https://example.com/p' }] },
         sources: ['Cybex — https://example.com/about'],
         product: { originCountry: 'Germany' },
         company: {

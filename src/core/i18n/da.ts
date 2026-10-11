@@ -72,6 +72,8 @@ export const da = {
       moreInfo: 'Mere info',
       candidatesTitle: 'Fundne kandidater til fremstillingsland (ikke bekræftet)',
       noCandidates: 'Ingen pålidelige kandidater fundet.',
+      weakTitle: 'Modelreference (ubekræftet)',
+      weakMeta: '{pct}% · kilde: {source} · ikke bekræftet',
       sourceCount: 'Kilder: {n}',
       sourceFirst: 'Kilde 1: {label}',
       sourceNth: 'Kilde {n}: {label}',
@@ -167,6 +169,7 @@ export const da = {
       strong: 'stærk tilknytning',
       moderate: 'moderat tilknytning',
       weak: 'svag tilknytning',
+      unverified: 'forbindelse (ubekræftet)',
     },
     agentsHint:
       'Hver række er et gratis-server-AI-kald. Fejl skyldes ofte kvote, modeladgang eller timeout; vi prøver andre eller et fallback. Live-web kræver Gemini Search grounding (ikke det samme som tekst-RPM).',

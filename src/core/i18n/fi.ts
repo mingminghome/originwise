@@ -72,6 +72,8 @@ export const fi = {
       moreInfo: 'Lisätietoja',
       candidatesTitle: 'Löydetyt valmistusmaaehdokkaat (vahvistamattomat)',
       noCandidates: 'Luotettavia ehdokkaita ei löytynyt.',
+      weakTitle: 'Mallin arvio (vahvistamaton)',
+      weakMeta: '{pct}% · lähde: {source} · ei vahvistettu',
       sourceCount: 'Lähteet: {n}',
       sourceFirst: 'Lähde 1: {label}',
       sourceNth: 'Lähde {n}: {label}',
@@ -167,6 +169,7 @@ export const fi = {
       strong: 'vahva yhteys',
       moderate: 'kohtalainen yhteys',
       weak: 'heikko yhteys',
+      unverified: 'yhteys (vahvistamaton)',
     },
     agentsHint:
       'Jokainen rivi on ilmaispalvelimen tekoälykutsu. Epäonnistumiset johtuvat usein kiintiöstä, mallin käyttöoikeudesta tai aikakatkaisusta; yritämme muita tai varavaihtoehtoa. Live-verkko vaatii Gemini Search groundingin (ei sama kuin tekstin RPM).',

@@ -72,6 +72,8 @@ export const cs = {
       moreInfo: 'Více informací',
       candidatesTitle: 'Nalezené kandidátské země výroby (nepotvrzeno)',
       noCandidates: 'Nebyli nalezeni žádní spolehliví kandidáti.',
+      weakTitle: 'Modelová reference (nepotvrzeno)',
+      weakMeta: '{pct}% · zdroj: {source} · nepotvrzeno',
       sourceCount: 'Zdroje: {n}',
       sourceFirst: 'Zdroj 1: {label}',
       sourceNth: 'Zdroj {n}: {label}',
@@ -167,6 +169,7 @@ export const cs = {
       strong: 'silná vazba',
       moderate: 'střední vazba',
       weak: 'slabá vazba',
+      unverified: 'vazba (nepotvrzeno)',
     },
     agentsHint:
       'Každý řádek je jedno volání AI z bezplatného serveru. Selhání často znamenají kvótu, přístup k modelu nebo timeout; zkoušíme jiné nebo zálohu. Živý web potřebuje Gemini Search grounding (není totéž jako textové RPM).',

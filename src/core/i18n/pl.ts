@@ -72,6 +72,8 @@ export const pl = {
       moreInfo: 'Więcej informacji',
       candidatesTitle: 'Znalezione kraje produkcji (niepotwierdzone)',
       noCandidates: 'Nie znaleziono wiarygodnych kandydatów.',
+      weakTitle: 'Odniesienie modelu (niepotwierdzone)',
+      weakMeta: '{pct}% · źródło: {source} · niepotwierdzone',
       sourceCount: 'Źródła: {n}',
       sourceFirst: 'Źródło 1: {label}',
       sourceNth: 'Źródło {n}: {label}',
@@ -167,6 +169,7 @@ export const pl = {
       strong: 'silne powiązanie',
       moderate: 'umiarkowane powiązanie',
       weak: 'słabe powiązanie',
+      unverified: 'powiązanie (niepotwierdzone)',
     },
     agentsHint:
       'Każdy wiersz to jedno darmowe wywołanie AI serwera. Niepowodzenia często oznaczają limit, brak dostępu do modelu lub timeout; próbujemy innych albo zapasowego. Live web wymaga Gemini Search grounding (to nie to samo co RPM tekstu).',

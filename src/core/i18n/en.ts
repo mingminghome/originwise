@@ -75,6 +75,8 @@ export const en: MessageTree = {
       moreInfo: 'About this',
       candidatesTitle: 'Made-in candidates found (unconfirmed)',
       noCandidates: 'No reliable made-in candidates found.',
+      weakTitle: 'Model reference (unconfirmed)',
+      weakMeta: '{pct}% · from {source} · not confirmed',
       sourceCount: 'Sources: {n}',
       sourceFirst: 'Source 1: {label}',
       sourceNth: 'Source {n}: {label}',
@@ -170,6 +172,7 @@ export const en: MessageTree = {
       strong: 'strong link',
       moderate: 'moderate link',
       weak: 'weak link',
+      unverified: 'link (unconfirmed)',
     },
     agentsHint:
       'Each row is one free-server AI call. Failed calls often mean quota, model access, or timeout; we still try others or a single fallback. Live web needs Google Search on the Gemini key (separate from ordinary text quota).',

@@ -72,6 +72,8 @@ export const fr = {
       moreInfo: 'En savoir plus',
       candidatesTitle: 'Lieux de fabrication candidats (non confirmés)',
       noCandidates: 'Aucun candidat fiable trouvé.',
+      weakTitle: 'Référence du modèle (non confirmée)',
+      weakMeta: '{pct}% · source : {source} · non confirmé',
       sourceCount: 'Sources : {n}',
       sourceFirst: 'Source 1 : {label}',
       sourceNth: 'Source {n} : {label}',
@@ -167,6 +169,7 @@ export const fr = {
       strong: 'lien fort',
       moderate: 'lien modéré',
       weak: 'lien faible',
+      unverified: 'lien (non confirmé)',
     },
     agentsHint:
       'Chaque ligne est un appel IA du serveur gratuit. Les échecs viennent souvent du quota, de l’accès au modèle ou d’un délai ; nous essayons d’autres modèles ou un repli. Le web en direct nécessite le grounding Gemini Search (différent du RPM texte).',

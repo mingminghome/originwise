@@ -72,6 +72,8 @@ export const nl = {
       moreInfo: 'Meer info',
       candidatesTitle: 'Gevonden kandidaat-productielanden (niet bevestigd)',
       noCandidates: 'Geen betrouwbare kandidaten gevonden.',
+      weakTitle: 'Modelreferentie (onbevestigd)',
+      weakMeta: '{pct}% · bron: {source} · niet bevestigd',
       sourceCount: 'Bronnen: {n}',
       sourceFirst: 'Bron 1: {label}',
       sourceNth: 'Bron {n}: {label}',
@@ -167,6 +169,7 @@ export const nl = {
       strong: 'sterke band',
       moderate: 'matige band',
       weak: 'zwakke band',
+      unverified: 'band (onbevestigd)',
     },
     agentsHint:
       'Elke rij is een gratis-server-AI-aanroep. Mislukkingen komen vaak door quota, modeltoegang of timeout; we proberen anderen of een fallback. Live web vereist Gemini Search grounding (niet hetzelfde als tekst-RPM).',

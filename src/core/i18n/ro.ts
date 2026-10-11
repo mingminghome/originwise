@@ -72,6 +72,8 @@ export const ro = {
       moreInfo: 'Mai multe informații',
       candidatesTitle: 'Țări de fabricație candidate găsite (neconfirmate)',
       noCandidates: 'Nu s-au găsit candidați de încredere.',
+      weakTitle: 'Referință model (neconfirmat)',
+      weakMeta: '{pct}% · sursă: {source} · neconfirmat',
       sourceCount: 'Surse: {n}',
       sourceFirst: 'Sursa 1: {label}',
       sourceNth: 'Sursa {n}: {label}',
@@ -167,6 +169,7 @@ export const ro = {
       strong: 'legătură puternică',
       moderate: 'legătură moderată',
       weak: 'legătură slabă',
+      unverified: 'legătură (neconfirmată)',
     },
     agentsHint:
       'Fiecare rând este un apel IA al serverului gratuit. Eșecurile înseamnă adesea cotă, acces la model sau timeout; încercăm altele sau un fallback. Web-ul live are nevoie de Gemini Search grounding (nu este același lucru cu RPM-ul de text).',

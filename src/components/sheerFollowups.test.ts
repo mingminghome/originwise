@@ -199,13 +199,14 @@ describe('item 6: 製造商 row in 產地分層', () => {
 });
 
 describe('(a): relation strength is localized', () => {
-  it('Tapo 所有權 row says 強關聯, never strong', () => {
+  it('Tapo 所有權 row: no verified quote, so 關聯（未確認）, never 強關聯 or strong', () => {
     const out = details(TAPO);
-    assert.ok(out.includes('總部 · 中國 · 強關聯'), out);
+    assert.ok(out.includes('總部 · 中國 · 關聯（未確認）'), out);
+    assert.ok(!out.includes('強關聯'), out);
     assert.ok(!/\bstrong\b/.test(out));
     for (const [loc, cat] of Object.entries(catalogs)) {
       const s = (cat as { check: { relStrength: Record<string, string> } }).check.relStrength;
-      for (const k of ['strong', 'moderate', 'weak']) assert.ok(s[k] && s[k] !== k, `${loc} ${k}`);
+      for (const k of ['strong', 'moderate', 'weak', 'unverified']) assert.ok(s[k] && s[k] !== k, `${loc} ${k}`);
     }
   });
 });

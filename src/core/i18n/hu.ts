@@ -72,6 +72,8 @@ export const hu = {
       moreInfo: 'További információ',
       candidatesTitle: 'Talált gyártási hely jelöltek (nincs megerősítve)',
       noCandidates: 'Nem található megbízható jelölt.',
+      weakTitle: 'Modell-referencia (nem megerősített)',
+      weakMeta: '{pct}% · forrás: {source} · nem megerősített',
       sourceCount: 'Források: {n}',
       sourceFirst: '1. forrás: {label}',
       sourceNth: '{n}. forrás: {label}',
@@ -167,6 +169,7 @@ export const hu = {
       strong: 'erős kapcsolat',
       moderate: 'közepes kapcsolat',
       weak: 'gyenge kapcsolat',
+      unverified: 'kapcsolat (nem megerősített)',
     },
     agentsHint:
       'Minden sor egy ingyenes szerveres MI-hívás. A hibák gyakran kvótát, modellhozzáférést vagy időtúllépést jelentenek; másokat vagy tartalékot próbálunk. Az élő web Gemini Search groundingot igényel (nem ugyanaz, mint a szöveges RPM).',

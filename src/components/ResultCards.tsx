@@ -325,7 +325,7 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
           </ul>
         ) : null}
 
-        {view.candidates.length || (!confirmed && !view.dispute?.length) ? (
+        {view.candidates.length || (!confirmed && !view.dispute?.length && !view.weakCandidates?.length) ? (
           // Under a 爭議 line with nothing below it, the empty heading is hidden too.
           <div className="rc-candidates">
             <p className="rc-sub">{t('check.rc.candidatesTitle')}</p>
@@ -367,10 +367,34 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
                   );
                 })}
               </ul>
-            ) : view.dispute?.length ? null : (
-              // A 爭議 line already says why there is no answer.
+            ) : view.dispute?.length || view.weakCandidates?.length ? null : (
+              // A 爭議 line already says why there is no answer; 「沒有可信候選」
+              // only when no candidate of any kind is left to list.
               <p className="rc-empty">{t('check.rc.noCandidates')}</p>
             )}
+          </div>
+        ) : null}
+
+        {view.weakCandidates?.length ? (
+          // Every other candidate, with its % and where it came from. Never a
+          // grade, never 確認; design / brand wording stays in its own rows.
+          <div className="rc-candidates rc-candidates--weak" data-testid="madein-weak">
+            <p className="rc-sub">{t('check.rc.weakTitle')}</p>
+            <ul>
+              {view.weakCandidates.map((c) => (
+                <li key={`weak-${c.label}`} className="is-model">
+                  <span className="rc-cand-country is-model">
+                    <span className="rc-cand-name">{localizeCountry(t, c.label)}</span>
+                  </span>
+                  <span className="rc-cand-meta">
+                    {t('check.rc.weakMeta', {
+                      pct: Math.round(c.confidence * 100),
+                      source: t(`check.candidateSource.${c.source}`),
+                    })}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         ) : null}
 
