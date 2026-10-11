@@ -1543,17 +1543,24 @@ function proseSentence(words: string[], sentence: string): boolean {
  * lone accessory word ("Cot"). Company, store, line and site tails return null.
  * The queried model ends the tail ("Platinum Melio").
  */
-const BRAND_COUNTRY_RE = new RegExp(`^[ \t]*(?:${COUNTRY_SPAN_RE.source})(?![A-Za-z])`, 'i');
-const COUNTRY_CODE_RE = /^[ \t]*([A-Za-z]{2,3})(?![A-Za-z0-9])/;
-const STORE_CJK_TAIL = /^[ \t]*(?:官方|旗艦店|旗舰店|專賣店|专卖店|官網|官网|公式|ストア|ショップ|オンラインストア)/u;
-/** The line text before the brand is a field label or footer mark ("Contact:", "Address:", "© 2026"). */
-const ADDRESS_LEAD = /(?:[:：]|©|\(c\)|copyright\b[^\n]*)[^\n]*$/i;
+const BRAND_COUNTRY_RE = new RegExp(`^[ \t]*[,，]?[ \t]*(?:${COUNTRY_SPAN_RE.source})(?![A-Za-z])`, 'i');
+const COUNTRY_CODE_RE = /^[ \t]*[,，]?[ \t]*([A-Za-z]{2,3})(?![A-Za-z0-9])/;
+const STORE_CJK_TAIL = /^[ \t]*(?:官方|旗艦店|旗舰店|專賣店|专卖店|官網|官网|公式|ストア|ショップ|オンラインストア)[\p{Script=Han}\p{Script=Katakana}ー]*[ \t]*$/u;
+/** Only real address labels (EN plus the ZH/JA forms already in the label vocabulary) or © / Copyright with a year. */
+const ADDRESS_LEAD = /(?:\b(?:contact|address|manufacturer|importer)|製造元|販売元|輸入元|発売元|進口商|进口商)[ \t]*[:：][ \t]*$|(?:©|\(c\)|copyright)[ \t]*(?:19|20)\d\d\b[^\n]*$/i;
+/** End of the line, allowing trailing punctuation. */
+const LINE_END = /^[ \t]*[.。!！,，;；]?[ \t]*$/;
 /**
  * r38: true when the brand is followed by a country name or code that names a model (another product).
  * A country code counts in upper case, or in lower case when it is not an English word ("uk", "usa"; not "in", "us").
- * Exceptions (existing vocabularies, no new lists): a COMPANY_FORM / STORE_ROLE word or a CJK store word right after
- * the country, or an address / footer line (a label or © before the brand, or a comma next to it) where the country
- * ends the line or is followed by a comma, or after a company role ("Distributed by Cybex Germany").
+ * Exceptions (existing vocabularies, no new lists):
+ * - a run of COMPANY_FORM / STORE_ROLE words (or a CJK store word) after the country that ends the line, or is followed
+ *   by a comma or a past participle ("Cybex Japan official store", "Cybex UK Ltd registered in England");
+ *   not "Cybex Japan Inc stroller", "Cybex China Store Edition";
+ * - the country ends the line (trailing punctuation allowed) and the line reads as a company / address line: an
+ *   address label (Contact/Address/Manufacturer/Importer) or ©+year before the brand, a role verb + "by"
+ *   ("Sold by CYBEX Germany"), or a comma before the brand ("…, Cybex UK");
+ * - the country is followed by a comma and an address with a number ("Cybex UK, 1 High Street").
  */
 function brandCountryModel(t: string, at: number, restLine: string): boolean {
   let len = 0;
@@ -1567,14 +1574,18 @@ function brandCountryModel(t: string, at: number, restLine: string): boolean {
     len = c[0].length;
   }
   const after = restLine.slice(len);
-  const next = /^[ \t]*([A-Za-z]+)/.exec(after)?.[1]?.toLowerCase();
-  if (next && (COMPANY_FORM.has(next) || STORE_ROLE.has(next))) return false;
-  if (STORE_CJK_TAIL.test(after)) return false;
+  const commaBefore = /^[ \t]*[,，]/.test(restLine);
   const lead = t.slice(t.lastIndexOf('\n', at - 1) + 1, at);
-  const closes = /^[ \t]*(?:[,，][^\n]*|[.。]?[ \t]*)$/.test(after);
-  // A company role ("Distributed by Cybex Germany", "Sold by CYBEX Germany") is the company, not a model.
-  const roleBy = /\bby\s*$/i.test(lead);
-  if (closes && (ADDRESS_LEAD.test(lead) || roleBy || /[,，]\s*$/.test(lead) || /^[ \t]*[,，]/.test(after))) return false;
+  // Company / store words close the line ("… official store", "… Ltd", "… Ltd registered in England").
+  const co = /^((?:[ \t]+[A-Za-z]+\.?)+?)([ \t]*[,，][^\n]*|[ \t]+[a-z]+ed\b[^\n]*|[ \t]*[.。]?[ \t]*)$/.exec(after);
+  if (!commaBefore && co && co[1]!.trim().split(/\s+/).every((w) => { const lw = w.replace(/\.$/, '').toLowerCase(); return COMPANY_FORM.has(lw) || STORE_ROLE.has(lw); })) return false;
+  if (!commaBefore && STORE_CJK_TAIL.test(after)) return false;
+  if (/^[ \t]*[,，][^\n]*\d/.test(after) && lead.trim() === '' && !commaBefore) return false;
+  if (!LINE_END.test(after)) return true;
+  if (ADDRESS_LEAD.test(lead)) return false;
+  // A role verb before "by" ("Sold by", "Distributed by"); a bare "by Cybex Mexico" is not a company line.
+  if (/\b[A-Za-z]{3,}[ \t]+by[ \t]*$/i.test(lead) && !/\b(?:the|a|an|our|my|pram|stroller)[ \t]+by[ \t]*$/i.test(lead)) return false;
+  if (/[,，][ \t]*$/.test(lead) || commaBefore) return false;
   return true;
 }
 
