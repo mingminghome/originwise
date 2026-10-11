@@ -999,3 +999,19 @@ describe('r36: invisible characters, hyphen digits, leading accents, ʼ, mixed-s
   for (const c of ['Made in Türkiye', '產地：日本', 'Страна производства: Китай'])
     it(`origin line verifies: ${c}`, () => assert.equal(quoteInModelScope(`${H}${c}`, 'Cybex Melio', c), true));
 });
+
+describe('r37: format / ignorable characters, dashes, ® ™ breaks, look-alikes, accented places', () => {
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const q = 'Made in China';
+  const v = (b: string) => quoteInModelScope(`${H}${b}\n${q}`, 'Cybex Melio', q);
+  for (const c of ['\u180E', '\u2061', '\u2064', '\u200E', '\u202E', '\u2066', '\u{E0041}', '\u115F', '\u3164', '\uFFA0', '\u2800'])
+    it(`invisible ${escape(c)} inside callisto blocks`, () => assert.equal(v(`cal${c}listo`), false));
+  for (const d of ['\u2010', '\u2011', '\u2013', '\u2014', '\u2212']) it(`dash ${escape(d)} callisto-2 blocks`, () => assert.equal(v(`callisto${d}2`), false));
+  for (const b of ['\u03F2allisto', '\u0251llisto', 'ca\uA4F2listo', 'Ǽlios', 'ẞalios', 'Cybex®Callisto™', 'Callisto™ by Cybex®'])
+    it(`must block: ${b}`, () => assert.equal(v(b), false));
+  it('Cybex® Melio™ title verifies', () => assert.equal(quoteInModelScope(`Cybex® Melio™\nLightweight stroller\n${q}`, 'Cybex Melio', q), true));
+  for (const c of ['Made in México', "Made in Côte d'Ivoire", 'Made in Türkiye', '產地：日本'])
+    it(`origin line verifies: ${c}`, () => assert.equal(quoteInModelScope(`${H}${c}`, 'Cybex Melio', c), true));
+  it('Designed in München. verifies', () => assert.equal(v('Designed in München.'), true));
+  it('Designed in Callistoburg. still blocks (not on the place list)', () => assert.equal(v('Designed in Callistoburg.'), false));
+});

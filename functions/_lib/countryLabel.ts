@@ -30,6 +30,7 @@ export const COUNTRY_NAME_PATTERNS: Array<{ label: string; pattern: RegExp }> = 
   { label: 'Switzerland', pattern: /\bswitzerland\b|瑞士/i },
   { label: 'Mexico', pattern: /\bmexico\b|墨西哥/i },
   { label: 'Brazil', pattern: /\bbrazil\b|巴西/i },
+  { label: 'Côte d’Ivoire', pattern: /c[oô]te\s+d['’]\s*ivoire|ivory\s+coast|コートジボワール|象牙海岸|科特迪瓦/i },
   { label: 'Turkey', pattern: /\bturkey\b|türkiye|土耳其/i },
   { label: 'Poland', pattern: /\bpoland\b|波蘭|波兰/i },
   { label: 'Australia', pattern: /\baustralia\b|澳洲|澳大利亞/i },
@@ -122,7 +123,9 @@ export function canonicalCountry(raw: string | undefined | null): string | undef
   if (!s) return undefined;
   const code = COUNTRY_CODE_TO_LABEL[s.toLowerCase()];
   if (code) return code;
-  return COUNTRY_NAME_PATTERNS.find((row) => row.pattern.test(s))?.label;
+  // r37: with or without Latin accents ("México" = "Mexico").
+  const f = s.replace(/[\u00C0-\u024F\u1E00-\u1EFF]/g, (c) => c.normalize('NFKD').replace(/\p{M}+/gu, ''));
+  return COUNTRY_NAME_PATTERNS.find((row) => row.pattern.test(s) || row.pattern.test(f))?.label;
 }
 
 /**

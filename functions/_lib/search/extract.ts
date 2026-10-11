@@ -16,7 +16,7 @@ import { notProductPageUrl } from '../pageUrl';
 import { isSearchResultUrl } from '../sourceLine';
 import { MADE_IN_CODE_LABEL, NOT_PRODUCT_FIELD, canonicalCountry, madeInCodeMatches } from '../countryLabel';
 import { madeInValueCountry, partFieldMatches, settleCooFields, US_STATES, US_TOWN_NAMES } from '../cooPriority';
-import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN } from '../countryNames';
+import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE } from '../countryNames';
 import { designMentions, quoteBacksCountry, stripDesignPhrases } from '../designOrigin';
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
@@ -32,12 +32,19 @@ const EXCERPT_MAX = 3000;
 const BRIEF_MAX = 2200;
 const SOURCE_CAP = 8;
 
-/** r36: invisible characters that can hide inside a word (zero-width space / non-joiner / joiner, soft hyphen, word joiner, BOM). */
-const INVISIBLE_RE = /\u200B|\u200C|\u200D|\u00AD|\u2060|\uFEFF/g;
+/**
+ * r37: invisible characters that can hide inside a word: every Unicode format character (Cf: zero-width marks,
+ * soft hyphen, bidi marks, invisible operators, tag characters, BOM) and every default-ignorable code point
+ * (Hangul fillers, variation selectors, U+180E…), plus the blank Braille pattern U+2800.
+ */
+const INVISIBLE_RE = /\p{Cf}|\p{Default_Ignorable_Code_Point}|\u2800/gu;
+/** r37: Latin-script look-alikes and letters with no decomposition, mapped wherever they appear. */
+const LATIN_LOOKALIKE: Record<string, string> = { ɑ: 'a', ɡ: 'g', ı: 'i', ȷ: 'j', ℓ: 'l', Æ: 'AE', æ: 'ae', Ǽ: 'AE', ǽ: 'ae', Œ: 'OE', œ: 'oe', ẞ: 'SS', ß: 'ss', Ø: 'O', ø: 'o', Ǿ: 'O', ǿ: 'o', Đ: 'D', đ: 'd', Ł: 'L', ł: 'l', Ħ: 'H', ħ: 'h', Þ: 'Th', þ: 'th' };
 /** r36: Cyrillic / Greek letters that look like Latin ones. Used only inside words that mix scripts ("сallisto"). */
 const LOOKALIKE: Record<string, string> = {
   а: 'a', в: 'b', е: 'e', к: 'k', м: 'm', н: 'h', о: 'o', р: 'p', с: 'c', т: 't', у: 'y', х: 'x', і: 'i', ј: 'j', ѕ: 's', ԁ: 'd', ӏ: 'l',
   А: 'A', В: 'B', Е: 'E', К: 'K', М: 'M', Н: 'H', О: 'O', Р: 'P', С: 'C', Т: 'T', У: 'Y', Х: 'X', І: 'I', Ј: 'J', Ѕ: 'S',
+  ϲ: 'c', ς: 'c', Ϲ: 'C', ϳ: 'j', ꓲ: 'l', ꓡ: 'L', ꓚ: 'C', ꓮ: 'A', ꓰ: 'E', ꓳ: 'O', ꓑ: 'P', ꓢ: 'S', ꓔ: 'T', ꓫ: 'X', ꓬ: 'Y',
   α: 'a', ε: 'e', ι: 'i', κ: 'k', ν: 'v', ο: 'o', ρ: 'p', τ: 't', υ: 'u', χ: 'x', Α: 'A', Β: 'B', Ε: 'E', Ζ: 'Z', Η: 'H', Ι: 'I',
   Κ: 'K', Μ: 'M', Ν: 'N', Ο: 'O', Ρ: 'P', Τ: 'T', Υ: 'Y', Χ: 'X',
 };
@@ -47,13 +54,25 @@ const LOOKALIKE: Record<string, string> = {
  * Words written entirely in Cyrillic or Greek are left alone.
  */
 function scopeText(s: string): string {
-  return (s || '')
-    .replace(INVISIBLE_RE, '')
-    .normalize('NFKC')
-    .replace(/\u02BC/g, '’')
-    .replace(/[\p{L}\p{M}]+/gu, (w: string) =>
-      /\p{Script=Latin}/u.test(w) && /[\p{Script=Cyrillic}\p{Script=Greek}]/u.test(w) ? [...w].map((c) => LOOKALIKE[c] ?? c).join('') : w
-    );
+  return (
+    (s || '')
+      // r37: ® ™ ℠ are a word break, not nothing ("Cybex®Callisto™" is two words).
+      .replace(/[®™℠]/g, ' ')
+      .replace(INVISIBLE_RE, '')
+      .normalize('NFKC')
+      .replace(/\u02BC/g, '’')
+      // r37: any dash or minus right before a digit is a hyphen ("callisto–2" = "callisto-2").
+      .replace(/[\p{Pd}\u2212](?=\d)/gu, '-')
+      .replace(/[\p{L}\p{M}]+/gu, (w: string) => {
+        const lat = [...w].map((c) => LATIN_LOOKALIKE[c] ?? c).join('');
+        return /\p{Script=Latin}/u.test(lat) && /[\p{Script=Cyrillic}\p{Script=Greek}\p{Script=Lisu}]/u.test(lat) ? [...lat].map((c) => LOOKALIKE[c] ?? c).join('') : lat;
+      })
+  );
+}
+
+/** r37: a place name without its accents ("münchen" → "munchen"), so a place is found with or without them. */
+function foldAccents(s: string): string {
+  return s.normalize('NFKD').replace(/\p{M}+/gu, '');
 }
 
 function nfkc(s: string): string {
@@ -1297,7 +1316,8 @@ const ORIGIN_FIELD_CJK =
   /([\p{Script=Han}\p{Script=Katakana}ー]{0,6}?)(?:原産国|原產國|原产国|原產国|原産地|原產地|原产地|産地|產地|产地|生産国|生產國|生产国|製造国|製造國|制造国|生產地|生产地|生産地|製造地|制造地|來源地|来源地|寄出地|寄送地|出貨地|出货地|發貨地|发货地|国|國|地)(?:名)?\s*[:：]\s*[^\s:：、。,，|/／()（）]{1,12}/gu;
 /** r29 M3: in X設計 / X製 / X生產 / X產地, X is stripped only when it is a known country or place. */
 const isPlace = (x: string): boolean => {
-  const v = x.trim();
+  // r37: a closing stop is not part of the place ("Designed in München.").
+  const v = x.trim().replace(/[.,;:!?]+$/, '');
   if (!v) return true;
   if (strictCountry(v)) return true;
   // r30: the whole of X must be countries and listed places ("由卡利斯托於德國" in 由卡利斯托於德國設計 is not).
@@ -1381,7 +1401,7 @@ function strictCountry(s: string, pure = false): boolean {
   return !!(canonicalCountry(s) || madeInValueCountry(s)) && /^(?:製|製造|王国|王國|大陸|大陆|本土)$/.test(r);
 }
 /** Country names (with their multi-word and native forms) on a line are never a product name. */
-const COUNTRY_SPAN_RE = new RegExp(`(?<![A-Za-z])(?:netherlands\\s+antilles|america|chine|deutschland|italia|nippon|espa[ñn]a|schweiz|suisse|österreich|sverige|danmark|norge|suomi|polska|nederland|belgique|bharat|türkiye|jersey|guernsey|siberia|virgin\\s+islands|northern\\s+ireland|scotland|england|wales|${COUNTRY_LIST_LATIN})(?![A-Za-z])`, 'gi');
+const COUNTRY_SPAN_RE = new RegExp(`(?<![A-Za-z])(?:netherlands\\s+antilles|america|chine|deutschland|italia|nippon|espa[ñn]a|schweiz|suisse|österreich|sverige|danmark|norge|suomi|polska|nederland|belgique|bharat|türkiye|turkiye|osterreich|jersey|guernsey|siberia|virgin\\s+islands|northern\\s+ireland|scotland|england|wales|${COUNTRY_LIST_LATIN_RE})(?![A-Za-z])`, 'gi');
 /** Chinese provinces and major manufacturing cities after a country ("產地：中國（廣東）", "China (Guangdong)"). */
 /** US states in CJK ("產地：美國，喬治亞州", "Made in China, 德州"); 州 is allowed after them. */
 // Sourced only. 喬治亞州 (cna.com.tw/news/aopl/202601060130.aspx, "美國喬治亞州製造廠"), 德州 (ti.com/zh-tw
@@ -1390,7 +1410,10 @@ const US_STATES_CJK = ['喬治亞', '德州', '加州'];
 const CN_PLACES = [...US_STATES_CJK, '江門', '江门', '昆山', '北京', '天津', '上海', '重慶', '重庆', '河北', '山西', '遼寧', '辽宁', '吉林', '黑龍江', '黑龙江', '江蘇', '江苏', '浙江', '安徽', '福建', '江西', '山東', '山东', '河南', '湖北', '湖南', '廣東', '广东', '海南', '四川', '貴州', '贵州', '雲南', '云南', '陝西', '陕西', '甘肅', '甘肃', '青海', '內蒙古', '内蒙古', '廣西', '广西', '西藏', '寧夏', '宁夏', '新疆', '深圳', '廣州', '广州', '東莞', '东莞', '寧波', '宁波', '廈門', '厦门', '蘇州', '苏州', '杭州', '青島', '青岛', '佛山', '中山', '溫州', '温州', '義烏', '义乌'];
 const CN_PLACES_LATIN = ['beijing', 'tianjin', 'shanghai', 'chongqing', 'hebei', 'shanxi', 'liaoning', 'jilin', 'heilongjiang', 'jiangsu', 'zhejiang', 'anhui', 'fujian', 'jiangxi', 'shandong', 'henan', 'hubei', 'hunan', 'guangdong', 'hainan', 'sichuan', 'guizhou', 'yunnan', 'shaanxi', 'gansu', 'qinghai', 'inner mongolia', 'guangxi', 'tibet', 'ningxia', 'xinjiang', 'shenzhen', 'guangzhou', 'dongguan', 'ningbo', 'xiamen', 'suzhou', 'hangzhou', 'qingdao', 'foshan', 'zhongshan', 'wenzhou', 'yiwu', 'jiangmen', 'kunshan'];
 /** Large US and UK cities named after a made-in country ("Made in USA, Atlanta, GA", "USA, Cleveland", "Nottingham, made in UK"). */
-const CITY_NAMES = ['new york', 'los angeles', 'chicago', 'houston', 'phoenix', 'philadelphia', 'san antonio', 'san diego', 'dallas', 'san jose', 'austin', 'jacksonville', 'columbus', 'charlotte', 'indianapolis', 'san francisco', 'seattle', 'denver', 'boston', 'nashville', 'detroit', 'portland', 'las vegas', 'memphis', 'louisville', 'baltimore', 'milwaukee', 'albuquerque', 'tucson', 'fresno', 'sacramento', 'atlanta', 'miami', 'cleveland', 'minneapolis', 'pittsburgh', 'cincinnati', 'kansas city', 'st. louis', 'orlando', 'tampa', 'honolulu', 'brooklyn', 'manhattan', 'chinatown', 'salt lake city', 'oakland', 'raleigh', 'omaha', 'tulsa', 'thousand oaks',
+const CITY_NAMES = [
+  // München / Munich: bmwgroup.com/en/general/imprint.html ("Bayerische Motoren Werke Aktiengesellschaft (Petuelring 130,
+  // 80809 München)"; "Domicile and Court of Registry: München HRB 42243").
+  'münchen', 'munich', 'new york', 'los angeles', 'chicago', 'houston', 'phoenix', 'philadelphia', 'san antonio', 'san diego', 'dallas', 'san jose', 'austin', 'jacksonville', 'columbus', 'charlotte', 'indianapolis', 'san francisco', 'seattle', 'denver', 'boston', 'nashville', 'detroit', 'portland', 'las vegas', 'memphis', 'louisville', 'baltimore', 'milwaukee', 'albuquerque', 'tucson', 'fresno', 'sacramento', 'atlanta', 'miami', 'cleveland', 'minneapolis', 'pittsburgh', 'cincinnati', 'kansas city', 'st. louis', 'orlando', 'tampa', 'honolulu', 'brooklyn', 'manhattan', 'chinatown', 'salt lake city', 'oakland', 'raleigh', 'omaha', 'tulsa', 'thousand oaks',
   // UK cities ("Nottingham, made in UK")
   // Bayreuth (CYBEX GmbH, mycbx.com/en-en/imprint: "Riedingerstr. 18 95448 Bayreuth Germany").
   // Kulmbach (CYBEX's first seat): online-handelsregister.de HRB 3792 Bayreuth, Firmen-Historie
@@ -1399,7 +1422,7 @@ const CITY_NAMES = ['new york', 'los angeles', 'chicago', 'houston', 'phoenix', 
   'bayreuth',
   'kulmbach',
   'london', 'manchester', 'birmingham', 'nottingham', 'leeds', 'glasgow', 'edinburgh', 'bristol', 'liverpool', 'sheffield', 'leicester', 'belfast', 'cardiff', 'newcastle'];
-const PLACE_LIST_RE = new RegExp(`(?<![A-Za-z])(?:${[...CN_PLACES_LATIN, ...CITY_NAMES].sort((a, b) => b.length - a.length).map((n) => n.replace(/\./g, '\\.').replace(/ /g, '\\s+')).join('|')})(?:\\s+(?:city|province|state|prefecture))?(?![A-Za-z])|(?:${CN_PLACES.join('|')})[省市州縣县區区県]?`, 'gi');
+const PLACE_LIST_RE = new RegExp(`(?<![A-Za-z])(?:${[...new Set([...CN_PLACES_LATIN, ...CITY_NAMES].flatMap((n) => [n, foldAccents(n)]))].sort((a, b) => b.length - a.length).map((n) => n.replace(/\./g, '\\.').replace(/ /g, '\\s+')).join('|')})(?:\\s+(?:city|province|state|prefecture))?(?![A-Za-z])|(?:${CN_PLACES.join('|')})[省市州縣县區区県]?`, 'gi');
 
 /** Place-position words. A listed place after one of these is grammar ("in Shenzhen"), not a name. */
 const PLACE_PREP = ['in', 'from', 'near', 'at'] as const;
@@ -2488,7 +2511,7 @@ export type CooClaim = {
 // Full country list (countryNames.ts), right after the cue only ("Origin: People's
 // Republic of China" / "Origin: Republic of China" by their full names too).
 const MADE_IN_NAME_ANY_CASE = new RegExp(
-  `(?<!(?:\\bnot|\\bnever|n['’]t)[ \\t\\u00a0]+)\\b(?:(?:made|manufactured|assembled|produced)[\\s-]+in|(?<!(?:brand|design)\\s+)country\\s+of\\s+origin|(?<!(?:brand|design)\\s+(?:of\\s+)?)origin(?=\\s*[:：])|coo(?=\\s*[:：]))\\s*[:：]?\\s*(?:the\\s+)?(${COUNTRY_LIST_LATIN})(?![A-Za-z-])`,
+  `(?<!(?:\\bnot|\\bnever|n['’]t)[ \\t\\u00a0]+)\\b(?:(?:made|manufactured|assembled|produced)[\\s-]+in|(?<!(?:brand|design)\\s+)country\\s+of\\s+origin|(?<!(?:brand|design)\\s+(?:of\\s+)?)origin(?=\\s*[:：])|coo(?=\\s*[:：]))\\s*[:：]?\\s*(?:the\\s+)?(${COUNTRY_LIST_LATIN_RE})(?![A-Za-z-])`,
   'gi'
 );
 

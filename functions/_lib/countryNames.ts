@@ -49,6 +49,7 @@ const ROWS: readonly Row[] = [
   ['Oman', 'OM', ['oman'], ['オマーン'], ['阿曼'], ['阿曼']],
   ['Bahrain', 'BH', ['bahrain'], ['バーレーン'], ['巴林'], ['巴林']],
   ['Brunei', 'BN', ['brunei'], ['ブルネイ'], ['汶萊'], ['文莱']],
+  ['Côte d’Ivoire', 'CI', ["côte d'ivoire", 'côte d’ivoire', "cote d'ivoire", 'cote d’ivoire', 'ivory coast'], ['コートジボワール'], ['象牙海岸'], ['科特迪瓦']],
   ['Turkey', 'TR', ['turkey', 'türkiye', 'turkiye'], ['トルコ'], ['土耳其'], ['土耳其']],
   ['Egypt', 'EG', ['egypt'], ['エジプト'], ['埃及'], ['埃及']],
   ['Morocco', 'MA', ['morocco'], ['モロッコ'], ['摩洛哥'], ['摩洛哥']],
@@ -168,9 +169,15 @@ const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g
 const byLength = (a: string, b: string) => b.length - a.length;
 
 /** Every Latin name, longest first, as a regex alternation (wrap with letter guards). */
-export const COUNTRY_LIST_LATIN = [...new Set(ROWS.flatMap((r) => [r[0].toLowerCase(), ...r[2]]))]
+const ACCENTED: Record<string, string> = { a: '[aàáâãäå]', e: '[eèéêë]', i: '[iìíîï]', o: '[oòóôõöø]', u: '[uùúûü]', c: '[cç]', n: '[nñ]' };
+// r37: every Latin alias is also listed without its accents ("méxico" / "mexico").
+export const COUNTRY_LIST_LATIN = [...new Set(ROWS.flatMap((r) => [r[0].toLowerCase(), ...r[2]]).flatMap((n) => [n, n.normalize('NFKD').replace(/\p{M}+/gu, '')]))]
   .sort(byLength)
   .map(esc)
+  .join('|');
+/** r37: COUNTRY_LIST_LATIN for regexes: each letter also matches its accented forms ("México" as well as "Mexico"). */
+export const COUNTRY_LIST_LATIN_RE = COUNTRY_LIST_LATIN.split('|')
+  .map((n) => n.replace(/[aeioucn]/g, (c) => ACCENTED[c]!))
   .join('|');
 
 /** Every Japanese / Chinese name, longest first (no letter guard needed). */
