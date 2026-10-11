@@ -73,7 +73,6 @@ export const ro = {
       candidatesTitle: 'Țări de fabricație candidate găsite (neconfirmate)',
       noCandidates: 'Nu s-au găsit candidați de încredere.',
       weakTitle: 'Referință model (neconfirmat)',
-      weakMeta: '{pct}% · sursă: {source} · neconfirmat',
       sourceCount: 'Surse: {n}',
       sourceFirst: 'Sursa 1: {label}',
       sourceNth: 'Sursa {n}: {label}',

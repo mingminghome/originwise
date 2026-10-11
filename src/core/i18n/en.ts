@@ -76,7 +76,6 @@ export const en: MessageTree = {
       candidatesTitle: 'Made-in candidates found (unconfirmed)',
       noCandidates: 'No reliable made-in candidates found.',
       weakTitle: 'Model reference (unconfirmed)',
-      weakMeta: '{pct}% · from {source} · not confirmed',
       sourceCount: 'Sources: {n}',
       sourceFirst: 'Source 1: {label}',
       sourceNth: 'Source {n}: {label}',

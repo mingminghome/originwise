@@ -183,14 +183,14 @@ describe('items 4 + 5 / (b): AI pool footnote and the web row label', () => {
 });
 
 describe('item 6: 製造商 row in 產地分層', () => {
-  it('Sheer shows ピジョン株式会社 · 日本 with the company-fact tag', () => {
+  it('Sheer shows ピジョン株式会社 · 日本 as 有提及: a made-in quote is not a manufacturer quote (#46 per row)', () => {
     const row = buildLayerRows(SHEER).find((r) => r.key === 'manufacturer');
     assert.deepEqual(
       { value: row?.value, country: row?.country, tag: row?.tag },
-      { value: 'ピジョン株式会社', country: '日本', tag: 'confirmed' }
+      { value: 'ピジョン株式会社', country: '日本', tag: 'mentioned' }
     );
     const out = text(React.createElement(LayersCard, { result: SHEER, t: zh }));
-    assert.ok(out.includes('製造商\nピジョン株式会社 · 日本\n確認'), out);
+    assert.ok(out.includes('製造商\nピジョン株式会社 · 日本\n有提及'), out);
   });
 
   it('no 製造商 row when the answer names no maker (Softouch label)', () => {

@@ -73,7 +73,6 @@ export const pl = {
       candidatesTitle: 'Znalezione kraje produkcji (niepotwierdzone)',
       noCandidates: 'Nie znaleziono wiarygodnych kandydatów.',
       weakTitle: 'Odniesienie modelu (niepotwierdzone)',
-      weakMeta: '{pct}% · źródło: {source} · niepotwierdzone',
       sourceCount: 'Źródła: {n}',
       sourceFirst: 'Źródło 1: {label}',
       sourceNth: 'Źródło {n}: {label}',

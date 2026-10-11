@@ -34,6 +34,17 @@ export function notesNameMadeIn(notes: readonly unknown[] | undefined, label: st
 }
 
 /**
+ * Any country tied to where something is made in one clause, with design /
+ * brand wording blanked first (「實際最終製造地與組裝廠位於中國大陸」 yes,
+ * 「品牌源自德國」 no). Same clause rule and made-in words as notesNameMadeIn.
+ */
+export function textTiesCountryToMade(text: string): boolean {
+  return stripDesignPhrases(String(text ?? ''))
+    .split(CLAUSE_SPLIT)
+    .some((c) => MADE_CUE.test(c) && COUNTRY_NAME_PATTERNS.some((r) => r.pattern.test(c)));
+}
+
+/**
  * The notes name this country only inside design / brand wording
  * (「品牌源自德國」, "German engineering"): not a made-in candidate.
  */

@@ -73,7 +73,6 @@ export const zhHant = {
       candidatesTitle: '查到的產地候選（未確認）',
       noCandidates: '沒有查到可信的產地候選。',
       weakTitle: '模型參考（未經確認）',
-      weakMeta: '{pct}% · 來源：{source} · 未確認',
       sourceCount: '{n} 個來源',
       sourceFirst: '來源 1：{label}',
       sourceNth: '來源 {n}：{label}',

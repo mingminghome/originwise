@@ -73,7 +73,6 @@ export const cs = {
       candidatesTitle: 'Nalezené kandidátské země výroby (nepotvrzeno)',
       noCandidates: 'Nebyli nalezeni žádní spolehliví kandidáti.',
       weakTitle: 'Modelová reference (nepotvrzeno)',
-      weakMeta: '{pct}% · zdroj: {source} · nepotvrzeno',
       sourceCount: 'Zdroje: {n}',
       sourceFirst: 'Zdroj 1: {label}',
       sourceNth: 'Zdroj {n}: {label}',

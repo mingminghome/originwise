@@ -73,7 +73,6 @@ export const sv = {
       candidatesTitle: 'Hittade kandidater för tillverkningsland (ej bekräftade)',
       noCandidates: 'Inga tillförlitliga kandidater hittades.',
       weakTitle: 'Modellreferens (obekräftad)',
-      weakMeta: '{pct}% · källa: {source} · ej bekräftad',
       sourceCount: 'Källor: {n}',
       sourceFirst: 'Källa 1: {label}',
       sourceNth: 'Källa {n}: {label}',

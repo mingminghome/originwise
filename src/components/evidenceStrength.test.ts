@@ -13,7 +13,8 @@ import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createT } from '../core/i18n';
 import type { CheckResult } from '../core/types';
-import { claimsConfirmation, hasVerifiedQuote, namesBrandCountry, noteWithinEvidence } from '../core/evidence';
+import { factVerified, noteWithinEvidence, quoteNamesBrand } from '../core/evidence';
+import { textTiesCountryToMade } from '../../functions/_lib/noteText';
 import { ResultPanel } from './ResultPanel';
 import { MadeInCard } from './ResultCards';
 import { buildLayerRows, buildMadeInView } from './resultCards.model';
@@ -33,23 +34,89 @@ const F2 = load('live_f2.json');
 const F3 = load('live_f3.json');
 const PARTS = load('live_cotbed_parts.json');
 
-describe('evidence helpers', () => {
-  it('hedges are not claims', () => {
-    assert.equal(claimsConfirmation('成品最終產地未確認（網路來源僅列出候選產地波蘭）'), false);
-    assert.equal(claimsConfirmation('Final COO unconfirmed — not a stamped made-in label.'), false);
-    assert.equal(claimsConfirmation('網頁研究未能明確確認此確切商品編號的完成品產地 (COO: 未確認)。'), false);
-    assert.equal(claimsConfirmation('could not be verified against a page'), false);
-    assert.equal(claimsConfirmation('經零售通路規格表確認實體最終產地為中國。'), true);
-    assert.equal(claimsConfirmation('Verified on the retailer spec sheet.'), true);
+const Q1 = load('live_q1.json');
+const Q2 = load('live_q2.json');
+const Q3 = load('live_q3.json');
+
+describe('evidence helpers (structural, no claim words)', () => {
+  // Tester #46 bypass probes + ZH Copy rows: a country plus the made-in
+  // concept in one clause, whatever the claim wording.
+  const caught = [
+    '經查證產地為中國', '已證實於中國製造', '可確定為中國製造', '確定在中國製造', 'Verified: made in China',
+    'confirmed made in China', '產地經核實為中國', '已查明產地為中國', 'Made in China per retailer spec sheet',
+    'proven to be made in China', 'definitely made in China', '產品於中國製造',
+    '品牌源自德國並維持德國工程設計，但實際最終製造地與組裝廠位於中國大陸。',
+    '經零售通路規格表確認實體最終產地為中國。',
+    '中國廠生產', '於中國組裝', '經實測為中國製', '已證實中國製造',
+  ];
+  for (const s of caught) {
+    it(`hidden while 製造地 is 未確認: ${s}`, () => {
+      assert.ok(textTiesCountryToMade(s), s);
+      assert.equal(noteWithinEvidence(F2, s), false, s);
+    });
+  }
+  // Rows the structural rule cannot catch (no country name, or no made-in
+  // word the parsers know). Pinned so a change is visible; see the PR body.
+  for (const s of ['產自中國', '大陸代工', '深圳廠出貨', '確定係中國整']) {
+    it(`known gap (not caught structurally): ${s}`, () => assert.equal(textTiesCountryToMade(s), false));
+  }
+  it('HQ / design / server hedge lines are not made-in claims', () => {
+    for (const s of ['法定母公司為總部位於中國的好孩子國際控股有限公司。', '品牌設計地為英國', 'Final made-in unconfirmed; other countries are candidates only.'])
+      assert.equal(textTiesCountryToMade(s), false, s);
   });
-  it('brand-country labels', () => {
-    assert.ok(namesBrandCountry('台灣品牌'));
-    assert.ok(namesBrandCountry('法國品牌，輕量推車'));
-    assert.ok(namesBrandCountry('A French brand'));
-    assert.ok(!namesBrandCountry('替代品牌'));
+  it('brand wording naming a country needs a brand quote naming it', () => {
+    for (const s of ['a french brand', 'brand from France', '來自法國的品牌', '台灣品牌'])
+      assert.equal(noteWithinEvidence(F2, s), false, s);
   });
-  it('none of the live fixtures holds a verified quote', () => {
-    for (const r of [F1, F2, F3, PARTS]) assert.equal(hasVerifiedQuote(r), false);
+  it('known brand gaps (no country, or no brand concept the parser knows)', () => {
+    for (const s of ['法系品牌', '源自法國', '法國喘牌子', '法國牌子', '歐洲品牌']) assert.equal(noteWithinEvidence(F2, s), true, s);
+  });
+  it('a slug is not a quote; 歐洲品牌 never reads as a country', () => {
+    assert.equal(quoteNamesBrand('taiwan-brand', 'Taiwan'), false);
+    assert.equal(quoteNamesBrand('台灣品牌', 'Taiwan'), true);
+    assert.equal(quoteNamesBrand('歐洲品牌', 'Europe'), false);
+  });
+});
+
+describe('per-row evidence (Tester #46)', () => {
+  it('a verified made-in quote for Japan lifts no brand / manufacturer / parent row', () => {
+    const x = { ...F3, meta: { ...F3.meta, searchCoo: [{ country: 'Japan', basis: 'barcode', status: 'confirmed', url: 'https://example.com/jp' }] } } as CheckResult;
+    assert.ok(!buildLayerRows(x).some((r) => r.tag === 'confirmed'), JSON.stringify(buildLayerRows(x)));
+    assert.ok(!panel(x).includes('強關聯'));
+  });
+  it('a made-in quote does not confirm HQ or brand origin, even for the same country', () => {
+    const x = { ...F1, meta: { ...F1.meta, searchCoo: [{ country: 'United Kingdom', basis: 'barcode', status: 'confirmed', url: 'https://example.com/uk' }] } } as CheckResult;
+    const rows = buildLayerRows(x);
+    assert.notEqual(rows.find((r) => r.key === 'hq')?.tag, 'confirmed');
+    assert.notEqual(rows.find((r) => r.key === 'brandOrigin')?.tag, 'confirmed');
+  });
+  it('a brand-only label quote never makes the manufacturer row 確認', () => {
+    const lb = { ...F2, partsEvidence: 'label', product: { ...F2.product, originCountry: 'Germany', manufacturer: 'X', manufacturerCountry: 'Germany', designInfo: [{ country: 'Germany', kind: 'brand', quote: '德國品牌' }] } } as CheckResult;
+    const rows = buildLayerRows(lb);
+    assert.equal(rows.find((r) => r.key === 'brandOrigin')?.tag, 'confirmed');
+    assert.notEqual(rows.find((r) => r.key === 'manufacturer')?.tag, 'confirmed');
+    assert.equal(factVerified(lb, 'madeIn', 'Germany'), false);
+  });
+  it('live_q3 Melio: the taiwan-brand slug row is dropped', () => {
+    const v = buildMadeInView(Q3);
+    assert.ok(!v.designRows.some((d) => d.country === 'Taiwan'), JSON.stringify(v.designRows));
+    assert.ok(!card(Q3).includes('台灣品牌'));
+  });
+  it('live_q1 JL: 「成品於波蘭製造」 note is hidden; Poland is a tier row', () => {
+    const t = panel(Q1);
+    assert.ok(!t.includes('成品於波蘭製造'), t);
+    assert.ok(buildMadeInView(Q1).unconfirmedTier.some((c) => c.label === 'Poland'));
+  });
+  it('live_q2 Milano: 歐洲 tier row, 「於歐洲工坊製造」 note hidden', () => {
+    const t = panel(Q2);
+    assert.ok(!t.includes('歐洲工坊製造'), t);
+    assert.ok(buildMadeInView(Q2).unconfirmedTier.some((c) => c.label === '歐洲'));
+  });
+  it('live_f1 JL Poland name-match reads 「波蘭 · 60% · 依品名比對的網頁 · 未確認」 in the tier', () => {
+    const t = card(F1);
+    assert.ok(t.includes('模型參考（未經確認）'), t);
+    assert.ok(t.includes('60% · 依品名比對的網頁 · 未確認'), t);
+    assert.ok(!t.includes('查到的產地候選'), t);
   });
 });
 
@@ -76,7 +143,7 @@ describe('weak tier: every candidate, % and source, under 模型參考（未經�
     assert.ok(v.weakCandidates?.some((c) => c.label === 'Poland' && c.confidence === 0.5 && c.source === 'model_memory'), JSON.stringify(v));
     const t = card(r);
     assert.ok(t.includes('模型參考（未經確認）'), t);
-    assert.ok(t.includes('50% · 來源：模型知識 · 未確認') || /50%.*未確認/.test(t), t);
+    assert.ok(t.includes('50% · 模型知識 · 未確認'), t);
     assert.ok(!t.includes(zh('check.rc.noCandidates')), t);
     const te = card(r, en);
     assert.ok(te.includes('Model reference (unconfirmed)'), te);
@@ -120,7 +187,7 @@ describe('weak tier: every candidate, % and source, under 模型參考（未經�
   });
 });
 
-describe('no 確認 / strong without a verified quote (live_f3 Melio)', () => {
+describe('no 確認 / strong without a quote for that row (live_f3 Melio)', () => {
   it('manufacturer and company rows are never 確認', () => {
     for (const r of [F1, F3]) assert.ok(!buildLayerRows(r).some((x) => x.tag === 'confirmed'), JSON.stringify(buildLayerRows(r)));
   });
@@ -141,12 +208,5 @@ describe('no 確認 / strong without a verified quote (live_f3 Melio)', () => {
     const r = { ...F3, product: { ...F3.product, notes: ['台灣品牌，輕量推車。', '法國品牌'] }, caveats: [] } as CheckResult;
     const t = panel(r);
     assert.ok(!t.includes('台灣品牌') && !t.includes('法國品牌'), t);
-  });
-  it('with a verified quote, 確認 may show', () => {
-    const r = {
-      ...F3,
-      meta: { ...F3.meta, searchCoo: [{ country: 'China', basis: 'barcode', status: 'confirmed', url: 'https://example.com/p' }] },
-    } as CheckResult;
-    assert.ok(buildLayerRows(r).some((x) => x.key === 'manufacturer' && x.tag === 'confirmed'));
   });
 });

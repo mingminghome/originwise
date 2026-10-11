@@ -135,12 +135,12 @@ describe('buildLayerRows', () => {
     assert.equal(rows.find((r) => r.key === 'manufacturer')?.tag, 'mentioned');
   });
 
-  it('tags web company facts 確認 with a verified quote, missing parts 未確認, controlling parent row', () => {
+  it('per row: a made-in quote lifts no company row; a brand quote naming the country lifts only 品牌來源地', () => {
     const rows = buildLayerRows(
       base({
         meta: { searchCoo: [{ country: 'China', basis: 'barcode', status: 'confirmed', url: 'https://example.com/p' }] },
         sources: ['Cybex — https://example.com/about'],
-        product: { originCountry: 'Germany' },
+        product: { originCountry: 'Germany', designInfo: [{ country: 'Germany', kind: 'brand', quote: '德國品牌' }] },
         company: {
           hqCountry: 'Germany',
           parents: [{ name: 'Goodbaby', country: 'China', control: 'majority' }],
@@ -151,9 +151,9 @@ describe('buildLayerRows', () => {
       rows.map((r) => [r.key, r.tag]),
       [
         ['brandOrigin', 'confirmed'],
-        ['hq', 'confirmed'],
+        ['hq', 'mentioned'],
         ['parts', 'unconfirmed'],
-        ['parent', 'confirmed'],
+        ['parent', 'mentioned'],
       ]
     );
   });
@@ -178,7 +178,7 @@ describe('made-in card markup', () => {
   it('C: headline 未確認; 泰國 sits below as a candidate with its page; no 「非確認」', () => {
     const out = html(createElement(MadeInCard, { result: likely, t: zh }));
     assert.match(out, /<p class="rc-headline is-unconfirmed">未確認<\/p>/);
-    assert.match(out, /<span class="rc-cand-name">泰國<\/span>.*<span class="rc-cand-meta">較可能 · 依品名比對的網頁<\/span>/);
+    assert.match(out, /<span class="rc-cand-name">泰國<\/span>.*<span class="rc-cand-meta">(?:\d+% · )?依品名比對的網頁 · 未確認<\/span>/);
     assert.match(out, /<span class="rc-source-prefix">來源 1：<\/span><a [^>]*>Example page<\/a>/);
     assert.ok(!out.includes('非確認'));
   });
@@ -388,8 +388,8 @@ describe('China card fairness (real payloads)', () => {
 
   it('Cybex 製造地 candidates: the rating word, no 「非確認」 suffix', () => {
     const out = html(createElement(MadeInCard, { result: cybex, t: zh }));
-    assert.ok(out.includes('<span class="rc-cand-meta">較可能 · 零件／物料</span>'), out);
-    assert.ok(!out.includes('非確認'));
+    assert.match(out, /<span class="rc-cand-meta">(?:\d+% · )?零件／物料 · 未確認<\/span>/);
+    assert.ok(!out.includes('非確認') && !out.includes('較可能'));
   });
 });
 
@@ -405,36 +405,24 @@ describe('model-only made-in (item 9)', () => {
     meta: { searchProvider: 'brave', searchCoo: [] },
   });
 
-  it('headline 未確認, one 中國 row labelled 模型參考（未經多重確認）, no %, tier unchanged', () => {
+  // Chief (#46): the main list holds only the confirmed country; every other
+  // candidate is one 模型參考（未經確認） row: country · % (if any) · source · 未確認.
+  const tierLis = (out: string) =>
+    (out.split('data-testid="madein-weak"')[1] ?? '').split('</ul>')[0]!.split('<li').slice(1);
+
+  it('headline 未確認, one 中國 row in 模型參考（未經確認）, no %, tier unchanged', () => {
     const view = buildMadeInView(modelOnly);
     assert.equal(view.state, 'unconfirmed');
     assert.deepEqual(view.candidates, [{ label: 'China', rating: 'possible', source: 'model_memory' }]);
+    assert.deepEqual(view.unconfirmedTier, [{ label: 'China', source: 'model_memory' }]);
     const out = html(createElement(MadeInCard, { result: modelOnly, t: zh }));
     assert.ok(out.includes('rc-headline is-unconfirmed">未確認'));
-    assert.ok(out.includes('模型參考（未經多重確認）'));
+    assert.ok(out.includes('模型參考（未經確認）'));
     assert.doesNotMatch(out.slice(out.indexOf('rc-candidates')), /\d+\s*%/);
     const china = html(createElement(ChinaCard, { result: modelOnly, t: zh }));
     assert.ok(!china.includes('中國製造'));
     assert.ok(!china.includes('製造地：'));
     assert.ok(china.includes('data-testid="china-tier">無關') || china.includes('is-none'));
-  });
-
-  it('country and label share one cell (no separate row); tooltip is tap/keyboard UI excluded from captures', () => {
-    const out = html(createElement(MadeInCard, { result: modelOnly, t: zh }));
-    assert.match(
-      out,
-      /<span class="rc-cand-country is-model"><span class="rc-cand-name">中國<\/span><span class="rc-cand-label" data-testid="model-ref" title="[^"]+">模型參考（未經多重確認）<\/span><span class="rc-info" data-section-share="ui">/
-    );
-    // aria wiring: button labelled, described by the full sentence, collapsed.
-    const id = out.match(/aria-describedby="([^"]+)"/)?.[1];
-    assert.ok(id);
-    assert.match(out, /<button type="button" class="rc-info-btn" aria-label="說明"/);
-    assert.match(out, /aria-expanded="false"/);
-    assert.ok(
-      out.includes(
-        `id="${id}" role="tooltip" class="rc-info-text" hidden="">未經網頁或包裝標示確認，只是模型的推測；請以包裝上的標示為準。</span>`
-      )
-    );
   });
 
   // Model says China; web only found a Thailand parts mention (modelref preview shape).
@@ -448,48 +436,31 @@ describe('model-only made-in (item 9)', () => {
     },
     company: { name: 'Pigeon', hqCountry: 'Japan' },
   });
-  const liOf = (out: string, model: boolean) =>
-    [...out.matchAll(/<li(?: class="is-model")?>.*?<\/li>/g)]
-      .map((m) => m[0])
-      .filter((li) => li.startsWith('<li class="is-model"') === model);
 
-  it('model-only row shows no likelihood grade (Tester / Chief follow-up)', () => {
-    const out = html(createElement(MadeInCard, { result: modelOnly, t: zh }));
-    const [row] = liOf(out, true);
-    assert.ok(row, out);
-    assert.ok(!row.includes('rc-cand-meta'), row);
-    assert.doesNotMatch(row, /可能|非確認/);
-  });
-
-  it('web row next to a model-only row keeps its grade', () => {
+  it('no grade word on any tier row; each reads % (if any) · source · 未確認', () => {
     const out = html(createElement(MadeInCard, { result: mixed, t: zh }));
-    const [web] = liOf(out, false);
-    assert.ok(web?.includes('<span class="rc-cand-meta">較可能 · 零件／物料</span>'), out);
-    const [model] = liOf(out, true);
-    assert.ok(model && !model.includes('rc-cand-meta'), out);
+    const rows = tierLis(out);
+    assert.equal(rows.length, 2, out);
+    assert.ok(rows.some((r) => r.includes('泰國') && r.includes('55% · 零件／物料 · 未確認')), out);
+    assert.ok(rows.some((r) => r.includes('中國') && r.includes('模型知識 · 未確認')), out);
+    for (const r of rows) assert.doesNotMatch(r, /較可能|>可能 ·/);
   });
 
-  it('no locale renders a grade on a model-only row (all 16)', () => {
+  it('no locale renders a grade on a tier row (all 16)', () => {
     const locales = Object.keys(catalogs) as Array<Parameters<typeof createT>[0]>;
     assert.equal(locales.length, 16);
     for (const lng of locales) {
       const t = createT(lng);
       const out = html(createElement(MadeInCard, { result: mixed, t }));
-      const models = liOf(out, true);
-      assert.equal(models.length, 1, `${lng}: ${out}`);
-      const row = models[0]!;
-      assert.ok(row.includes(t('check.rc.modelRef')), lng);
-      assert.ok(!row.includes('rc-cand-meta'), `${lng}: ${row}`);
-      // Strip the label + tooltip text, then no grade word or hedge may remain.
-      const rest = row
-        .split(t('check.rc.modelRef')).join('')
-        .split(t('check.rc.modelRefHelp')).join('');
-      for (const k of ['possible', 'likely'] as const) {
-        assert.ok(!rest.includes(`>${t(`check.candidateRating.${k}`)}`), `${lng} ${k}: ${row}`);
+      const rows = tierLis(out);
+      assert.equal(rows.length, 2, `${lng}: ${out}`);
+      assert.ok(out.includes(t('check.rc.weakTitle')), lng);
+      for (const r of rows) {
+        assert.ok(r.includes(t('check.rc.tagUnconfirmed')), `${lng}: ${r}`);
+        for (const k of ['possible', 'likely', 'confirmed'] as const) {
+          assert.ok(!r.includes(`>${t(`check.candidateRating.${k}`)}`), `${lng} ${k}: ${r}`);
+        }
       }
-      const webs = liOf(out, false);
-      assert.equal(webs.length, 1, lng);
-      assert.ok(webs[0]!.includes(`>${t('check.candidateRating.likely')} · `), `${lng}: ${webs[0]}`);
     }
   });
 
@@ -515,7 +486,7 @@ describe('model-only made-in (item 9)', () => {
     assert.equal(rows[0]?.source, 'web_name');
     const out = html(createElement(MadeInCard, { result: merged, t: zh }));
     assert.ok(!out.includes('data-testid="model-ref"'));
-    assert.ok(out.includes('<span class="rc-cand-meta">可能 · '), out);
+    assert.ok(out.includes('<span class="rc-cand-meta">60% · 依品名比對的網頁 · 未確認</span>'), out);
   });
 });
 
@@ -846,56 +817,43 @@ describe('製造地 card: parts candidates only the model named (closes #32 deci
     }
   };
 
-  it('model-only parts row: country + 模型參考 + ⓘ, no grade / % / source (zh-Hant)', () => {
+  it('model-only parts row sits in 模型參考（未經確認）: country · % · source · 未確認, no grade, no ⓘ (zh-Hant)', () => {
     const view = buildMadeInView(modelParts);
     assert.equal(view.state, 'unconfirmed');
     const out = html(createElement(MadeInCard, { result: modelParts, t: zh }));
+    assert.ok(out.includes('模型參考（未經確認）'), out);
     const rows = lis(out);
     assert.equal(rows.length, 1, out);
-    assert.match(
-      rows[0]!,
-      /^<li class="is-model"><span class="rc-cand-country is-model"><span class="rc-cand-name">泰國<\/span><span class="rc-cand-label" data-testid="model-ref" title="[^"]+">模型參考（未經多重確認）<\/span><span class="rc-info" data-section-share="ui"><button type="button" class="rc-info-btn" aria-label="說明"/
-    );
-    assert.ok(!rows[0]!.includes('rc-cand-meta'), rows[0]);
-    assert.doesNotMatch(textOf(rows[0]!), /可能|\d\s*%|零件／物料/);
+    assert.ok(textOf(rows[0]!).includes('泰國'), rows[0]);
+    assert.match(textOf(rows[0]!), /零件／物料 · 未確認/);
+    assert.doesNotMatch(textOf(rows[0]!), /較可能|可能 ·/);
+    assert.ok(!rows[0]!.includes('rc-info'), rows[0]);
   });
 
-  it('16 locales and the 780px save: no grade, %, ⓘ or tooltip on the model-only parts row', () => {
+  it('16 locales and the 780px save: tier rows carry no grade, ⓘ or tooltip', () => {
     assert.equal(sectionShareCapture.phoneCssPx * sectionShareCapture.pixelRatio, 780);
     const locales = Object.keys(catalogs) as Array<Parameters<typeof createT>[0]>;
     assert.equal(locales.length, 16);
     for (const lng of locales) {
       const t = createT(lng);
-      const out = html(createElement(MadeInCard, { result: modelParts, t }));
-      const [row] = lis(out);
-      assert.ok(row?.startsWith('<li class="is-model"'), `${lng}: ${out}`);
-      assert.ok(row!.includes(t('check.rc.modelRef')) && !row!.includes('rc-cand-meta'), `${lng}: ${row}`);
-      const rest = textOf(row!).split(t('check.rc.modelRef')).join('').split(t('check.rc.modelRefHelp')).join('');
-      assert.ok(!rest.includes(t('check.candidateRating.likely')), `${lng}: ${rest}`);
-      assert.ok(!rest.includes(t('check.candidateSource.parts')), `${lng}: ${rest}`);
-      assert.doesNotMatch(rest, /\d\s*%/);
-      const saved = strip(out);
-      assert.ok(!saved.includes('ⓘ') && !saved.includes('role="tooltip"'), `${lng}: ${saved}`);
-      assert.ok(!textOf(saved).includes(t('check.rc.modelRefHelp')), lng);
-      const [savedRow] = lis(saved);
-      assert.ok(savedRow!.includes(t('check.rc.modelRef')), lng);
-      assert.doesNotMatch(textOf(savedRow!), /\d\s*%/);
-      // Web-backed parts keep grade + source in every locale.
-      const [web] = lis(html(createElement(MadeInCard, { result: webParts, t })));
-      assert.ok(!web!.startsWith('<li class="is-model"'), lng);
-      assert.ok(
-        textOf(web!).includes(`${t('check.candidateRating.likely')} · ${t('check.candidateSource.parts')}`),
-        `${lng}: ${web}`
-      );
+      for (const r of [modelParts, webParts]) {
+        const out = html(createElement(MadeInCard, { result: r, t }));
+        const [row] = lis(out);
+        assert.ok(row && textOf(row).includes(`${t('check.candidateSource.parts')} · ${t('check.rc.tagUnconfirmed')}`), `${lng}: ${out}`);
+        assert.ok(!textOf(row!).includes(`${t('check.candidateRating.likely')} ·`), `${lng}: ${row}`);
+        const saved = strip(out);
+        assert.ok(!saved.includes('ⓘ') && !saved.includes('role="tooltip"'), `${lng}: ${saved}`);
+      }
     }
   });
 
-  it('model parts + web on the same country stay one web row with its grade', () => {
+  it('model parts + web on the same country stay one row', () => {
     const rows = buildMadeInView(agree).candidates;
     assert.deepEqual(rows, [{ label: 'China', rating: 'possible', source: 'web_name' }]);
     const out = html(createElement(MadeInCard, { result: agree, t: zh }));
     assert.ok(!out.includes('data-testid="model-ref"'), out);
-    assert.ok(out.includes('<span class="rc-cand-meta">可能 · '), out);
+    assert.equal(lis(out).length, 1, out);
+    assert.match(out, /依品名比對的網頁 · 未確認/);
   });
 });
 

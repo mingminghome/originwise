@@ -73,7 +73,6 @@ export const fi = {
       candidatesTitle: 'Löydetyt valmistusmaaehdokkaat (vahvistamattomat)',
       noCandidates: 'Luotettavia ehdokkaita ei löytynyt.',
       weakTitle: 'Mallin arvio (vahvistamaton)',
-      weakMeta: '{pct}% · lähde: {source} · ei vahvistettu',
       sourceCount: 'Lähteet: {n}',
       sourceFirst: 'Lähde 1: {label}',
       sourceNth: 'Lähde {n}: {label}',

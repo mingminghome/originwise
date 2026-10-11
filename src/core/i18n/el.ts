@@ -73,7 +73,6 @@ export const el = {
       candidatesTitle: 'Υποψήφιοι τόποι κατασκευής (μη επιβεβαιωμένοι)',
       noCandidates: 'Δεν βρέθηκαν αξιόπιστοι υποψήφιοι.',
       weakTitle: 'Αναφορά μοντέλου (μη επιβεβαιωμένο)',
-      weakMeta: '{pct}% · πηγή: {source} · μη επιβεβαιωμένο',
       sourceCount: 'Πηγές: {n}',
       sourceFirst: 'Πηγή 1: {label}',
       sourceNth: 'Πηγή {n}: {label}',

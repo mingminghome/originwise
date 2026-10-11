@@ -73,7 +73,6 @@ export const nl = {
       candidatesTitle: 'Gevonden kandidaat-productielanden (niet bevestigd)',
       noCandidates: 'Geen betrouwbare kandidaten gevonden.',
       weakTitle: 'Modelreferentie (onbevestigd)',
-      weakMeta: '{pct}% · bron: {source} · niet bevestigd',
       sourceCount: 'Bronnen: {n}',
       sourceFirst: 'Bron 1: {label}',
       sourceNth: 'Bron {n}: {label}',

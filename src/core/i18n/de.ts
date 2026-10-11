@@ -73,7 +73,6 @@ export const de = {
       candidatesTitle: 'Gefundene Herkunftskandidaten (nicht bestätigt)',
       noCandidates: 'Keine verlässlichen Herkunftskandidaten gefunden.',
       weakTitle: 'Modellreferenz (unbestätigt)',
-      weakMeta: '{pct}% · Quelle: {source} · nicht bestätigt',
       sourceCount: 'Quellen: {n}',
       sourceFirst: 'Quelle 1: {label}',
       sourceNth: 'Quelle {n}: {label}',

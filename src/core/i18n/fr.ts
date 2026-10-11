@@ -73,7 +73,6 @@ export const fr = {
       candidatesTitle: 'Lieux de fabrication candidats (non confirmés)',
       noCandidates: 'Aucun candidat fiable trouvé.',
       weakTitle: 'Référence du modèle (non confirmée)',
-      weakMeta: '{pct}% · source : {source} · non confirmé',
       sourceCount: 'Sources : {n}',
       sourceFirst: 'Source 1 : {label}',
       sourceNth: 'Source {n} : {label}',

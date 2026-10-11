@@ -236,7 +236,8 @@ function firstCountry(text: string): { index: number; end: number } | undefined 
   return m ? { index: m.index, end: m.index + m[0].length } : undefined;
 }
 
-function countriesIn(phrase: string): string[] {
+/** Every country name in the text (names and adjectives, never 2-letter codes). */
+export function countriesIn(phrase: string): string[] {
   const out: string[] = [];
   let rest = phrase;
   for (let place = firstCountry(rest); place; place = firstCountry(rest)) {

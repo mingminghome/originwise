@@ -217,7 +217,7 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
       kind: 'relation',
       type,
       country: rel.country?.trim() || undefined,
-      strength: shownStrength(result, rel.strength) || undefined,
+      strength: shownStrength(result, rel) || undefined,
       note: (rel.note?.trim() && noteWithinEvidence(result, rel.note.trim()) ? rel.note.trim() : undefined),
     });
   }

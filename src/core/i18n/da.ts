@@ -73,7 +73,6 @@ export const da = {
       candidatesTitle: 'Fundne kandidater til fremstillingsland (ikke bekræftet)',
       noCandidates: 'Ingen pålidelige kandidater fundet.',
       weakTitle: 'Modelreference (ubekræftet)',
-      weakMeta: '{pct}% · kilde: {source} · ikke bekræftet',
       sourceCount: 'Kilder: {n}',
       sourceFirst: 'Kilde 1: {label}',
       sourceNth: 'Kilde {n}: {label}',
