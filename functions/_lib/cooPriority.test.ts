@@ -139,7 +139,8 @@ describe('package label OCR (Pigeon Softouch glass)', () => {
   it('reads 生産・組み立て：日本 and 中国工場製 as made-in claims', () => {
     const claims = extractCooClaimsFromText(SOFTOUCH_OCR);
     assert.ok(claims.some((c) => c.region === 'OTHER' && /日本/.test(c.label)), JSON.stringify(claims));
-    assert.ok(claims.some((c) => c.region === 'CN' && /中国/.test(c.label)), JSON.stringify(claims));
+    // r45 whole-value rule: 「乳首：シリコーンゴム 中国工場製」 is not the whole value of its line, so no China claim.
+    assert.ok(!claims.some((c) => c.region === 'CN'), JSON.stringify(claims));
   });
 
   it('reads other label forms: 原産国名、組立、タイ製、Assembled in', () => {
@@ -173,7 +174,7 @@ describe('package label OCR (Pigeon Softouch glass)', () => {
 
   it('labelConfirmsMadeIn matches English and CJK names', () => {
     assert.equal(labelConfirmsMadeIn('Japan', SOFTOUCH_OCR), true);
-    assert.equal(labelConfirmsMadeIn('China', SOFTOUCH_OCR), true);
+    assert.equal(labelConfirmsMadeIn('China', SOFTOUCH_OCR), false); // r45 whole-value rule
     assert.equal(labelConfirmsMadeIn('Thailand', SOFTOUCH_OCR), false);
     assert.equal(labelConfirmsMadeIn('Japan', ''), false);
   });

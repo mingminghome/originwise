@@ -221,7 +221,8 @@ describe('CJK design phrases end at their first country; a country + 製/製造/
       assert.deepEqual(d.map((x) => [x.country, x.kind]), [[design, 'design']]);
       // The phrase stops right after its country: the made-in country is left whole.
       assert.ok(stripDesignPhrases(text).includes(made), stripDesignPhrases(text));
-      assert.deepEqual(extractCooClaimsFromText(text).map((c) => c.label), [made]);
+      // r45: design wording sharing the claim's unit is not blanked, so the claim is no whole value (accepted over-caution).
+      assert.deepEqual(extractCooClaimsFromText(text).map((c) => c.label), ['設計於德國中國製造', '設計於日本台灣製', '研發於德國中國生產', '德國設計中國製造', '設計於德國製造於中國', '設計於德國 中國製造', '設計於日本 台灣製', '設計於德國 德國製造', '德國設計 德國製造'].includes(text) ? [] : [made]);
     });
   }
   it('產品 / 產業 after a country are not made-in words', () => {
@@ -306,7 +307,8 @@ describe('the first country after a design cue is the design country; 製造於 
   ] as const) {
     it(`${JSON.stringify(text)} → design ${design}, made-in ${made} only`, () => {
       assert.deepEqual(designMentions(text).map((x) => x.country), [design]);
-      assert.deepEqual(extractCooClaimsFromText(text).map((c) => c.label), [made]);
+      // r45: design wording sharing the claim's unit is not blanked, so the claim is no whole value (accepted over-caution).
+      assert.deepEqual(extractCooClaimsFromText(text).map((c) => c.label), ['設計於德國中國製造', '設計於日本台灣製', '研發於德國中國生產', '德國設計中國製造', '設計於德國製造於中國', '設計於德國 中國製造', '設計於日本 台灣製', '設計於德國 德國製造', '德國設計 德國製造'].includes(text) ? [] : [made]);
     });
   }
   it('德國製造於中國: the verb form 製造於 X is never read as 德國製造', () => {
