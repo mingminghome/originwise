@@ -180,8 +180,17 @@ export const COUNTRY_LIST_LATIN_RE = COUNTRY_LIST_LATIN.split('|')
   .map((n) => n.replace(/[aeioucn]/g, (c) => ACCENTED[c]!))
   .join('|');
 
+/**
+ * r44: 朝鮮 / 朝鲜 is also the first half of many other words (朝鮮半島, 朝鮮族, 朝鮮人參, 朝鮮薊). It reads as North Korea
+ * only as a whole country token: not after 南 (南朝鮮), and not followed by another CJK character, except a made-in claim
+ * suffix (製 / 制 / 造 / 產 / 产 / 産 / 生). Punctuation, Latin, space or the end of the value end the token.
+ */
+const BOUNDED_CJK = new Set(['朝鮮', '朝鲜']);
+const CJK_CHAR = '\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff';
+const boundedCjk = (n: string) => `(?<!南)${n}(?![${CJK_CHAR}](?<![製制造產产産生]))`;
+
 /** Every Japanese / Chinese name, longest first (no letter guard needed). */
 export const COUNTRY_LIST_CJK = [...new Set(ROWS.flatMap((r) => [...r[3], ...r[4], ...r[5]]))]
   .sort(byLength)
-  .map(esc)
+  .map((n) => (BOUNDED_CJK.has(n) ? boundedCjk(esc(n)) : esc(n)))
   .join('|');

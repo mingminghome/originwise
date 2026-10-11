@@ -196,7 +196,8 @@ describe('package label OCR (Pigeon Softouch glass)', () => {
 });
 
 describe('canonCountry: every name the display can produce maps to one key (round 20)', () => {
-  const unesc = (s: string) => s.replace(/\\s\+/g, ' ').replace(/\\(.)/g, '$1');
+  // r44: a bounded name (朝鮮) carries lookarounds; the name itself is what's between them.
+  const unesc = (s: string) => s.replace(/^\(\?<!.\)|\(\?!.*\)$/g, '').replace(/\\s\+/g, ' ').replace(/\\(.)/g, '$1');
   it('each countryNames name (English, Japanese, Traditional, Simplified) has its English label key', () => {
     for (const list of [COUNTRY_LIST_LATIN, COUNTRY_LIST_CJK]) {
       for (const name of list.split('|').map(unesc)) {
