@@ -14,7 +14,7 @@
 import { ENGLISH_WORDS } from './dictionary';
 import { notProductPageUrl } from '../pageUrl';
 import { isSearchResultUrl } from '../sourceLine';
-import { MADE_IN_CODE_LABEL, NOT_PRODUCT_FIELD, canonicalCountry, madeInCodeMatches } from '../countryLabel';
+import { MADE_IN_CODE_LABEL, NOT_PRODUCT_FIELD, PART_FIELD_WORDS, canonicalCountry, madeInCodeMatches } from '../countryLabel';
 import { madeInValueCountry, partFieldMatches, settleCooFields, US_STATES, US_TOWN_NAMES } from '../cooPriority';
 import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE } from '../countryNames';
 import { designMentions, quoteBacksCountry, stripDesignPhrases } from '../designOrigin';
@@ -2619,6 +2619,36 @@ const BARE_CJK_MADE_IN_RE = new RegExp(
   `^[ \\t　]*(${COUNTRY_LIST_CJK})(?:製造|制造|製|制|生產|生产|生産|產|产|産)[ \\t　]*[。.!！]?[ \\t　]*$`,
   'gmu'
 );
+const CJK_MADE_SUFFIX = '(?:製造|制造|製|制|生產|生产|生産|產|产|産)';
+/** One bare CJK made-in line (BARE_CJK_MADE_IN_RE without the line anchors), to tell its matches apart. */
+const BARE_CJK_ONE_RE = new RegExp(`^[ \\t　]*(?:${COUNTRY_LIST_CJK})${CJK_MADE_SUFFIX}[ \\t　]*[。.!！]?[ \\t　]*$`, 'u');
+/** r40 audit: negated made-in on the page: "not / never made in X" (names and codes), 非X製, 不是X製, 並非X製, X製ではありません. */
+const NEGATED_EN_MADE_IN_RE = /(?:\bnot|\bnever|n['’]t)[ \t\u00a0]+(?:made|manufactured|assembled|produced)[ \t\u00a0]+in[ \t\u00a0]+(?:the[ \t\u00a0]+)?([A-Za-z][A-Za-z.]*(?:[ \t\u00a0]+[A-Za-z][A-Za-z.]*){0,2})/gi;
+const NEGATED_CJK_MADE_IN_RE = new RegExp(
+  `(?:並非|并非|並不是|并不是|不是|非)(${COUNTRY_LIST_CJK})${CJK_MADE_SUFFIX}|(${COUNTRY_LIST_CJK})${CJK_MADE_SUFFIX}(?:では|じゃ)(?:ありません|ない|なく)`,
+  'gu'
+);
+/** Countries the page negates as a made-in (canonical keys). */
+function negatedMadeIn(t: string): Set<string> {
+  const out = new Set<string>();
+  const add = (raw: string) => {
+    const words = raw.trim().split(/\s+/);
+    for (let n = words.length; n >= 1; n -= 1) {
+      const v = words.slice(0, n).join(' ').replace(/[.]+$/, '');
+      const c = madeInValueCountry(MADE_IN_CODE_LABEL[v.toUpperCase()] ?? MADE_IN_CODE_LABEL[v] ?? v);
+      if (c) {
+        out.add(canonicalCountry(c) ?? c.toLowerCase());
+        return;
+      }
+    }
+  };
+  for (const m of t.matchAll(NEGATED_EN_MADE_IN_RE)) add(m[1]!);
+  for (const m of t.matchAll(NEGATED_CJK_MADE_IN_RE)) add((m[1] ?? m[2])!);
+  return out;
+}
+/** A part / material label on its own line (PART_FIELD_WORDS, bare or ending in a colon): 面料, 面料：, 電池: */
+const PART_LABEL_LINE_RE = new RegExp(`^[ \\t　]*(?:${PART_FIELD_WORDS.join('|')})[^\\n：:]{0,4}[ \\t　]*[:：]?[ \\t　]*$`, 'u');
+
 export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
   const out: CooClaim[] = [];
   pages.forEach((p, idx) => {
@@ -2674,7 +2704,17 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
       ...patterns.flatMap((re) => [...t.matchAll(re)]),
       ...codeMatches,
     ];
+    const negated = negatedMadeIn(t);
     for (const m of found) {
+      // r40 audit: a bare CJK made-in line is skipped when the page negates that country (中國製 + 非中國製,
+      // "Not made in China" + 中国製) or when the line above is a part / material label (面料\n日本製, 電池：\n中國製造).
+      if (m.index !== undefined && BARE_CJK_ONE_RE.test(m[0])) {
+        const v = madeInValueCountry((m[1] || '').trim());
+        if (v && negated.has(canonicalCountry(v) ?? v.toLowerCase())) continue;
+        const ls = t.lastIndexOf('\n', m.index - 1);
+        const prev = ls < 0 ? '' : t.slice(t.lastIndexOf('\n', ls - 1) + 1, ls);
+        if (PART_LABEL_LINE_RE.test(prev)) continue;
+      }
       if (m.index !== undefined) {
         if (cueAt.has(m.index)) continue;
         cueAt.add(m.index);
