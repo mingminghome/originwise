@@ -17,7 +17,35 @@ const BLOCK = [
   'Not made in China\n中國製造', '中國製造\nNot made in China', '非中國製\n中國製', '中國製\n非中國製',
   '日本製品', '朝鮮製品', '日本原裝進口',
 ];
+// r45 Chief ruling 2: comparison / imitation / style words next to the claim (label, note and page).
+const BLOCK_STYLE = [
+  '日本製風格', '像日本製', '日本製一樣好', '比較日本製', '媲美日本製', '日系風格', '堪比日本製', '不輸日本製',
+  '比照日本製', '類似日本製', '日本製等級', '好似日本製', '同日本製一樣', '日式設計', '日本風', '和風',
+  '日本製 (仿)', '日本製（非）', '日本製（副廠）', '日本製（A貨）', '日本製（仿製）', '日本製（非原廠）',
+  '自稱日本製', '傳聞日本製', '假日本製', '冒充日本製', '日本製！？', '比日本製更耐用',
+];
+// Negations split by a line break, a curly apostrophe or a double space.
+const BLOCK_NEG = ['Not made in\nChina\n中國製造', 'Not made\nin China\n中國製造', 'Don’t made in China\n中國製造', 'Not  made in China\n中國製造', '非\n中國製', '不是\n中國製造'];
 const VERIFY: Array<[string, string]> = [
+  ['種類：日本製', 'Japan'],
+  ['分類：日本製', 'Japan'],
+  ['日本製 更耐用', 'Japan'],
+  ['日本製更放心', 'Japan'],
+  ['美國製更耐用', 'United States'],
+  ['日本製（原裝）', 'Japan'],
+  ['日本製（2024年款）', 'Japan'],
+  ['日本製 (Made in Japan)', 'Japan'],
+  ['日本製（水貨）', 'Japan'],
+  ['日本製（行貨）', 'Japan'],
+  ['產地：比利時', 'Belgium'],
+  ['類別：日本製', 'Japan'],
+  ['日本製，更安心', 'Japan'],
+  ['產地：日本 不含中國製零件', 'Japan'],
+  ['日本製品 ベビーカー', 'Japan'],
+  ['產地：日本\n電池：中國製', 'Japan'],
+  ['朝鮮製', 'North Korea'],
+  ['朝鮮生產', 'North Korea'],
+  ['朝鲜制造', 'North Korea'],
   ['日本製', 'Japan'],
   ['產地：日本', 'Japan'],
   ['製造國：日本', 'Japan'],
@@ -59,6 +87,30 @@ describe('PR #45: label and note never confirm a non-claim', () => {
   }
 });
 
+describe('PR #45 ruling 2: style / comparison words and split negations', () => {
+  for (const input of [...BLOCK_STYLE, ...BLOCK_NEG]) {
+    for (const path of ['label', 'page'] as const) {
+      it(`${path} ${JSON.stringify(input)} → no country`, () => assert.equal(summarize(path, input).country, null));
+    }
+    it(`note ${JSON.stringify(input)} → nothing possible`, () => {
+      const s = summarize('note', input);
+      assert.ok(!/possible|likely/.test(String(s.grade ?? '')), JSON.stringify(s));
+    });
+  }
+  it('page 比利時製 → Belgium likely (比 is no comparison inside a country name)', () => {
+    assert.deepEqual([summarize('page', '比利時製').country, summarize('page', '比利時製').grade], ['Belgium', 'likely']);
+  });
+  it('label 比利時製 is not blocked by the comparison rule (same as main: no CJK Belgium on label)', () => {
+    assert.equal(summarize('label', '比利時製').country, summarize('label', 'ベルギー製').country);
+  });
+  it('label 比利時製更耐用 is never a comparison (比 inside 比利時): same as 比利時製', () =>
+    assert.equal(summarize('label', '比利時製更耐用').country, summarize('label', '比利時製').country));
+  it('label 比利時製 更耐用 reads as 比利時製 (比 inside 比利時 is no comparison)', () =>
+    assert.deepEqual(summarize('label', '比利時製 更耐用'), summarize('label', '比利時製')));
+  it('page 秘魯製 → Peru likely', () => assert.equal(summarize('page', '秘魯製').country, 'Peru'));
+  it('日本製造商 follows the 製造商 rule: no country on label', () => assert.equal(summarize('label', '日本製造商').country, null));
+});
+
 describe('PR #45: an English negated quote never verifies on cited', async () => {
   const { citedPageConfirms } = await import('../../functions/_lib/citedSources');
   const page = (line: string) => ({ url: 'https://www.example.com/p/melio', title: 'Cybex Melio', text: `Cybex Melio\nLightweight stroller\n${line}` });
@@ -72,6 +124,10 @@ describe('PR #45: an English negated quote never verifies on cited', async () =>
       assert.equal(citedPageConfirms(page(q) as never, 'Cybex Melio', c, q), false);
     });
   }
+  it('"Not made in China. Made in Germany." verifies Germany', () => {
+    const q = 'Not made in China. Made in Germany.';
+    assert.equal(citedPageConfirms(page(q) as never, 'Cybex Melio', 'Germany', q), true);
+  });
   it('"Made in Germany" still verifies Germany', () => {
     assert.equal(citedPageConfirms(page('Made in Germany') as never, 'Cybex Melio', 'Germany', 'Made in Germany'), true);
   });

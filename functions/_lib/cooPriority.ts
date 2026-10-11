@@ -885,9 +885,9 @@ export function wholeClaimDisputeSides(text: string): string[] {
  * Shared by the page path (regexCooClaims) and the label / note path (extractCooClaimsFromText).
  */
 const NEG_CJK_MADE_SUFFIX = '(?:製造|制造|製|制|生產|生产|生産|產|产|産)';
-const NEGATED_EN_MADE_IN_RE = /(?:\bnot|\bnever|n['’]t)[ \t\u00a0]+(?:made|manufactured|assembled|produced)[ \t\u00a0]+in[ \t\u00a0]+(?:the[ \t\u00a0]+)?([A-Za-z][A-Za-z.]*(?:[ \t\u00a0]+[A-Za-z][A-Za-z.]*){0,2})/gi;
+const NEGATED_EN_MADE_IN_RE = /(?:\bnot|\bnever|n['’]t)[\s\u00a0]+(?:made|manufactured|assembled|produced)[\s\u00a0]+in[\s\u00a0]+(?:the[\s\u00a0]+)?([A-Za-z][A-Za-z.]*(?:[ \t\u00a0]+[A-Za-z][A-Za-z.]*){0,2})/gi;
 const NEGATED_CJK_MADE_IN_RE = new RegExp(
-  `(?:並非|并非|並不是|并不是|不是|非)(${COUNTRY_LIST_CJK})${NEG_CJK_MADE_SUFFIX}|(${COUNTRY_LIST_CJK})${NEG_CJK_MADE_SUFFIX}(?:では|じゃ)(?:ありません|ない|なく)`,
+  `(?:並非|并非|並不是|并不是|不是|非)\\s*(${COUNTRY_LIST_CJK})${NEG_CJK_MADE_SUFFIX}|(${COUNTRY_LIST_CJK})${NEG_CJK_MADE_SUFFIX}(?:では|じゃ)(?:ありません|ない|なく)`,
   'gu'
 );
 /** Countries the text negates as a made-in (canonical keys). */
@@ -911,11 +911,28 @@ export function negatedMadeIn(t: string): Set<string> {
 /** A part / material label on its own line (PART_FIELD_WORDS, bare or ending in a colon): 面料, 面料：, 電池: */
 export const PART_LABEL_LINE_RE = new RegExp(`^[ \\t　]*(?:${PART_FIELD_WORDS.join('|')})[^\\n：:]{0,4}[ \\t　]*[:：]?[ \\t　]*$`, 'u');
 
-/** r45: wording right before a CJK made-in that makes it no claim: imitation, comparison, hedge. */
-const LABEL_CLAIM_PRE_BLOCK =
-  /(?:仿|類似|类似|類|类|對標|对标|比|可能|號稱|号称|疑似|聽說|听说|據說|据说|宣稱|宣称)[ \t\u3000]*(?:是|為|为)?[ \t\u3000]*$/u;
-/** r45: wording right after a CJK made-in that makes it no claim: a part, a question, a comparison, a bare 〜製品 line. */
-const LABEL_CLAIM_POST_BLOCK = /^[ \t\u3000]*(?:[？?]|嗎|吗|更|還要|还要|品[ \t\u3000]*[。.!！]?[ \t\u3000]*$)/u;
+/**
+ * r45 (Chief, structural): a comparison, imitation, style or hedge word right next to a CJK made-in means it is no
+ * claim. Matched on word boundaries: a one-character word (比, 類, 像, 同, 如, 風, 級) counts only at the start of the
+ * line or after a space / punctuation (before the claim), or before a space / punctuation / the end (after the claim),
+ * so 比利時製, 種類：日本製, 日本製風扇 and 日本製，更安心 are untouched. 更 counts only right after the claim (日本製更好).
+ */
+const WB_BEFORE = '(?:^|(?<=[\\s\\u3000，,、。.；;：:！!？?（(「『【]))';
+/** r45: 更 / 還要 right after the claim is a comparison only when 比 is on the line (outside a country name like 比利時). */
+const LABEL_MORE_AFTER = /^[ \t\u3000]*(?:更|還要|还要)/u;
+const COUNTRY_NAME_CJK_RE = new RegExp(COUNTRY_LIST_CJK, 'gu');
+const WB_AFTER = '(?=$|[\\s\\u3000，,、。.；;！!？?）)」』】])';
+const LABEL_CLAIM_PRE_BLOCK = new RegExp(
+  `(?:仿|類似|类似|對標|对标|比照|比較|比较|媲美|堪比|不輸|不输|好似|自稱|自称|傳聞|传闻|冒充|宛如|猶如|犹如|可能|號稱|号称|疑似|聽說|听说|據說|据说|宣稱|宣称|` +
+    `${WB_BEFORE}(?:類|类|比|像|同|如|假))[ \\t\\u3000]*(?:是|為|为)?[ \\t\\u3000]*$`,
+  'u'
+);
+/** r45: right after a CJK made-in: a question, a comparison / style / grade word, or a bare 〜製品 line. */
+const LABEL_CLAIM_POST_BLOCK = new RegExp(
+  `^[ \\t\\u3000]*(?:[！!]*[？?]|嗎|吗|[（(][^)）\\n]*(?:仿|非|假|冒|疑|類似|类似|山寨|副廠|副厂|A貨|A货)[^)）\\n]*[)）]|一樣|一样|風格|风格|風味|风味|等級|等级|水準|水准|水平|同等|相當|相当|般|` +
+    `(?:風|风|級|级)${WB_AFTER}|品[ \\t\\u3000]*[。.!！]?[ \\t\\u3000]*$)`,
+  'u'
+);
 export function extractCooClaimsFromText(text: string): CooClaim[] {
   // Design / brand wording is never a COO claim ("Designed in Germany, made in China" → China).
   const pass = resolveFieldValues(stripDesignPhrases(String(text || '')), true);
@@ -984,6 +1001,7 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
       const after = raw.slice(m.index + m[0].length, le);
       if (/朝[鮮鲜]/.test(m[1]) && !koreaWholeLine(raw.slice(ls, le))) continue;
       if (LABEL_CLAIM_PRE_BLOCK.test(before) || LABEL_CLAIM_POST_BLOCK.test(after)) continue;
+      if (LABEL_MORE_AFTER.test(after) && /比/.test((before + ' ' + after).replace(COUNTRY_NAME_CJK_RE, ' '))) continue;
       const pe = ls - 1;
       const prev = pe < 0 ? '' : raw.slice(raw.lastIndexOf('\n', pe - 1) + 1, pe);
       // A part (日本製配件, 電池：中國製, 面料\n日本製): no whole-product claim; kept aside for the USA-only rule below.
