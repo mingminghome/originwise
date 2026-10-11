@@ -1114,6 +1114,7 @@ function sanitizeProduct(
     notes,
     madeIn,
     manufacturedIn,
+    brand: p.brand,
   });
   madeIn = coo.madeIn;
   manufacturedIn = coo.manufacturedIn;
@@ -1358,9 +1359,9 @@ export const MODEL_AI_WEB_CONFIDENCE = 0.75;
 export const COMPANY_DIRECT_MIN_CONFIDENCE = 0.75;
 
 /** True when the package-label OCR text names the same made-in country. */
-export function labelConfirmsMadeIn(madeIn: string | undefined, ocrText?: string): boolean {
+export function labelConfirmsMadeIn(madeIn: string | undefined, ocrText?: string, brand?: string): boolean {
   if (!madeIn || !ocrText) return false;
-  return extractCooClaimsFromText(ocrText).some((c) => sameCountry(c.label, madeIn));
+  return extractCooClaimsFromText(ocrText, brand).some((c) => sameCountry(c.label, madeIn));
 }
 
 /**
@@ -1410,7 +1411,7 @@ export function applyWebCooGate(
     byModelClaims = exactPages;
     exactPages = [];
   }
-  const ocrClaims = extractCooClaimsFromText(ocrText || '');
+  const ocrClaims = extractCooClaimsFromText(ocrText || '', p?.brand);
   const byBarcode = (v: string) => confirmed.some((c) => sameCountry(c.country, v));
   const byModel = (v: string) => byModelClaims.some((c) => sameCountry(c.country, v));
   const byAiWeb = (v: string) =>
@@ -1516,7 +1517,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   }
   // Package label photo names the same country → label-confirmed made-in
   // (also when web research was off for this check).
-  if (!madeInBasis && productSan?.madeIn && labelConfirmsMadeIn(productSan.madeIn, input.ocrText)) {
+  if (!madeInBasis && productSan?.madeIn && labelConfirmsMadeIn(productSan.madeIn, input.ocrText, productSan.brand)) {
     madeInBasis = 'label';
   }
   // Model-only made-in (no barcode page, no package label): never the made-in,

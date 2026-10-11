@@ -301,3 +301,17 @@ describe('round 22: a negation before made-in takes any run of spaces, tabs or N
     for (const s of ['Not.\u00a0Made in USA', 'Not\nMade in USA', 'Made in USA']) assert.equal(madeInCodeMatches(s).length, 1, s);
   });
 });
+
+describe('r47: a Latin word in a design phrase is brand wording only when it is the known brand', () => {
+  it('Designed by CYBEX 中國製 → 中國 with brand Cybex (any case)', () => {
+    assert.deepEqual(extractCooClaimsFromText('Designed by CYBEX 中國製', 'Cybex').map((c) => c.label), ['中國']);
+  });
+  it('Designed by CYBEX 中國製 with no known brand → no claim (safe fallback)', () => {
+    assert.deepEqual(extractCooClaimsFromText('Designed by CYBEX 中國製').map((c) => c.label), []);
+  });
+  for (const t of ['設計：Fake 中國製', '設計：Replica 日本製', '設計：NOT 日本製', 'Designed by Cybex Japan 中國製']) {
+    it(`${t} → no claim even with brand Cybex`, () => {
+      assert.deepEqual(extractCooClaimsFromText(t, 'Cybex').map((c) => c.label), []);
+    });
+  }
+});
