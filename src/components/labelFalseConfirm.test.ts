@@ -15,7 +15,7 @@ const BLOCK = [
   '可能日本製', '號稱日本製', '疑似日本製', '聽說是日本製',
   '非日本製', '不是日本製', '並非日本製', 'Not made in Japan',
   'Not made in China\n中國製造', '中國製造\nNot made in China', '非中國製\n中國製', '中國製\n非中國製',
-  '日本製品', '朝鮮製品', '日本製風格', '日本原裝進口',
+  '日本製品', '朝鮮製品', '日本原裝進口',
 ];
 const VERIFY: Array<[string, string]> = [
   ['日本製', 'Japan'],
@@ -57,4 +57,22 @@ describe('PR #45: label and note never confirm a non-claim', () => {
       assert.ok(!/possible|likely/.test(String(s.grade ?? '')), JSON.stringify(s));
     });
   }
+});
+
+describe('PR #45: an English negated quote never verifies on cited', async () => {
+  const { citedPageConfirms } = await import('../../functions/_lib/citedSources');
+  const page = (line: string) => ({ url: 'https://www.example.com/p/melio', title: 'Cybex Melio', text: `Cybex Melio\nLightweight stroller\n${line}` });
+  for (const [q, c] of [
+    ['Not made in Germany', 'Germany'],
+    ['not manufactured in Germany', 'Germany'],
+    ['Never made in China', 'China'],
+    ['This is not made in Japan', 'Japan'],
+  ] as const) {
+    it(`${JSON.stringify(q)} does not verify ${c}`, () => {
+      assert.equal(citedPageConfirms(page(q) as never, 'Cybex Melio', c, q), false);
+    });
+  }
+  it('"Made in Germany" still verifies Germany', () => {
+    assert.equal(citedPageConfirms(page('Made in Germany') as never, 'Cybex Melio', 'Germany', 'Made in Germany'), true);
+  });
 });

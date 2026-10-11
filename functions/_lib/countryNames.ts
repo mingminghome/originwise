@@ -228,6 +228,11 @@ const KOREA_WHOLE_VALUE_RE = new RegExp(
   `^[ \\t\\u3000]*(?:北)?朝[鮮鲜](?:民主主[義义]人民共和[國国])?${BOUNDED_SUFFIX}?[ \\t\\u3000)）\\]】」〕]*[。！!；;]?[ \\t\\u3000]*$`,
 );
 
+/** r45: the line is a bare North Korea made-in (朝鮮製, 北朝鮮生產, at most one made-in word): #44's closed whole-value rule. */
+export function koreaWholeLine(line: string): boolean {
+  return KOREA_WHOLE_VALUE_RE.test(line);
+}
+
 /** The origin values on a labelled line (cut at the next label), or the whole line when it has no label. */
 function koreaOriginValues(line: string): string[] {
   const labels = [...line.matchAll(LINE_LABEL_RE)];

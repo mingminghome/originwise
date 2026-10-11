@@ -10,7 +10,7 @@
  */
 
 import { MADE_IN_CODE_LABEL, madeInCodeMatches, NOT_PRODUCT_FIELD, PART_FIELD_WORDS } from './countryLabel';
-import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE, countryNameLabel, koreaListLine, blankKoreaListLines } from './countryNames';
+import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE, countryNameLabel, koreaListLine, koreaWholeLine, blankKoreaListLines } from './countryNames';
 import { NOT_MADE_TAIL, stripDesignPhrases } from './designOrigin';
 import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
 import { normalizeRegion, type RegionCode } from './regions';
@@ -200,6 +200,12 @@ const COO_SUFFIX = new RegExp(
 );
 
 
+
+/**
+ * r45: the label / note path's CJK made-in also reads a bare 朝鮮製 line (#44's closed whole-value rule, checked in the
+ * loop), so 韓國製 + 朝鮮製 is a 爭議 there as on the page. 南朝鮮 is never North Korea.
+ */
+const LABEL_COO_SUFFIX = new RegExp(`((?<!南)朝[鮮鲜]|${COO_SUFFIX.source.slice(1)}`, 'g');
 
 /** Same country in English or CJK ("Japan" / 日本 / タイ vs Thailand). */
 const CANON_COUNTRY: Record<string, string> = {
@@ -607,7 +613,8 @@ const PART_BRACKET = new RegExp(`^\\s*[（(【\\[][^）)】\\]]*${PART_WORD}[^�
 /** "Not made in" / "never made in" / "is not made in" / "isn't made in": a negated claim, on its line. */
 const NEGATED_EN_BEFORE = /(?:\bnot|\bnever|n['’]t)[ \t\u00a0]+$/i;
 
-function resolveFieldValues(input: string): FieldPass {
+/** `bareKorea` (r45, label / note only): also read a bare 朝鮮製 line as a whole-product claim for the 爭議 check. */
+function resolveFieldValues(input: string, bareKorea = false): FieldPass {
   // r44: a line naming 朝鮮 and another country gives no claim at all.
   const text = usPlacesAsUsa(blankKoreaListLines(input));
   const chars = text.split('');
@@ -820,9 +827,11 @@ function resolveFieldValues(input: string): FieldPass {
       if (NEGATED_EN_BEFORE.test(lineHead)) continue;
       claims.push({ country: MADE_IN_CODE_LABEL[c.code]!, start: c.index, end: c.index + c.length, suffix: false });
     }
-    for (const e of now.matchAll(new RegExp(COO_SUFFIX.source, 'g'))) {
+    for (const e of now.matchAll(new RegExp((bareKorea ? LABEL_COO_SUFFIX : COO_SUFFIX).source, 'g'))) {
       const head = now.slice(now.lastIndexOf('\n', e.index!) + 1, e.index!);
       const tail = now.slice(e.index! + e[0].length);
+      // r45: 朝鮮 only as #44's bare whole line (朝鮮製), so 韓國製 + 朝鮮製 is a 爭議 on the label as on the page.
+      if (/朝[鮮鲜]/.test(e[1]!) && !koreaWholeLine(head + now.slice(e.index!, (now.indexOf('\n', e.index!) + 1 || now.length + 1) - 1))) continue;
       if (/(?:非|不是|並非|并非)$/.test(head) || /^\s*(?:では|じゃ)(?:ありません|ない|なく)/.test(tail)) continue;
       if (/^(?:業|业|品(?:牌|取扱|取り扱|販売店|専門店))/.test(tail)) continue;
       if (PART_BEFORE.test(head) || CJK_PART_FIELD_BEFORE.test(head) || PART_AFTER_SUFFIX.test(tail)) continue;
@@ -861,19 +870,55 @@ export function settleCooFields(text: string): FieldPass {
  * each set is shown as a 爭議 line; neither side is label-confirmed.
  */
 export function cooFieldDisputes(text: string): string[][] {
-  return resolveFieldValues(stripDesignPhrases(String(text || ''))).disputes.map((d) => d.sides);
+  return resolveFieldValues(stripDesignPhrases(String(text || '')), true).disputes.map((d) => d.sides);
 }
 
 /** Sides of a whole-product 爭議 ("Made in USA\nMade in Bangladesh"): each one an explicit claim. */
 export function wholeClaimDisputeSides(text: string): string[] {
-  return resolveFieldValues(stripDesignPhrases(String(text || '')))
+  return resolveFieldValues(stripDesignPhrases(String(text || '')), true)
     .disputes.filter((d) => d.spans)
     .flatMap((d) => d.sides);
 }
 
+/**
+ * r40 / r45: negated made-in: "not / never made in X" (names and codes), 非X製, 不是X製, 並非X製, X製ではありません.
+ * Shared by the page path (regexCooClaims) and the label / note path (extractCooClaimsFromText).
+ */
+const NEG_CJK_MADE_SUFFIX = '(?:製造|制造|製|制|生產|生产|生産|產|产|産)';
+const NEGATED_EN_MADE_IN_RE = /(?:\bnot|\bnever|n['’]t)[ \t\u00a0]+(?:made|manufactured|assembled|produced)[ \t\u00a0]+in[ \t\u00a0]+(?:the[ \t\u00a0]+)?([A-Za-z][A-Za-z.]*(?:[ \t\u00a0]+[A-Za-z][A-Za-z.]*){0,2})/gi;
+const NEGATED_CJK_MADE_IN_RE = new RegExp(
+  `(?:並非|并非|並不是|并不是|不是|非)(${COUNTRY_LIST_CJK})${NEG_CJK_MADE_SUFFIX}|(${COUNTRY_LIST_CJK})${NEG_CJK_MADE_SUFFIX}(?:では|じゃ)(?:ありません|ない|なく)`,
+  'gu'
+);
+/** Countries the text negates as a made-in (canonical keys). */
+export function negatedMadeIn(t: string): Set<string> {
+  const out = new Set<string>();
+  const add = (raw: string) => {
+    const words = raw.trim().split(/\s+/);
+    for (let n = words.length; n >= 1; n -= 1) {
+      const v = words.slice(0, n).join(' ').replace(/[.]+$/, '');
+      const c = madeInValueCountry(MADE_IN_CODE_LABEL[v.toUpperCase()] ?? MADE_IN_CODE_LABEL[v] ?? v);
+      if (c) {
+        out.add(canonicalCountry(c) ?? c.toLowerCase());
+        return;
+      }
+    }
+  };
+  for (const m of t.matchAll(NEGATED_EN_MADE_IN_RE)) add(m[1]!);
+  for (const m of t.matchAll(NEGATED_CJK_MADE_IN_RE)) add((m[1] ?? m[2])!);
+  return out;
+}
+/** A part / material label on its own line (PART_FIELD_WORDS, bare or ending in a colon): 面料, 面料：, 電池: */
+export const PART_LABEL_LINE_RE = new RegExp(`^[ \\t　]*(?:${PART_FIELD_WORDS.join('|')})[^\\n：:]{0,4}[ \\t　]*[:：]?[ \\t　]*$`, 'u');
+
+/** r45: wording right before a CJK made-in that makes it no claim: imitation, comparison, hedge. */
+const LABEL_CLAIM_PRE_BLOCK =
+  /(?:仿|類似|类似|類|类|對標|对标|比|可能|號稱|号称|疑似|聽說|听说|據說|据说|宣稱|宣称)[ \t\u3000]*(?:是|為|为)?[ \t\u3000]*$/u;
+/** r45: wording right after a CJK made-in that makes it no claim: a part, a question, a comparison, a bare 〜製品 line. */
+const LABEL_CLAIM_POST_BLOCK = /^[ \t\u3000]*(?:[？?]|嗎|吗|更|還要|还要|品[ \t\u3000]*[。.!！]?[ \t\u3000]*$)/u;
 export function extractCooClaimsFromText(text: string): CooClaim[] {
   // Design / brand wording is never a COO claim ("Designed in Germany, made in China" → China).
-  const pass = resolveFieldValues(stripDesignPhrases(String(text || '')));
+  const pass = resolveFieldValues(stripDesignPhrases(String(text || '')), true);
   // Two whole-product claims disagree: that 爭議 is the answer; a part claim left over
   // ("Made in USA\n電池：中國製\nMade in Mexico") never headlines it.
   // ('Made in China\nBattery: Made in Japan\n德國製造' is 中國 / 德國; the battery is no side.)
@@ -921,9 +966,36 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     seen.add(key);
     out.push({ label, region, source });
   }
-  COO_SUFFIX.lastIndex = 0;
-  while ((m = COO_SUFFIX.exec(raw)) !== null) {
+  // r45 (Chief): the label / note path reads a CJK made-in (日本製) only as a claim about the whole product, as the
+  // page path does (#44): never after imitation / comparison / hedge wording (仿, 類, 對標, 比, 可能, 號稱, 疑似, 聽說是),
+  // never before a part (日本製配件, PART_FIELD_WORDS), a question (日本製？ / 嗎) or a comparison (更好), never as a
+  // bare 日本製品 line, never when the text negates that country (negatedMadeIn, shared with the page path:
+  // 非日本製, "Not made in China" + 中國製造), and never under a part label on the line above (PART_LABEL_LINE_RE).
+  const negated = negatedMadeIn(raw);
+  const partHits: string[] = [];
+  LABEL_COO_SUFFIX.lastIndex = 0;
+  while ((m = LABEL_COO_SUFFIX.exec(raw)) !== null) {
     if (koreaListLine(raw, m.index)) continue;
+    {
+      const ls = raw.lastIndexOf('\n', m.index - 1) + 1;
+      const le0 = raw.indexOf('\n', m.index);
+      const le = le0 < 0 ? raw.length : le0;
+      const before = raw.slice(ls, m.index);
+      const after = raw.slice(m.index + m[0].length, le);
+      if (/朝[鮮鲜]/.test(m[1]) && !koreaWholeLine(raw.slice(ls, le))) continue;
+      if (LABEL_CLAIM_PRE_BLOCK.test(before) || LABEL_CLAIM_POST_BLOCK.test(after)) continue;
+      const pe = ls - 1;
+      const prev = pe < 0 ? '' : raw.slice(raw.lastIndexOf('\n', pe - 1) + 1, pe);
+      // A part (日本製配件, 電池：中國製, 面料\n日本製): no whole-product claim; kept aside for the USA-only rule below.
+      if (PART_AFTER_SUFFIX.test(after) || CJK_PART_FIELD_BEFORE.test(before) || PART_LABEL_LINE_RE.test(prev)) {
+        const named = CJK_TO_LABEL[m[1]] ?? m[1];
+        partHits.push(/[\u30a0-\u30ff]/.test(named) ? normalizeCooLabel(named) : named);
+        continue;
+      }
+      const named = CJK_TO_LABEL[m[1]] ?? m[1];
+      const key = canonicalCountry(named) ?? canonicalCountry(normalizeCooLabel(named)) ?? named.toLowerCase();
+      if (negated.has(key)) continue;
+    }
     // 「非中國製」「不是中國製造」「中国製ではありません」: negated, no claim.
     if (/(?:非|不是|並非|并非)$/.test(raw.slice(Math.max(0, m.index - 2), m.index))) continue;
     if (/^\s*(?:では|じゃ)(?:ありません|ない|なく)/.test(raw.slice(m.index + m[0].length))) continue;
@@ -947,6 +1019,15 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
   // USA claim it is read as de6dba0 read it (that build never read USA): the part's
   // country, as for 「電池：中國製」. Next to any other made-in it is never read.
   if (out.length && out.every((c) => isUs(c.label))) {
+    for (const label of partHits) {
+      const region = normalizeRegion(label);
+      if (region === 'UNKNOWN' || isUs(label)) continue;
+      const source = classifySource(raw);
+      const key = `${source}:${region}:${canonCountry(label)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ label, region, source });
+    }
     for (const p of raw.matchAll(partFieldClaim())) {
       const label = normalizeCooLabel(p[1]!);
       const region = normalizeRegion(label);

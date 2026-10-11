@@ -24,6 +24,7 @@
  * counts.
  */
 import { canonicalCountry } from './countryLabel';
+import { negatedMadeIn } from './cooPriority';
 import { stripDesignPhrases } from './designOrigin';
 import type { CitedSource, WebCooClaim } from './schema';
 import {
@@ -102,6 +103,9 @@ export function citedPageConfirms(
   // The page's own claim reader already ran above, so a CJK quote it did not read for this country (or whose country a
   // negation on the page cancels: "中國製\n非中國製") never confirms here.
   if (/[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}]/u.test(q)) return false;
+  // r45: an English quote that negates the made-in ("Not made in Germany", "not manufactured in X", "never made in X")
+  // never verifies that country.
+  if (negatedMadeIn(q).has(canonicalCountry(country) ?? country.toLowerCase())) return false;
   return (
     q.length >= 3 &&
     compact(text).includes(compact(q)) &&
