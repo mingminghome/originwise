@@ -181,13 +181,17 @@ export const COUNTRY_LIST_LATIN_RE = COUNTRY_LIST_LATIN.split('|')
   .join('|');
 
 /**
- * r44: 朝鮮 / 朝鲜 is also the first half of many other words (朝鮮半島, 朝鮮族, 朝鮮人參, 朝鮮薊). It reads as North Korea
- * only as a whole country token: not after 南 (南朝鮮), and not followed by another CJK character, except a made-in claim
- * suffix (製 / 制 / 造 / 產 / 产 / 産 / 生). Punctuation, Latin, space or the end of the value end the token.
+ * r44 (Chief, closed rule): 朝鮮 / 朝鲜 is also the first half of many other words (朝鮮半島, 朝鮮族, 朝鮮人參, 朝鮮產業,
+ * 朝鮮生產基地). It reads as North Korea only when it is the whole value: it starts the value (line start, after a
+ * label colon, a space or an opening bracket; so never after 南 or any other character), and after it comes at most one
+ * made-in word (製 / 製造 / 產 / 生產 / 製品 / 產品, with the 制 / 产 / 産 variants) and then only spaces, brackets or
+ * end punctuation up to the end of the line. Rare real values beyond that are accepted misses. 北朝鮮 and
+ * 朝鮮民主主義人民共和國 are their own names and are not bounded here.
  */
 const BOUNDED_CJK = new Set(['朝鮮', '朝鲜']);
-const CJK_CHAR = '\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff';
-const boundedCjk = (n: string) => `(?<!南)${n}(?![${CJK_CHAR}](?<![製制造產产産生]))`;
+const BOUNDED_SUFFIX = '(?:[製制][造品]?|[產产産]品?|生[產产産])';
+const boundedCjk = (n: string) =>
+  `(?<![^\\n:：\\s\\u3000(（\\[【「〔])${n}(?=${BOUNDED_SUFFIX}?[\\s\\u3000)）\\]】」〕。.!！]*(?![^\\n]))`;
 
 /** Every Japanese / Chinese name, longest first (no letter guard needed). */
 export const COUNTRY_LIST_CJK = [...new Set(ROWS.flatMap((r) => [...r[3], ...r[4], ...r[5]]))]
