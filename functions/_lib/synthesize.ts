@@ -1933,6 +1933,8 @@ function collectDesignInfo(
       ...(d.url ? { url: d.url } : {}),
       ...(d.quote ? { quote: d.quote.slice(0, 80) } : {}),
       ...(d.fetched ? { fetched: true } : {}),
+      ...(d.fetched && d.quoteLine ? { quoteLine: d.quoteLine } : {}),
+      ...(d.fetched && d.label ? { label: true } : {}),
     };
     if (i === -1) rows.push(row);
     else {
@@ -1941,13 +1943,13 @@ function collectDesignInfo(
         ...prev,
         kind: prev.kind === 'design' || d.kind === 'design' ? 'design' : 'brand',
         ...(!prev.url && d.url ? { url: d.url, quote: row.quote } : {}),
-        ...(!prev.fetched && d.fetched ? { ...(d.url ? { url: d.url } : {}), ...(row.quote ? { quote: row.quote } : {}), fetched: true } : {}),
+        ...(!prev.fetched && d.fetched ? { ...(d.url ? { url: d.url } : {}), ...(row.quote ? { quote: row.quote } : {}), fetched: true, ...(row.quoteLine ? { quoteLine: row.quoteLine } : {}), ...(row.label ? { label: true } : {}) } : {}),
       };
     }
   };
   for (const d of webDesign ?? []) add(d);
   // Package label photo: 「設計於德國 中國製造」 → design 德國 (made-in 中國 is the label's).
-  for (const d of designMentions(ocrText ?? '')) add({ country: d.country, kind: d.kind, ...(d.phrase ? { quote: d.phrase, fetched: true } : {}) });
+  for (const d of designMentions(ocrText ?? '')) add({ country: d.country, kind: d.kind, ...(d.phrase ? { quote: d.phrase, fetched: true, label: true } : {}) });
   if (p.designedIn && confirmedOriginLabel(p.designedIn)) add({ country: p.designedIn, kind: 'design' });
   for (const n of p.notes ?? []) {
     for (const d of designMentions(String(n))) add({ country: d.country, kind: d.kind });

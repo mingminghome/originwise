@@ -372,3 +372,60 @@ export function quoteBacksCountry(quote: string, country: string): boolean {
   const row = COUNTRY_NAME_PATTERNS.find((r) => r.label === (canonicalCountry(want) ?? want));
   return Boolean(row && row.pattern.test(rest));
 }
+
+/**
+ * #48 (brand quote unit): the units of a page line. A line splits at a newline
+ * and at the list / heading separators ｜ | / · ・, so a menu entry
+ * 「GLOBBER｜法國品牌滑步車」 is its own unit, apart from the brand next to it.
+ */
+export function brandQuoteUnits(text: string): string[] {
+  return String(text ?? '')
+    .split(/[\n｜|/·・]/u)
+    .map((u) => u.trim())
+    .filter(Boolean);
+}
+
+/** Name tokens of the queried brand / product, lower-case. */
+export function queryNameTokens(...names: Array<string | undefined>): Set<string> {
+  const out = new Set<string>();
+  for (const n of names) {
+    for (const t of String(n ?? '').normalize('NFKC').toLowerCase().split(/[\s,，、/|｜·・()（）【】[\]「」『』:：;；+&＆"'“”]+/u)) {
+      if (t) out.add(t);
+    }
+  }
+  return out;
+}
+
+const UNIT_GLUE = /[\s\u3000:：\-–—]+/u;
+
+/**
+ * A brand quote backs its row only from its own unit, and only in the
+ * whole-value shape #45 uses for made-in lines: the unit is the queried
+ * brand / product name, then (after optional spaces or a label colon) the brand
+ * phrase itself. Anything else before the phrase (another brand, a comparison
+ * or imitation word such as 同級的 / 類似 / like, a menu of names) means the
+ * phrase is not said of this brand. After the phrase only plain wording may
+ * follow, never another Latin name.
+ */
+export function unitBacksBrand(unit: string, phrase: string, tokens: ReadonlySet<string>): boolean {
+  const u = String(unit ?? '').normalize('NFKC').trim();
+  const p = String(phrase ?? '').normalize('NFKC').trim();
+  if (!u || !p || !tokens.size) return false;
+  const at = u.indexOf(p);
+  if (at < 0) return false;
+  const head = u.slice(0, at).split(UNIT_GLUE).filter(Boolean);
+  if (!head.every((w) => tokens.has(w.toLowerCase()))) return false;
+  // The name is before the phrase, or the phrase itself names it (Brand: Cybex Germany).
+  const inPhrase = p.toLowerCase().split(/[^\p{L}\p{N}]+/u).some((w) => tokens.has(w));
+  if (!head.length && !inPhrase) return false;
+  const tail = u.slice(at + p.length);
+  for (const w of tail.match(/[A-Za-z][A-Za-z0-9'’-]+/g) ?? []) {
+    if (!tokens.has(w.toLowerCase())) return false;
+  }
+  return true;
+}
+
+/** The first unit of the text where this brand phrase backs the queried brand, if any. */
+export function brandQuoteUnit(text: string, phrase: string, tokens: ReadonlySet<string>): string | undefined {
+  return brandQuoteUnits(text).find((u) => unitBacksBrand(u, phrase, tokens));
+}
