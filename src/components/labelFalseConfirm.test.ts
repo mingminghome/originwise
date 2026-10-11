@@ -118,7 +118,7 @@ describe('PR #45: label and note never confirm a non-claim', () => {
 });
 
 describe('PR #45 final: two countries on one line confirm neither (label and note)', () => {
-  for (const input of ['美國/中國製造', '日本製，不是', 'Not, made in China', 'made in China, not', '設計於中國製造', '德國設計的仿，日本製']) {
+  for (const input of ['美國/中國製造', '日本製，不是', 'Not, made in China', 'made in China, not', '設計於中國製造', '德國設計的仿，日本製', '設計：德國 產地：中國？', '設計：仿 日本製', '產地：中國？']) {
     it(`label ${JSON.stringify(input)} → no country`, () => assert.equal(summarize('label', input).country, null));
     it(`note ${JSON.stringify(input)} → nothing possible`, () => assert.ok(!/possible|likely/.test(String(summarize('note', input).grade ?? ''))));
   }

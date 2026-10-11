@@ -1093,7 +1093,20 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
   let restored = raw;
   if (raw.length === src.length) for (const [a, b] of partly) restored = restored.slice(0, a) + src.slice(a, b) + restored.slice(b);
   const twoCountry = twoCountryLines(restored);
-  const onTwoCountryLine = (i: number) => twoCountry.has(raw.lastIndexOf('\n', i - 1) + 1);
+  // Tester r45: a question mark ending a unit that names a country, read on the ORIGINAL line before blanking and
+  // the split, means nothing on that line confirms (設計：德國 產地：中國？, 產地：日本製？). #44's question rule.
+  const qLines = new Set<number>();
+  if (raw.length === src.length) {
+    let ls = 0;
+    for (const line of src.split('\n')) {
+      if (line.split(/[，、/。,]/u).some((u) => /[？?]\s*$/u.test(u) && ANY_CJK_COUNTRY_RE.test(u.replace(/[^\p{L}]+$/u, '').slice(-12) || u))) qLines.add(ls);
+      ls += line.length + 1;
+    }
+  }
+  const onTwoCountryLine = (i: number) => {
+    const ls = raw.lastIndexOf('\n', i - 1) + 1;
+    return twoCountry.has(ls) || qLines.has(ls);
+  };
   COO_LINE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = COO_LINE.exec(raw)) !== null) {
@@ -1163,7 +1176,11 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
         // Chief: a line is split into units only at ， 、 / 。 (and , /); spaces stay inside a unit. The negation check
         // reads the whole line, across those separators (不是、日本製, 非。日本製).
         if (negated.has(country)) continue;
-        if (!unitShapeOk(before, after, country)) {
+        // Tester r45: where design wording was blanked inside the claim's own unit, the shape is also read on the
+        // original line (設計：仿 日本製 → the 仿 is still there).
+        const unitPartly = raw.length === src.length && partly.some(([a, b]) => m!.index >= a && m!.index < b || (b <= m!.index && b >= ls));
+        const origShapeOk = !unitPartly || unitShapeOk(src.slice(ls, m.index), src.slice(m.index + m[0].length, le), country);
+        if (!origShapeOk || !unitShapeOk(before, after, country)) {
           // Not a whole value; a part after it is still kept aside for the USA-only rule below.
           if (PART_AFTER_SUFFIX.test(after) || CJK_PART_FIELD_BEFORE.test(before) || PART_LABEL_LINE_RE.test(raw.slice(raw.lastIndexOf('\n', ls - 2) + 1, Math.max(0, ls - 1)))) {
             partHits.push(/[\u30a0-\u30ff]/.test(named) ? normalizeCooLabel(named) : named);
