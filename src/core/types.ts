@@ -132,7 +132,7 @@ export type CheckResult = {
     /** 依型號比對: 'web' = 2+ exact-model domains; 'ai_web' = AI answer + 1+ page. */
     madeInSupport?: 'web' | 'ai_web';
     /** Design / brand country wording (附加資訊); never a made-in candidate. */
-    designInfo?: Array<{ country: string; kind: 'design' | 'brand'; url?: string; quote?: string }>;
+    designInfo?: Array<{ country: string; kind: 'design' | 'brand'; url?: string; quote?: string; fetched?: boolean }>;
     /** Two explicit made-in claims in one label field (「產地：中國 日本製」): the 爭議 sides. */
     labelDispute?: string[];
   };

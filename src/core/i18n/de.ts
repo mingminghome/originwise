@@ -72,6 +72,7 @@ export const de = {
       moreInfo: 'Mehr dazu',
       candidatesTitle: 'Gefundene Herkunftskandidaten (nicht bestätigt)',
       noCandidates: 'Keine verlässlichen Herkunftskandidaten gefunden.',
+      weakTitle: 'Modellreferenz (unbestätigt)',
       sourceCount: 'Quellen: {n}',
       sourceFirst: 'Quelle 1: {label}',
       sourceNth: 'Quelle {n}: {label}',
@@ -167,6 +168,7 @@ export const de = {
       strong: 'starke Verbindung',
       moderate: 'mittlere Verbindung',
       weak: 'schwache Verbindung',
+      unverified: 'Verbindung (unbestätigt)',
     },
     agentsHint:
       'Jede Zeile ist ein kostenloser Server-KI-Aufruf. Fehlschläge bedeuten oft Quota, Modellzugang oder Timeout; wir versuchen andere oder einen Fallback. Live-Web braucht Gemini-Search-Grounding (nicht dasselbe wie Text-RPM).',

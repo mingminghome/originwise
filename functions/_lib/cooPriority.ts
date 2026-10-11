@@ -416,7 +416,7 @@ const NEXT_LINE_FROM = /^(?:parts?[ \t]+)?(?:from[ \t]+)?(?:the[ \t]+)?/i;
 const NEXT_LINE_US_EU = /^(?:united\s+states(?:\s+of\s+america)?|u\.s\.a\.?|u\.s\.|usa|us|e\.u\.|eu|european\s+union)(?![A-Za-z])/i;
 const NEXT_LINE_OWN_FIELD = /^(?:country\s+of\s+origin|origin|coo|made\s+in|產地|产地|産地|原產地|原产地|原産地|原産国|原產國|原产国|製造国|製造國)\s*[:：]/i;
 const SPEC_LINE = /^[^\n:：]{1,30}[:：]([^\n]*)/;
-const DEMONYM = 'chinese|japanese|korean|taiwanese|vietnamese|thai|indian|mexican|canadian|german|italian|french|european|imported|foreign';
+export const DEMONYM = 'chinese|japanese|korean|taiwanese|vietnamese|thai|indian|mexican|canadian|german|italian|french|european|imported|foreign';
 // Built on first use: PART_WORD is declared further down.
 let nextLineCountryRe: RegExp | undefined;
 const nextLineCountry = () => (nextLineCountryRe ??= new RegExp(`^(?:${VALUE_COUNTRY_TOKEN})`, 'i'));

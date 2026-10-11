@@ -183,14 +183,14 @@ describe('items 4 + 5 / (b): AI pool footnote and the web row label', () => {
 });
 
 describe('item 6: 製造商 row in 產地分層', () => {
-  it('Sheer shows ピジョン株式会社 · 日本 with the company-fact tag', () => {
+  it('Sheer shows ピジョン株式会社 · 日本 as 有提及: a made-in quote is not a manufacturer quote (#46 per row)', () => {
     const row = buildLayerRows(SHEER).find((r) => r.key === 'manufacturer');
     assert.deepEqual(
       { value: row?.value, country: row?.country, tag: row?.tag },
-      { value: 'ピジョン株式会社', country: '日本', tag: 'confirmed' }
+      { value: 'ピジョン株式会社', country: '日本', tag: 'mentioned' }
     );
     const out = text(React.createElement(LayersCard, { result: SHEER, t: zh }));
-    assert.ok(out.includes('製造商\nピジョン株式会社 · 日本\n確認'), out);
+    assert.ok(out.includes('製造商\nピジョン株式会社 · 日本\n有提及'), out);
   });
 
   it('no 製造商 row when the answer names no maker (Softouch label)', () => {
@@ -199,13 +199,14 @@ describe('item 6: 製造商 row in 產地分層', () => {
 });
 
 describe('(a): relation strength is localized', () => {
-  it('Tapo 所有權 row says 強關聯, never strong', () => {
+  it('Tapo 所有權 row: no verified quote, so 關聯（未確認）, never 強關聯 or strong', () => {
     const out = details(TAPO);
-    assert.ok(out.includes('總部 · 中國 · 強關聯'), out);
+    assert.ok(out.includes('總部 · 中國 · 關聯（未確認）'), out);
+    assert.ok(!out.includes('強關聯'), out);
     assert.ok(!/\bstrong\b/.test(out));
     for (const [loc, cat] of Object.entries(catalogs)) {
       const s = (cat as { check: { relStrength: Record<string, string> } }).check.relStrength;
-      for (const k of ['strong', 'moderate', 'weak']) assert.ok(s[k] && s[k] !== k, `${loc} ${k}`);
+      for (const k of ['strong', 'moderate', 'weak', 'unverified']) assert.ok(s[k] && s[k] !== k, `${loc} ${k}`);
     }
   });
 });

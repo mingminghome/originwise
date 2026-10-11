@@ -74,7 +74,7 @@ describe('design wording is never made-in (Cybex "Engineered in Germany")', () =
     assert.ok(t.includes('爭議：中國（1 個型號相符的網頁）；德國（1 個型號相符的網頁）'), t);
     assert.ok(t.includes('網頁說法不一'));
     const html = card(r);
-    assert.ok(!html.includes('rc-cand-meta'), 'candidates stay ungraded');
+    assert.ok(!/\d+%|較可能|>可能 ·/.test(html), 'candidates stay ungraded (no %, no grade)');
     // Each side keeps its own source, prefix outside the link.
     assert.match(html, /來源 1：<\/span><a href="https:\/\/www\.momoshop\.com\.tw/);
     assert.match(html, /來源 1：<\/span><a href="https:\/\/www\.kinderwagen-shop\.de/);
@@ -206,13 +206,15 @@ describe('label photo: CJK design wording never eats the made-in country (95% fr
     assert.ok(!(v.state === 'confirmed' && v.country === 'Germany' && v.basis === 'label'), JSON.stringify(v));
   });
   for (const note of ['德國廠牌 Cybex，輕量推車。', '德國廠商 Cybex 出品。', 'Cybex 創立於德國。', 'Cybex 成立於德國。']) {
-    it(`card: note ${JSON.stringify(note)} → no 「德國 · 有提及」 row, 品牌 附加資訊 instead`, () => {
+    it(`card: note ${JSON.stringify(note)} → no 「德國 · 有提及」 row, and no unsourced 品牌 附加資訊`, () => {
       const r = runPages({ notes: [note], pages: [] });
       const v = buildMadeInView(r);
       assert.ok(!v.candidates.some((c) => /germany|德國/i.test(c.label)), JSON.stringify(v.candidates));
       const t = text(r);
       assert.ok(!t.includes('有提及'), t);
-      assert.ok(t.includes(zh('check.rc.brandInfo', { country: '德國' })), t);
+      // A brand country from the answer's own note has no page or label behind it.
+      assert.ok(!t.includes(zh('check.rc.brandInfo', { country: '德國' })), t);
+      assert.ok(!t.includes('德國品牌'), t);
     });
   }
   it('card: the server note "Made-in omitted: it matched…" shows no Italy', () => {
@@ -417,9 +419,9 @@ describe('label 爭議 card layout and merging with a page 爭議', () => {
       const t = text(r);
       assert.ok(t.includes('爭議：') && !t.includes(HEAD) && !t.includes(zh('check.rc.noCandidates')), t);
     }
-    // No 爭議: heading and empty-state text still show.
+    // No 爭議 and no candidate: only the empty-state text (#46: no 「查到的產地候選」 list any more).
     const t = text(runPages({ pages: [] }));
-    assert.ok(t.includes(HEAD) && t.includes(zh('check.rc.noCandidates')), t);
+    assert.ok(!t.includes(HEAD) && t.includes(zh('check.rc.noCandidates')), t);
   });
   it('label China/Japan + page China/Vietnam → one merged 爭議 line, each country once, label first', () => {
     const r = runPages({

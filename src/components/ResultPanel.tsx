@@ -1,4 +1,5 @@
 import type { CheckResult } from '../core/types';
+import { noteWithinEvidence } from '../core/evidence';
 import type { TFunction } from '../core/i18n';
 import {
   cleanSources,
@@ -151,7 +152,7 @@ export function ResultPanel({
       ? t('check.rc.foldUnconfirmed', { reason: t(`check.rc.reason.${madeIn.reason}`) })
       : null;
   const notes = (() => {
-    const raw = cleanNotes(result);
+    const raw = cleanNotes(result).filter((n) => noteWithinEvidence(result, n));
     if (!cardReason) return raw;
     return [cardReason, ...raw.filter((n) => !isUnconfirmedNote(n))];
   })();
@@ -166,7 +167,8 @@ export function ResultPanel({
     notes.length + layers.ownership.length + layers.parts.length;
   const altCount =
     (result.alternatives?.brands?.length ?? 0) + (result.alternatives?.products?.length ?? 0);
-  const caveats = result.caveats ?? [];
+  // Nothing reads stronger than its evidence (src/core/evidence.ts).
+  const caveats = (result.caveats ?? []).filter((c) => noteWithinEvidence(result, c));
   const notice = webQuotaNotice(result);
   const hasEntity = Boolean(result.product || result.company);
 
