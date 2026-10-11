@@ -382,12 +382,15 @@ describe('A2(ii) a made-in line counts only under this model (r23)', () => {
       // S11: this product's own lists end at a blank line, a spec line or a section; inline own lists are line scoped
       ['Cybex Melio\nAccessories:\n- Melio Footmuff\n- Rain cover\nWeight 5.9 kg\nMade in China'],
       ['Cybex Melio\nIn the box\nMelio stroller\nRain cover\nWeight 5.9 kg\nMade in China'],
-      ['Cybex Melio\nYou may also like\nCybex Callisto\n## Reviews\nGreat.\nMade in China'],
       // a section between another model's mention and the claim starts a new block
       ['Cybex Melio\nPairs well with the Cybex Lemo chair\nSpecifications\nMade in China'],
-      ['Cybex Melio\nCompatible with Cybex Cloud T\nSpecifications\nthe cloud cover is made in china', 'made in china'],
     ];
     for (const [t, q] of ok) assert.equal(quoteInModelScope(t, E, q ?? 'Made in China'), true, t);
+    // r34d (Chief rule 2): a review heading opens a section; a claim inside it never counts.
+    assert.equal(quoteInModelScope('Cybex Melio\nYou may also like\nCybex Callisto\n## Reviews\nGreat.\nMade in China', E, 'Made in China'), false);
+    // r34c evidence row (Chief rule 3, lowercase with no length cap): "cloud" is a model on this page (Cloud T), so the
+    // lowercase line is no longer read as an ordinary word. Was a must-verify guard (p25 F s8); now unverified.
+    assert.equal(quoteInModelScope('Cybex Melio\nCompatible with Cybex Cloud T\nSpecifications\nthe cloud cover is made in china', E, 'made in china'), false);
   });
 
   it('r27 R1 / R2 / R3 / O1–O3: words after the brand, CJK titles, emoji / period headings, own CJK name', () => {
@@ -820,4 +823,151 @@ describe('A1 Gemini grounding redirect cites (r23)', () => {
     assert.equal(v.basis, 'model');
     assert.equal(pct(v), 80);
   });
+});
+
+describe('r34: designer on the claim line, prose first word, compatible values, spec-table rows', () => {
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const blocks: Array<[string, string]> = [
+    ['Designed by Callisto in Germany, made in China', 'made in China'],
+    ['Made in China, designed by Callisto in Germany', 'Made in China'],
+    ['Designed by Priam in Germany, made in China', 'made in China'],
+    ['Callisto, the city stroller\nMade in China', 'Made in China'],
+    ['Callisto is the lighter one\nMade in China', 'Made in China'],
+    ['Compatible with Callisto\nMade in China', 'Made in China'],
+  ];
+  for (const [body, q] of blocks) it(`must block: ${JSON.stringify(body)}`, () => assert.equal(quoteInModelScope(H + body, 'Cybex Melio', q), false));
+  const keeps: Array<[string, string]> = [
+    ['Designed by Cybex in Germany, made in China', 'made in China'],
+    ['Designed by Cybex GmbH in Bayreuth, Germany\nMade in China', 'Made in China'],
+    ['Manufacturer: CYBEX GmbH, Bayreuth\nMade in China', 'Made in China'],
+    ['Compatible with all Cybex car seats\nMade in China', 'Made in China'],
+    ['Weighing 5.9 kg, it folds with one hand.\nMade in China', 'Made in China'],
+  ];
+  for (const [body, q] of keeps) it(`keeps verifying: ${JSON.stringify(body)}`, () => assert.equal(quoteInModelScope(H + body, 'Cybex Melio', q), true));
+
+  const LA = 'Little Acorns Classic Cotbed';
+  const LH = 'Little Acorns Classic Cotbed, White\nProduct description\nThe cot bed has a clean, painted finish.\nKey Features:\nAdjustable to 3 mattress heights\nConverts to toddler bed\n';
+  const table = 'Product specification\nAssembly type\nAssembly Required\nBrand\nLittle Acorns\nCare instructions\nWipe Clean only\nComposition\npine wood, mfc, MDF\nCountry of origin\nPoland';
+  const CQ = 'Country of origin \n Poland';
+  it('spec table: label cells are safe and plain values pass (John Lewis shape)', () => {
+    assert.equal(quoteInModelScope(LH + table, LA, CQ), true);
+    assert.equal(quoteInModelScope(LH + table, 'Little Acorns Milano Classic Cot Bed', CQ), true); // scope only; the model gate drops the page
+  });
+  const laBlocks = [
+    'Converts to a toddler bed, like our Milano range\nCountry of origin: Poland',
+    'Complete the look with the Classic Dresser and Wardrobe\nCountry of origin: Poland',
+    'Product specification\nSeries\nMilano\nCountry of origin\nPoland',
+    'Product specification\nCompatible with\nMilano Dresser\nCountry of origin\nPoland',
+    'Product specification\nBrand\nLittle Acorns Milano\nCountry of origin\nPoland',
+    'Milano\nProduct specification\nCountry of origin\nPoland',
+    'Description\nMilano is the lighter one\nProduct specification\nCountry of origin\nPoland',
+  ];
+  for (const b of laBlocks)
+    it(`spec guardrails block: ${JSON.stringify(b)}`, () => {
+      const q = b.includes('origin: Poland') ? 'Country of origin: Poland' : CQ;
+      assert.equal(quoteInModelScope('Little Acorns Classic Cotbed, White\n' + b, LA, q), false);
+    });
+  it('gate: the Milano query never counts the Classic Cotbed page', () => {
+    const pages: FetchedPage[] = [{ url: 'https://www.johnlewis.com/little-acorns-classic-cotbed-white/p6318946', title: 'Little Acorns Classic Cotbed, White', text: LH + table }];
+    assert.equal(gateClaims('Little Acorns Milano Classic Cot Bed', [], pages, regexCooClaims(pages)).kept.length, 0);
+    assert.equal(gateClaims(LA, [], pages, regexCooClaims(pages)).kept.length, 1);
+  });
+});
+
+describe('r34b: every spec row named-checked, prose names checked, lowercase earns no pass', () => {
+  const LA = 'Little Acorns Classic Cotbed';
+  const head = 'Little Acorns Classic Cotbed, White\nProduct description\nThe cot bed has a clean, painted finish.\nComplete the look with the Classic Dresser and Wardrobe, each sold separately.\nProduct specification\nBrand\nLittle Acorns\n';
+  const claim = 'Country of origin\nPoland';
+  const CQ = 'Country of origin \n Poland';
+  const at = (row: string) => quoteInModelScope(head + row + '\n' + claim, LA, CQ);
+  for (const row of ['Style\nMilano', 'Name\nMilano', 'Product\nMilano Cot Bed', 'Product: Milano Cot Bed', 'Milano\nYes', 'Milano: Yes', 'Finish\nMilano White', 'Finish: Milano White', 'Style\nmilano'])
+    it(`spec row blocks: ${JSON.stringify(row)}`, () => assert.equal(at(row), false));
+  for (const row of ['Colour\nWhite', 'Material\nMDF/pine', 'Material: MDF, pine', 'Dimensions\nH91 x W77 x D144cm', 'Care instructions\nWipe Clean only'])
+    it(`spec row verifies: ${JSON.stringify(row)}`, () => assert.equal(at(row), true));
+  for (const line of ['Milano is the lighter one.', 'The Milano is lighter.', 'Also available: Milano Cot Bed.'])
+    it(`description prose blocks: ${JSON.stringify(line)}`, () =>
+      assert.equal(quoteInModelScope(head.replace('Product specification', `${line}\nProduct specification`) + claim, LA, CQ), false));
+  it('description prose with plain words verifies', () => assert.equal(quoteInModelScope(head + claim, LA, CQ), true));
+
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const tail = ['', '\nYou may also like\nCybex Callisto'];
+  const lcBlocks: Array<[string, string]> = [
+    ['designed by callisto in germany, made in china', 'made in china'],
+    ['designed by callisto in germany\nMade in China', 'Made in China'],
+    ['compatible with callisto\nMade in China', 'Made in China'],
+    ['callisto\nMade in China', 'Made in China'],
+  ];
+  for (const t of tail)
+    for (const [b, q] of lcBlocks)
+      it(`lowercase blocks${t ? ' (Callisto elsewhere)' : ' (only mention)'}: ${JSON.stringify(b)}`, () => assert.equal(quoteInModelScope(H + b + t, 'Cybex Melio', q), false));
+  for (const [b, q] of [
+    ['designed by cybex in germany, made in china', 'made in china'],
+    ['compatible with all cybex car seats\nMade in China', 'Made in China'],
+    ['the stroller folds flat and is light\nMade in China', 'Made in China'],
+    ['Amazon.com\nMade in China', 'Made in China'],
+  ] as Array<[string, string]>)
+    it(`lowercase plain words verify: ${JSON.stringify(b)}`, () => assert.equal(quoteInModelScope(H + b, 'Cybex Melio', q), true));
+});
+
+describe('r34c: user content, query-subset lines, lowercase without a length cap', () => {
+  const H = 'Cybex Melio\nCybex Callisto\nLight stroller.\n';
+  const q = 'Made in China';
+  for (const b of ['A: Callisto\n', 'Review: Callisto is lighter\n', 'Q: Is this the Callisto? A: yes\n', 'Customer review 2: Callisto\n',
+    'the callisto is lighter now\n', 'we love the callisto more\n', 'callisto stroller in black\n', 'fits callisto and priam\n'])
+    it(`must block: ${JSON.stringify(b)}`, () => assert.equal(quoteInModelScope(H + b + q, 'Cybex Melio', q), false));
+  for (const t of ['made in china for callisto', 'made in china (callisto)', 'made in china, callisto edition'])
+    it(`claim tail blocks: ${t}`, () => assert.equal(quoteInModelScope(H + t, 'Cybex Melio', 'made in china'), false));
+  for (const t of ['Review: great cot, made in China', 'Q: made where? A: Made in China', 'Customer reviews\nMade in China'])
+    it(`claim in user content never counts: ${JSON.stringify(t)}`, () => assert.equal(quoteInModelScope('Cybex Melio\n' + t, 'Cybex Melio', 'Made in China'), false));
+  for (const b of ['the stroller folds flat in one hand', 'not suitable for tumble drying', 'great for small car boots'])
+    it(`lowercase prose verifies: ${b}`, () => assert.equal(quoteInModelScope(`Cybex Melio\n${b}\n${q}`, 'Cybex Melio', q), true));
+  const P = 'Little Acorns Classic Cotbed\nCot bed in white.\n';
+  const lq = 'Little Acorns Classic Cotbed';
+  for (const l of ['Classic Cotbed', 'Little Acorns Cotbed', 'Classic Cotbed, White', 'Classic Cot Bed'])
+    it(`query-subset line verifies: ${l}`, () => assert.equal(quoteInModelScope(`${P}${l}\nCountry of origin: Poland`, lq, 'Country of origin: Poland'), true));
+  for (const l of ['Little Acorns Wardrobe', 'little acorns pine bed', 'Little Acorns Dresser', 'Classic Dresser Cot Bed', 'Pine Cot Bed'])
+    it(`product-noun line blocks: ${l}`, () => assert.equal(quoteInModelScope(`${P}${l}\nCountry of origin: Poland`, lq, 'Country of origin: Poland'), false));
+});
+
+describe('r34d: lowercase name positions, review sections', () => {
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const q = 'Made in China';
+  const v = (b: string) => quoteInModelScope(`${H}${b}\n${q}`, 'Cybex Melio', q);
+  for (const b of ['walk', 'Walk', 'boot', 'Boot', 'Flat', 'Movement', 'toy factory', 'melio walk', 'Stroller for Callisto', 'stroller for callisto',
+    'Perfect for Callisto owners upgrading', 'the callisto is lighter now', 'we love the callisto more', 'callisto stroller in black',
+    'fits callisto and priam', 'compatible with callisto', 'designed by callisto in germany', 'callisto', 'made in china for callisto'])
+    it(`must block: ${b}`, () => assert.equal(v(b), false));
+  for (const t of ['Made in China (Walk)', 'Made in China (Boot edition)', 'Made in China for Boot', 'made in china (callisto)', 'made in china, callisto edition'])
+    it(`claim tail blocks: ${t}`, () => assert.equal(quoteInModelScope(H + t, 'Cybex Melio', t.slice(0, 13)), false));
+  for (const t of ['Customer reviews\nGreat product, fast delivery\nMade in China', 'Reviews (12)\n★★★★★\nMade in China', 'A - Made in China'])
+    it(`review section claim never counts: ${JSON.stringify(t)}`, () => assert.equal(quoteInModelScope(H + t, 'Cybex Melio', 'Made in China'), false));
+  for (const b of ['The Melio is our ultra-light stroller for the big city.', 'perfect for the big city', 'great for busy parents on the go',
+    'easy to fold and carry upstairs', 'the hood gives plenty of shade', 'ideal for holidays and trips', 'the basket holds groceries', 'smooth ride on cobbles'])
+    it(`ordinary lowercase prose verifies: ${b}`, () => assert.equal(v(b), true));
+  it('Made in China. Not for resale verifies', () => assert.equal(quoteInModelScope(`${H}Made in China. Not for resale`, 'Cybex Melio', q), true));
+});
+
+describe('r34e: review sections by position, verbless lowercase titles, ". for X", dictionary rule', () => {
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const q = 'Made in China';
+  const v = (b: string) => quoteInModelScope(`${H}${b}\n${q}`, 'Cybex Melio', q);
+  for (const t of ['Customer reviews\nReview: love it\n## Specifications\nMade in China', 'Customer reviews\nGreat buy\nSpecifications\nMade in China',
+    'Customer reviews\nLove my Cybex Melio\nMade in China', 'Customer reviews\nCybex Melio\nMade in China'])
+    it(`claim after a reviews section never counts: ${JSON.stringify(t)}`, () => assert.equal(quoteInModelScope(H + t, 'Cybex Melio', q), false));
+  for (const b of ['callisto lightweight city travel stroller', 'callisto lightweight travel stroller.', 'callisto city stroller in black', 'a callisto',
+    'we upgraded from the callisto last year', 'unlike priam, it folds flat', 'pairs nicely with callisto accessories', 'swap to callisto if you need more room',
+    'i bought callisto last year', 'we tried callisto and loved it', 'compared with callisto it is lighter'])
+    it(`must block: ${b}`, () => assert.equal(v(b), false));
+  for (const t of ['made in china. for callisto.', 'made in china; for callisto'])
+    it(`claim-sentence for blocks: ${t}`, () => assert.equal(quoteInModelScope(H + t, 'Cybex Melio', 'made in china'), false));
+  for (const b of ['fits isofix bases', 'the melio folds flat', 'the stroller folds flat in one hand', 'perfect for city walks and travel', 'easy to clean and wipe down',
+    'great for small car boots', 'lightweight and compact for travel', 'suitable from birth to approx 4 years', 'wipe clean only', 'spot clean only',
+    'assembly required', 'not suitable for tumble drying'])
+    it(`must verify: ${b}`, () => assert.equal(v(b), true));
+  // Measured evidence (accepted residual class, Chief): common-word model names. These three happen to block via
+  // the "the X" phrase-end position, not the dictionary; mid-phrase forms of a dictionary word would pass.
+  for (const b of ['we upgraded from the reef', 'we upgraded from the wave', 'we upgraded from the pact'])
+    it(`evidence (measured): ${b}`, () => assert.equal(v(b), false));
+  for (const b of ['our reef stroller is so light', 'we love our wave stroller'])
+    it(`evidence (accepted gap, verifies): ${b}`, () => assert.equal(v(b), true));
 });
