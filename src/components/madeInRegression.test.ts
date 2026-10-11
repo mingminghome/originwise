@@ -3655,6 +3655,19 @@ const ROWS: Row[] = [
   ["label", "產地：朝鮮 製造国：中國", null, null, null],
   ["page", "產地：朝鮮 製造国：中國", null, null, null],
   ["note", "產地：朝鮮 製造国：中國", "China", "mentioned", null],
+  // r44 (Tester, pinned as they come out): non-origin labels that only look like origin words.
+  ["label", "產地：朝鮮 管制地：中國", "North Korea", "label 95%", null],
+  ["page", "產地：朝鮮 管制地：中國", null, null, null],
+  ["note", "產地：朝鮮 管制地：中國", "North Korea,China", "possible,mentioned", null],
+  ["label", "產地：朝鮮 體制：中國", "North Korea", "label 95%", null],
+  ["page", "產地：朝鮮 體制：中國", null, null, null],
+  ["note", "產地：朝鮮 體制：中國", "North Korea,China", "possible,mentioned", null],
+  ["label", "產地：朝鮮 定制：中國", "North Korea", "label 95%", null],
+  ["page", "產地：朝鮮 定制：中國", null, null, null],
+  ["note", "產地：朝鮮 定制：中國", "North Korea,China", "possible,mentioned", null],
+  ["label", "產地：朝鮮 組裝說明：見內頁", "North Korea", "label 95%", null],
+  ["page", "產地：朝鮮 組裝說明：見內頁", null, null, null],
+  ["note", "產地：朝鮮 組裝說明：見內頁", "North Korea", "possible", null],
 ];
 
 describe(`made-in regression table (${ROWS.length} rows)`, () => {
