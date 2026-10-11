@@ -946,3 +946,28 @@ describe('r34d: lowercase name positions, review sections', () => {
     it(`ordinary lowercase prose verifies: ${b}`, () => assert.equal(v(b), true));
   it('Made in China. Not for resale verifies', () => assert.equal(quoteInModelScope(`${H}Made in China. Not for resale`, 'Cybex Melio', q), true));
 });
+
+describe('r34e: review sections by position, verbless lowercase titles, ". for X", dictionary rule', () => {
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const q = 'Made in China';
+  const v = (b: string) => quoteInModelScope(`${H}${b}\n${q}`, 'Cybex Melio', q);
+  for (const t of ['Customer reviews\nReview: love it\n## Specifications\nMade in China', 'Customer reviews\nGreat buy\nSpecifications\nMade in China',
+    'Customer reviews\nLove my Cybex Melio\nMade in China', 'Customer reviews\nCybex Melio\nMade in China'])
+    it(`claim after a reviews section never counts: ${JSON.stringify(t)}`, () => assert.equal(quoteInModelScope(H + t, 'Cybex Melio', q), false));
+  for (const b of ['callisto lightweight city travel stroller', 'callisto lightweight travel stroller.', 'callisto city stroller in black', 'a callisto',
+    'we upgraded from the callisto last year', 'unlike priam, it folds flat', 'pairs nicely with callisto accessories', 'swap to callisto if you need more room',
+    'i bought callisto last year', 'we tried callisto and loved it', 'compared with callisto it is lighter'])
+    it(`must block: ${b}`, () => assert.equal(v(b), false));
+  for (const t of ['made in china. for callisto.', 'made in china; for callisto'])
+    it(`claim-sentence for blocks: ${t}`, () => assert.equal(quoteInModelScope(H + t, 'Cybex Melio', 'made in china'), false));
+  for (const b of ['fits isofix bases', 'the melio folds flat', 'the stroller folds flat in one hand', 'perfect for city walks and travel', 'easy to clean and wipe down',
+    'great for small car boots', 'lightweight and compact for travel', 'suitable from birth to approx 4 years', 'wipe clean only', 'spot clean only',
+    'assembly required', 'not suitable for tumble drying'])
+    it(`must verify: ${b}`, () => assert.equal(v(b), true));
+  // Measured evidence (accepted residual class, Chief): common-word model names. These three happen to block via
+  // the "the X" phrase-end position, not the dictionary; mid-phrase forms of a dictionary word would pass.
+  for (const b of ['we upgraded from the reef', 'we upgraded from the wave', 'we upgraded from the pact'])
+    it(`evidence (measured): ${b}`, () => assert.equal(v(b), false));
+  for (const b of ['our reef stroller is so light', 'we love our wave stroller'])
+    it(`evidence (accepted gap, verifies): ${b}`, () => assert.equal(v(b), true));
+});
