@@ -23,9 +23,12 @@ const BLOCK_STYLE = [
   '比照日本製', '類似日本製', '日本製等級', '好似日本製', '同日本製一樣', '日式設計', '日本風', '和風',
   '日本製 (仿)', '日本製（非）', '日本製（副廠）', '日本製（A貨）', '日本製（仿製）', '日本製（非原廠）',
   '自稱日本製', '傳聞日本製', '假日本製', '冒充日本製', '日本製！？', '比日本製更耐用',
+  // r45 round 3: more comparison words (one word class), and every bracket shape after the claim.
+  '仿如日本製', '一如日本製', '勝過日本製', '胜过日本製', '超越日本製', '不亞於日本製', '不亚于日本製', '等同日本製',
+  '日本製【仿】', '日本製「非」', '日本製 [A貨]', '日本製『仿』', '日本製［非］', '日本製〔副廠〕', '日本製〈仿〉', '日本製《A貨》',
 ];
 // Negations split by a line break, a curly apostrophe or a double space.
-const BLOCK_NEG = ['Not made in\nChina\n中國製造', 'Not made\nin China\n中國製造', 'Don’t made in China\n中國製造', 'Not  made in China\n中國製造', '非\n中國製', '不是\n中國製造'];
+const BLOCK_NEG = ['Not\n made in China\n中國製造', 'Not\n made in China', 'Not made in\nChina\n中國製造', 'Not made\nin China\n中國製造', 'Don’t made in China\n中國製造', 'Not  made in China\n中國製造', '非\n中國製', '不是\n中國製造'];
 const VERIFY: Array<[string, string]> = [
   ['種類：日本製', 'Japan'],
   ['分類：日本製', 'Japan'],
@@ -38,6 +41,18 @@ const VERIFY: Array<[string, string]> = [
   ['日本製（水貨）', 'Japan'],
   ['日本製（行貨）', 'Japan'],
   ['產地：比利時', 'Belgium'],
+  ['日本製 MADE IN JAPAN', 'Japan'], ['MADE IN JAPAN 日本製', 'Japan'], ['原產地：日本製', 'Japan'], ['「日本製」', 'Japan'], ['日本製。', 'Japan'],
+  // r45 round 3: brackets that hold no hedge, quotes around the claim, and English lines that are not negations.
+  ['日本製【原裝】', 'Japan'], ['日本製「行貨」', 'Japan'], ['日本製 [2024]', 'Japan'], ['日本製『原裝』', 'Japan'],
+  ['日本製［行貨］', 'Japan'], ['日本製〔2024年款〕', 'Japan'], ['日本製〈原裝〉', 'Japan'], ['日本製《行貨》', 'Japan'],
+  ['本商品為「日本製」', 'Japan'], ['標示：『日本製』', 'Japan'], ['【日本製】嬰兒推車', 'Japan'],
+  ['Not dishwasher safe\nMade in Japan', 'Japan'], ['Note: made in Japan', 'Japan'],
+  // Tester's word-boundary rows (a4f51a9): keep main's 95%.
+  ['日本製 頂級推車', 'Japan'], ['日本製高級推車', 'Japan'], ['日本製 如圖', 'Japan'], ['日本製，如有問題請聯絡', 'Japan'],
+  ['日本製 假日特價', 'Japan'], ['日本製 圖像僅供參考', 'Japan'], ['日本製 同款不同色', 'Japan'], ['日本製 風扇', 'Japan'],
+  ['日本製防風毯', 'Japan'], ['日本製 還要更輕', 'Japan'], ['同步：日本製', 'Japan'], ['如意牌 日本製', 'Japan'],
+  ['級別：日本製', 'Japan'], ['假期限定 日本製', 'Japan'], ['像素：日本製', 'Japan'], ['風格：簡約 產地：日本', 'Japan'],
+  ['產地：日本 風格：北歐', 'Japan'],
   ['類別：日本製', 'Japan'],
   ['日本製，更安心', 'Japan'],
   ['產地：日本 不含中國製零件', 'Japan'],
@@ -57,6 +72,12 @@ const VERIFY: Array<[string, string]> = [
   ['產地：北朝鮮', 'North Korea'],
 ];
 
+/**
+ * r45 (Ming / Chief, one rule): a CJK made-in confirms on label / note only as the whole value of its line. These real
+ * claims lose their confirm under that rule; Chief accepted the over-caution, with no exceptions.
+ */
+const OVER_CAUTION = new Set<string>(["種類：日本製", "分類：日本製", "日本製 更耐用", "日本製更放心", "美國製更耐用", "日本製（原裝）", "日本製（2024年款）", "日本製（水貨）", "日本製（行貨）", "日本製【原裝】", "日本製「行貨」", "日本製 [2024]", "日本製『原裝』", "日本製［行貨］", "日本製〔2024年款〕", "日本製〈原裝〉", "日本製《行貨》", "本商品為「日本製」", "標示：『日本製』", "【日本製】嬰兒推車", "日本製 頂級推車", "日本製高級推車", "日本製 如圖", "日本製，如有問題請聯絡", "日本製 假日特價", "日本製 圖像僅供參考", "日本製 同款不同色", "日本製 風扇", "日本製防風毯", "日本製 還要更輕", "同步：日本製", "如意牌 日本製", "級別：日本製", "假期限定 日本製", "像素：日本製", "類別：日本製", "日本製，更安心", "日本製品 ベビーカー"]);
+
 describe('PR #45: label and note never confirm a non-claim', () => {
   for (const input of BLOCK) {
     it(`label ${JSON.stringify(input)} → no confirmed country`, () => {
@@ -68,6 +89,12 @@ describe('PR #45: label and note never confirm a non-claim', () => {
     });
   }
   for (const [input, country] of VERIFY) {
+    if (OVER_CAUTION.has(input)) {
+      it(`label ${JSON.stringify(input)} → no confirm (accepted over-caution of the whole-value rule; was ${country} 95%)`, () => {
+        assert.equal(summarize('label', input).country, null);
+      });
+      continue;
+    }
     it(`label ${JSON.stringify(input)} → ${country} 95%`, () => {
       assert.deepEqual([summarize('label', input).country, summarize('label', input).grade], [country, 'label 95%']);
     });

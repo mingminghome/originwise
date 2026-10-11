@@ -2690,6 +2690,13 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
         const prev = ls < 0 ? '' : t.slice(t.lastIndexOf('\n', ls - 1) + 1, ls);
         if (PART_LABEL_LINE_RE.test(prev)) continue;
       }
+      // r45: an English made-in the page negates, however the negation is split ("Not\n made in China").
+      // Only a lower-case continuation of a "Not" split across a line break; same-line negations keep their own rule.
+      if (
+        m.index !== undefined &&
+        /^(?:made|manufactured|assembled|produced)\s+in\b/.test(m[0]) &&
+        /(?:\bnot|\bnever|n['’]t)[ \t\u00a0]*\n[\s\u00a0]*$/i.test(t.slice(Math.max(0, m.index - 16), m.index))
+      ) continue;
       // r44: 產地：中國/朝鮮 names two places; never just one of them (朝鮮 only).
       if (m.index !== undefined && koreaListLine(t, m.index)) continue;
       if (m.index !== undefined) {

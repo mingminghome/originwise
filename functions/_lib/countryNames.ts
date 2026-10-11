@@ -222,6 +222,10 @@ const ORIGIN_LABEL_RE =
 /** 產 / 产 / 産, 國 / 国, 製 / 制, 組 / 组, 裝 / 装 folded before a label is matched (原產国, 产地國 …). */
 const foldLabel = (l: string) =>
   l.trim().replace(/[产産]/g, '產').replace(/国/g, '國').replace(/制/g, '製').replace(/组/g, '組').replace(/装/g, '裝');
+/** r45: an origin label (產地, 原產地, 製造國, Made in, Country of origin …), folded as above. */
+export function isOriginLabel(label: string): boolean {
+  return ORIGIN_LABEL_RE.test(foldLabel(label));
+}
 const LINE_LABEL_RE = /(country\s+of\s+origin|made\s+in|[^\s:：]{1,8})[ \t\u3000]*[:：]/gi;
 /** A North Korea name as the whole value: at most one made-in word, then only spaces, closing brackets or 。！；. */
 const KOREA_WHOLE_VALUE_RE = new RegExp(
