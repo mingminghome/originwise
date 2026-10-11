@@ -2711,6 +2711,8 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
       if (m.index !== undefined && BARE_CJK_ONE_RE.test(m[0])) {
         const v = madeInValueCountry((m[1] || '').trim());
         if (v && negated.has(canonicalCountry(v) ?? v.toLowerCase())) continue;
+        // A country that is also a US state (喬治亞 = Georgia) is ambiguous on a bare line; only a label or 州 settles it.
+        if (v && US_STATES.some((st) => st.toLowerCase() === (canonicalCountry(v) ?? v).toLowerCase())) continue;
         const ls = t.lastIndexOf('\n', m.index - 1);
         const prev = ls < 0 ? '' : t.slice(t.lastIndexOf('\n', ls - 1) + 1, ls);
         if (PART_LABEL_LINE_RE.test(prev)) continue;

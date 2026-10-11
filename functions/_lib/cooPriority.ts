@@ -276,7 +276,7 @@ const CJK_TO_LABEL: Record<string, string> = {
   中華人民共和国: '中国', 中華人民共和國: '中國', 中國大陸: '中國', 中国大陆: '中国', タイ: 'Thailand', ベトナム: 'Vietnam',
   インドネシア: 'Indonesia', マレーシア: 'Malaysia', フィリピン: 'Philippines',
   インド: 'India', 韓国: '韓國', 北韓: 'North Korea', 北韩: 'North Korea', 北朝鮮: 'North Korea', 北朝鲜: 'North Korea',
-  朝鲜: 'North Korea', 朝鮮民主主義人民共和國: 'North Korea', 朝鲜民主主义人民共和国: 'North Korea',
+  朝鲜: 'North Korea', 朝鮮: 'North Korea', 朝鮮民主主義人民共和國: 'North Korea', 朝鲜民主主义人民共和国: 'North Korea',
   中華民國: 'Taiwan', 中华民国: 'Taiwan',
 };
 
