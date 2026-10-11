@@ -971,3 +971,18 @@ describe('r34e: review sections by position, verbless lowercase titles, ". for X
   for (const b of ['our reef stroller is so light', 'we love our wave stroller'])
     it(`evidence (accepted gap, verifies): ${b}`, () => assert.equal(v(b), true));
 });
+
+describe('r35: dictionary at SCOWL 60, normalised lookup', () => {
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const q = 'Made in China';
+  const v = (b: string) => quoteInModelScope(`${H}${b}\n${q}`, 'Cybex Melio', q);
+  for (const b of ['callisto2', 'priam4', 'balíos', 'mïos', 'libellé', 'callisto‘s', 'callisto’s'])
+    it(`must block: ${b}`, () => assert.equal(v(b), false));
+  for (const b of ['colourway', 'foldable', 'our bestselling buggy', 'fits isofix bases', 'the melio folds flat'])
+    it(`must verify: ${b}`, () => assert.equal(v(b), true));
+  it('Made in Türkiye verifies', () => assert.equal(quoteInModelScope(`${H}Made in Türkiye`, 'Cybex Melio', 'Made in Türkiye'), true));
+  it('model names stay out of the dictionary', async () => {
+    const { ENGLISH_WORDS } = await import('./search/dictionary');
+    for (const w of ['balios', 'melio', 'mios', 'libelle', 'callisto', 'priam']) assert.equal(ENGLISH_WORDS.has(w), false, w);
+  });
+});

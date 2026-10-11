@@ -14,7 +14,8 @@
     "preview": "vite preview",
     "pages:dev": "npm run build && npx --yes wrangler pages dev dist --compatibility-date=2024-09-23",
     "deploy": "npm run build && npx --yes wrangler pages deploy dist --project-name=originwise",
-    "deploy:preview": "npm run build && npx --yes wrangler pages deploy dist --project-name=originwise --branch=preview"
+    "deploy:preview": "npm run build && npx --yes wrangler pages deploy dist --project-name=originwise --branch=preview",
+    "build:dictionary": "node scripts/build-dictionary.mjs"
   },
   "repository": {
     "type": "git",
@@ -33,6 +34,7 @@
     "@vitejs/plugin-react": "^6.0.3",
     "oxlint": "^1.71.0",
     "typescript": "~6.0.2",
-    "vite": "^8.1.1"
+    "vite": "^8.1.1",
+    "wordlist-english": "1.2.1"
   }
 }

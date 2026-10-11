@@ -1298,7 +1298,7 @@ const SAFE_LATIN_WORDS = new Set([
   'black', 'white', 'grey', 'gray', 'beige', 'blue', 'red', 'green', 'pink', 'navy', 'brown', 'silver', 'sand', 'taupe', 'olive',
   'moon', 'magic', 'deep', 'dark', 'sepia', 'mirage', 'almond', 'seashell', 'space', 'lava', 'classic', 'cozy', 'beige', 'stone',
   'frame', 'fabric', 'material', 'materials', 'dimensions', 'folded', 'unfolded', 'capacity', 'age', 'recommended', 'load', 'max',
-  'maximum', 'isofix', 'usb', 'kg', 'lbs', 'lb', 'cm', 'mm', 'in', 'inch', 'inches', 'months', 'month', 'years', 'year', 'g', 'usd', 'eur', 'gbp',
+  'maximum', 'isofix', 'usb', 'colourway', 'colourways', 'colorway', 'colorways', 'foldable', 'kg', 'lbs', 'lb', 'cm', 'mm', 'in', 'inch', 'inches', 'months', 'month', 'years', 'year', 'g', 'usd', 'eur', 'gbp',
   'nt', 'ntd', 'twd', 'hkd', 'rmb', 'cny', 'jpy', 'sku', 'ean', 'upc', 'gtin', 'note', 'notes', 'overview', 'information', 'info',
   'technical', 'tech', 'data', 'sheet', 'support', 'faq', 'help', 'contact', 'us', 'about', 'country', 'origin', 'made', 'manufactured',
   'assembled', 'produced', 'designed', 'engineered', 'developed', 'germany', 'quality', 'safety', 'tested', 'certified', 'standard',
@@ -1620,6 +1620,19 @@ function segmentSafe(
     if (u) return u;
   }
   let latin = l.replace(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]+/gu, ' ');
+  // r35 normalise before any word lookup: accents / diacritics off (NFKD, combining marks removed: "balíos" →
+  // "balios"), curly quotes straight, possessive 's off ("callisto’s"), and trailing digits off a lowercase word
+  // ("callisto2" → "callisto"). CJK runs are already gone, so their marks are untouched.
+  // A token that starts with a non-ASCII letter is a piece of a word split upstream ("T ürkiye"); it is not a
+  // word of its own (the r34e fragment rule), so it is dropped before normalising.
+  latin = latin
+    .replace(/(?<![\p{L}\p{M}])[^\p{ASCII}\s][\p{L}\p{M}]*/gu, (m: string) => (/^\p{L}/u.test(m) ? ' ' : m))
+    .normalize('NFKD')
+    .replace(/\p{M}+/gu, '')
+    .replace(/[‘’‛′]/g, "'")
+    .replace(/[“”„″]/g, '"')
+    .replace(/([A-Za-z])'s\b/g, '$1')
+    .replace(/\b([a-z]{3,})\d+\b/g, '$1');
   // An all-caps sentence ("DO NOT USE IF DAMAGED") is running text, not a name.
   if (/\b(?:NOT|DO|IF|THE|OF|AND|FOR|WITH|TO|IS|ARE|NO|KEEP|USE)\b/.test(latin) && latin === latin.toUpperCase()) latin = latin.toLowerCase();
   const sentences = latin.split(/(?<=[.!?:;])\s+/);
