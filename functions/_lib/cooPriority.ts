@@ -10,7 +10,7 @@
  */
 
 import { MADE_IN_CODE_LABEL, madeInCodeMatches, NOT_PRODUCT_FIELD, PART_FIELD_WORDS } from './countryLabel';
-import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN, countryNameLabel } from './countryNames';
+import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE, countryNameLabel } from './countryNames';
 import { NOT_MADE_TAIL, stripDesignPhrases } from './designOrigin';
 import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
 import { normalizeRegion, type RegionCode } from './regions';
@@ -77,8 +77,8 @@ const CJK_COUNTRY_TOKEN =
  */
 // A Latin name never runs into a hyphenated word ("Made in Ukraine-style",
 // "Made in Georgia-Pacific", "Turkey-shaped"); "Japan-made" and "China-Japan" still read.
-const HYPHEN_WORD_GUARD = `(?![A-Za-z]|-(?!made\\b|(?:${COUNTRY_LIST_LATIN})(?![A-Za-z]))[A-Za-z])`;
-const VALUE_COUNTRY_TOKEN = `(?:${COUNTRY_LIST_CJK}|(?:${COUNTRY_TOKEN}|${COUNTRY_LIST_LATIN})${HYPHEN_WORD_GUARD})`;
+const HYPHEN_WORD_GUARD = `(?![A-Za-z]|-(?!made\\b|(?:${COUNTRY_LIST_LATIN_RE})(?![A-Za-z]))[A-Za-z])`;
+const VALUE_COUNTRY_TOKEN = `(?:${COUNTRY_LIST_CJK}|(?:${COUNTRY_TOKEN}|${COUNTRY_LIST_LATIN_RE})${HYPHEN_WORD_GUARD})`;
 
 /** Made-in cues (made in / 產地 / 原産国 / COO / Origin …) that a country value follows. */
 const COO_CUE_SRC = `(?:(?:製造|制造|生產|生产|生産|組裝|组装|產|产|製|制)(?:於|于|在)|生產國|生产国|生産国|生產国|(?:製造地|生產地|生产地|製造|制造|生產|生产|生産)(?=\\s*[:：])|(?<!(?:brand|design)\\s+(?:of\\s+)?)origin(?=\\s*[:：])|made[\\s-]?in|manufactured[\\s-]?in|produced[\\s-]?in|assembled[\\s-]?in|(?<!(?:brand|design)\\s+)country\\s+of\\s+origin|country\\s+of\\s+publication|coo|${NOT_PRODUCT_FIELD}(?:製造国|製造國|原産国名?|原產國|原产国|产地|產地|産地|生产地|生產地|生産地)|生産(?:[・･/／]組み?立て?)?|組み?立て?|組裝|组装)`;
@@ -518,6 +518,11 @@ const PART_BEFORE = new RegExp(`${PART_WORD}\\s*(?:[:：]|made\\s+in|from)?\\s*(
 export function normalizeCooLabel(found: string): string {
   const s = found.trim().replace(/\s+/g, ' ');
   const cjk = CJK_TO_LABEL[s] ?? s;
+  // r37: an accented Latin spelling takes the card label ("México" → "Mexico").
+  if (/[^\x20-\x7E]/.test(cjk) && /^[\p{Script=Latin} .'’-]+$/u.test(cjk)) {
+    const k = canonicalCountry(cjk) ?? countryNameLabel(cjk);
+    if (k) return k;
+  }
   if (!/^[A-Za-z][A-Za-z .'-]{1,}$/.test(cjk)) {
     return canonicalCountry(cjk) ? cjk : (countryNameLabel(cjk) ?? cjk);
   }
@@ -540,7 +545,8 @@ const LEADING_COUNTRY = new RegExp(`^\\s*(?:the\\s+)?(${VALUE_COUNTRY_TOKEN})`, 
 export function madeInValueCountry(value: string): string | undefined {
   const s = value.trim();
   if (/^european\s+union$/i.test(s)) return 'European Union';
-  const m = LEADING_COUNTRY.exec(s);
+  // r37: a country is read with or without its Latin accents ("México" = "Mexico").
+  const m = LEADING_COUNTRY.exec(s) ?? LEADING_COUNTRY.exec(s.replace(/[\u00C0-\u024F\u1E00-\u1EFF]/g, (c) => c.normalize('NFKD').replace(/\p{M}+/gu, '')));
   return m ? normalizeCooLabel(m[1]!) : undefined;
 }
 
