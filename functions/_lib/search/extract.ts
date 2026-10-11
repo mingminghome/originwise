@@ -415,6 +415,14 @@ const ACCESSORY_WORDS = [
 ].flatMap((w) => [w, /(s|x|ch|sh)$/.test(w) ? `${w}es` : `${w}s`]);
 const ACCESSORY_WORD_SET = new Set(ACCESSORY_WORDS);
 
+/** r34c: furniture / range nouns and material names that make a product name next to brand or query words. */
+const PRODUCT_NOUNS = new Set([
+  'bed', 'beds', 'cot', 'cots', 'cotbed', 'cotbeds', 'dresser', 'dressers', 'wardrobe', 'wardrobes', 'drawer', 'drawers', 'chest',
+  'chests', 'table', 'tables', 'shelf', 'shelves', 'cabinet', 'cabinets', 'mattress', 'mattresses', 'bookcase', 'desk', 'chair',
+  'pine', 'oak', 'beech', 'birch', 'walnut', 'wood',
+]);
+/** Colour words allowed after the model name ("Classic Cotbed, White"). */
+const COLOUR_WORDS = new Set(['white', 'black', 'grey', 'gray', 'beige', 'blue', 'red', 'green', 'pink', 'navy', 'brown', 'silver', 'cream', 'natural', 'taupe', 'olive', 'sand', 'stone', 'oak']);
 /** Legal-form words. With the brand they are a company line, not a model ("Cybex GmbH"). */
 const COMPANY_FORM = new Set(['gmbh', 'inc', 'ltd', 'llc', 'co', 'corp', 'corporation', 'company', 'limited', 'ag', 'sa', 'kk', 'plc']);
 /** Store-role words. With the brand or a listed retailer they are a shop, not a model. */
@@ -764,8 +772,13 @@ const SECTION_RE =
 /** r34: a section that holds a spec table (not a description or features section). */
 const SPEC_SECTION_RE =
   /^(?:specifications?|specs|tech(?:nical)? (?:specs|specifications?|details|data)|product (?:details|information|info|specifications?)|details|dimensions|規格|產品規格|商品規格|商品詳細|產品資訊|商品資訊|仕様|スペック|produktdetails|technische daten)\s*[:：]?$/i;
-/** A user-content line above the specs: a customer review or a Q&A entry ("Customer review 2:", "Review:", "Q:"). */
-const REVIEW_LINE_RE = /^(?:(?:customer\s+|verified\s+)?reviews?(?:\s+\d+)?\s*[:：]|q(?:uestion)?\s*[:：]|a(?:nswer)?\s*[:：]|評價|評論|顧客評論|レビュー)/i;
+/**
+ * r34c (Chief ruling): text that may be user content (a review or Q&A line, or a line under a review / Q&A
+ * heading). The page text carries no HTML markup here, so nothing is skipped for names; a made-in claim on such
+ * a line, or right under such a heading, never counts.
+ */
+const USER_CONTENT_LINE_RE = /^(?:(?:customer\s+|verified\s+)?reviews?(?:\s+\d+)?\s*[:：]|q(?:uestion)?\s*[:：]|a(?:nswer)?\s*[:：]|評價|評論|顧客評論|レビュー|問\s*[:：]|答\s*[:：]|verified\s+(?:purchase|buyer)|rated\s+\d|[★☆])/i;
+const USER_CONTENT_HEAD_RE = /^(?:(?:customer|user|verified)\s+)?(?:reviews?|ratings?(?:\s*(?:&|and)\s*reviews?)?)\s*(?:\(\d+\))?$|^(?:questions?\s*(?:&|and)\s*answers?|q\s*&\s*a|faq)$|^(?:評價|評論|顧客評論|商品評價|問與答|レビュー|口コミ)/i;
 /** A spec-table label cell: a short field name, letters only, no sentence punctuation ("Country of origin", "Care instructions"). */
 function specLabelShape(l: string): boolean {
   return /^[\p{L}][\p{L} &/()'’-]{0,40}$/u.test(l) && l.split(/\s+/).length <= 5;
@@ -1276,6 +1289,8 @@ const SAFE_LATIN_WORDS = new Set([
   'self', 'wipe', 'clean', 'cleaning', 'spot', 'wash', 'washable', 'machine', 'care', 'instructions', 'instruction', 'mdf', 'mfc',
   'pine', 'oak', 'beech', 'birch', 'walnut', 'wood', 'wooden', 'solid', 'plywood', 'veneer', 'painted', 'lacquered', 'matt', 'gloss',
   'finish', 'natural', 'composition',
+  // r34c ordinary words of real lowercase care / feature prose (Tester's regression set).
+  'has', 'have', 'had', 'does', 'did', 'was', 'were', 'movement', 'under', 'over', 'suitable', 'unsuitable', 'dishwasher', 'safe', 'damaged', 'returned', 'too', 'also', 'well', 'toy', 'toys', 'factory', 'factories', 'minute', 'minutes', 'hour', 'hours', 'flat', 'walk', 'walks', 'down', 'small', 'boot', 'boots', 'tumble', 'drying', 'dry',
   'light', 'lightweight', 'ultra', 'new', 'all', 'our', 'your', 'this', 'that', 'these', 'it', 'its', 'a', 'an', 'is', 'are', 'was',
   'be', 'to', 'on', 'at', 'as', 'or', 'not', 'no', 'yes', 'up', 'off', 'per', 'only', 'more', 'less', 'most', 'very', 'just', 'now',
   'shipping', 'ships', 'ship', 'founded', 'established', 'free', 'returns', 'return', 'days', 'day', 'orders', 'order', 'over', 'add', 'cart', 'buy', 'shop', 'home', 'menu',
@@ -1614,7 +1629,8 @@ function segmentSafe(
       if (!/[A-Z]/.test(w)) {
         // r34b: a lowercase word standing by itself (an all-lowercase line or field value of up to three words, no
         // digits: "callisto", "Style: milano") is safe only when it is ordinary vocabulary. Prose keeps its plain words.
-        const alone = loneLowercase && words.length <= 3 && !/[A-Z0-9]/.test(sen.replace(/[:：]\s*$/, '')) && !words.some((x) => FUNCTION_WORD.test(x)) && !/\.[a-z]/.test(sen);
+        // r34c: a lowercase line or claim tail, any length: every non-function word must be ordinary vocabulary.
+        const alone = loneLowercase && !/[A-Z]/.test(sen) && !/\.[a-z]/.test(sen);
         if (alone && /^[a-z][a-z'’-]{2,}$/.test(w) && !/n['’]t$/.test(w) && !safeLatin(w) && !FUNCTION_WORD.test(w) && !SENTENCE_START.test(w) && !isBrand(w)) return w;
         continue;
       }
@@ -1758,6 +1774,20 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
     if (lw.includes('-')) return lw.split('-').every((p) => !p || /^\d/.test(p) || safeLatin(p));
     return false;
   };
+  // r34c rule 2 (Chief): a title-shaped line (no function words) counts as this model only when every word comes
+  // from the query (any order; "Cot Bed" for "Cotbed"; a trailing colour). A query word plus an outside product
+  // noun ("Little Acorns Wardrobe", "Pine Cot Bed", "Classic Dresser Cot Bed") is another product.
+  const queryWords = new Set([...tokens, ...[...brandNames].flatMap((b) => b.toLowerCase().split(/\s+/))]);
+  const productNounLine = (seg: string): string | null => {
+    const ws = (seg.replace(LEAD_MARK, '').match(/[A-Za-z][A-Za-z'’]*/g) ?? []).map((w) => w.toLowerCase());
+    if (ws.length < 2 || ws.length > 8 || ws.some((w) => FUNCTION_WORD.test(w))) return null;
+    const q = ws.map((w) => queryWords.has(w));
+    for (let k = 0; k + 1 < ws.length; k += 1) if (queryWords.has(ws[k]! + ws[k + 1]!)) q[k] = q[k + 1] = true;
+    if (!q.some(Boolean)) return null;
+    const out = ws.filter((w, k) => !q[k] && !COLOUR_WORDS.has(w));
+    const noun = out.find((w) => PRODUCT_NOUNS.has(w) || (ACCESSORY_WORD_SET.has(w) && !ourAt.length));
+    return noun ?? null;
+  };
   const running = (l: string) => /[.!?。！？](?:\s|$)/.test(l) || /[，,]/.test(l) || l.split(/\s+/).length >= 6;
   // r29 M3: a colour-only CJK word right after the brand is the name slot ("賽比克斯 黑金 嬰兒推車"),
   // not a colour: colours are safe on their own line or after a colour label.
@@ -1794,7 +1824,9 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
       const w = m[1]!;
       if (colourOnly(w) && !CJK_SAFE_ALL_EXACT.has(w)) return w;
     }
-    return segmentSafe(x, safeLatin, brandNames, own, isBrand, tailOfOurs, !claim);
+    const pn = productNounLine(seg);
+    if (pn) return pn;
+    return segmentSafe(x, safeLatin, brandNames, own, isBrand, tailOfOurs, true);
   };
   const allowed = (at: number, len: number, L: number): boolean => {
     const before = ourAt.filter((o) => o.end <= at);
@@ -1820,8 +1852,6 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
           // word breaks, so its plain runs are not read as names here.
           // This product's own lists above the section keep their earlier-block pass (compatible / accessories).
           if (listLine[i] && !otherList[i]) continue;
-          // A customer review or Q&A line is user content, not the product's description (r23 guard A2ii-g8).
-          if (REVIEW_LINE_RE.test(tl.replace(LEAD_MARK, ''))) continue;
           if (running(tl) && i !== fromLine) {
             if (unsafe(lines[i]!.replace(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]+/gu, ' '))) return false;
             continue;
@@ -1943,6 +1973,16 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
     const start = ends.filter((e) => e < at).reduce((a, e) => Math.max(a, e + 1), 0);
     const next = ends.find((e) => e >= at + 1);
     const end = next === undefined ? t.length : next;
+    // r34c: a claim on a review / Q&A line (or inside one: "Q: made where? A: Made in China"), or right under a
+    // review / Q&A heading, may be user content: it never counts.
+    const claimLine = lines[L]!.replace(LEAD_MARK, '').trim();
+    if (USER_CONTENT_LINE_RE.test(claimLine) || /(?:^|\s)[QA]\s*[:：]/.test(t.slice(lineStart[L]!, at))) return false;
+    for (let i = L - 1; i >= 0; i -= 1) {
+      const up = lines[i]!.replace(LEAD_MARK, '').trim();
+      if (!up) continue;
+      if (USER_CONTENT_HEAD_RE.test(up)) return false;
+      break;
+    }
     // The claim's own line names another model → never this model's.
     if (spans.some((sp) => sp.line === L && mention(sp))) return false;
     const inSentence = spans.filter((sp) => sp.start >= start && sp.start < end && sp.named);

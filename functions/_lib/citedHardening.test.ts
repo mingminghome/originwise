@@ -385,9 +385,11 @@ describe('A2(ii) a made-in line counts only under this model (r23)', () => {
       ['Cybex Melio\nYou may also like\nCybex Callisto\n## Reviews\nGreat.\nMade in China'],
       // a section between another model's mention and the claim starts a new block
       ['Cybex Melio\nPairs well with the Cybex Lemo chair\nSpecifications\nMade in China'],
-      ['Cybex Melio\nCompatible with Cybex Cloud T\nSpecifications\nthe cloud cover is made in china', 'made in china'],
     ];
     for (const [t, q] of ok) assert.equal(quoteInModelScope(t, E, q ?? 'Made in China'), true, t);
+    // r34c evidence row (Chief rule 3, lowercase with no length cap): "cloud" is a model on this page (Cloud T), so the
+    // lowercase line is no longer read as an ordinary word. Was a must-verify guard (p25 F s8); now unverified.
+    assert.equal(quoteInModelScope('Cybex Melio\nCompatible with Cybex Cloud T\nSpecifications\nthe cloud cover is made in china', E, 'made in china'), false);
   });
 
   it('r27 R1 / R2 / R3 / O1–O3: words after the brand, CJK titles, emoji / period headings, own CJK name', () => {
@@ -904,4 +906,24 @@ describe('r34b: every spec row named-checked, prose names checked, lowercase ear
     ['Amazon.com\nMade in China', 'Made in China'],
   ] as Array<[string, string]>)
     it(`lowercase plain words verify: ${JSON.stringify(b)}`, () => assert.equal(quoteInModelScope(H + b, 'Cybex Melio', q), true));
+});
+
+describe('r34c: user content, query-subset lines, lowercase without a length cap', () => {
+  const H = 'Cybex Melio\nCybex Callisto\nLight stroller.\n';
+  const q = 'Made in China';
+  for (const b of ['A: Callisto\n', 'Review: Callisto is lighter\n', 'Q: Is this the Callisto? A: yes\n', 'Customer review 2: Callisto\n',
+    'the callisto is lighter now\n', 'we love the callisto more\n', 'callisto stroller in black\n', 'fits callisto and priam\n'])
+    it(`must block: ${JSON.stringify(b)}`, () => assert.equal(quoteInModelScope(H + b + q, 'Cybex Melio', q), false));
+  for (const t of ['made in china for callisto', 'made in china (callisto)', 'made in china, callisto edition'])
+    it(`claim tail blocks: ${t}`, () => assert.equal(quoteInModelScope(H + t, 'Cybex Melio', 'made in china'), false));
+  for (const t of ['Review: great cot, made in China', 'Q: made where? A: Made in China', 'Customer reviews\nMade in China'])
+    it(`claim in user content never counts: ${JSON.stringify(t)}`, () => assert.equal(quoteInModelScope('Cybex Melio\n' + t, 'Cybex Melio', 'Made in China'), false));
+  for (const b of ['the stroller folds flat in one hand', 'not suitable for tumble drying', 'great for small car boots'])
+    it(`lowercase prose verifies: ${b}`, () => assert.equal(quoteInModelScope(`Cybex Melio\n${b}\n${q}`, 'Cybex Melio', q), true));
+  const P = 'Little Acorns Classic Cotbed\nCot bed in white.\n';
+  const lq = 'Little Acorns Classic Cotbed';
+  for (const l of ['Classic Cotbed', 'Little Acorns Cotbed', 'Classic Cotbed, White', 'Classic Cot Bed'])
+    it(`query-subset line verifies: ${l}`, () => assert.equal(quoteInModelScope(`${P}${l}\nCountry of origin: Poland`, lq, 'Country of origin: Poland'), true));
+  for (const l of ['Little Acorns Wardrobe', 'little acorns pine bed', 'Little Acorns Dresser', 'Classic Dresser Cot Bed', 'Pine Cot Bed'])
+    it(`product-noun line blocks: ${l}`, () => assert.equal(quoteInModelScope(`${P}${l}\nCountry of origin: Poland`, lq, 'Country of origin: Poland'), false));
 });
