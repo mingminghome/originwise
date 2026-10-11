@@ -32,6 +32,30 @@ const EXCERPT_MAX = 3000;
 const BRIEF_MAX = 2200;
 const SOURCE_CAP = 8;
 
+/** r36: invisible characters that can hide inside a word (zero-width space / non-joiner / joiner, soft hyphen, word joiner, BOM). */
+const INVISIBLE_RE = /\u200B|\u200C|\u200D|\u00AD|\u2060|\uFEFF/g;
+/** r36: Cyrillic / Greek letters that look like Latin ones. Used only inside words that mix scripts ("сallisto"). */
+const LOOKALIKE: Record<string, string> = {
+  а: 'a', в: 'b', е: 'e', к: 'k', м: 'm', н: 'h', о: 'o', р: 'p', с: 'c', т: 't', у: 'y', х: 'x', і: 'i', ј: 'j', ѕ: 's', ԁ: 'd', ӏ: 'l',
+  А: 'A', В: 'B', Е: 'E', К: 'K', М: 'M', Н: 'H', О: 'O', Р: 'P', С: 'C', Т: 'T', У: 'Y', Х: 'X', І: 'I', Ј: 'J', Ѕ: 'S',
+  α: 'a', ε: 'e', ι: 'i', κ: 'k', ν: 'v', ο: 'o', ρ: 'p', τ: 't', υ: 'u', χ: 'x', Α: 'A', Β: 'B', Ε: 'E', Ζ: 'Z', Η: 'H', Ι: 'I',
+  Κ: 'K', Μ: 'M', Ν: 'N', Ο: 'O', Ρ: 'P', Τ: 'T', Υ: 'Y', Χ: 'X',
+};
+/**
+ * r36 page text for the scope check: invisible characters out, NFKC, the modifier-letter apostrophe as a plain
+ * one, and look-alike Cyrillic / Greek letters mapped to Latin only in words that mix them with Latin letters.
+ * Words written entirely in Cyrillic or Greek are left alone.
+ */
+function scopeText(s: string): string {
+  return (s || '')
+    .replace(INVISIBLE_RE, '')
+    .normalize('NFKC')
+    .replace(/\u02BC/g, '’')
+    .replace(/[\p{L}\p{M}]+/gu, (w: string) =>
+      /\p{Script=Latin}/u.test(w) && /[\p{Script=Cyrillic}\p{Script=Greek}]/u.test(w) ? [...w].map((c) => LOOKALIKE[c] ?? c).join('') : w
+    );
+}
+
 function nfkc(s: string): string {
   return (s || '').normalize('NFKC');
 }
@@ -1623,16 +1647,15 @@ function segmentSafe(
   // r35 normalise before any word lookup: accents / diacritics off (NFKD, combining marks removed: "balíos" →
   // "balios"), curly quotes straight, possessive 's off ("callisto’s"), and trailing digits off a lowercase word
   // ("callisto2" → "callisto"). CJK runs are already gone, so their marks are untouched.
-  // A token that starts with a non-ASCII letter is a piece of a word split upstream ("T ürkiye"); it is not a
-  // word of its own (the r34e fragment rule), so it is dropped before normalising.
+  // r36: Latin accents are folded in unsafe() before phrases are stripped, so no word is split into pieces; a name
+  // that starts with an accented letter ("élios") is checked like any other.
   latin = latin
-    .replace(/(?<![\p{L}\p{M}])[^\p{ASCII}\s][\p{L}\p{M}]*/gu, (m: string) => (/^\p{L}/u.test(m) ? ' ' : m))
     .normalize('NFKD')
     .replace(/\p{M}+/gu, '')
-    .replace(/[‘’‛′]/g, "'")
+    .replace(/[‘’‛′ʼ]/g, "'")
     .replace(/[“”„″]/g, '"')
     .replace(/([A-Za-z])'s\b/g, '$1')
-    .replace(/\b([a-z]{3,})\d+\b/g, '$1');
+    .replace(/\b([a-z]{3,})-?\d+\b/g, '$1');
   // An all-caps sentence ("DO NOT USE IF DAMAGED") is running text, not a name.
   if (/\b(?:NOT|DO|IF|THE|OF|AND|FOR|WITH|TO|IS|ARE|NO|KEEP|USE)\b/.test(latin) && latin === latin.toUpperCase()) latin = latin.toLowerCase();
   const sentences = latin.split(/(?<=[.!?:;])\s+/);
@@ -1740,9 +1763,9 @@ function segmentSafe(
  * models. True when the quote cannot be located (no change).
  */
 export function quoteInModelScope(text: string, entity: string, quote: string | undefined): boolean {
-  const q = nfkc(quote || '').trim();
+  const q = scopeText(quote || '').trim();
   if (q.length < 3) return true;
-  const t = nfkc(text).slice(0, PAGE_TEXT_MAX);
+  const t = scopeText(text).slice(0, PAGE_TEXT_MAX);
   const lineStart = [0, ...[...t.matchAll(/\n/g)].map((m) => (m.index ?? 0) + 1)];
   const lineAt = (i: number) => {
     let lo = 0;
@@ -1884,7 +1907,10 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
     ? new RegExp(`(?:^|[^A-Za-z])(?:${brandHeads.join('|')})[\\s・·]*([\\p{Script=Han}]{1,6})(?![\\p{Script=Han}])`, 'giu')
     : null;
   const keepPlace = (m: string) => (placeBesideBrand(t, m, brand, brandNames) ? m : ' ');
-  const unsafe = (seg: string, claimArg: boolean | 'tail' | 'value' = false, tailOfOurs = false, afterOurs = false): string | null => {
+  const unsafe = (segIn: string, claimArg: boolean | 'tail' | 'value' = false, tailOfOurs = false, afterOurs = false): string | null => {
+    // r36: Latin letters lose their accents before any phrase is stripped ("Türkiye" stays one word, "élios" is
+    // checked as "elios"); CJK and other scripts are untouched.
+    const seg = segIn.replace(/[\u00C0-\u024F\u1E00-\u1EFF]/g, (c: string) => c.normalize('NFKD').replace(/\p{M}+/gu, ''));
     const claim = !!claimArg;
     // An origin phrase off the claim line ("made in china for callisto") has a claim tail too.
     const mode: 'line' | 'claim' | 'tail' | 'value' = claimArg === 'tail' || claimArg === 'value' ? claimArg : claimArg || /\bmade\s+in\b/i.test(seg) ? 'claim' : 'line';
