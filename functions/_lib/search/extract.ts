@@ -1018,6 +1018,14 @@ function modelSpans(t: string, entity: string, lineAt: (i: number) => number, li
     // "CotS") is another model. Company, store and line tails ("GmbH", "Official Store",
     // "Platinum Melio") are not. One span on this line; the word is not learned, so a
     // later "in Bayreuth" or "lightweight" is untouched.
+    // r38 (Chief): a country right after the brand is another model ("the Cybex Japan is our other pram"),
+    // unless a company or store word follows it ("Cybex Japan official store", "Cybex UK Ltd",
+    // "CYBEX China 官方旗舰店") or it closes an address / footer line ("Contact: Cybex UK", "…, Cybex UK").
+    if (brandCountryModel(t, m.index ?? 0, restLine)) {
+      const p = place(m.index ?? 0);
+      spans.push({ start: m.index ?? 0, kind: 'other', line: p.line, heads: true, named: true });
+      continue;
+    }
     const built = otherProductTail(restLine, model[0]!, brand);
     if (built) {
       const p = place(m.index ?? 0);
@@ -1527,6 +1535,76 @@ function proseSentence(words: string[], sentence: string): boolean {
   // "not a toy": a closed-class first word, then only lowercase words.
   if (FUNCTION_WORD.test(words[0]!) && rest.every((w) => /^[a-z]/.test(w)) && rest.some((w) => FUNCTION_WORD.test(w))) return true;
   return rest.filter((w) => FUNCTION_WORD.test(w)).length >= 2;
+}
+
+const BRAND_COUNTRY_RE = new RegExp(`^[ \t]*[,，]?[ \t]*(?:${COUNTRY_SPAN_RE.source})(?![A-Za-z])`, 'i');
+const COUNTRY_CODE_RE = /^[ \t]*[,，]?[ \t]*([A-Za-z]{2,3})(?![A-Za-z0-9])/;
+/** Entity words allowed around "brand + country" in an address / company / store unit (existing vocabularies). */
+const ENTITY_LABEL_RE = /(?:\b(?:contact|address|manufacturer|importer|brand)|製造元|販売元|輸入元|発売元|進口商|进口商|品牌|ブランド)[ \t]*[:：]/giu;
+const ENTITY_YEAR_RE = /(?:©|\(c\)|\bcopyright\b)[ \t]*(?:19|20)\d\d\b/gi;
+const ENTITY_ROLE_BY_RE = /^[ \t]*[A-Za-z]{3,}[ \t]+by\b/i;
+const ENTITY_CJK_STORE_RE = /(?:官方|旗艦店|旗舰店|專賣店|专卖店|官網|官网|公式|ストア|ショップ|オンラインストア)[\p{Script=Han}\p{Script=Katakana}ー]*/gu;
+/**
+ * A neighbouring line that reads as prose: a pronoun / possessive or a common verb. Articles alone do not make a
+ * neighbour prose: field and line labels carry them ("From the Cybex Platinum line", "Part of the Cybex Gold line").
+ */
+const PROSE_LINE_RE = /\b(?:our|my|your|their|we|i|you|it|they|he|she|this|that|is|are|was|were|be|been|has|have|had|love|loved|like|likes|bought|use|used|lighter|heavier)\b/i;
+/**
+ * r38c (Chief, one whole-line rule): a country right after the brand names another model, unless the whole unit
+ * (the line, or its sentence when a full stop splits it: "Country of origin: China. Brand: Cybex Germany") is that
+ * entity: brand + country with nothing around it but COMPANY_FORM / STORE_ROLE words, a label (Contact, Address,
+ * Manufacturer, Importer, Brand, and their existing ZH/JA forms), a role verb + "by" at the start, ©+year, address
+ * numbers, "registered in <country>", or CJK store words; and the neighbouring lines are not prose.
+ * A country code counts in upper case, or in lower case when it is not an English word ("uk", "usa"; not "in", "us").
+ */
+function brandCountryModel(t: string, at: number, restLine: string): boolean {
+  let len = 0;
+  const full = BRAND_COUNTRY_RE.exec(restLine);
+  if (full) len = full[0].length;
+  else {
+    const c = COUNTRY_CODE_RE.exec(restLine);
+    const w = c?.[1];
+    if (!c || !w || !canonicalCountry(w)) return false;
+    if (w !== w.toUpperCase() && ENGLISH_WORDS.has(w.toLowerCase())) return false;
+    len = c[0].length;
+  }
+  const ls = t.lastIndexOf('\n', at - 1) + 1;
+  const leAbs = t.indexOf('\n', at);
+  const le = leAbs < 0 ? t.length : leAbs;
+  let lead = t.slice(ls, at);
+  let after = restLine.slice(len);
+  // The unit is the sentence holding the brand: cut at a full stop + space on either side.
+  const stopL = lead.search(/[.。!?！？][ \t]+(?=\S)[^.。!?！？]*$/);
+  if (stopL >= 0) lead = lead.slice(stopL + 1);
+  const stopR = after.search(/[.。!?！？](?:[ \t]|$)/);
+  const afterTail = stopR >= 0 ? after.slice(stopR + 1) : '';
+  if (stopR >= 0) after = after.slice(0, stopR);
+  // A sentence after the unit on the same line is its own unit only when it is a label line, not prose.
+  if (afterTail.trim() && PROSE_LINE_RE.test(afterTail)) return true;
+  const strip = (x: string, start: boolean) => {
+    let y = x.replace(ENTITY_YEAR_RE, ' ').replace(ENTITY_LABEL_RE, ' ').replace(ENTITY_CJK_STORE_RE, ' ');
+    if (start) y = y.replace(ENTITY_ROLE_BY_RE, ' ');
+    y = y.replace(/\bregistered[ \t]+in[ \t]+([\p{L}' ]+)/giu, (m: string, pl: string) => (canonicalCountry(pl.trim()) || isPlace(pl.trim()) ? ' ' : m));
+    y = y.replace(/[A-Za-z]+\.?/g, (w: string) => {
+      const lw = w.replace(/\.$/, '').toLowerCase();
+      return COMPANY_FORM.has(lw) || STORE_ROLE.has(lw) ? ' ' : w;
+    });
+    return y.replace(/[\d\s,，.。:：;；\-–—()（）#/&]+/g, '');
+  };
+  if (strip(lead, true) !== '' || strip(after, false) !== '') return true;
+  // The unit must carry an entity marker; a bare "Cybex China" line is a model heading (p46 PLM2, ruled p26 row).
+  const marked = (x: string) => ENTITY_YEAR_RE.test(x) || ENTITY_LABEL_RE.test(x) || ENTITY_CJK_STORE_RE.test(x) || /\d/.test(x) ||
+    /\bregistered[ \t]+in\b/i.test(x) || (x.match(/[A-Za-z]+/g) ?? []).some((w) => COMPANY_FORM.has(w.toLowerCase()) || STORE_ROLE.has(w.toLowerCase()));
+  ENTITY_YEAR_RE.lastIndex = 0; ENTITY_LABEL_RE.lastIndex = 0; ENTITY_CJK_STORE_RE.lastIndex = 0;
+  const hasMark = marked(lead) || marked(after) || ENTITY_ROLE_BY_RE.test(lead);
+  ENTITY_YEAR_RE.lastIndex = 0; ENTITY_LABEL_RE.lastIndex = 0; ENTITY_CJK_STORE_RE.lastIndex = 0;
+  if (!hasMark) return true;
+  // (b) The neighbouring lines are not prose.
+  const prev = t.slice(t.lastIndexOf('\n', ls - 2) + 1, Math.max(ls - 1, 0));
+  const nextEnd = t.indexOf('\n', le + 1);
+  const next = le >= t.length ? '' : t.slice(le + 1, nextEnd < 0 ? t.length : nextEnd);
+  if (PROSE_LINE_RE.test(prev) || PROSE_LINE_RE.test(next)) return true;
+  return false;
 }
 
 /**

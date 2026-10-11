@@ -1015,3 +1015,44 @@ describe('r37: format / ignorable characters, dashes, ® ™ breaks, look-alikes
   it('Designed in München. verifies', () => assert.equal(v('Designed in München.'), true));
   it('Designed in Callistoburg. still blocks (not on the place list)', () => assert.equal(v('Designed in Callistoburg.'), false));
 });
+
+describe('r38: a country right after the brand is another model unless a company / store word or an address line follows', () => {
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const q = 'Made in China';
+  const v = (b: string) => quoteInModelScope(`${H}${b}\n${q}`, 'Cybex Melio', q);
+  for (const c of ['China', 'Japan', 'Mexico', 'Turkey', 'Ivory Coast', "Côte d'Ivoire", 'UK', 'USA'])
+    for (const b of ['Cybex', 'cybex', 'CYBEX'])
+      for (const cc of [c, c.toLowerCase(), c.toUpperCase()])
+        it(`must block: the ${b} ${cc} is our other pram`, () => assert.equal(v(`the ${b} ${cc} is our other pram`), false));
+  for (const b of ['Cybex Japan official store', 'CYBEX China 官方旗舰店', 'Cybex Japan 公式ストア', 'Cybex UK Ltd', 'Contact: Cybex UK',
+    'Cybex GmbH, Bayreuth, Germany', 'Made by Cybex in China', 'Distributed by Cybex Germany', 'Designed by Cybex in Germany',
+    'Manufacturer: CYBEX GmbH, Bayreuth', 'colourway', 'foldable', 'our bestselling buggy', 'Designed in München.', 'Cybex in China',
+    '© 2026 Cybex GmbH', 'Cybex UK Ltd registered in England', 'Cybex Inc., USA', 'Contact: Cybex CN', 'Sold by CYBEX Germany'])
+    it(`must verify: ${b}`, () => assert.equal(v(b), true));
+});
+
+describe('r38b: exceptions only at the end of the line, real address labels, ©+year', () => {
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const q = 'Made in China';
+  const v = (b: string) => quoteInModelScope(`${H}${b}\n${q}`, 'Cybex Melio', q);
+  for (const b of ['Sold by Cybex China, our other pram', 'by Cybex Mexico', 'Designed by Cybex UK, and loved', 'the pram by Cybex Japan, our other one',
+    'the Cybex, China, is our other pram', 'Our other pram, Cybex China, is lighter', 'Melio and, Cybex Japan, the heavy one', 'the Cybex China, our other pram',
+    'I also have a Cybex Japan, it is heavier', '© Cybex China', 'Model: Cybex Japan', 'Also: Cybex UK', 'Our other pram: Cybex China',
+    'Cybex China Store Edition is our other pram', 'Cybex Japan Inc stroller', 'Cybex USA Ltd Edition', 'the Cybex China shop edition', 'Cybex Japan Co stroller', 'Brand: Cybex Japan Edition', 'Brand: Cybex China, our other pram', 'Model: Cybex Japan', 'Name: Cybex Japan'])
+    it(`must block: ${b}`, () => assert.equal(v(b), false));
+});
+it('r38b: Country of origin: China. Brand: Cybex Germany confirms China', () => {
+  const c = 'Country of origin: China. Brand: Cybex Germany';
+  assert.equal(quoteInModelScope(`Cybex Melio\nLightweight stroller\n${c}`, 'Cybex Melio', c), true);
+});
+
+describe('r38c: one whole-line rule for brand + country entity lines (p49)', () => {
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const q = 'Made in China';
+  const v = (b: string) => quoteInModelScope(`${H}${b}\n${q}`, 'Cybex Melio', q);
+  for (const b of ["Brand: Cybex Japan Edition", "Brand: Cybex China, our other pram", "Name: Cybex Japan", "Model: Cybex Japan", "Brand: Cybex China\nis our other pram", "Brand: Cybex China — our other pram", "Brand: Cybex China (our other pram)", "Brand name: Cybex China is our other pram", "Brand - Cybex China is our other pram", "BRAND: Cybex China is our other pram", "品牌名稱：Cybex China 是我們另一台推車", "Sold by Cybex China\nour other pram", "© 2026 Cybex China is our other pram", "Contact: Cybex Japan Edition", "Manufacturer: Cybex China Lightweight", "Cybex China registered as our other pram", "the Cybex Japan Inc", "the Cybex Japan Inc.", "Cybex China Ltd registered as our other pram", "our other pram is the Cybex China Ltd", "the Cybex Japan Inc, our other pram", "Cybex Japan Store, our other pram", "Brand: Cybex China\nOur other pram, lighter than Melio", "we love our other pram\nSold by Cybex China"])
+    it(`must block: ${JSON.stringify(b)}`, () => assert.equal(v(b), false));
+  for (const b of ['© 2026 Cybex GmbH', 'Cybex UK Ltd registered in England', 'Cybex Inc., USA', 'Contact: Cybex CN', 'CYBEX China 官方旗舰店',
+    'Cybex Japan 公式ストア', 'Brand: Cybex Germany', '品牌：Cybex Germany', 'ブランド: Cybex Japan', 'Sold by CYBEX Germany', 'Cybex GmbH, Bayreuth, Germany'])
+    it(`must verify: ${b}`, () => assert.equal(v(b), true));
+});
