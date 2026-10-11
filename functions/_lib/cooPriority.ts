@@ -917,18 +917,56 @@ export function negatedMadeIn(t: string): Set<string> {
 export const PART_LABEL_LINE_RE = new RegExp(`^[ \\t　]*(?:${PART_FIELD_WORDS.join('|')})[^\\n：:]{0,4}[ \\t　]*[:：]?[ \\t　]*$`, 'u');
 
 /**
- * r45 (Ming / Chief, one rule): on label and note, a CJK made-in (日本製) confirms only as the WHOLE value of its line:
+ * r45 (Ming / Chief, one rule): on label and note, a CJK made-in (日本製) confirms only as the WHOLE value of its unit
+ * (the line split only at ， 、 / 。 , — spaces stay inside a unit):
  * alone on the line (spaces and trailing punctuation trimmed; a question mark is not trimmed, 日本製？ is a question),
  * after an origin label (產地：, 原產地：, 製造國： … folded), or alone inside quote brackets (「日本製」). The one
  * allowance is the same country repeated in English (日本製 MADE IN JAPAN). Anything else on the line: no confirm.
  * Negation and part labels stay #44's rules.
  */
+/** r45 (Chief): the only unit separators on a label / note line. */
+const UNIT_SEPARATORS = '，、/。,';
+/** The claim's unit (its line cut at UNIT_SEPARATORS) passes the whole-value shape. */
+function unitShapeOk(before: string, after: string, country: string): boolean {
+  const unitBefore = before.slice(Math.max(...[...UNIT_SEPARATORS].map((c) => before.lastIndexOf(c))) + 1);
+  const cut = [...UNIT_SEPARATORS].map((c) => after.indexOf(c)).filter((i) => i >= 0);
+  const unitAfter = cut.length ? after.slice(0, Math.min(...cut)) : after;
+  return wholeValueShape(unitBefore, unitAfter, country);
+}
+/**
+ * Lines (by start index) holding a CJK made-in that fails the whole-value shape, with that country: the line then gives
+ * no claim for that country at all, so 產地：日本製？ and 日本製 MADE IN JAPAN STYLE never confirm through the
+ * origin-label or English reader either.
+ */
+function failedShapeLines(raw: string): Map<number, Set<string>> {
+  const out = new Map<number, Set<string>>();
+  const re = new RegExp(LABEL_COO_SUFFIX.source, 'g');
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(raw)) !== null) {
+    const ls = raw.lastIndexOf('\n', m.index - 1) + 1;
+    const le0 = raw.indexOf('\n', m.index);
+    const le = le0 < 0 ? raw.length : le0;
+    // 朝鮮 keeps #44's own closed whole-value rule (產地：朝鮮製品 is North Korea).
+    if (/朝[鮮鲜]/.test(m[1]!)) continue;
+    const named = CJK_TO_LABEL[m[1]!] ?? m[1]!;
+    const country = canonicalCountry(named) ?? canonicalCountry(normalizeCooLabel(named)) ?? named.toLowerCase();
+    if (unitShapeOk(raw.slice(ls, m.index), raw.slice(m.index + m[0].length, le), country)) continue;
+    if (!out.has(ls)) out.set(ls, new Set());
+    out.get(ls)!.add(country);
+  }
+  return out;
+}
 const QUOTE_PAIRS: Record<string, string> = { '「': '」', '『': '』', '【': '】', '“': '”', '"': '"' };
 const TRAIL_PUNCT = /[ \t\u3000。．.，,、！!；;：:…~～]+$/u;
 function sameEnglishClaim(s: string, country: string): boolean {
   const m = /^[(（]?\s*(?:made|manufactured|produced|assembled)\s+in\s+(?:the\s+)?([A-Za-z][A-Za-z .]*?)\s*\.?\s*[)）]?$/i.exec(s.trim());
-  const v = m ? madeInValueCountry(m[1]!) : null;
-  return !!v && (canonicalCountry(v) ?? v.toLowerCase()) === country;
+  if (!m) return false;
+  // The repeat must itself be a whole claim: the captured name is the country name and nothing more (no STYLE).
+  const v = madeInValueCountry(m[1]!);
+  const words = m[1]!.trim().split(/\s+/);
+  // A shorter prefix already naming the country means extra words follow it (JAPAN STYLE): not a whole claim.
+  const shorter = words.length > 1 ? madeInValueCountry(words.slice(0, -1).join(' ')) : null;
+  return !!v && !shorter && (canonicalCountry(v) ?? v.toLowerCase()) === country;
 }
 function wholeValueShape(before: string, after: string, country: string): boolean {
   let b = before.trim();
@@ -956,6 +994,7 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
   if (!raw.trim()) return [];
   const out: CooClaim[] = [];
   const seen = new Set<string>();
+  const failed = failedShapeLines(raw);
   COO_LINE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = COO_LINE.exec(raw)) !== null) {
@@ -970,6 +1009,7 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     if (NEGATED_EN_BEFORE.test(raw.slice(Math.max(0, m.index - 8), m.index))) continue;
     // r44: 產地：中國/朝鮮 names two places; never just one of them.
     if (koreaListLine(raw, m.index)) continue;
+    if (failed.get(raw.lastIndexOf('\n', m.index - 1) + 1)?.has(canonicalCountry(label) ?? label.toLowerCase())) continue;
     const start = Math.max(0, m.index - 80);
     const end = Math.min(raw.length, m.index + m[0].length + 80);
     const window = raw.slice(start, end);
@@ -986,6 +1026,7 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     const label = MADE_IN_CODE_LABEL[c.code]!;
     // "Made in USA" / "Made in PRC" already read by name above: one claim.
     if (out.some((c) => canonCountry(c.label) === canonCountry(label))) continue;
+    if (failed.get(raw.lastIndexOf('\n', c.index - 1) + 1)?.has(canonicalCountry(label) ?? label.toLowerCase())) continue;
     const region = normalizeRegion(label);
     const start = Math.max(0, c.index - 80);
     const end = Math.min(raw.length, c.index + c.length + 80);
@@ -1015,7 +1056,11 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
       {
         const named = CJK_TO_LABEL[m[1]] ?? m[1];
         const country = canonicalCountry(named) ?? canonicalCountry(normalizeCooLabel(named)) ?? named.toLowerCase();
-        if (!wholeValueShape(before, after, country)) {
+        // Chief: a line is split into units only at ， 、 / 。 (and , /); spaces stay inside a unit. The negation check
+        // reads the whole line, across those separators (不是、日本製, 非。日本製).
+        const lineNoSep = raw.slice(ls, le).replace(/[，、/。,\s\u3000]/gu, '');
+        if (negatedMadeIn(lineNoSep).has(country)) continue;
+        if (!unitShapeOk(before, after, country)) {
           // Not a whole value; a part after it is still kept aside for the USA-only rule below.
           if (PART_AFTER_SUFFIX.test(after) || CJK_PART_FIELD_BEFORE.test(before) || PART_LABEL_LINE_RE.test(raw.slice(raw.lastIndexOf('\n', ls - 2) + 1, Math.max(0, ls - 1)))) {
             partHits.push(/[\u30a0-\u30ff]/.test(named) ? normalizeCooLabel(named) : named);

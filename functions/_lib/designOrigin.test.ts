@@ -62,9 +62,7 @@ describe('design / brand phrases', () => {
     assert.deepEqual(extractCooClaimsFromText(t).map((c) => c.region), ['CN']);
     assert.deepEqual(regexCooClaims([page('https://a.example.com/', `Cybex Melio\n${t}`)]).map((c) => c.country), ['China']);
     assert.deepEqual(designMentions(t).map((d) => d.country), ['Germany']);
-    // r45 whole-value rule: 德國設計，中國製造 is no whole-value CJK claim on the label any more (accepted over-caution).
-    assert.deepEqual(extractCooClaimsFromText('德國設計，中國製造').map((c) => c.region), []);
-    for (const s of ['Designed in Germany and made in China', '設計於德國，產地：中國', 'German engineering, Made in China']) {
+    for (const s of ['Designed in Germany and made in China', '德國設計，中國製造', '設計於德國，產地：中國', 'German engineering, Made in China']) {
       assert.deepEqual(extractCooClaimsFromText(s).map((c) => c.region), ['CN'], s);
       assert.ok(!stripDesignPhrases(s).match(/germany|德國|ドイツ/i), s);
     }
@@ -223,8 +221,7 @@ describe('CJK design phrases end at their first country; a country + 製/製造/
       assert.deepEqual(d.map((x) => [x.country, x.kind]), [[design, 'design']]);
       // The phrase stops right after its country: the made-in country is left whole.
       assert.ok(stripDesignPhrases(text).includes(made), stripDesignPhrases(text));
-      // r45 whole-value rule: a leftover comma (設計於德國，中國產) leaves the claim no whole value (over-caution).
-      assert.deepEqual(extractCooClaimsFromText(text).map((c) => c.label), text.includes('，') ? [] : [made]);
+      assert.deepEqual(extractCooClaimsFromText(text).map((c) => c.label), [made]);
     });
   }
   it('產品 / 產業 after a country are not made-in words', () => {
@@ -246,8 +243,7 @@ describe('德國廠牌 / 德國廠商 / 創立於 / 成立於 are brand / HQ wor
     });
   }
   it('成立於德國，中國製造 → brand Germany, made-in China only', () => {
-    // r45 whole-value rule: no CJK claim on this line (accepted over-caution); still never Germany.
-    assert.deepEqual(extractCooClaimsFromText('成立於德國，中國製造').map((c) => c.label), []);
+    assert.deepEqual(extractCooClaimsFromText('成立於德國，中國製造').map((c) => c.label), ['中國']);
   });
 });
 
