@@ -14,7 +14,8 @@ import { normalizeRegion } from '../../functions/_lib/regions';
 import { zhCountryText } from '../../functions/_lib/zhHant';
 import { canonicalCountry } from '../../functions/_lib/countryLabel';
 import { notesNameMadeIn, notesNameOnlyAsDesign } from '../../functions/_lib/noteText';
-import { brandHqFolded, companyFactsSourced, confirmedMadeIn, pickOwner } from './ChinaLink';
+import { factVerified, quoteNamesBrand } from '../core/evidence';
+import { brandHqFolded, confirmedMadeIn, pickOwner } from './ChinaLink';
 
 const VAGUE_RE =
   /^(unknown|n\/?a|na|none|null|unclear|not\s+(known|stated|confirmed)|unconfirmed|未知|不明|不詳|不清楚|未確認|未确认|-|—)?$/i;
@@ -67,6 +68,15 @@ export type MadeInView = {
      */
     exactPages?: 1;
   }>;
+  /**
+   * Unconfirmed only: every other made-in candidate the answer holds, with
+   * its confidence and where it came from, shown under 模型參考（未經確認）.
+   * Never graded, never confirmed; HQ / owner echoes and countries a note
+   * names only as design / brand wording are left out.
+   */
+  weakCandidates?: WeakCandidate[];
+  /** What the card lists under 模型參考（未經確認）: candidates + weakCandidates, never the confirmed country. */
+  unconfirmedTier: WeakCandidate[];
   /** Unconfirmed only: the one reason chip. */
   reason?: UnconfirmedReason;
   /**
@@ -91,7 +101,21 @@ export type MadeInView = {
 /** One 爭議 side; `label` = a claim on the package label (no page count). */
 export type DisputeSide = { country: string; pages: number; exactPages: number; label?: boolean };
 
-export type DesignRow = { country: string; kind: 'design' | 'brand'; source?: SourceRow };
+export type WeakCandidate = {
+  label: string;
+  /** 0–1 when the answer gave one (a page-only row has none). */
+  confidence?: number;
+  source: Candidate['source'];
+  /** Pages behind a name-matched row (shown, never counted). */
+  sources?: SourceRow[];
+  /** A 爭議 side: no % (the pages disagree). */
+  neutral?: boolean;
+  /** Rests on exactly one exact-model page: 「1 個型號相符的網頁」 as its source. */
+  exactPages?: 1;
+};
+
+/** `verified`: a brand quote read on a fetched page / the label (確認); otherwise a brand row reads 有提及. */
+export type DesignRow = { country: string; kind: 'design' | 'brand'; source?: SourceRow; verified?: boolean };
 
 /** Candidate sources that never stand for a made-in (HQ / owner echoes). */
 const NOT_MADE_IN = new Set(['ownership', 'manufacturer', 'confirmed_coo']);
@@ -292,6 +316,26 @@ function candidateRows(result: CheckResult, candidates: Candidate[], unconfirmed
     .slice(0, 4);
 }
 
+/**
+ * Candidates the graded list left out, for the 模型參考（未經確認） tier. Same
+ * design guard as candidateRows: a country a note names only as design /
+ * brand wording, or an HQ / owner echo, never shows as a made-in here.
+ */
+function weakRows(result: CheckResult, candidates: Candidate[], shown: CandRow[]): WeakCandidate[] {
+  const out: WeakCandidate[] = [];
+  for (const c of candidates) {
+    const label = cleanValue(c.label);
+    if (!label || c.rating === 'confirmed') continue;
+    if (c.source !== 'confirmed_coo' && NOT_MADE_IN.has(String(c.source))) continue;
+    if (c.source === 'notes' && notesNameOnlyAsDesign(result.product?.notes, label)) continue;
+    if (shown.some((r) => sameCountryLabel(r.label, label))) continue;
+    if (out.some((r) => sameCountryLabel(r.label, label))) continue;
+    const conf = Number.isFinite(c.confidence) ? Math.max(0, Math.min(1, c.confidence)) : 0;
+    out.push({ label, confidence: conf, source: c.source === 'confirmed_coo' ? 'model_memory' : c.source });
+  }
+  return out.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0)).slice(0, 4);
+}
+
 /** host: the page's domain, shown when the title is not already the domain. */
 export type SourceRow = {
   label: string;
@@ -388,7 +432,7 @@ function withPathHints(rows: SourceRow[]): SourceRow[] {
   });
 }
 
-function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' | 'excludedRows' | 'designRows'> {
+function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' | 'excludedRows' | 'designRows' | 'unconfirmedTier'> {
   const p = result.product;
   const meta = result.meta;
   const sources = Array.isArray(result.sources) ? cleanSources(result.sources, 8) : [];
@@ -528,8 +572,10 @@ function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' 
     for (const d of pageDispute) if (!merged.some((x) => sameCountryLabel(x.country, d.country))) merged.push(d);
     dispute = merged;
   }
+  const weakCandidates = weakRows(result, candidates, rows);
   return {
     state: 'unconfirmed',
+    ...(weakCandidates.length ? { weakCandidates } : {}),
     // No basis / confidence / source-count chip on a 未確認 headline.
     sourceCount: 0,
     sourceRows: [],
@@ -559,22 +605,23 @@ export type LayerRowView = {
 
 /**
  * 產地分層 rows. Tags say how far the value is backed:
- * web-searched company facts → 確認; model memory → 有提及; label-read parts
+ * company facts → 有提及 (brand origin → 確認 only with a brand quote naming that
+ * country, src/core/evidence.ts); label-read parts
  * → 確認; web parts → their own candidate grade + %; model parts →
  * 模型參考（未經多重確認） + ⓘ (no tag); nothing → 未確認.
  */
 export function buildLayerRows(result: CheckResult): LayerRowView[] {
   const p = result.product;
   const c = result.company;
-  // 確認 = web research with a Source line (same rule as the company floor).
-  const web = companyFactsSourced(result);
-  const factTag: LayerTag = web ? 'confirmed' : 'mentioned';
+  // Per row: 確認 only when a verified quote names this row's own fact and
+  // country (src/core/evidence.ts). A Source line alone is 有提及.
+  const factTag: LayerTag = 'mentioned';
   const rows: LayerRowView[] = [];
 
   const brandOrigin = cleanValue(p?.originCountry);
   rows.push(
     brandOrigin
-      ? { key: 'brandOrigin', value: '', country: brandOrigin, tag: factTag }
+      ? { key: 'brandOrigin', value: '', country: brandOrigin, tag: factVerified(result, 'brand', brandOrigin) ? 'confirmed' : factTag }
       : { key: 'brandOrigin', value: '', tag: 'unconfirmed' }
   );
   // Folded parent HQ (see brandHqFolded): the China HQ is the parent's, so
@@ -630,7 +677,6 @@ export function buildLayerRows(result: CheckResult): LayerRowView[] {
     parents.find((x) => x.control === 'majority' || x.control === 'wholly') ??
     parents[0];
   if (parent) {
-    const controlling = parent.control === 'majority' || parent.control === 'wholly';
     rows.push({
       key: 'parent',
       value: parent.name.trim(),
@@ -638,7 +684,7 @@ export function buildLayerRows(result: CheckResult): LayerRowView[] {
         cleanValue(parent.country) ||
         (folded && picked?.name === parent.name.trim() ? picked.country : '') ||
         undefined,
-      tag: controlling && web ? 'confirmed' : 'mentioned',
+      tag: 'mentioned',
     });
   }
   return rows;
@@ -686,10 +732,40 @@ function excludedRows(result: CheckResult): MadeInView['excludedRows'] {
   return rows;
 }
 
+/**
+ * 模型參考（未經確認）: the main list holds only the confirmed country (the
+ * headline); every other candidate, from any source, is listed here with its
+ * % (when the answer gave one), its source and 未確認.
+ */
+function tierRows(result: CheckResult, core: ReturnType<typeof buildMadeInViewCore>): WeakCandidate[] {
+  const cands = result.product?.originCandidates ?? [];
+  const out: WeakCandidate[] = [];
+  for (const c of core.candidates) {
+    if (core.state === 'confirmed' && core.country && sameCountryLabel(c.label, core.country)) continue;
+    const own =
+      cands.find((x) => sameCountryLabel(x.label, c.label) && x.source === c.source) ??
+      cands.find((x) => sameCountryLabel(x.label, c.label) && x.source !== 'ownership' && x.source !== 'manufacturer');
+    const conf =
+      !c.neutral && !c.exactPages && own && Number.isFinite(own.confidence) ? Math.max(0, Math.min(1, own.confidence)) : undefined;
+    out.push({
+      ...(c.neutral ? { neutral: true } : {}),
+      ...(c.exactPages ? { exactPages: 1 as const } : {}),
+      label: c.label,
+      source: c.source === 'confirmed_coo' ? 'model_memory' : c.source,
+      ...(conf !== undefined ? { confidence: conf } : {}),
+      ...(c.sources?.length ? { sources: c.sources } : {}),
+    });
+  }
+  for (const w of core.weakCandidates ?? []) if (!out.some((r) => sameCountryLabel(r.label, w.label))) out.push(w);
+  return out;
+}
+
 export function buildMadeInView(result: CheckResult): MadeInView {
   const core = buildMadeInViewCore(result);
+  const tier = tierRows(result, core);
   return {
     ...core,
+    unconfirmedTier: tier,
     citedRows: citedRows(result),
     excludedRows: excludedRows(result),
     designRows: designRows(result, core.state === 'confirmed' ? core.country : undefined),
@@ -706,6 +782,8 @@ function designRows(result: CheckResult, madeIn?: string): DesignRow[] {
   for (const d of result.product?.designInfo ?? []) {
     const country = cleanValue(d.country);
     if (!country || (madeIn && sameCountryLabel(country, madeIn))) continue;
+    // A brand country only with the page that says it (no unsourced 「X品牌」).
+    if (d.kind === 'brand' && !quoteNamesBrand(d.quote, country)) continue;
     if (rows.some((r) => sameCountryLabel(r.country, country))) continue;
     const url = d.url?.trim();
     let source: SourceRow | undefined;
@@ -715,7 +793,13 @@ function designRows(result: CheckResult, madeIn?: string): DesignRow[] {
       const label = sourceLabel(parts) || host || url;
       source = { label, url: parts.url ?? url, host: host && host !== label ? host : undefined };
     }
-    rows.push({ country: canonicalCountry(country) ?? country, kind: d.kind === 'brand' ? 'brand' : 'design', ...(source ? { source } : {}) });
+    const brand = d.kind === 'brand';
+    rows.push({
+      country: canonicalCountry(country) ?? country,
+      kind: brand ? 'brand' : 'design',
+      ...(source ? { source } : {}),
+      ...(brand && factVerified(result, 'brand', country) ? { verified: true } : {}),
+    });
     if (rows.length >= MAX_DESIGN_ROWS) break;
   }
   return rows;

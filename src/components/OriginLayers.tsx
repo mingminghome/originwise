@@ -2,6 +2,7 @@
  * Labeled origin layers — presentation only from existing CheckResult fields.
  * Ownership/parents must never be shown as Final COO (madeIn).
  */
+import { noteWithinEvidence, shownStrength } from '../core/evidence';
 import {
   cleanSources,
   sourceLabel,
@@ -216,8 +217,8 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
       kind: 'relation',
       type,
       country: rel.country?.trim() || undefined,
-      strength: rel.strength || undefined,
-      note: rel.note?.trim() || undefined,
+      strength: shownStrength(result, rel) || undefined,
+      note: (rel.note?.trim() && noteWithinEvidence(result, rel.note.trim()) ? rel.note.trim() : undefined),
     });
   }
   for (const cand of p?.originCandidates ?? []) {

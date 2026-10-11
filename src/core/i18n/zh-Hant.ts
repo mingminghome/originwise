@@ -72,6 +72,7 @@ export const zhHant = {
       moreInfo: '說明',
       candidatesTitle: '查到的產地候選（未確認）',
       noCandidates: '沒有查到可信的產地候選。',
+      weakTitle: '模型參考（未經確認）',
       sourceCount: '{n} 個來源',
       sourceFirst: '來源 1：{label}',
       sourceNth: '來源 {n}：{label}',
@@ -165,6 +166,7 @@ export const zhHant = {
       strong: '強關聯',
       moderate: '中等關聯',
       weak: '弱關聯',
+      unverified: '關聯（未確認）',
     },
     agentsHint:
       '每一列是一次免費伺服器 AI 呼叫。失敗多半是配額、模型權限或逾時；我們會再試其他模型。即時網路搜尋需使用 Google 搜尋（Gemini）的額度，與一般文字額度分開計算。',

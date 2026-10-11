@@ -19,7 +19,6 @@ import {
   buildLayerRows,
   buildMadeInView,
   cleanValue,
-  modelOnlyPartCandidate,
   type DisputeSide,
   type LayerTag,
 } from './resultCards.model';
@@ -325,52 +324,51 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
           </ul>
         ) : null}
 
-        {view.candidates.length || (!confirmed && !view.dispute?.length) ? (
-          // Under a 爭議 line with nothing below it, the empty heading is hidden too.
+        {view.unconfirmedTier.length ? (
+          // The main list holds only the confirmed country (the headline). Every
+          // other candidate, from any source: country · % · source · 未確認, with
+          // the pages behind it. Never a grade, never 確認; design / brand
+          // wording stays in its own rows below.
+          <div className="rc-candidates rc-candidates--weak" data-testid="madein-weak">
+            <p className="rc-sub">{t('check.rc.weakTitle')}</p>
+            <ul>
+              {view.unconfirmedTier.map((c) => (
+                <li key={`weak-${c.label}-${c.source}`} className="is-model">
+                  <span className="rc-cand-country is-model">
+                    <span className="rc-cand-name">{localizeCountry(t, c.label)}</span>
+                  </span>
+                  <span className="rc-cand-meta" data-testid={c.exactPages ? 'cand-exact-one' : undefined}>
+                    {/* A 爭議 side: no % and no source word (its pages are listed
+                        below and counted in the 爭議 line). */}
+                    {[
+                      c.confidence !== undefined ? `${Math.round(c.confidence * 100)}%` : null,
+                      c.neutral ? null : c.exactPages ? t('check.rc.oneExactModelPage') : t(`check.candidateSource.${c.source}`),
+                      t('check.rc.tagUnconfirmed'),
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                  {c.sources?.length ? (
+                    <ol className="rc-cand-sources">
+                      {c.sources.map((src, i) => {
+                        const { before, after } = sourcePrefix(t, i + 1);
+                        return (
+                          <li key={src.url ?? src.label} className="rc-source">
+                            <SourceLine t={t} prefix={before} suffix={after} src={{ ...src, country: undefined }} />
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : !confirmed && !view.dispute?.length ? (
+          // 「沒有可信候選」 only when no candidate of any kind is left; a 爭議
+          // line already says why there is no answer.
           <div className="rc-candidates">
-            <p className="rc-sub">{t('check.rc.candidatesTitle')}</p>
-            {view.candidates.length ? (
-              <ul>
-                {view.candidates.map((c) => {
-                  // Model made-in guess, or a parts row only the model named.
-                  const model = modelOnlyPartCandidate(result, c);
-                  return (
-                    <li key={`${c.label}-${c.source}`} className={model ? 'is-model' : undefined}>
-                      {/* Country + model label share one cell; the label may wrap inside it, never apart. */}
-                      <span className={`rc-cand-country${model ? ' is-model' : ''}`}>
-                        <span className="rc-cand-name">{localizeCountry(t, c.label)}</span>
-                        {model ? <ModelRefLabel t={t} /> : null}
-                      </span>
-                      {/* Model-only guess: 模型參考 only. Pages that disagree: neutral
-                          (no grade). One exact-model page: 「1 個型號相符的網頁」, no grade.
-                          Otherwise the row's own grade, with no hedge suffix. */}
-                      {model || c.neutral ? null : (
-                        <span className="rc-cand-meta" data-testid={c.exactPages ? 'cand-exact-one' : undefined}>
-                          {c.exactPages
-                            ? t('check.rc.oneExactModelPage')
-                            : `${t(`check.candidateRating.${c.rating}`)} · ${t(`check.candidateSource.${c.source}`)}`}
-                        </span>
-                      )}
-                      {c.sources?.length ? (
-                        <ol className="rc-cand-sources">
-                          {c.sources.map((src, i) => {
-                            const { before, after } = sourcePrefix(t, i + 1);
-                            return (
-                              <li key={src.url ?? src.label} className="rc-source">
-                                <SourceLine t={t} prefix={before} suffix={after} src={{ ...src, country: undefined }} />
-                              </li>
-                            );
-                          })}
-                        </ol>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : view.dispute?.length ? null : (
-              // A 爭議 line already says why there is no answer.
-              <p className="rc-empty">{t('check.rc.noCandidates')}</p>
-            )}
+            <p className="rc-empty">{t('check.rc.noCandidates')}</p>
           </div>
         ) : null}
 
@@ -386,6 +384,12 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
                       country: localizeCountry(t, d.country),
                     })}
                   </span>
+                  {d.kind === 'brand' ? (
+                    // Brand row: 確認 only with a quote read on a fetched page or the label.
+                    <span className={`rc-tag is-${d.verified ? 'confirmed' : 'mentioned'}`} data-testid="brand-tag">
+                      {t(d.verified ? 'check.rc.tagConfirmed' : 'check.rc.tagMentioned')}
+                    </span>
+                  ) : null}
                   {d.source ? (
                     <span className="rc-source rc-design-source">
                       <SourceLine t={t} prefix={before} suffix={after} src={d.source} />

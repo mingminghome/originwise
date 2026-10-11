@@ -72,6 +72,7 @@ export const it = {
       moreInfo: 'Maggiori informazioni',
       candidatesTitle: 'Paesi di produzione candidati (non confermati)',
       noCandidates: 'Nessun candidato affidabile trovato.',
+      weakTitle: 'Riferimento del modello (non confermato)',
       sourceCount: 'Fonti: {n}',
       sourceFirst: 'Fonte 1: {label}',
       sourceNth: 'Fonte {n}: {label}',
@@ -167,6 +168,7 @@ export const it = {
       strong: 'legame forte',
       moderate: 'legame moderato',
       weak: 'legame debole',
+      unverified: 'legame (non confermato)',
     },
     agentsHint:
       'Ogni riga è una chiamata IA del server gratuito. I fallimenti spesso dipendono da quota, accesso al modello o timeout; proviamo altri modelli o un fallback. Il web in tempo reale richiede Gemini Search grounding (non è lo stesso RPM del testo).',

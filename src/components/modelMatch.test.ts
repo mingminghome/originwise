@@ -109,7 +109,7 @@ describe('製造地 card, 依型號比對', () => {
     assert.deepEqual(v.candidates.map((c) => c.label), ['Czech Republic']);
     const zhT = createT('zh-Hant');
     const zh = text(React.createElement(MadeInCard, { result: WEB2_OUTVOTED, t: zhT }));
-    assert.ok(zh.includes(zhT('check.rc.modelRef')), zh);
+    assert.ok(zh.includes(zhT('check.rc.weakTitle')), zh);
     assert.ok(!zh.includes('AI 回答'), 'the outvoted AI answer is not a source row');
   });
 
@@ -119,7 +119,7 @@ describe('製造地 card, 依型號比對', () => {
     assert.equal(v.sourceCount, 0);
     const zhT = createT('zh-Hant');
     const zh = text(React.createElement(MadeInCard, { result: AI_ONLY, t: zhT }));
-    assert.ok(zh.includes(zhT('check.rc.modelRef')));
+    assert.ok(zh.includes(zhT('check.rc.weakTitle')));
     assert.ok(!zh.includes('依型號比對'));
   });
 
@@ -196,7 +196,7 @@ describe('製造地 rule cases (example fixture madein-rules.json)', () => {
     assert.equal(v.reason, 'aiOnly');
     const zh = card(RULES.rule3.result);
     assert.ok(zh.includes('只有 AI 回答，未有網頁佐證'));
-    assert.ok(zh.includes(zhT('check.rc.modelRef')));
+    assert.ok(zh.includes(zhT('check.rc.weakTitle')));
   });
 
   it('4: exact-model pages disagree → 未確認, 網頁說法不一, neutral candidates with their own sources, no basis chip', () => {
@@ -223,7 +223,7 @@ describe('製造地 rule cases (example fixture madein-rules.json)', () => {
     const zh = card(r);
     assert.match(zh, /AI 引用，未能驗證：Cybex Melio factory/);
     assert.ok(zh.includes('AI 引用未能驗證'));
-    assert.ok(zh.includes(zhT('check.rc.modelRef')));
+    assert.ok(zh.includes(zhT('check.rc.weakTitle')));
     for (const lng of locales) {
       const t = createT(lng);
       const label = t('check.rc.citedUnverified');
@@ -259,13 +259,13 @@ describe('製造地 rule cases (example fixture madein-rules.json)', () => {
     const china = buildMadeInView(r).candidates.find((c) => c.label === 'China' || c.label === '中國');
     assert.equal(china?.exactPages, 1);
     const zhHtml = renderToStaticMarkup(React.createElement(MadeInCard, { result: r, t: zhT }));
-    assert.match(zhHtml, /<span class="rc-cand-meta" data-testid="cand-exact-one">1 個型號相符的網頁<\/span>/);
+    assert.match(zhHtml, /<span class="rc-cand-meta" data-testid="cand-exact-one">1 個型號相符的網頁 · 未確認<\/span>/);
     assert.ok(!zhHtml.includes('較可能'), zhHtml);
     assert.ok(!zhHtml.includes('依品名比對'), zhHtml);
     assert.ok(!/\d+%/.test(zhHtml), zhHtml);
     const en = createT('en');
     const enHtml = renderToStaticMarkup(React.createElement(MadeInCard, { result: r, t: en }));
-    assert.match(enHtml, /<span class="rc-cand-meta" data-testid="cand-exact-one">1 exact-model page<\/span>/);
+    assert.match(enHtml, /<span class="rc-cand-meta" data-testid="cand-exact-one">1 exact-model page · Unconfirmed<\/span>/);
     assert.ok(!enHtml.includes(en('check.candidateRating.likely')), enHtml);
     for (const lng of locales) {
       const t = createT(lng);
@@ -286,12 +286,14 @@ describe('製造地 rule cases (example fixture madein-rules.json)', () => {
       const html = renderToStaticMarkup(React.createElement(MadeInCard, { result: one, t }));
       assert.ok(!html.includes(t('check.rc.oneExactModelPage')), html);
       assert.ok(!html.includes('cand-exact-one'), html);
-      assert.ok(html.includes(`${t('check.candidateRating.likely')} · ${t('check.candidateSource.web_name')}`), html);
+      // #46: no grade word; source · 未確認 in the 模型參考（未經確認） tier.
+      assert.ok(html.includes(`${t('check.candidateSource.web_name')} · ${t('check.rc.tagUnconfirmed')}`), html);
+      assert.ok(!html.includes(`>${t('check.candidateRating.likely')} ·`), html);
     }
     // Disagreeing exact pages (case 4) stay neutral: no grade and no exact-page
     // count on the rows; the counts sit in the 爭議 line only.
     const four = renderToStaticMarkup(React.createElement(MadeInCard, { result: RULES.rule4.result, t: zhT }));
-    assert.ok(!four.includes('cand-exact-one') && !four.includes('rc-cand-meta'), four);
+    assert.ok(!four.includes('cand-exact-one') && !/\d+%|較可能/.test(four), four);
     assert.ok(four.includes('madein-dispute'), four);
   });
 

@@ -18,6 +18,7 @@ import { MADE_IN_CODE_LABEL, NOT_PRODUCT_FIELD, canonicalCountry, madeInCodeMatc
 import { madeInValueCountry, negatedMadeIn, PART_LABEL_LINE_RE, partFieldMatches, settleCooFields, US_STATES, US_TOWN_NAMES } from '../cooPriority';
 import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE, koreaListLine } from '../countryNames';
 import { designMentions, quoteBacksCountry, stripDesignPhrases } from '../designOrigin';
+import { CITY_NAMES, CN_PLACES, CN_PLACES_LATIN } from '../placeNames';
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
 import type { FetchedPage, PageBlock, SearchEnv, SearchEvidence, SearchOutput } from './types';
@@ -1416,26 +1417,6 @@ function strictCountry(s: string, pure = false): boolean {
 }
 /** Country names (with their multi-word and native forms) on a line are never a product name. */
 const COUNTRY_SPAN_RE = new RegExp(`(?<![A-Za-z])(?:netherlands\\s+antilles|america|chine|deutschland|italia|nippon|espa[ñn]a|schweiz|suisse|österreich|sverige|danmark|norge|suomi|polska|nederland|belgique|bharat|türkiye|turkiye|osterreich|jersey|guernsey|siberia|virgin\\s+islands|northern\\s+ireland|scotland|england|wales|${COUNTRY_LIST_LATIN_RE})(?![A-Za-z])`, 'gi');
-/** Chinese provinces and major manufacturing cities after a country ("產地：中國（廣東）", "China (Guangdong)"). */
-/** US states in CJK ("產地：美國，喬治亞州", "Made in China, 德州"); 州 is allowed after them. */
-// Sourced only. 喬治亞州 (cna.com.tw/news/aopl/202601060130.aspx, "美國喬治亞州製造廠"), 德州 (ti.com/zh-tw
-// newsroom 2026-01-09, "德州謝爾曼的…製造廠"), 加州 (cna.com.tw/news/aopl/202504240143.aspx, "加州…美國製造產值的中心").
-const US_STATES_CJK = ['喬治亞', '德州', '加州'];
-const CN_PLACES = [...US_STATES_CJK, '江門', '江门', '昆山', '北京', '天津', '上海', '重慶', '重庆', '河北', '山西', '遼寧', '辽宁', '吉林', '黑龍江', '黑龙江', '江蘇', '江苏', '浙江', '安徽', '福建', '江西', '山東', '山东', '河南', '湖北', '湖南', '廣東', '广东', '海南', '四川', '貴州', '贵州', '雲南', '云南', '陝西', '陕西', '甘肅', '甘肃', '青海', '內蒙古', '内蒙古', '廣西', '广西', '西藏', '寧夏', '宁夏', '新疆', '深圳', '廣州', '广州', '東莞', '东莞', '寧波', '宁波', '廈門', '厦门', '蘇州', '苏州', '杭州', '青島', '青岛', '佛山', '中山', '溫州', '温州', '義烏', '义乌'];
-const CN_PLACES_LATIN = ['beijing', 'tianjin', 'shanghai', 'chongqing', 'hebei', 'shanxi', 'liaoning', 'jilin', 'heilongjiang', 'jiangsu', 'zhejiang', 'anhui', 'fujian', 'jiangxi', 'shandong', 'henan', 'hubei', 'hunan', 'guangdong', 'hainan', 'sichuan', 'guizhou', 'yunnan', 'shaanxi', 'gansu', 'qinghai', 'inner mongolia', 'guangxi', 'tibet', 'ningxia', 'xinjiang', 'shenzhen', 'guangzhou', 'dongguan', 'ningbo', 'xiamen', 'suzhou', 'hangzhou', 'qingdao', 'foshan', 'zhongshan', 'wenzhou', 'yiwu', 'jiangmen', 'kunshan'];
-/** Large US and UK cities named after a made-in country ("Made in USA, Atlanta, GA", "USA, Cleveland", "Nottingham, made in UK"). */
-const CITY_NAMES = [
-  // München / Munich: bmwgroup.com/en/general/imprint.html ("Bayerische Motoren Werke Aktiengesellschaft (Petuelring 130,
-  // 80809 München)"; "Domicile and Court of Registry: München HRB 42243").
-  'münchen', 'munich', 'new york', 'los angeles', 'chicago', 'houston', 'phoenix', 'philadelphia', 'san antonio', 'san diego', 'dallas', 'san jose', 'austin', 'jacksonville', 'columbus', 'charlotte', 'indianapolis', 'san francisco', 'seattle', 'denver', 'boston', 'nashville', 'detroit', 'portland', 'las vegas', 'memphis', 'louisville', 'baltimore', 'milwaukee', 'albuquerque', 'tucson', 'fresno', 'sacramento', 'atlanta', 'miami', 'cleveland', 'minneapolis', 'pittsburgh', 'cincinnati', 'kansas city', 'st. louis', 'orlando', 'tampa', 'honolulu', 'brooklyn', 'manhattan', 'chinatown', 'salt lake city', 'oakland', 'raleigh', 'omaha', 'tulsa', 'thousand oaks',
-  // UK cities ("Nottingham, made in UK")
-  // Bayreuth (CYBEX GmbH, mycbx.com/en-en/imprint: "Riedingerstr. 18 95448 Bayreuth Germany").
-  // Kulmbach (CYBEX's first seat): online-handelsregister.de HRB 3792 Bayreuth, Firmen-Historie
-  // "Columbus Trading-Partners GmbH (Kulmbach)". frankenpost.de 2020-03-14 (Hauptfirmensitz Kulmbach);
-  // kurier.de 2016-12-16 ("gründete … in Kulmbach, … zog es Cybex nach Bayreuth").
-  'bayreuth',
-  'kulmbach',
-  'london', 'manchester', 'birmingham', 'nottingham', 'leeds', 'glasgow', 'edinburgh', 'bristol', 'liverpool', 'sheffield', 'leicester', 'belfast', 'cardiff', 'newcastle'];
 const PLACE_LIST_RE = new RegExp(`(?<![A-Za-z])(?:${[...new Set([...CN_PLACES_LATIN, ...CITY_NAMES].flatMap((n) => [n, foldAccents(n)]))].sort((a, b) => b.length - a.length).map((n) => n.replace(/\./g, '\\.').replace(/ /g, '\\s+')).join('|')})(?:\\s+(?:city|province|state|prefecture))?(?![A-Za-z])|(?:${CN_PLACES.join('|')})[省市州縣县區区県]?`, 'gi');
 
 /** Place-position words. A listed place after one of these is grammar ("in Shenzhen"), not a name. */
@@ -2908,6 +2889,7 @@ export function designFromPages(design: PageDesign[], pages: FetchedPage[]): Des
     kind: d.kind,
     url: pages[d.page - 1]!.url,
     quote: d.quote.slice(0, 80),
+    fetched: true,
   }));
 }
 

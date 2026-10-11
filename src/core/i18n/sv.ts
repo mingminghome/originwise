@@ -72,6 +72,7 @@ export const sv = {
       moreInfo: 'Mer info',
       candidatesTitle: 'Hittade kandidater för tillverkningsland (ej bekräftade)',
       noCandidates: 'Inga tillförlitliga kandidater hittades.',
+      weakTitle: 'Modellreferens (obekräftad)',
       sourceCount: 'Källor: {n}',
       sourceFirst: 'Källa 1: {label}',
       sourceNth: 'Källa {n}: {label}',
@@ -167,6 +168,7 @@ export const sv = {
       strong: 'stark koppling',
       moderate: 'måttlig koppling',
       weak: 'svag koppling',
+      unverified: 'koppling (obekräftad)',
     },
     agentsHint:
       'Varje rad är ett gratisserver-AI-anrop. Misslyckanden beror ofta på kvot, modellåtkomst eller timeout; vi försöker andra eller en reserv. Live-web kräver Gemini Search grounding (inte samma sak som text-RPM).',
