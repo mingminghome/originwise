@@ -114,7 +114,8 @@ export type WeakCandidate = {
   exactPages?: 1;
 };
 
-export type DesignRow = { country: string; kind: 'design' | 'brand'; source?: SourceRow };
+/** `verified`: a brand quote read on a fetched page / the label (確認); otherwise a brand row reads 有提及. */
+export type DesignRow = { country: string; kind: 'design' | 'brand'; source?: SourceRow; verified?: boolean };
 
 /** Candidate sources that never stand for a made-in (HQ / owner echoes). */
 const NOT_MADE_IN = new Set(['ownership', 'manufacturer', 'confirmed_coo']);
@@ -792,7 +793,13 @@ function designRows(result: CheckResult, madeIn?: string): DesignRow[] {
       const label = sourceLabel(parts) || host || url;
       source = { label, url: parts.url ?? url, host: host && host !== label ? host : undefined };
     }
-    rows.push({ country: canonicalCountry(country) ?? country, kind: d.kind === 'brand' ? 'brand' : 'design', ...(source ? { source } : {}) });
+    const brand = d.kind === 'brand';
+    rows.push({
+      country: canonicalCountry(country) ?? country,
+      kind: brand ? 'brand' : 'design',
+      ...(source ? { source } : {}),
+      ...(brand && factVerified(result, 'brand', country) ? { verified: true } : {}),
+    });
     if (rows.length >= MAX_DESIGN_ROWS) break;
   }
   return rows;

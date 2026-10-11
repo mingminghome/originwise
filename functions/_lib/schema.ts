@@ -74,6 +74,8 @@ export type DesignInfo = {
   kind: 'design' | 'brand';
   url?: string;
   quote?: string;
+  /** The quote was read on a page we fetched, or on the package label photo (a verified source). */
+  fetched?: boolean;
 };
 
 /** A page the model cites for its made-in answer (checked before it counts). */

@@ -13,8 +13,7 @@ import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createT } from '../core/i18n';
 import type { CheckResult } from '../core/types';
-import { factVerified, noteWithinEvidence, quoteNamesBrand } from '../core/evidence';
-import { textTiesCountryToMade } from '../../functions/_lib/noteText';
+import { factVerified, noteWithinEvidence, quoteNamesBrand, shownStrength } from '../core/evidence';
 import { ResultPanel } from './ResultPanel';
 import { MadeInCard } from './ResultCards';
 import { buildLayerRows, buildMadeInView } from './resultCards.model';
@@ -51,25 +50,48 @@ describe('evidence helpers (structural, no claim words)', () => {
   ];
   for (const s of caught) {
     it(`hidden while 製造地 is 未確認: ${s}`, () => {
-      assert.ok(textTiesCountryToMade(s), s);
       assert.equal(noteWithinEvidence(F2, s), false, s);
     });
   }
   // Rows the structural rule cannot catch (no country name, or no made-in
   // word the parsers know). Pinned so a change is visible; see the PR body.
-  for (const s of ['產自中國', '大陸代工', '深圳廠出貨', '確定係中國整']) {
-    it(`known gap (not caught structurally): ${s}`, () => assert.equal(textTiesCountryToMade(s), false));
+  // Chief #46 call 1: any note naming a country or a listed place is hidden
+  // while 製造地 is 未確認, whatever the wording.
+  for (const s of ['產自中國', '深圳廠出貨', '確定係中國整']) {
+    it(`hidden while 製造地 is 未確認 (country / listed place): ${s}`, () => assert.equal(noteWithinEvidence(F2, s), false, s));
   }
-  it('HQ / design / server hedge lines are not made-in claims', () => {
-    for (const s of ['法定母公司為總部位於中國的好孩子國際控股有限公司。', '品牌設計地為英國', 'Final made-in unconfirmed; other countries are candidates only.'])
-      assert.equal(textTiesCountryToMade(s), false, s);
+  // Tester #46 (b): adjectives / demonyms count as naming a country.
+  for (const s of ['法國牌子', 'manufactured by a Chinese factory', 'OEM in China', '產於越南', 'Vietnam-made', 'Vietnamese-made']) {
+    it(`must-hide while 製造地 is 未確認: ${s}`, () => assert.equal(noteWithinEvidence(F2, s), false, s));
+  }
+  it('法系品牌 may show (style word, no country)', () => assert.equal(noteWithinEvidence(F2, '法系品牌'), true));
+  it('a China-link with no country is never strong (no default country)', () => {
+    const x = { ...F3, meta: { ...F3.meta, searchCoo: [{ country: 'China', basis: 'barcode', status: 'confirmed', url: 'https://example.com/cn' }] } } as CheckResult;
+    assert.equal(shownStrength(x, { type: 'manufacturing', strength: 'strong' }), 'unverified');
+    assert.equal(shownStrength(x, { type: 'manufacturing', country: 'China', strength: 'strong' }), 'strong');
+    assert.equal(shownStrength(x, { type: 'ownership', country: 'China', strength: 'strong' }), 'unverified');
+  });
+  it('大陸 / 內地 alone are not in the tables yet (#48)', () => {
+    assert.equal(noteWithinEvidence(F2, '大陸代工'), true);
+  });
+  it('server hedge lines without a country stay', () => {
+    for (const s of ['Final made-in unconfirmed; other countries are candidates only.', '網頁研究顯示未確認最終成品的實際製造國 (COO)，故標示為 未知。'])
+      assert.equal(noteWithinEvidence(F2, s), true, s);
+  });
+  it('server hedge lines without a country stay; HQ / design notes naming a country are hidden too', () => {
+    for (const s of ['法定母公司為總部位於中國的好孩子國際控股有限公司。', '品牌設計地為英國'])
+      assert.equal(noteWithinEvidence(F2, s), false, s);
+    for (const s of ['Final made-in unconfirmed; other countries are candidates only.'])
+      assert.equal(noteWithinEvidence(F2, s), true, s);
   });
   it('brand wording naming a country needs a brand quote naming it', () => {
     for (const s of ['a french brand', 'brand from France', '來自法國的品牌', '台灣品牌'])
       assert.equal(noteWithinEvidence(F2, s), false, s);
   });
   it('known brand gaps (no country, or no brand concept the parser knows)', () => {
-    for (const s of ['法系品牌', '源自法國', '法國喘牌子', '法國牌子', '歐洲品牌']) assert.equal(noteWithinEvidence(F2, s), true, s);
+    // 源自法國 / 法國牌子 / 法國喘牌子 now hide (they name a country); only no-country forms remain.
+    for (const s of ['源自法國', '法國喘牌子', '法國牌子']) assert.equal(noteWithinEvidence(F2, s), false, s);
+    for (const s of ['法系品牌', '歐洲品牌']) assert.equal(noteWithinEvidence(F2, s), true, s);
   });
   it('a slug is not a quote; 歐洲品牌 never reads as a country', () => {
     assert.equal(quoteNamesBrand('taiwan-brand', 'Taiwan'), false);
@@ -91,11 +113,29 @@ describe('per-row evidence (Tester #46)', () => {
     assert.notEqual(rows.find((r) => r.key === 'brandOrigin')?.tag, 'confirmed');
   });
   it('a brand-only label quote never makes the manufacturer row 確認', () => {
-    const lb = { ...F2, partsEvidence: 'label', product: { ...F2.product, originCountry: 'Germany', manufacturer: 'X', manufacturerCountry: 'Germany', designInfo: [{ country: 'Germany', kind: 'brand', quote: '德國品牌' }] } } as CheckResult;
+    const lb = { ...F2, partsEvidence: 'label', product: { ...F2.product, originCountry: 'Germany', manufacturer: 'X', manufacturerCountry: 'Germany', designInfo: [{ country: 'Germany', kind: 'brand', quote: '德國品牌', fetched: true }] } } as CheckResult;
     const rows = buildLayerRows(lb);
     assert.equal(rows.find((r) => r.key === 'brandOrigin')?.tag, 'confirmed');
     assert.notEqual(rows.find((r) => r.key === 'manufacturer')?.tag, 'confirmed');
     assert.equal(factVerified(lb, 'madeIn', 'Germany'), false);
+  });
+  it('live_q3 Melio: 「法國品牌」 (AI-cited quote, no fetched flag) shows as 有提及, never 確認', () => {
+    const v = buildMadeInView(Q3);
+    const fr = v.designRows.find((d) => d.country === 'France');
+    assert.ok(fr && fr.kind === 'brand' && !fr.verified, JSON.stringify(v.designRows));
+    const html = renderToStaticMarkup(React.createElement(MadeInCard, { result: Q3, t: zh }));
+    assert.match(html, /法國品牌[\s\S]*?data-testid="brand-tag">有提及</);
+    assert.ok(!/data-testid="brand-tag">確認</.test(html), html);
+  });
+  it('a brand quote read on a fetched page reads 確認', () => {
+    const x = { ...Q3, product: { ...Q3.product, designInfo: [{ country: 'France', kind: 'brand', quote: '法國品牌', url: 'https://example.com/p', fetched: true }] } } as CheckResult;
+    assert.ok(buildMadeInView(x).designRows[0]?.verified);
+  });
+  it('the design-country extra-info line still shows while its notes are hidden', () => {
+    for (const r of [F1, F3, Q1, Q2]) {
+      const t = panel(r);
+      assert.ok(t.includes('這不是製造地'), t);
+    }
   });
   it('live_q3 Melio: the taiwan-brand slug row is dropped', () => {
     const v = buildMadeInView(Q3);

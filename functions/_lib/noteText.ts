@@ -4,7 +4,10 @@
  * the country tables and the fixed server sentences.
  */
 import { COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
-import { stripDesignPhrases } from './designOrigin';
+import { countriesIn, stripDesignPhrases } from './designOrigin';
+import { DEMONYM } from './cooPriority';
+import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE } from './countryNames';
+import { CITY_NAMES, CN_PLACES, CN_PLACES_LATIN } from './placeNames';
 import { SERVER_TEXT } from './serverText';
 
 /** Clauses: a country and a made-in word only count together in one clause. */
@@ -33,15 +36,31 @@ export function notesNameMadeIn(notes: readonly unknown[] | undefined, label: st
   );
 }
 
+const esc = (n: string) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const LATIN_NAMES = new RegExp(
+  `(?<![A-Za-z])(?:${COUNTRY_LIST_LATIN_RE}|${[...CN_PLACES_LATIN, ...CITY_NAMES].map(esc).join('|')})(?![A-Za-z])`,
+  'i'
+);
+// Country adjectives from the existing demonym list (not the non-country words).
+const DEMONYMS = new RegExp(
+  `(?<![A-Za-z])(?:${DEMONYM.split('|').filter((w) => !['european', 'imported', 'foreign'].includes(w)).join('|')})(?![A-Za-z])`,
+  'i'
+);
+const CJK_NAMES = new RegExp(`(?:${COUNTRY_LIST_CJK}|${CN_PLACES.map(esc).join('|')})`);
+
 /**
- * Any country tied to where something is made in one clause, with design /
- * brand wording blanked first (「實際最終製造地與組裝廠位於中國大陸」 yes,
- * 「品牌源自德國」 no). Same clause rule and made-in words as notesNameMadeIn.
+ * The text names any country or listed place (the shared country tables and
+ * placeNames), whatever the wording around it.
  */
-export function textTiesCountryToMade(text: string): boolean {
-  return stripDesignPhrases(String(text ?? ''))
-    .split(CLAUSE_SPLIT)
-    .some((c) => MADE_CUE.test(c) && COUNTRY_NAME_PATTERNS.some((r) => r.pattern.test(c)));
+export function textNamesCountryOrPlace(text: string): boolean {
+  const t = String(text ?? '');
+  return (
+    COUNTRY_NAME_PATTERNS.some((r) => r.pattern.test(t)) ||
+    LATIN_NAMES.test(t) ||
+    CJK_NAMES.test(t) ||
+    DEMONYMS.test(t) ||
+    countriesIn(t).length > 0
+  );
 }
 
 /**

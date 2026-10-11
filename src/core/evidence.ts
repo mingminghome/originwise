@@ -6,23 +6,23 @@
  * - 'madeIn': a confirmed made-in (barcode / package label / exact-model
  *   match, see confirmedMadeIn) or a search hit that passed the page gate
  *   with status 'confirmed';
- * - 'brand': a designInfo brand row whose own quote is brand wording that
- *   names that country (「德國品牌」, "a German brand"); a URL slug such as
- *   `taiwan-brand` is not a quote.
+ * - 'brand': a designInfo brand row read on a page we fetched, whose own
+ *   quote names that country (「德國品牌」, "a German brand"); a URL slug such
+ *   as `taiwan-brand` is not a quote, and an AI-cited quote is only 有提及.
  * A row reads 確認 (a link reads strong) only when a quote backs THAT row's
  * fact for THAT row's country. There is no verified quote type for HQ,
  * manufacturer identity or ownership, so those rows never read 確認 here.
  *
  * Notes and caveats are checked structurally (country + the made-in or
  * brand concept the parsers already use), never by claim words:
- * - while 製造地 is 未確認, any note tying a country to manufacture /
- *   assembly / factory / origin is hidden;
+ * - while 製造地 is 未確認, any note naming a country or a listed place is
+ *   hidden, whatever the wording;
  * - brand wording that names a country is hidden unless a brand quote names
  *   that country.
  */
 import { countriesIn, designMentions } from '../../functions/_lib/designOrigin';
 import { COUNTRY_NAME_PATTERNS, canonicalCountry } from '../../functions/_lib/countryLabel';
-import { textTiesCountryToMade } from '../../functions/_lib/noteText';
+import { textNamesCountryOrPlace } from '../../functions/_lib/noteText';
 import { confirmedMadeIn } from '../components/ChinaLink';
 import type { CheckResult } from './types';
 
@@ -59,8 +59,10 @@ export function verifiedFacts(result: CheckResult): VerifiedFact[] {
   for (const h of result.meta?.searchCoo ?? []) {
     if (h.status === 'confirmed' && !h.evidenceOnly && h.country) out.push({ fact: 'madeIn', country: h.country });
   }
+  // A brand quote is verified only when it was read on a page we fetched
+  // (designInfo.fetched); an AI-cited quote alone is 有提及, never 確認.
   for (const d of result.product?.designInfo ?? []) {
-    if (d.kind === 'brand' && d.country && quoteNamesBrand(d.quote, d.country)) out.push({ fact: 'brand', country: d.country });
+    if (d.kind === 'brand' && d.fetched && d.country && quoteNamesBrand(d.quote, d.country)) out.push({ fact: 'brand', country: d.country });
   }
   return out;
 }
@@ -73,7 +75,10 @@ export function factVerified(result: CheckResult, fact: FactKind, country: strin
 
 /** A server note / caveat the card may show as-is. */
 export function noteWithinEvidence(result: CheckResult, text: string): boolean {
-  if (!confirmedMadeIn(result) && textTiesCountryToMade(text)) return false;
+  // Chief #46: while 製造地 is 未確認, any note naming a country or a listed
+  // place is hidden, whatever its wording. Design countries keep their own
+  // 附加資訊 row (designInfo), which this does not touch.
+  if (!confirmedMadeIn(result) && textNamesCountryOrPlace(text)) return false;
   for (const d of designMentions(text)) {
     if (d.kind === 'brand' && !factVerified(result, 'brand', d.country)) return false;
   }
@@ -90,6 +95,6 @@ export function shownStrength(
 ): string | undefined {
   if (rel.strength !== 'strong') return rel.strength;
   const type = String(rel.type ?? '').toLowerCase();
-  if (MADE_RELATIONS.has(type) && factVerified(result, 'madeIn', rel.country || 'China')) return 'strong';
+  if (MADE_RELATIONS.has(type) && rel.country && factVerified(result, 'madeIn', rel.country)) return 'strong';
   return 'unverified';
 }

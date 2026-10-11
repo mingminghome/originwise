@@ -384,6 +384,12 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
                       country: localizeCountry(t, d.country),
                     })}
                   </span>
+                  {d.kind === 'brand' ? (
+                    // Brand row: 確認 only with a quote read on a fetched page or the label.
+                    <span className={`rc-tag is-${d.verified ? 'confirmed' : 'mentioned'}`} data-testid="brand-tag">
+                      {t(d.verified ? 'check.rc.tagConfirmed' : 'check.rc.tagMentioned')}
+                    </span>
+                  ) : null}
                   {d.source ? (
                     <span className="rc-source rc-design-source">
                       <SourceLine t={t} prefix={before} suffix={after} src={d.source} />

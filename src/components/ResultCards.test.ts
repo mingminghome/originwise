@@ -140,7 +140,7 @@ describe('buildLayerRows', () => {
       base({
         meta: { searchCoo: [{ country: 'China', basis: 'barcode', status: 'confirmed', url: 'https://example.com/p' }] },
         sources: ['Cybex — https://example.com/about'],
-        product: { originCountry: 'Germany', designInfo: [{ country: 'Germany', kind: 'brand', quote: '德國品牌' }] },
+        product: { originCountry: 'Germany', designInfo: [{ country: 'Germany', kind: 'brand', quote: '德國品牌', fetched: true }] },
         company: {
           hqCountry: 'Germany',
           parents: [{ name: 'Goodbaby', country: 'China', control: 'majority' }],
@@ -156,6 +156,11 @@ describe('buildLayerRows', () => {
         ['parent', 'mentioned'],
       ]
     );
+    // The same quote, AI-cited only (not read on a fetched page): 有提及.
+    const cited = buildLayerRows(
+      base({ product: { originCountry: 'Germany', designInfo: [{ country: 'Germany', kind: 'brand', quote: '德國品牌' }] } })
+    );
+    assert.equal(cited.find((r) => r.key === 'brandOrigin')?.tag, 'mentioned');
   });
 
   it('model-memory facts are only 有提及; label parts are 確認', () => {
