@@ -1546,8 +1546,9 @@ function proseSentence(words: string[], sentence: string): boolean {
 const BRAND_COUNTRY_RE = new RegExp(`^[ \t]*[,，]?[ \t]*(?:${COUNTRY_SPAN_RE.source})(?![A-Za-z])`, 'i');
 const COUNTRY_CODE_RE = /^[ \t]*[,，]?[ \t]*([A-Za-z]{2,3})(?![A-Za-z0-9])/;
 const STORE_CJK_TAIL = /^[ \t]*(?:官方|旗艦店|旗舰店|專賣店|专卖店|官網|官网|公式|ストア|ショップ|オンラインストア)[\p{Script=Han}\p{Script=Katakana}ー]*[ \t]*$/u;
-/** Only real address labels (EN plus the ZH/JA forms already in the label vocabulary) or © / Copyright with a year. */
-const ADDRESS_LEAD = /(?:\b(?:contact|address|manufacturer|importer)|製造元|販売元|輸入元|発売元|進口商|进口商)[ \t]*[:：][ \t]*$|(?:©|\(c\)|copyright)[ \t]*(?:19|20)\d\d\b[^\n]*$/i;
+/** Only real address / company labels (Contact, Address, Manufacturer, Importer, Brand, plus the ZH/JA forms already in the
+ * label vocabulary; Chief r38b: Brand/品牌/ブランド only when the country ends the line) or © / Copyright with a year. */
+const ADDRESS_LEAD = /(?:\b(?:contact|address|manufacturer|importer|brand)|製造元|販売元|輸入元|発売元|進口商|进口商|品牌|ブランド)[ \t]*[:：][ \t]*$|(?:©|\(c\)|copyright)[ \t]*(?:19|20)\d\d\b[^\n]*$/i;
 /** End of the line, allowing trailing punctuation. */
 const LINE_END = /^[ \t]*[.。!！,，;；]?[ \t]*$/;
 /**
