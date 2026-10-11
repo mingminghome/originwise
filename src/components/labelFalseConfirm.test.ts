@@ -118,11 +118,11 @@ describe('PR #45: label and note never confirm a non-claim', () => {
 });
 
 describe('PR #45 final: two countries on one line confirm neither (label and note)', () => {
-  for (const input of ['美國/中國製造', '日本製，不是', 'Not, made in China', 'made in China, not', '設計於中國製造', '德國設計的仿，日本製', '設計：德國 產地：中國？', '設計：仿 日本製', '產地：中國？', '德國設計 仿 日本製', '設計於德國 可能中國製造', '德國品牌 仿日本製', '德國設計 不是日本製', '德國設計 美國/中國製造']) {
+  for (const input of ['美國/中國製造', '日本製，不是', 'Not, made in China', 'made in China, not', '設計於中國製造', '德國設計的仿，日本製', '設計：德國 產地：中國？', '設計：仿 日本製', '產地：中國？', '德國設計 仿 日本製', '設計於德國 可能中國製造', '德國品牌 仿日本製', '德國設計 不是日本製', '德國設計 美國/中國製造', '設計：Fake 中國製', '設計：Replica 日本製', '設計：NOT 日本製', 'Designed by Cybex Japan 中國製']) {
     it(`label ${JSON.stringify(input)} → no country`, () => assert.equal(summarize('label', input).country, null));
     it(`note ${JSON.stringify(input)} → nothing possible`, () => assert.ok(!/possible|likely/.test(String(summarize('note', input).grade ?? ''))));
   }
-  for (const [input, country] of [['德國設計，中國製造', 'China'], ['產地：日本 不含中國製零件', 'Japan'], ['中國製造，日本品牌', 'China'], ['設計於德國 中國製造', 'China'], ['CYBEX Melio\n設計於德國 中國製造', 'China'], ['Designed by CYBEX 中國製', 'China'], ['德國品牌 中國製', 'China'], ['設計於德國\u3000中國製', 'China'], ['德國品牌，中國製造', 'China'], ['日本製 MADE IN JAPAN', 'Japan']] as const) {
+  for (const [input, country] of [['德國設計，中國製造', 'China'], ['產地：日本 不含中國製零件', 'Japan'], ['中國製造，日本品牌', 'China'], ['設計於德國 中國製造', 'China'], ['CYBEX Melio\n設計於德國 中國製造', 'China'], ['Designed by CYBEX 中國製', 'China'], ['德國設計 中國製造', 'China'], ['德國品牌 中國製', 'China'], ['設計於德國\u3000中國製', 'China'], ['德國品牌，中國製造', 'China'], ['日本製 MADE IN JAPAN', 'Japan']] as const) {
     it(`label ${JSON.stringify(input)} → ${country} 95%`, () => assert.equal(summarize('label', input).country, country));
   }
 });

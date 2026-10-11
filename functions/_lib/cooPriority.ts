@@ -1064,12 +1064,30 @@ function wholeValueShape(before: string, after: string, country: string): boolea
   if (!a) return true;
   return sameEnglishClaim(a.replace(/^[\s，,、/／|｜]+/u, ''), country);
 }
+const normBrand = (v: string) => v.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+/**
+ * Tester r47: a Latin word in a design / brand phrase is brand wording only when it is the brand the result already
+ * knows. The value slots are found with the existing recogniser itself: a Latin word is a slot when swapping it for
+ * another word still leaves the phrase wholly blanked (a cue word like "Designed" / "by" is not). Every slot must
+ * be part of the known brand; with no known brand, no Latin slot counts (Designed by CYBEX 中國製 then stays 未確認).
+ */
+function latinSlotsAreBrand(prefix: string, knownBrand?: string): boolean {
+  const brand = knownBrand ? normBrand(knownBrand) : '';
+  const blank = (t: string) => /^[\s\u3000\p{P}]*$/u.test(stripDesignPhrases(t));
+  for (const w of prefix.matchAll(/[A-Za-z][A-Za-z0-9.&'-]*/g)) {
+    const swapped = prefix.slice(0, w.index) + 'Qzxv' + prefix.slice(w.index! + w[0].length);
+    if (!blank(swapped)) continue; // a cue word
+    const n = normBrand(w[0]);
+    if (!brand || !n || !brand.includes(n)) return false;
+  }
+  return true;
+}
 /**
  * Chief r45 (option 2): inside a unit, a space (half- or full-width) splits it only when everything before the space
  * is pure design / brand wording (the existing stripDesignPhrases recogniser blanks it whole; a 設計：X label value must
  * itself be a country or a Latin brand). The remainder then has to pass the same whole-value rule.
  */
-function designSpaceSplitOk(lineBefore: string, lineAfter: string, country: string): boolean {
+function designSpaceSplitOk(lineBefore: string, lineAfter: string, country: string, knownBrand?: string): boolean {
   const cut = Math.max(...[...'，、/。,'].map((c) => lineBefore.lastIndexOf(c)));
   const unitBefore = lineBefore.slice(cut + 1);
   const unitAfter = lineAfter.split(/[，、/。,]/u)[0] ?? '';
@@ -1079,11 +1097,12 @@ function designSpaceSplitOk(lineBefore: string, lineAfter: string, country: stri
     if (!prefix.trim() || !/^[\s\u3000\p{P}]*$/u.test(stripDesignPhrases(prefix))) continue;
     const labelValue = /[:：]\s*([^:：]+?)\s*$/u.exec(prefix);
     if (labelValue && !ANY_CJK_COUNTRY_RE.test(labelValue[1]!) && !/^[A-Za-z][\w .&-]*$/.test(labelValue[1]!) && !canonicalCountry(labelValue[1]!)) continue;
+    if (!latinSlotsAreBrand(prefix, knownBrand)) continue;
     if (wholeValueShape(unitBefore.slice(k + 1), unitAfter, country)) return true;
   }
   return false;
 }
-export function extractCooClaimsFromText(text: string): CooClaim[] {
+export function extractCooClaimsFromText(text: string, knownBrand?: string): CooClaim[] {
   // Design / brand wording is never a COO claim ("Designed in Germany, made in China" → China).
   // r45: design / brand wording is blanked only where it forms its own unit (設計於中國製造 keeps its text).
   const designStripped = stripDesignPhrases(String(text || ''));
@@ -1201,7 +1220,7 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
         const origShapeOk =
           !unitPartly ||
           unitShapeOk(src.slice(ls, m.index), src.slice(m.index + m[0].length, le), country) ||
-          designSpaceSplitOk(src.slice(ls, m.index), src.slice(m.index + m[0].length, le), country);
+          designSpaceSplitOk(src.slice(ls, m.index), src.slice(m.index + m[0].length, le), country, knownBrand);
         if (!origShapeOk || !unitShapeOk(before, after, country)) {
           // Not a whole value; a part after it is still kept aside for the USA-only rule below.
           if (PART_AFTER_SUFFIX.test(after) || CJK_PART_FIELD_BEFORE.test(before) || PART_LABEL_LINE_RE.test(raw.slice(raw.lastIndexOf('\n', ls - 2) + 1, Math.max(0, ls - 1)))) {
@@ -1326,6 +1345,8 @@ export type CooPriorityInput = {
   ocrText?: string;
   webBrief?: string;
   notes?: string[];
+  /** The brand the result already knows (queried or resolved); a Latin design / brand word counts only if it is this. */
+  brand?: string;
   /** LLM-proposed madeIn / manufacturedIn */
   madeIn?: string;
   manufacturedIn?: string;
@@ -1348,11 +1369,11 @@ export type CooPriorityResult = {
  */
 export function applyCooPriority(input: CooPriorityInput): CooPriorityResult {
   const notes = [...(input.notes ?? [])];
-  const ocrClaims = extractCooClaimsFromText(input.ocrText || '');
+  const ocrClaims = extractCooClaimsFromText(input.ocrText || '', input.brand);
   // Force OCR source for anything pulled from the OCR blob
   const ocrForced = ocrClaims.map((c) => ({ ...c, source: 'ocr' as const }));
-  const webClaims = extractCooClaimsFromText(input.webBrief || '');
-  const noteClaims = extractCooClaimsFromText((input.notes ?? []).join('\n'));
+  const webClaims = extractCooClaimsFromText(input.webBrief || '', input.brand);
+  const noteClaims = extractCooClaimsFromText((input.notes ?? []).join('\n'), input.brand);
   const all = [...ocrForced, ...webClaims, ...noteClaims];
   const preferred = bestCooClaim(all);
 

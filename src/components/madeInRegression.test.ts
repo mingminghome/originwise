@@ -355,9 +355,9 @@ const ROWS: Row[] = [
   ["label", "Design: CYBEX 原産国：中国", "China", "label 95%", null],
   ["page", "Design: CYBEX 原産国：中国", "China", "likely", null],
   ["note", "Design: CYBEX 原産国：中国", "China", "possible", null],
-  ["label", "Designed by Apple in California 中國組裝", "China", "label 95%", "d:United States"],
+  ["label", "Designed by Apple in California 中國組裝", null, null, "d:United States"],
   ["page", "Designed by Apple in California 中國組裝", null, null, "d:United States"],
-  ["note", "Designed by Apple in California 中國組裝", "China", "possible", "d:United States"],
+  ["note", "Designed by Apple in California 中國組裝", "China", "mentioned", "d:United States"],
   // ── Tester cases3.txt: 設計： cues
   ["label", "Design: Germany / COO: CN", "China", "label 95%", "d:Germany"],
   ["page", "Design: Germany / COO: CN", "China", "likely", "d:Germany"],
