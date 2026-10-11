@@ -213,11 +213,15 @@ const KOREA_PLACE_RE = new RegExp(
   'g',
 );
 /**
- * r44 (Chief, closed list): origin labels. A second place under any of them blocks; every other label (品牌, 品名, 代理,
+ * r44 (Chief, closed list): origin labels, matched after folding 产/産→產, 国→國, 制→製; any label containing 產地, 產國
+ * or 原產 is one too. A second place under any of them blocks; every other label (品牌, 品名, 代理,
  * 進口商, 經銷, 地址, 製造商地址, 販售 …) ends the origin value and never counts.
  */
 const ORIGIN_LABEL_RE =
-  /^(?:原?[產产]地|原産地|原産国|原產國|原产国|[製制]造地|[組组][裝装]地|加工地|生[產产]地|[製制]造[國国]|made\s+in|country\s+of\s+origin)$/i;
+  /^(?:原?產地|原產國|製造地|組裝地|加工地|生產地|製造國|made\s+in|country\s+of\s+origin)$|產地|產國|原產/i;
+/** 產 / 产 / 産, 國 / 国, 製 / 制, 組 / 组, 裝 / 装 folded before a label is matched (原產国, 产地國 …). */
+const foldLabel = (l: string) =>
+  l.trim().replace(/[产産]/g, '產').replace(/国/g, '國').replace(/制/g, '製').replace(/组/g, '組').replace(/装/g, '裝');
 const LINE_LABEL_RE = /(country\s+of\s+origin|made\s+in|[^\s:：]{1,8})[ \t\u3000]*[:：]/gi;
 /** A North Korea name as the whole value: at most one made-in word, then only spaces, closing brackets or 。！；. */
 const KOREA_WHOLE_VALUE_RE = new RegExp(
@@ -230,7 +234,7 @@ function koreaOriginValues(line: string): string[] {
   if (!labels.length) return [line];
   const out: string[] = [];
   labels.forEach((m, i) => {
-    if (!ORIGIN_LABEL_RE.test(m[1]!.trim())) return;
+    if (!ORIGIN_LABEL_RE.test(foldLabel(m[1]!))) return;
     const to = i + 1 < labels.length ? labels[i + 1]!.index! : line.length;
     out.push(line.slice(m.index! + m[0].length, to));
   });
