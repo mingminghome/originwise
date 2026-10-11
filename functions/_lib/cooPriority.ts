@@ -10,7 +10,7 @@
  */
 
 import { MADE_IN_CODE_LABEL, madeInCodeMatches, NOT_PRODUCT_FIELD, PART_FIELD_WORDS } from './countryLabel';
-import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE, countryNameLabel } from './countryNames';
+import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE, countryNameLabel, koreaListLine } from './countryNames';
 import { NOT_MADE_TAIL, stripDesignPhrases } from './designOrigin';
 import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
 import { normalizeRegion, type RegionCode } from './regions';
@@ -893,6 +893,8 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     // "Not made in China" / "never made in China" is no claim.
     // Same line only: "Do not\nMade in China" still reads China.
     if (NEGATED_EN_BEFORE.test(raw.slice(Math.max(0, m.index - 8), m.index))) continue;
+    // r44: 產地：中國/朝鮮 names two places; never just one of them.
+    if (koreaListLine(raw, m.index)) continue;
     const start = Math.max(0, m.index - 80);
     const end = Math.min(raw.length, m.index + m[0].length + 80);
     const window = raw.slice(start, end);
@@ -920,6 +922,7 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
   }
   COO_SUFFIX.lastIndex = 0;
   while ((m = COO_SUFFIX.exec(raw)) !== null) {
+    if (koreaListLine(raw, m.index)) continue;
     // 「非中國製」「不是中國製造」「中国製ではありません」: negated, no claim.
     if (/(?:非|不是|並非|并非)$/.test(raw.slice(Math.max(0, m.index - 2), m.index))) continue;
     if (/^\s*(?:では|じゃ)(?:ありません|ない|なく)/.test(raw.slice(m.index + m[0].length))) continue;

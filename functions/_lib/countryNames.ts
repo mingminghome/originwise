@@ -19,7 +19,7 @@ const ROWS: readonly Row[] = [
   ['Taiwan', 'TW', ['taiwan', 'republic of china', 'r.o.c.', 'r.o.c', 'roc'], ['台湾', '中華民国'], ['台灣', '臺灣', '中華民國'], ['台湾', '中华民国']],
   ['Japan', 'JP', ['japan'], ['日本'], ['日本'], ['日本']],
   ['South Korea', 'KR', ['south korea', 'korea', 'republic of korea'], ['韓国', '大韓民国'], ['韓國', '南韓'], ['韩国']],
-  ['North Korea', 'KP', ['north korea', 'n. korea', 'n.korea', 'n korea', 'dprk', 'd.p.r.k.', "democratic people's republic of korea", 'd.p.r. korea'], ['北朝鮮'], ['北韓', '朝鮮', '朝鮮民主主義人民共和國'], ['朝鲜', '北朝鲜', '北韩']],
+  ['North Korea', 'KP', ['north korea', 'n. korea', 'n.korea', 'n korea', 'dprk', 'd.p.r.k.', "democratic people's republic of korea", 'd.p.r. korea'], ['北朝鮮'], ['北韓', '朝鮮', '朝鮮民主主義人民共和國'], ['朝鲜', '北朝鲜', '北韩', '朝鲜民主主义人民共和国']],
   ['Vietnam', 'VN', ['vietnam', 'viet nam'], ['ベトナム'], ['越南'], ['越南']],
   ['Thailand', 'TH', ['thailand'], ['タイ'], ['泰國'], ['泰国']],
   ['Cambodia', 'KH', ['cambodia'], ['カンボジア'], ['柬埔寨'], ['柬埔寨']],
@@ -182,16 +182,26 @@ export const COUNTRY_LIST_LATIN_RE = COUNTRY_LIST_LATIN.split('|')
 
 /**
  * r44 (Chief, closed rule): 朝鮮 / 朝鲜 is also the first half of many other words (朝鮮半島, 朝鮮族, 朝鮮人參, 朝鮮產業,
- * 朝鮮生產基地). It reads as North Korea only when it is the whole value: it starts the value (line start, after a
- * label colon, a space or an opening bracket; so never after 南 or any other character), and after it comes at most one
- * made-in word (製 / 製造 / 產 / 生產 / 製品 / 產品, with the 制 / 产 / 産 variants) and then only spaces, brackets or
- * end punctuation up to the end of the line. Rare real values beyond that are accepted misses. 北朝鮮 and
- * 朝鮮民主主義人民共和國 are their own names and are not bounded here.
+ * 北朝鮮族), so the North Korea names below count only as the WHOLE value: from the line start or a label colon
+ * (spaces trimmed) to the end of the line, with at most one made-in word after the name (製 / 製造 / 產 / 生產 / 製品 /
+ * 產品 and the 制 / 产 / 産 variants) and then only spaces, closing brackets or a trailing 。. After a space, inside
+ * brackets or in a list value (朝鮮、中國) they give no country. Rare real values beyond this are accepted misses.
  */
-const BOUNDED_CJK = new Set(['朝鮮', '朝鲜']);
+const BOUNDED_CJK = new Set(['朝鮮', '朝鲜', '北朝鮮', '北朝鲜', '朝鮮民主主義人民共和國', '朝鲜民主主义人民共和国']);
 const BOUNDED_SUFFIX = '(?:[製制][造品]?|[產产産]品?|生[產产産])';
 const boundedCjk = (n: string) =>
-  `(?<![^\\n:：\\s\\u3000(（\\[【「〔])${n}(?=${BOUNDED_SUFFIX}?[\\s\\u3000)）\\]】」〕。.!！]*(?![^\\n]))`;
+  `(?<=(?:^|\\n|[:：])[ \\t\\u3000]*)${n}(?=${BOUNDED_SUFFIX}?[ \\t\\u3000)）\\]】」〕]*。?[ \\t\\u3000]*(?![^\\n]))`;
+
+/**
+ * r44 (Chief): a line that lists places with 朝鮮 / 朝鲜 among them (產地：中國/朝鮮, 產地：朝鮮、中國) names two places and
+ * never confirms just one of them. Scoped to 朝鮮 only; slash / list values for other countries read as before.
+ */
+export function koreaListLine(text: string, index: number): boolean {
+  const ls = text.lastIndexOf('\n', index - 1) + 1;
+  const le = text.indexOf('\n', index);
+  const line = text.slice(ls, le < 0 ? text.length : le);
+  return /朝[鮮鲜]/.test(line) && /[/／、,，・&＆]/.test(line);
+}
 
 /** Every Japanese / Chinese name, longest first (no letter guard needed). */
 export const COUNTRY_LIST_CJK = [...new Set(ROWS.flatMap((r) => [...r[3], ...r[4], ...r[5]]))]

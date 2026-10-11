@@ -213,7 +213,7 @@ describe('canonCountry: every name the display can produce maps to one key (roun
     return [...out, cur];
   };
   // r44: a bounded name (朝鮮) carries lookarounds; the name itself is what's between them.
-  const unesc = (s: string) => s.replace(/^\(\?<!.*?\)(?=朝)|\(\?=.*\)$/g, '').replace(/\\s\+/g, ' ').replace(/\\(.)/g, '$1');
+  const unesc = (s: string) => s.replace(/^\(\?<=.*?\]\*\)(?=[朝北])|\(\?=.*\)$/g, '').replace(/\\s\+/g, ' ').replace(/\\(.)/g, '$1');
   it('each countryNames name (English, Japanese, Traditional, Simplified) has its English label key', () => {
     for (const list of [COUNTRY_LIST_LATIN, COUNTRY_LIST_CJK]) {
       for (const name of splitTop(list).map(unesc)) {

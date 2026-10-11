@@ -16,7 +16,7 @@ import { notProductPageUrl } from '../pageUrl';
 import { isSearchResultUrl } from '../sourceLine';
 import { MADE_IN_CODE_LABEL, NOT_PRODUCT_FIELD, PART_FIELD_WORDS, canonicalCountry, madeInCodeMatches } from '../countryLabel';
 import { madeInValueCountry, partFieldMatches, settleCooFields, US_STATES, US_TOWN_NAMES } from '../cooPriority';
-import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE } from '../countryNames';
+import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE, koreaListLine } from '../countryNames';
 import { designMentions, quoteBacksCountry, stripDesignPhrases } from '../designOrigin';
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
@@ -2717,6 +2717,8 @@ export function regexCooClaims(pages: FetchedPage[]): CooClaim[] {
         const prev = ls < 0 ? '' : t.slice(t.lastIndexOf('\n', ls - 1) + 1, ls);
         if (PART_LABEL_LINE_RE.test(prev)) continue;
       }
+      // r44: 產地：中國/朝鮮 names two places; never just one of them (朝鮮 only).
+      if (m.index !== undefined && koreaListLine(t, m.index)) continue;
       if (m.index !== undefined) {
         if (cueAt.has(m.index)) continue;
         cueAt.add(m.index);
