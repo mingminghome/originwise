@@ -20,7 +20,7 @@
  * - brand wording that names a country is hidden unless a brand quote names
  *   that country.
  */
-import { countriesIn, designMentions } from '../../functions/_lib/designOrigin';
+import { countriesIn, designMentions, queryNameTokens, unitBacksBrand } from '../../functions/_lib/designOrigin';
 import { COUNTRY_NAME_PATTERNS, canonicalCountry } from '../../functions/_lib/countryLabel';
 import { textNamesCountryOrPlace } from '../../functions/_lib/noteText';
 import { confirmedMadeIn } from '../components/ChinaLink';
@@ -61,8 +61,13 @@ export function verifiedFacts(result: CheckResult): VerifiedFact[] {
   }
   // A brand quote is verified only when it was read on a page we fetched
   // (designInfo.fetched); an AI-cited quote alone is 有提及, never 確認.
+  // #48: and only from its own unit naming this brand / product and no other
+  // (rechecked here, so a cached row with no quoteLine reads 有提及); the
+  // package label photo is the product's own and stays exempt.
+  const tokens = queryNameTokens(result.product?.brand, result.product?.name);
   for (const d of result.product?.designInfo ?? []) {
-    if (d.kind === 'brand' && d.fetched && d.country && quoteNamesBrand(d.quote, d.country)) out.push({ fact: 'brand', country: d.country });
+    if (d.kind !== 'brand' || !d.fetched || !d.country || !quoteNamesBrand(d.quote, d.country)) continue;
+    if (d.label || (d.quoteLine && unitBacksBrand(d.quoteLine, d.quote ?? '', tokens))) out.push({ fact: 'brand', country: d.country });
   }
   return out;
 }

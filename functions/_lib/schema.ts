@@ -76,6 +76,10 @@ export type DesignInfo = {
   quote?: string;
   /** The quote was read on a page we fetched, or on the package label photo (a verified source). */
   fetched?: boolean;
+  /** #48: the page unit the brand quote was read from (names this brand / product and nothing else). */
+  quoteLine?: string;
+  /** #48: read on the package label photo (exempt from the unit rule). */
+  label?: boolean;
 };
 
 /** A page the model cites for its made-in answer (checked before it counts). */

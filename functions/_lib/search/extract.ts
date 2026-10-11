@@ -17,7 +17,7 @@ import { isSearchResultUrl } from '../sourceLine';
 import { MADE_IN_CODE_LABEL, NOT_PRODUCT_FIELD, canonicalCountry, madeInCodeMatches } from '../countryLabel';
 import { madeInValueCountry, negatedMadeIn, PART_LABEL_LINE_RE, partFieldMatches, settleCooFields, US_STATES, US_TOWN_NAMES } from '../cooPriority';
 import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE, koreaListLine } from '../countryNames';
-import { designMentions, quoteBacksCountry, stripDesignPhrases } from '../designOrigin';
+import { brandQuoteUnit, designMentions, queryNameTokens, quoteBacksCountry, stripDesignPhrases } from '../designOrigin';
 import { CITY_NAMES, CN_PLACES, CN_PLACES_LATIN } from '../placeNames';
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
@@ -2863,11 +2863,17 @@ export function gateClaims(
   );
   // Design / brand wording on pages about this product: 附加資訊, never made-in.
   const design: PageDesign[] = [];
+  const nameTokens = queryNameTokens(entity);
   pages.forEach((p, i) => {
     if (pageMatch[i] === null) return;
-    for (const d of designMentions(nfkc(p.text))) {
-      if (design.some((x) => x.country === d.country)) continue;
-      design.push({ page: i + 1, country: d.country, kind: d.kind, quote: d.phrase });
+    const text = nfkc(p.text);
+    for (const d of designMentions(text)) {
+      // #48: a brand phrase verifies only from its own unit naming this brand / product and nothing else.
+      const quoteLine = d.kind === 'brand' ? brandQuoteUnit(text, d.phrase, nameTokens) : undefined;
+      const prev = design.findIndex((x) => x.country === d.country);
+      const row: PageDesign = { page: i + 1, country: d.country, kind: d.kind, quote: d.phrase, ...(quoteLine ? { quoteLine } : {}) };
+      if (prev === -1) design.push(row);
+      else if (quoteLine && !design[prev]!.quoteLine) design[prev] = row;
     }
   });
   return {
@@ -2880,7 +2886,7 @@ export function gateClaims(
 }
 
 /** One design / brand phrase on a product page (1-based page). */
-export type PageDesign = { page: number; country: string; kind: 'design' | 'brand'; quote: string };
+export type PageDesign = { page: number; country: string; kind: 'design' | 'brand'; quote: string; quoteLine?: string };
 
 /** Gate design rows → DesignInfo with the page URL. */
 export function designFromPages(design: PageDesign[], pages: FetchedPage[]): DesignInfo[] {
@@ -2889,7 +2895,8 @@ export function designFromPages(design: PageDesign[], pages: FetchedPage[]): Des
     kind: d.kind,
     url: pages[d.page - 1]!.url,
     quote: d.quote.slice(0, 80),
-    fetched: true,
+    // #48: design rows keep fetched (they never read 確認); a brand row only with its own unit.
+    ...(d.kind === 'brand' ? (d.quoteLine ? { quoteLine: d.quoteLine.slice(0, 160), fetched: true } : {}) : { fetched: true }),
   }));
 }
 

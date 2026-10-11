@@ -113,7 +113,7 @@ describe('per-row evidence (Tester #46)', () => {
     assert.notEqual(rows.find((r) => r.key === 'brandOrigin')?.tag, 'confirmed');
   });
   it('a brand-only label quote never makes the manufacturer row 確認', () => {
-    const lb = { ...F2, partsEvidence: 'label', product: { ...F2.product, originCountry: 'Germany', manufacturer: 'X', manufacturerCountry: 'Germany', designInfo: [{ country: 'Germany', kind: 'brand', quote: '德國品牌', fetched: true }] } } as CheckResult;
+    const lb = { ...F2, partsEvidence: 'label', product: { ...F2.product, originCountry: 'Germany', manufacturer: 'X', manufacturerCountry: 'Germany', designInfo: [{ country: 'Germany', kind: 'brand', quote: '德國品牌', fetched: true, label: true }] } } as CheckResult;
     const rows = buildLayerRows(lb);
     assert.equal(rows.find((r) => r.key === 'brandOrigin')?.tag, 'confirmed');
     assert.notEqual(rows.find((r) => r.key === 'manufacturer')?.tag, 'confirmed');
@@ -128,7 +128,7 @@ describe('per-row evidence (Tester #46)', () => {
     assert.ok(!/data-testid="brand-tag">確認</.test(html), html);
   });
   it('a brand quote read on a fetched page reads 確認', () => {
-    const x = { ...Q3, product: { ...Q3.product, designInfo: [{ country: 'France', kind: 'brand', quote: '法國品牌', url: 'https://example.com/p', fetched: true }] } } as CheckResult;
+    const x = { ...Q3, product: { ...Q3.product, designInfo: [{ country: 'France', kind: 'brand', quote: '法國品牌', url: 'https://example.com/p', fetched: true, quoteLine: 'Cybex Melio 法國品牌' }] } } as CheckResult;
     assert.ok(buildMadeInView(x).designRows[0]?.verified);
   });
   it('the design-country extra-info line still shows while its notes are hidden', () => {
