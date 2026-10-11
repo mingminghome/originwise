@@ -956,6 +956,87 @@ function failedShapeLines(raw: string): Map<number, Set<string>> {
   }
   return out;
 }
+/**
+ * r45 (Chief, two-country rule): lines (by start index) whose units (split at ， 、 / 。 ,) name two different
+ * countries, after design wording is blanked (resolveFieldValues ran on stripDesignPhrases) and after negation. A unit
+ * names a country when its whole value (after an optional origin label) is a CJK country name or a CJK made-in claim,
+ * so 不含中國製零件 or 日本仕様 names none, and a same-country English repeat is the same country. Nothing on such a
+ * line confirms (美國/中國製造).
+ */
+/**
+ * Design / brand wording counts as blanked only when it is a whole unit of its line (units split at ， 、 / 。 ,).
+ * The text is blanked as before (cross-line context still works). A unit that was only partly blanked keeps its
+ * original words for the two-country check (德國設計的仿，日本製 names Germany and Japan), and a claim touching
+ * blanked wording with no separator never confirms (設計於中國製造), so blanking never leaves a claim behind.
+ */
+function partlyBlankedUnits(text: string, stripped: string): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  if (stripped.length !== text.length) return out;
+  let i = 0;
+  for (const part of text.split(/([，、/。,\n])/u)) {
+    const st = stripped.slice(i, i + part.length);
+    if (st !== part && !/^[\s\u3000\p{P}]*$/u.test(st)) out.push([i, i + part.length]);
+    i += part.length;
+  }
+  return out;
+}
+const NEG_WORD_CJK = '(?:並非|并非|並不是|并不是|不是|非)';
+const NEG_TAIL_CJK_RE = new RegExp(`(${COUNTRY_LIST_CJK})(?:製造|制造|製|制|生產|生产|生産|產|产|産)[\\s\\u3000]*${NEG_WORD_CJK}[\\s\\u3000。.!！]*$`, 'u');
+const NEG_TAIL_EN_RE = /\b(?:made|manufactured|assembled|produced)\s+in\s+(?:the\s+)?([A-Za-z][A-Za-z.]*(?:\s+[A-Za-z][A-Za-z.]*){0,2}?)\s+(?:not|never)[\s.!]*$/i;
+/** Countries a line negates, read on the whole original line with its unit separators as spaces. */
+function lineNegations(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const line of text.split('\n')) {
+    const sq = line.replace(/[，、/。,]/gu, ' ');
+    for (const c of negatedMadeIn(sq)) out.add(c);
+    for (const m of [NEG_TAIL_CJK_RE.exec(sq), NEG_TAIL_EN_RE.exec(sq)]) {
+      const v = m ? madeInValueCountry(CJK_TO_LABEL[m[1]!] ?? m[1]!) : null;
+      if (v) out.add(canonicalCountry(v) ?? v.toLowerCase());
+    }
+  }
+  return out;
+}
+const ANY_CJK_COUNTRY_RE = new RegExp(COUNTRY_LIST_CJK, 'u');
+const PART_WORD_RE = new RegExp(`(?:${PART_FIELD_WORDS.join('|')})`, 'u');
+const WHOLE_CJK_COUNTRY_RE = new RegExp(`^(?:${COUNTRY_LIST_CJK})$`, 'u');
+const WHOLE_CJK_CLAIM_RE = new RegExp(`^(?:${LABEL_COO_SUFFIX.source})$`, 'u');
+/** The country a unit names as its whole value (after an optional origin label): a CJK country name or claim. */
+function unitCountry(unit: string): string | null {
+  let u = unit.replace(TRAIL_PUNCT, '').trim();
+  const label = /^(.+?)\s*[:：]\s*(.*)$/u.exec(u);
+  if (label && isOriginLabel(label[1]!)) u = label[2]!.trim();
+  let name: string | undefined;
+  if (WHOLE_CJK_COUNTRY_RE.test(u)) name = u;
+  else {
+    const m = WHOLE_CJK_CLAIM_RE.exec(u);
+    if (m) name = CJK_TO_LABEL[m[1]!] ?? m[1]!;
+  }
+  if (!name) return null;
+  const v = madeInValueCountry(name) ?? normalizeCooLabel(name);
+  return v ? (canonicalCountry(v) ?? v.toLowerCase()) : null;
+}
+function twoCountryLines(raw: string): Set<number> {
+  const out = new Set<number>();
+  let at = 0;
+  for (const line of raw.split('\n')) {
+    const t = line.replace(NEGATED_EN_MADE_IN_RE, ' ').replace(NEGATED_CJK_MADE_IN_RE, ' ');
+    const names = new Set<string>();
+    for (const unit of t.split(/[，、\/。,]/u)) {
+      // A unit's country: its whole value, else the first country it mentions (德國設計的仿 names Germany); a part
+      // unit (電池：中國) names no country of the product.
+      let c = unitCountry(unit);
+      if (!c && !PART_WORD_RE.test(unit)) {
+        const m = ANY_CJK_COUNTRY_RE.exec(unit);
+        const v = m ? madeInValueCountry(m[0]) : null;
+        if (v) c = canonicalCountry(v) ?? v.toLowerCase();
+      }
+      if (c) names.add(c);
+    }
+    if (names.size > 1) out.add(at);
+    at += line.length + 1;
+  }
+  return out;
+}
 const QUOTE_PAIRS: Record<string, string> = { '「': '」', '『': '』', '【': '】', '“': '”', '"': '"' };
 const TRAIL_PUNCT = /[ \t\u3000。．.，,、！!；;：:…~～]+$/u;
 function sameEnglishClaim(s: string, country: string): boolean {
@@ -985,7 +1066,19 @@ function wholeValueShape(before: string, after: string, country: string): boolea
 }
 export function extractCooClaimsFromText(text: string): CooClaim[] {
   // Design / brand wording is never a COO claim ("Designed in Germany, made in China" → China).
-  const pass = resolveFieldValues(stripDesignPhrases(String(text || '')), true);
+  // r45: design / brand wording is blanked only where it forms its own unit (設計於中國製造 keeps its text).
+  const designStripped = stripDesignPhrases(String(text || ''));
+  const partly = partlyBlankedUnits(String(text || ''), designStripped);
+  // A claim touching blanked design wording with no separator (設計於中國製造, 德國設計中國製造) was left behind by
+  // the blanking, not written as a claim: it never confirms.
+  const srcText = String(text || '');
+  const blankedAt = (k: number) =>
+    designStripped.length === srcText.length && k >= 0 && k < srcText.length && designStripped[k] !== srcText[k];
+  const touchesBlank = (i: number, len: number) => {
+    for (let k = i - 1; k <= i + len; k++) if (blankedAt(k)) return true;
+    return false;
+  };
+  const pass = resolveFieldValues(designStripped, true);
   // Two whole-product claims disagree: that 爭議 is the answer; a part claim left over
   // ("Made in USA\n電池：中國製\nMade in Mexico") never headlines it.
   // ('Made in China\nBattery: Made in Japan\n德國製造' is 中國 / 德國; the battery is no side.)
@@ -995,6 +1088,12 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
   const out: CooClaim[] = [];
   const seen = new Set<string>();
   const failed = failedShapeLines(raw);
+  // Two-country check: a partly blanked unit counts with its original words (德國設計的仿 names Germany).
+  const src = String(text || '');
+  let restored = raw;
+  if (raw.length === src.length) for (const [a, b] of partly) restored = restored.slice(0, a) + src.slice(a, b) + restored.slice(b);
+  const twoCountry = twoCountryLines(restored);
+  const onTwoCountryLine = (i: number) => twoCountry.has(raw.lastIndexOf('\n', i - 1) + 1);
   COO_LINE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = COO_LINE.exec(raw)) !== null) {
@@ -1009,6 +1108,7 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     if (NEGATED_EN_BEFORE.test(raw.slice(Math.max(0, m.index - 8), m.index))) continue;
     // r44: 產地：中國/朝鮮 names two places; never just one of them.
     if (koreaListLine(raw, m.index)) continue;
+    if (onTwoCountryLine(m.index) || touchesBlank(m.index, m[0].length)) continue;
     if (failed.get(raw.lastIndexOf('\n', m.index - 1) + 1)?.has(canonicalCountry(label) ?? label.toLowerCase())) continue;
     const start = Math.max(0, m.index - 80);
     const end = Math.min(raw.length, m.index + m[0].length + 80);
@@ -1026,6 +1126,7 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
     const label = MADE_IN_CODE_LABEL[c.code]!;
     // "Made in USA" / "Made in PRC" already read by name above: one claim.
     if (out.some((c) => canonCountry(c.label) === canonCountry(label))) continue;
+    if (onTwoCountryLine(c.index) || touchesBlank(c.index, c.length)) continue;
     if (failed.get(raw.lastIndexOf('\n', c.index - 1) + 1)?.has(canonicalCountry(label) ?? label.toLowerCase())) continue;
     const region = normalizeRegion(label);
     const start = Math.max(0, c.index - 80);
@@ -1041,11 +1142,14 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
   // never before a part (日本製配件, PART_FIELD_WORDS), a question (日本製？ / 嗎) or a comparison (更好), never as a
   // bare 日本製品 line, never when the text negates that country (negatedMadeIn, shared with the page path:
   // 非日本製, "Not made in China" + 中國製造), and never under a part label on the line above (PART_LABEL_LINE_RE).
-  const negated = negatedMadeIn(raw);
+  // r45: #44's negation also read on each WHOLE original line, before the unit split and design blanking
+  // (日本製，不是 / Not, made in China / made in China, not).
+  const negated = new Set([...negatedMadeIn(raw), ...lineNegations(String(text || ''))]);
   const partHits: string[] = [];
   LABEL_COO_SUFFIX.lastIndex = 0;
   while ((m = LABEL_COO_SUFFIX.exec(raw)) !== null) {
     if (koreaListLine(raw, m.index)) continue;
+    if (onTwoCountryLine(m.index) || touchesBlank(m.index, m[0].length)) continue;
     {
       const ls = raw.lastIndexOf('\n', m.index - 1) + 1;
       const le0 = raw.indexOf('\n', m.index);
@@ -1058,8 +1162,7 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
         const country = canonicalCountry(named) ?? canonicalCountry(normalizeCooLabel(named)) ?? named.toLowerCase();
         // Chief: a line is split into units only at ， 、 / 。 (and , /); spaces stay inside a unit. The negation check
         // reads the whole line, across those separators (不是、日本製, 非。日本製).
-        const lineNoSep = raw.slice(ls, le).replace(/[，、/。,\s\u3000]/gu, '');
-        if (negatedMadeIn(lineNoSep).has(country)) continue;
+        if (negated.has(country)) continue;
         if (!unitShapeOk(before, after, country)) {
           // Not a whole value; a part after it is still kept aside for the USA-only rule below.
           if (PART_AFTER_SUFFIX.test(after) || CJK_PART_FIELD_BEFORE.test(before) || PART_LABEL_LINE_RE.test(raw.slice(raw.lastIndexOf('\n', ls - 2) + 1, Math.max(0, ls - 1)))) {

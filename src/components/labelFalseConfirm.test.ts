@@ -117,6 +117,16 @@ describe('PR #45: label and note never confirm a non-claim', () => {
   }
 });
 
+describe('PR #45 final: two countries on one line confirm neither (label and note)', () => {
+  for (const input of ['美國/中國製造', '日本製，不是', 'Not, made in China', 'made in China, not', '設計於中國製造', '德國設計的仿，日本製']) {
+    it(`label ${JSON.stringify(input)} → no country`, () => assert.equal(summarize('label', input).country, null));
+    it(`note ${JSON.stringify(input)} → nothing possible`, () => assert.ok(!/possible|likely/.test(String(summarize('note', input).grade ?? ''))));
+  }
+  for (const [input, country] of [['德國設計，中國製造', 'China'], ['產地：日本 不含中國製零件', 'Japan'], ['中國製造，日本品牌', 'China'], ['德國品牌，中國製造', 'China'], ['日本製 MADE IN JAPAN', 'Japan']] as const) {
+    it(`label ${JSON.stringify(input)} → ${country} 95%`, () => assert.equal(summarize('label', input).country, country));
+  }
+});
+
 describe('PR #45 final: the origin-label value and the English repeat must be whole too (label and note)', () => {
   for (const input of ['產地：日本製？', '日本製 MADE IN JAPAN STYLE', '日本製 MADE IN JAPAN?']) {
     it(`label ${JSON.stringify(input)} → no country`, () => assert.equal(summarize('label', input).country, null));
