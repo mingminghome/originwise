@@ -986,3 +986,16 @@ describe('r35: dictionary at SCOWL 60, normalised lookup', () => {
     for (const w of ['balios', 'melio', 'mios', 'libelle', 'callisto', 'priam']) assert.equal(ENGLISH_WORDS.has(w), false, w);
   });
 });
+
+describe('r36: invisible characters, hyphen digits, leading accents, ʼ, mixed-script look-alikes', () => {
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const q = 'Made in China';
+  const v = (b: string) => quoteInModelScope(`${H}${b}\n${q}`, 'Cybex Melio', q);
+  for (const b of ['callisto-2', 'cal\u200Blisto', 'cal\u00ADlisto', 'cal\u2060listo', 'cal\u200Clisto', 'cal\uFEFFlisto', '\u0441allisto', 'c\u0430llisto',
+    'call\u0456sto', 'élios', 'unlike the élios, it folds flat', 'callisto\u02BCs'])
+    it(`must block: ${JSON.stringify(b)}`, () => assert.equal(v(b), false));
+  for (const b of ['colourway', 'foldable', 'our bestselling buggy', 'Сделано в Китае'])
+    it(`must verify: ${b}`, () => assert.equal(v(b), true));
+  for (const c of ['Made in Türkiye', '產地：日本', 'Страна производства: Китай'])
+    it(`origin line verifies: ${c}`, () => assert.equal(quoteInModelScope(`${H}${c}`, 'Cybex Melio', c), true));
+});
