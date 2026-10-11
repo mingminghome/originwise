@@ -1064,6 +1064,25 @@ function wholeValueShape(before: string, after: string, country: string): boolea
   if (!a) return true;
   return sameEnglishClaim(a.replace(/^[\s，,、/／|｜]+/u, ''), country);
 }
+/**
+ * Chief r45 (option 2): inside a unit, a space (half- or full-width) splits it only when everything before the space
+ * is pure design / brand wording (the existing stripDesignPhrases recogniser blanks it whole; a 設計：X label value must
+ * itself be a country or a Latin brand). The remainder then has to pass the same whole-value rule.
+ */
+function designSpaceSplitOk(lineBefore: string, lineAfter: string, country: string): boolean {
+  const cut = Math.max(...[...'，、/。,'].map((c) => lineBefore.lastIndexOf(c)));
+  const unitBefore = lineBefore.slice(cut + 1);
+  const unitAfter = lineAfter.split(/[，、/。,]/u)[0] ?? '';
+  for (let k = 0; k < unitBefore.length; k++) {
+    if (!/[ \u3000]/u.test(unitBefore[k]!)) continue;
+    const prefix = unitBefore.slice(0, k);
+    if (!prefix.trim() || !/^[\s\u3000\p{P}]*$/u.test(stripDesignPhrases(prefix))) continue;
+    const labelValue = /[:：]\s*([^:：]+?)\s*$/u.exec(prefix);
+    if (labelValue && !ANY_CJK_COUNTRY_RE.test(labelValue[1]!) && !/^[A-Za-z][\w .&-]*$/.test(labelValue[1]!) && !canonicalCountry(labelValue[1]!)) continue;
+    if (wholeValueShape(unitBefore.slice(k + 1), unitAfter, country)) return true;
+  }
+  return false;
+}
 export function extractCooClaimsFromText(text: string): CooClaim[] {
   // Design / brand wording is never a COO claim ("Designed in Germany, made in China" → China).
   // r45: design / brand wording is blanked only where it forms its own unit (設計於中國製造 keeps its text).
@@ -1179,7 +1198,10 @@ export function extractCooClaimsFromText(text: string): CooClaim[] {
         // Tester r45: where design wording was blanked inside the claim's own unit, the shape is also read on the
         // original line (設計：仿 日本製 → the 仿 is still there).
         const unitPartly = raw.length === src.length && partly.some(([a, b]) => m!.index >= a && m!.index < b || (b <= m!.index && b >= ls));
-        const origShapeOk = !unitPartly || unitShapeOk(src.slice(ls, m.index), src.slice(m.index + m[0].length, le), country);
+        const origShapeOk =
+          !unitPartly ||
+          unitShapeOk(src.slice(ls, m.index), src.slice(m.index + m[0].length, le), country) ||
+          designSpaceSplitOk(src.slice(ls, m.index), src.slice(m.index + m[0].length, le), country);
         if (!origShapeOk || !unitShapeOk(before, after, country)) {
           // Not a whole value; a part after it is still kept aside for the USA-only rule below.
           if (PART_AFTER_SUFFIX.test(after) || CJK_PART_FIELD_BEFORE.test(before) || PART_LABEL_LINE_RE.test(raw.slice(raw.lastIndexOf('\n', ls - 2) + 1, Math.max(0, ls - 1)))) {
