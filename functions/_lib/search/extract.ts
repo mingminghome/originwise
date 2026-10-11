@@ -1289,8 +1289,6 @@ const SAFE_LATIN_WORDS = new Set([
   'self', 'wipe', 'clean', 'cleaning', 'spot', 'wash', 'washable', 'machine', 'care', 'instructions', 'instruction', 'mdf', 'mfc',
   'pine', 'oak', 'beech', 'birch', 'walnut', 'wood', 'wooden', 'solid', 'plywood', 'veneer', 'painted', 'lacquered', 'matt', 'gloss',
   'finish', 'natural', 'composition',
-  // r34c ordinary words of real lowercase care / feature prose (Tester's regression set).
-  'has', 'have', 'had', 'does', 'did', 'was', 'were', 'movement', 'under', 'over', 'suitable', 'unsuitable', 'dishwasher', 'safe', 'damaged', 'returned', 'too', 'also', 'well', 'toy', 'toys', 'factory', 'factories', 'minute', 'minutes', 'hour', 'hours', 'flat', 'walk', 'walks', 'down', 'small', 'boot', 'boots', 'tumble', 'drying', 'dry',
   'light', 'lightweight', 'ultra', 'new', 'all', 'our', 'your', 'this', 'that', 'these', 'it', 'its', 'a', 'an', 'is', 'are', 'was',
   'be', 'to', 'on', 'at', 'as', 'or', 'not', 'no', 'yes', 'up', 'off', 'per', 'only', 'more', 'less', 'most', 'very', 'just', 'now',
   'shipping', 'ships', 'ship', 'founded', 'established', 'free', 'returns', 'return', 'days', 'day', 'orders', 'order', 'over', 'add', 'cart', 'buy', 'shop', 'home', 'menu',
@@ -1394,6 +1392,10 @@ const PLACE_CTX_RE = new RegExp(
 /** Labels whose next token is a value, not a model ("Size S", "Age 6M", "Weight 15kg"). */
 const PAIR_LABEL_WORDS = new Set(['size', 'sizes', 'type', 'group', 'class', 'grade', 'version', 'age', 'ages', 'weight']);
 /** Closed-class words. A single one of these is never a model code ("by a German brand", "not a toy"). */
+/** r34d: words that close a noun phrase, so the word before them is its head ("the callisto is", "the callisto more"). */
+const NAME_TRAIL = /^(?:|is|are|was|were|has|have|fits|weighs|folds|more|now|too|again|here|there|today|instead|better)$/;
+/** r34d: auxiliary verbs (a closed grammatical class): "cybex has great strollers" is a sentence, not a name. */
+const AUX_VERB = /^(?:has|have|had|does|did|do|was|were|is|are|be|been|can|could|will|would|should|may|might|must|shall)$/;
 const FUNCTION_WORD = /^(?:the|a|an|is|are|was|were|and|or|of|to|for|with|in|on|by|it|this|that|from|at|as|not|no|do|never)$/i;
 
 function resetRe(re: RegExp): RegExp {
@@ -1568,7 +1570,8 @@ function segmentSafe(
   own: Set<string>,
   isBrand: (name: string) => boolean = () => false,
   tailOfOurs = false,
-  loneLowercase = false
+  mode: 'line' | 'claim' | 'tail' | 'value' = 'line',
+  known: Set<string> = new Set()
 ): string | null {
   // r30 ruling: a name before a store word is the store only when it is the brand or a listed retailer.
   const isStore = (name: string): boolean => {
@@ -1607,7 +1610,7 @@ function segmentSafe(
   // An all-caps sentence ("DO NOT USE IF DAMAGED") is running text, not a name.
   if (/\b(?:NOT|DO|IF|THE|OF|AND|FOR|WITH|TO|IS|ARE|NO|KEEP|USE)\b/.test(latin) && latin === latin.toUpperCase()) latin = latin.toLowerCase();
   const sentences = latin.split(/(?<=[.!?:;])\s+/);
-  for (const sen of sentences) {
+  for (const [si, sen] of sentences.entries()) {
     // A letter glued to a digit stays with it ("6M", "15kg"), so it is not a model code.
     const words = (sen.match(/(?<!\d)[A-Za-z][A-Za-z0-9'’]*(?:-[A-Za-z0-9]+)*/g) ?? []).flatMap(splitModelToken);
     const prose = proseSentence(words, sen);
@@ -1627,11 +1630,38 @@ function segmentSafe(
       const coded = wordAndCode(w, nx, prose, safeLatin);
       if (coded) return coded;
       if (!/[A-Z]/.test(w)) {
-        // r34b: a lowercase word standing by itself (an all-lowercase line or field value of up to three words, no
-        // digits: "callisto", "Style: milano") is safe only when it is ordinary vocabulary. Prose keeps its plain words.
-        // r34c: a lowercase line or claim tail, any length: every non-function word must be ordinary vocabulary.
-        const alone = loneLowercase && !/[A-Z]/.test(sen) && !/\.[a-z]/.test(sen);
-        if (alone && /^[a-z][a-z'’-]{2,}$/.test(w) && !/n['’]t$/.test(w) && !safeLatin(w) && !FUNCTION_WORD.test(w) && !SENTENCE_START.test(w) && !isBrand(w)) return w;
+        // r34d (Chief ruling): a lowercase word gets the name check only in a name position; other lowercase
+        // prose keeps the generic pass. Positions: a name already known on this page (another model), a claim
+        // tail, inside brackets on the claim line, after "for" on the claim line or a title-shaped line, and any
+        // word of a title-shaped line or short field value (≤ 4 words, no function word but "for": "toy factory",
+        // "walk", "Style: milano"). After the brand / query word, designed by and compatible with: see unsafe().
+        if (!/^[a-z][a-z'’-]{2,}$/.test(w) || /n['’]t$/.test(w) || FUNCTION_WORD.test(w) || AUX_VERB.test(w) || safeLatin(w) || isBrand(w)) continue;
+        if (known.has(w)) return w;
+        if (/\.[a-z]/.test(sen)) continue;
+        // A word right after a number is a quantity ("60 minutes", "3 years").
+        if (new RegExp(`\\d\\s*${w}\\b`).test(sen)) continue;
+        // Title-shaped: ≤ 4 words, no closing stop, no function word but "for". The whole line is checked when it is
+        // all lowercase ("toy factory", "walk"); with capitals, only the word after "for" ("Stroller for callisto").
+        const titleShape =
+          words.length <= 4 && !/[.!?]\s*$/.test(sen) && !SENTENCE_START.test(words[0] ?? '') && words.every((x) => x.toLowerCase() === 'for' || !FUNCTION_WORD.test(x));
+        const prev = (words[i - 1] ?? '').toLowerCase();
+        const title = titleShape && (!/[A-Z]/.test(sen) || prev === 'for');
+        const next = (words[i + 1] ?? '').toLowerCase();
+        // Noun-phrase name positions in prose: the subject before a verb of being ("callisto is", "the callisto
+        // is"), "the X" closing a phrase ("love the callisto more"), and a word right before a product type
+        // ("callisto stroller").
+        if (NAME_TRAIL.test(next) && ((i === 0 && next) || prev === 'the')) return w;
+        if ((i === 0 || /^(?:the|a|an)$/.test(prev)) && !/(?:est|ly)$/.test(w) && /^(?:stroller|strollers|pushchair|pram|buggy|carriage|bottle|camera|speaker|earbuds|headphones)$/.test(next) && !COLOUR_WORDS.has(w)) return w;
+        // A short bracket on the claim line ("(callisto)", "(Boot edition)"); a bracketed origin note with its own
+        // phrase ("(movement made in Japan)") is not a name.
+        const br = mode !== 'line' ? sen.match(new RegExp(`\\(([^)]*\\b${w}\\b[^)]*)\\)?`)) : null;
+        const bracket = !!br && (br[1]!.match(/[A-Za-z]+/g) ?? []).length <= 3 && !(br[1]!.match(/[A-Za-z]+/g) ?? []).some((x) => FUNCTION_WORD.test(x));
+        // "for" is a name position only in the claim's own sentence ("made in china for callisto"), not in a later
+        // sentence of the line ("Made in China. Not for resale").
+        const claimSentence = mode === 'tail' ? si === 0 && !/^[\s,]*[.!?]/.test(latin) : sen.includes('§');
+        if (mode === 'value' || bracket || title || (prev === 'for' && mode !== 'line' && claimSentence)) {
+          if (!SENTENCE_START.test(w) || title) return w;
+        }
         continue;
       }
       // The first word of a real sentence is capitalised by grammar. A heading or a title-case line is not.
@@ -1778,6 +1808,18 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
   // from the query (any order; "Cot Bed" for "Cotbed"; a trailing colour). A query word plus an outside product
   // noun ("Little Acorns Wardrobe", "Pine Cot Bed", "Classic Dresser Cot Bed") is another product.
   const queryWords = new Set([...tokens, ...[...brandNames].flatMap((b) => b.toLowerCase().split(/\s+/))]);
+  // r34d: names this page already shows as other models: the word right after the brand ("Cybex Callisto").
+  // Lowercase, these are checked anywhere ("the callisto is lighter now").
+  const knownNames = new Set<string>();
+  for (const b of [brand, ...brandNames]) {
+    if (!b || !/^[A-Za-z]/.test(b)) continue;
+    const re = new RegExp(`(?<![A-Za-z])${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+([A-Z][a-z]{2,})`, 'gi');
+    for (const m of t.matchAll(re)) {
+      const w = m[1]!.toLowerCase();
+      if (!/^[A-Z]/.test(m[1]!) || queryWords.has(w) || safeLatin(w) || COMPANY_FORM.has(w) || MODEL_GENERIC_WORDS.has(w) || FUNCTION_WORD.test(w)) continue;
+      knownNames.add(w);
+    }
+  }
   const productNounLine = (seg: string): string | null => {
     const ws = (seg.replace(LEAD_MARK, '').match(/[A-Za-z][A-Za-z'’]*/g) ?? []).map((w) => w.toLowerCase());
     if (ws.length < 2 || ws.length > 8 || ws.some((w) => FUNCTION_WORD.test(w))) return null;
@@ -1796,7 +1838,17 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
     ? new RegExp(`(?:^|[^A-Za-z])(?:${brandHeads.join('|')})[\\s・·]*([\\p{Script=Han}]{1,6})(?![\\p{Script=Han}])`, 'giu')
     : null;
   const keepPlace = (m: string) => (placeBesideBrand(t, m, brand, brandNames) ? m : ' ');
-  const unsafe = (seg: string, claim = false, tailOfOurs = false): string | null => {
+  const unsafe = (seg: string, claimArg: boolean | 'tail' | 'value' = false, tailOfOurs = false): string | null => {
+    const claim = !!claimArg;
+    // An origin phrase off the claim line ("made in china for callisto") has a claim tail too.
+    const mode: 'line' | 'claim' | 'tail' | 'value' = claimArg === 'tail' || claimArg === 'value' ? claimArg : claimArg || /\bmade\s+in\b/i.test(seg) ? 'claim' : 'line';
+    // r34d: a lowercase word right after the brand or a query word is in a name position ("melio walk", "cybex boot").
+    for (const m of seg.matchAll(/\b([A-Za-z][\w'’-]*)\s+([a-z][a-z'’-]{2,})\b/g)) {
+      const a = m[1]!.toLowerCase();
+      const x = m[2]!;
+      if (!(isBrand(m[1]!) || queryWords.has(a)) || queryWords.has(x) || isBrand(x) || AUX_VERB.test(x)) continue;
+      if (!FUNCTION_WORD.test(x) && !COMPANY_FORM.has(x) && !safeLatin(x) && !MODEL_GENERIC_WORDS.has(x) && !ACCESSORY_WORD_SET.has(x) && !COLOUR_WORDS.has(x)) return x;
+    }
     // r34b (Chief ruling): lowercase earns no pass. In "designed by x" the x is dropped only when it is the brand,
     // in any case ("designed by callisto in germany" keeps callisto).
     for (const m of seg.matchAll(/\b(?:designed|engineered|developed|made|manufactured|produced|assembled)\s+by\s+([a-z][a-z0-9'’-]*)/g)) {
@@ -1808,7 +1860,19 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
       const x = m[1]!;
       if (!isBrand(x) && !FUNCTION_WORD.test(x) && !safeLatin(x)) return x;
     }
-    let x = seg.replace(ourRe, ' ').replace(ORIGIN_PHRASE_LATIN, originLatinFor(isBrand)).replace(STORE_LATIN_RE, ' ').replace(resetRe(COUNTRY_SPAN_RE), ' ');
+    // A bracket carrying its own origin phrase is an origin note ("(movement made in Japan)"), not a bracketed name: it is read as running text ("of …").
+    // A lowercase word right after a capitalised country ("China movement", "Germany-made movement") is a component
+    // of that origin, read as running text too.
+    let x = seg
+      .replace(/\(([^)]*\b(?:made|assembled|manufactured|produced)\s+(?:in|by)\b[^)]*)\)/gi, ' of $1 ')
+      .replace(resetRe(COUNTRY_SPAN_RE), (m: string, ...r: unknown[]) => {
+        const str = r[r.length - 1] as string;
+        const off = r[r.length - 2] as number;
+        return /^[A-Z]/.test(m) && /^\s+[a-z]/.test(str.slice(off + m.length)) ? `${m} of` : m;
+      })
+      .replace(/-made\b/g, '-made of')
+      // § marks the origin phrase's sentence: "for" is a name position only there.
+      .replace(/\b(?:made|manufactured|assembled|produced)\s+in\b/gi, '§ $&').replace(ourRe, ' ').replace(ORIGIN_PHRASE_LATIN, originLatinFor(isBrand)).replace(STORE_LATIN_RE, ' ').replace(resetRe(COUNTRY_SPAN_RE), ' ');
     // Off the claim line, drop a place only from a place phrase or a company address.
     // r34: judged after origin phrases ("Designed by Cybex GmbH") and a leading field label ("Manufacturer:") are removed.
     if (!claim && lineDropsPlaces(x.replace(/^\s*[A-Za-z][A-Za-z ]{0,30}[:：]\s*/, ''), isBrand)) x = x.replace(resetRe(PLACE_CTX_RE), ' ');
@@ -1826,7 +1890,7 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
     }
     const pn = productNounLine(seg);
     if (pn) return pn;
-    return segmentSafe(x, safeLatin, brandNames, own, isBrand, tailOfOurs, true);
+    return segmentSafe(x, safeLatin, brandNames, own, isBrand, tailOfOurs, mode, knownNames);
   };
   const allowed = (at: number, len: number, L: number): boolean => {
     const before = ourAt.filter((o) => o.end <= at);
@@ -1839,7 +1903,7 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
       break;
     }
     // The quote itself: "卡利斯托產地：中國" names another model before its field label.
-    if (unsafe(t.slice(at, at + len), true)) return false;
+    if (unsafe(t.slice(at, at + len), 'tail')) return false;
     const table = specTableRows(L, fromLine);
     for (let i = fromLine; i <= L; i += 1) {
       if (table && i !== L) {
@@ -1891,7 +1955,7 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
           ? post
           : post.replace(/\b(FOR|WITH|BY|FITS?)\s+([A-Z][A-Z0-9'’-]+(?:\s+[A-Z][A-Z0-9'’-]+){0,3})|[(（]([^)）]*)[)）]|([A-Z][A-Z'’-]+|\bA\b)/g, (_m, p: string, n: string, b: string, w: string) =>
               w ? w.toLowerCase() : b !== undefined ? ` (${b.split(/\s+/).map(tc).join(' ')}) ` : `${p.toLowerCase()} ${n.split(/\s+/).map(tc).join(' ')}`);
-        if (post.trim().length > 1 && unsafe(postW, true)) return false;
+        if (post.trim().length > 1 && unsafe(postW, 'tail')) return false;
       } else {
         // This product's own lists keep their scope (ruling 1); running text
         // above the last section belongs to an earlier block (S10 ruling).
@@ -1903,7 +1967,7 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
         if (compatList[i]) seg = seg.replace(LEAD_MARK, '').replace(COMPAT_LABEL_RE, ' ');
         if (i < lastBoundary && running(seg) && !table) continue;
       }
-      if (unsafe(seg, i === L, !!(anchor && i === fromLine))) return false;
+      if (unsafe(seg, compatList[i] ? 'value' : i === L, !!(anchor && i === fromLine))) return false;
     }
     return true;
   };
@@ -1976,12 +2040,14 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
     // r34c: a claim on a review / Q&A line (or inside one: "Q: made where? A: Made in China"), or right under a
     // review / Q&A heading, may be user content: it never counts.
     const claimLine = lines[L]!.replace(LEAD_MARK, '').trim();
-    if (USER_CONTENT_LINE_RE.test(claimLine) || /(?:^|\s)[QA]\s*[:：]/.test(t.slice(lineStart[L]!, at))) return false;
+    if (USER_CONTENT_LINE_RE.test(claimLine) || /^(?:a|answer)\s*(?:[-–—.)]|[:：])\s/i.test(claimLine) || /(?:^|\s)[QA]\s*[:：]/.test(t.slice(lineStart[L]!, at))) return false;
+    // r34d: a review / Q&A heading opens a section that runs to the next non-review heading (a spec / description
+    // section) or the model's own heading; no claim inside it counts.
     for (let i = L - 1; i >= 0; i -= 1) {
-      const up = lines[i]!.replace(LEAD_MARK, '').trim();
+      const up = lines[i]!.replace(LEAD_MARK, '').replace(/[*_#]+/g, '').trim();
       if (!up) continue;
       if (USER_CONTENT_HEAD_RE.test(up)) return false;
-      break;
+      if (SPEC_SECTION_RE.test(up) || ourAt.some((o) => o.start >= lineStart[i]! && o.start < (lineStart[i + 1] ?? t.length))) break;
     }
     // The claim's own line names another model → never this model's.
     if (spans.some((sp) => sp.line === L && mention(sp))) return false;

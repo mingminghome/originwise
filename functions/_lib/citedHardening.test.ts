@@ -382,11 +382,12 @@ describe('A2(ii) a made-in line counts only under this model (r23)', () => {
       // S11: this product's own lists end at a blank line, a spec line or a section; inline own lists are line scoped
       ['Cybex Melio\nAccessories:\n- Melio Footmuff\n- Rain cover\nWeight 5.9 kg\nMade in China'],
       ['Cybex Melio\nIn the box\nMelio stroller\nRain cover\nWeight 5.9 kg\nMade in China'],
-      ['Cybex Melio\nYou may also like\nCybex Callisto\n## Reviews\nGreat.\nMade in China'],
       // a section between another model's mention and the claim starts a new block
       ['Cybex Melio\nPairs well with the Cybex Lemo chair\nSpecifications\nMade in China'],
     ];
     for (const [t, q] of ok) assert.equal(quoteInModelScope(t, E, q ?? 'Made in China'), true, t);
+    // r34d (Chief rule 2): a review heading opens a section; a claim inside it never counts.
+    assert.equal(quoteInModelScope('Cybex Melio\nYou may also like\nCybex Callisto\n## Reviews\nGreat.\nMade in China', E, 'Made in China'), false);
     // r34c evidence row (Chief rule 3, lowercase with no length cap): "cloud" is a model on this page (Cloud T), so the
     // lowercase line is no longer read as an ordinary word. Was a must-verify guard (p25 F s8); now unverified.
     assert.equal(quoteInModelScope('Cybex Melio\nCompatible with Cybex Cloud T\nSpecifications\nthe cloud cover is made in china', E, 'made in china'), false);
@@ -926,4 +927,22 @@ describe('r34c: user content, query-subset lines, lowercase without a length cap
     it(`query-subset line verifies: ${l}`, () => assert.equal(quoteInModelScope(`${P}${l}\nCountry of origin: Poland`, lq, 'Country of origin: Poland'), true));
   for (const l of ['Little Acorns Wardrobe', 'little acorns pine bed', 'Little Acorns Dresser', 'Classic Dresser Cot Bed', 'Pine Cot Bed'])
     it(`product-noun line blocks: ${l}`, () => assert.equal(quoteInModelScope(`${P}${l}\nCountry of origin: Poland`, lq, 'Country of origin: Poland'), false));
+});
+
+describe('r34d: lowercase name positions, review sections', () => {
+  const H = 'Cybex Melio\nLightweight stroller\n';
+  const q = 'Made in China';
+  const v = (b: string) => quoteInModelScope(`${H}${b}\n${q}`, 'Cybex Melio', q);
+  for (const b of ['walk', 'Walk', 'boot', 'Boot', 'Flat', 'Movement', 'toy factory', 'melio walk', 'Stroller for Callisto', 'stroller for callisto',
+    'Perfect for Callisto owners upgrading', 'the callisto is lighter now', 'we love the callisto more', 'callisto stroller in black',
+    'fits callisto and priam', 'compatible with callisto', 'designed by callisto in germany', 'callisto', 'made in china for callisto'])
+    it(`must block: ${b}`, () => assert.equal(v(b), false));
+  for (const t of ['Made in China (Walk)', 'Made in China (Boot edition)', 'Made in China for Boot', 'made in china (callisto)', 'made in china, callisto edition'])
+    it(`claim tail blocks: ${t}`, () => assert.equal(quoteInModelScope(H + t, 'Cybex Melio', t.slice(0, 13)), false));
+  for (const t of ['Customer reviews\nGreat product, fast delivery\nMade in China', 'Reviews (12)\n★★★★★\nMade in China', 'A - Made in China'])
+    it(`review section claim never counts: ${JSON.stringify(t)}`, () => assert.equal(quoteInModelScope(H + t, 'Cybex Melio', 'Made in China'), false));
+  for (const b of ['The Melio is our ultra-light stroller for the big city.', 'perfect for the big city', 'great for busy parents on the go',
+    'easy to fold and carry upstairs', 'the hood gives plenty of shade', 'ideal for holidays and trips', 'the basket holds groceries', 'smooth ride on cobbles'])
+    it(`ordinary lowercase prose verifies: ${b}`, () => assert.equal(v(b), true));
+  it('Made in China. Not for resale verifies', () => assert.equal(quoteInModelScope(`${H}Made in China. Not for resale`, 'Cybex Melio', q), true));
 });
