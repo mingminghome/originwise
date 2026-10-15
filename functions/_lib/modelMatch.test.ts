@@ -10,6 +10,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  FIRST_MADE_IN_TERMS,
   MADE_IN_FOLLOWUP_TERMS,
   MAX_MERGED_PAGES,
   buildMadeInQuery,
@@ -195,6 +196,26 @@ describe('exact-model matching (brand + model, variant-safe)', () => {
     assert.equal(exactModelPage('Soundcore Liberty 4 NC earbuds', 'Soundcore Liberty 4'), false);
     assert.equal(exactModelPage('Anker Liberty 4 earbuds review', 'Anker Liberty 4'), true);
     assert.equal(exactModelPage('Anker Liberty 4（2023）藍牙耳機', 'Anker Liberty 4'), true);
+    assert.equal(exactModelPage('Cybex Melio 2', 'Cybex Melio'), false);
+  });
+
+  it('a retailer title step count is this model, and its made-in is kept', () => {
+    const entity = 'Hailo 8160-407 L60 safety ladder';
+    const title =
+      'Hailo 8160-407 L60 Safety Ladder, 4 Steps, Multifunction Tray, Hinge Protection, Made in Germany';
+    const text = `${title}
+10 year guarantee, made in Germany
+Part Number 8160-407
+Global Trade Identification Number 04007126007551, 04007126024022`;
+    assert.equal(exactModelPage(text, entity), true);
+    assert.deepEqual(modelMentions(text, entity).variants, []);
+    const amazon = page('https://www.amazon.com/Hailo-8160-407/dp/B00WECMB2M', text);
+    const kept = gate([amazon], entity);
+    assert.equal(kept.length, 1);
+    assert.equal(kept[0]!.country, 'Germany');
+    assert.equal(kept[0]!.status, 'likely');
+    assert.equal(kept[0]!.exactModel, true);
+    assert.equal(kept[0]!.quote.toLowerCase().includes('made in germany'), true);
   });
   it('the excluded row names the other variant as written (Melio Carbon, Melio V2, Liberty 4 NC)', () => {
     assert.deepEqual(modelMentions('Cybex Melio (Carbon)', MELIO).variants, ['Carbon']);
@@ -502,6 +523,10 @@ describe('bounded made-in follow-up query', () => {
     for (const term of ['"made in"', '"country of origin"', '產地', '製造地', '原產地', '生産国']) {
       assert.ok(MADE_IN_FOLLOWUP_TERMS.includes(term as (typeof MADE_IN_FOLLOWUP_TERMS)[number]), term);
       assert.ok(q.includes(term), term);
+    }
+    for (const term of FIRST_MADE_IN_TERMS) {
+      assert.ok(MADE_IN_FOLLOWUP_TERMS.includes(term), term);
+      assert.ok(buildSearchQuery('Cybex Melio', []).includes(term), term);
     }
   });
 

@@ -12,7 +12,12 @@
 import { hqFoldedIntoParent, parentNamedInCompany } from '../../functions/_lib/chinaChip';
 import { inScope, normalizeRegion, type GeoScope } from '../../functions/_lib/regions';
 import { cleanSources, splitSourceLine } from '../../functions/_lib/sourceLine';
-import { tierFromCodes } from '../../functions/_lib/tierRules';
+import {
+  STRONG_CN_CODES,
+  UNKNOWN_TIER_CONFIDENCE_CAP,
+  WEAK_CN_CODES,
+  tierFromCodes,
+} from '../../functions/_lib/tierRules';
 import type { CheckResult, RelationTier } from '../core/types';
 
 export type LinkStatus = 'china' | 'notChina' | 'unconfirmed';
@@ -294,6 +299,17 @@ export function buildChinaCard(result: CheckResult): ChinaCardView {
     cardCodes.length === codes.length && cardCodes.every((k) => codes.includes(k));
   let tier: RelationTier = same ? result.relationTier : tierFromCodes(cardCodes);
   if (chip || madeCn) tier = 'direct';
+  // A cached check can say Unknown at 95% after a brand-home made-in was
+  // dropped, while this card already shows a non-China HQ or controlling
+  // owner. Those company facts are Unrelated. Brand origin alone is not.
+  const cnCode = (k: string) => STRONG_CN_CODES.has(k) || WEAK_CN_CODES.has(k);
+  const ownerCountry = owner?.country ?? '';
+  const anchoredOutside =
+    (hq !== '' && !isCn(hq)) ||
+    (controlling && ownerCountry !== '' && !isCn(ownerCountry));
+  if (tier === 'unknown' && !cardCodes.some(cnCode) && !has('verify_conflict') && anchoredOutside) {
+    tier = 'none';
+  }
 
   const chips: ChinaCardChip[] = [];
   if (chip) chips.push(chip);
@@ -306,6 +322,8 @@ export function buildChinaCard(result: CheckResult): ChinaCardView {
     confidence = undefined;
   } else if (chip && confidence !== undefined && companyFactsSourced(result)) {
     confidence = Math.max(confidence, COMPANY_DIRECT_MIN_CONFIDENCE);
+  } else if (tier === 'unknown' && confidence !== undefined && confidence > 0.5) {
+    confidence = UNKNOWN_TIER_CONFIDENCE_CAP;
   }
 
   const reasons: ChinaCardReason[] = [];
@@ -319,7 +337,13 @@ export function buildChinaCard(result: CheckResult): ChinaCardView {
   // explicit_non_cn_geo is not a card line: its places are the 總部 and
   // 品牌來源地 rows right above (德國 on Cybex, 日本 on Sheer / Softouch), and
   // on a 直接 card it read like a reason for the tier.
-  for (const k of codes) if (META_CODES.has(k)) reasons.push({ kind: 'code', code: k });
+  for (const k of codes) {
+    if (!META_CODES.has(k)) continue;
+    // "Not enough ownership information" contradicts a card that already
+    // shows the HQ or the controlling owner.
+    if (k === 'insufficient' && tier === 'none') continue;
+    reasons.push({ kind: 'code', code: k });
+  }
   const madeInTalk = ['made_in_cn', 'manufacturer_cn', 'component_cn'].some(has);
   if (madeInTalk && !madeCn) reasons.push({ kind: 'pointer' });
 

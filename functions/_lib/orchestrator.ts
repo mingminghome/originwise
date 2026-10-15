@@ -1,7 +1,8 @@
 /**
  * OriginWise check orchestrator.
  * One JSON query per check. Sections are chosen from the requested dimensions.
- * Emits progress events for SSE; pure-TS synthesize owns relationTier.
+ * Emits progress events for SSE. One JSON check returns the facts;
+ * synthesize reads the China link from those facts. It is not a model call.
  */
 
 import {
@@ -420,7 +421,6 @@ async function runQuery(
     ];
   }
 
-  emit({ type: 'progress', jobId, step: 'synthesize', status: 'running' });
   const result = synthesize({
     jobId,
     geoScope,
@@ -475,7 +475,6 @@ async function runQuery(
   if (result.product && 'madeInSources' in result.product) {
     delete (result.product as { madeInSources?: unknown }).madeInSources;
   }
-  emit({ type: 'progress', jobId, step: 'synthesize', status: 'done' });
   return { ok: true, result, mode: 'monolith', agents };
 }
 

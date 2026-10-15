@@ -25,7 +25,8 @@ describe('origin accuracy prompt contracts', () => {
   it('tells the product section not to copy design HQ into madeIn', () => {
     const p = prompt(['origin', 'manufacturer']);
     assert.match(p, /DESIGN HQ ≠ FACTORY/);
-    assert.match(p, /NEVER copy HQ/);
+    assert.match(p, /must not set madeIn/);
+    assert.match(p, /brand's home country DOES set madeIn/);
     assert.doesNotMatch(p, /"alternatives"/);
   });
 

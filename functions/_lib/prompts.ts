@@ -27,7 +27,7 @@ Products often have SEPARATE layers. Report each layer; never substitute one for
 1) originCountry = brand design / brand home market. Not the factory.
    designedIn = the country the brand says it designs / engineers / develops this product in
    ("Designed in Germany", "Engineered in Germany", "German engineering", "Designed by Apple in California",
-   德國設計, 設計於, 研發於, 德國工程). Report it ONLY here (or in notes as design info), separately from madeIn.
+   德國設計, 設計於, 研發於, 德國工程). Report it only in designedIn, separately from madeIn.
    Design / brand wording is never made-in evidence: never put it in madeIn, madeInSources quotes, parts or componentsOrigin.
    One sentence with both ("Designed in Germany, made in China"): only the made-in part counts for madeIn,
    and a madeInSources quote is only that part ("made in China").
@@ -46,41 +46,30 @@ Products often have SEPARATE layers. Report each layer; never substitute one for
      never rebuild a URL from the domain or title.
      Never invent, guess or rebuild a URL; every cited URL is fetched and checked.
      Use [] when madeIn is unknown or you have no page for it.
-4) componentsOrigin = where major parts / the global line may be built when different from final madeIn.
-5) parts[] — ALWAYS isolate from THIS product (do not wait for the user to list them):
-   - List typical major BOM / recipe / service item NAMES for this category and SKU.
-   - Consumables (food, drink, cosmetics, supplements) → ingredients. Goods with a bill of materials → parts and common spares.
-   - kind: "part" | "spare" | "ingredient" | "component"
-   - madeIn / originCountry per item ONLY when grounded web research and/or packaging/OCR
-     evidence supports THAT part's country (cross-check the part against Sources / label text).
-   - When <web_research> is empty AND there is no packaging/OCR "Made in" / びん／乳首／キャップ
-     (or equivalent) line: OMIT madeIn and originCountry on every part (names + unknown note only).
-   - NEVER copy brand HQ, originCountry, "Japanese/German/… brand", or design nationality into
-     part countries. Brand home ≠ part factory.
-   - Do not invent ANY country on parts without web/OCR/label evidence — not only "do not invent China."
-   - chinaRelated true ONLY for mainland China (never Taiwan), and only when evidence supports it.
-   - Unknown origin: omit chinaRelated or false; say unknown in note.
-   - Max 8. Skip trivia; keep items that can change a China-relation judgment.
-6) notes[] MUST explain multi-layer cases when layers differ (brand vs components vs final COO).
+4) componentsOrigin = where major parts differ from final madeIn. Omit when unknown.
+5) parts[] — names for THIS SKU, max 8. Food, drink, cosmetics → ingredients. Other goods → parts and common spares.
+   kind: "part" | "spare" | "ingredient" | "component".
+   madeIn / originCountry on a part ONLY when Sources or the label name THAT part's country.
+   When <web_research> is empty AND there is no packaging/OCR "Made in" / びん／乳首／キャップ line: OMIT madeIn and originCountry on every part.
+   NEVER copy brand HQ, originCountry, or design nationality into part countries.
+   Do not invent ANY country on parts without web/OCR/label evidence.
+   chinaRelated true ONLY for mainland China, and only with that evidence. Otherwise omit it.
+   Omit part notes.
+6) Omit notes. Do not write that made-in or a part country is unknown, or that a barcode or package photo is missing.
 
-SKU / MARKET RULES:
-- Full model strings and market suffixes matter; the same family can have different COO by region.
-- NEVER set madeIn=China only because "many goods in this category are made in China" or because of brand nationality.
-- NEVER invent China when the user or label names another country.
-- If exact SKU made-in is uncertain: madeIn "unknown", lower confidence, and put candidates in notes — do not guess China.
-- Photo/OCR "Made in" / "Country of origin" ALWAYS beats brand stereotypes and generic web guesses.
+SKU:
+- NEVER set madeIn=China from the category or from brand nationality. NEVER invent China when the label names another country.
+- If you know where THIS model is manufactured (a plant, a "Made in" / hergestellt line, or a factory country for this SKU), set madeIn to that country even when it is also the brand's home. The server lists it as one source. It is confirmed only when web pages agree or a package label says so.
+- If you only know the brand home or "designed in" country, set madeIn "unknown".
+- Photo/OCR "Made in" / "Country of origin" beats brand stereotypes.
 
-DESIGN HQ ≠ FACTORY (critical):
-- originCountry = brand/design home. madeIn = factory / legal COO for this SKU. Never substitute one for the other.
-- NEVER copy HQ, "designed in …", or brand nationality into madeIn.
-- Brand marketing from a non-PRC country is not evidence of manufacture there. Many goods are designed at HQ and assembled elsewhere (often mainland China).
-- A note like "designed and manufactured in {HQ country}" with no named plant, city, or COO label is a stereotype — set madeIn "unknown".
-- Named factory, assembly plant, or on-label COO for THIS SKU may set madeIn. "Designed in X" must never set madeIn.
+DESIGN HQ ≠ FACTORY:
+- originCountry = brand/design home. madeIn = factory / legal COO. "Designed in X", "German engineering", or brand nationality alone must not set madeIn.
+- A retailer or manufacturer statement that THIS model is made in the brand's home country DOES set madeIn.
 
-SAME NAME / SUPPLY-SHIFT (critical):
-- The same brand spelling can be two unrelated companies. Match on category + legal parent, never the name string alone.
-- Do not copy made-in from a same-named product in a different category.
-- Rumors or policy talk of moving some parts/assembly out of China are componentsOrigin only. They do not set madeIn for the finished unit unless THIS SKU's label/COO says so.
+SAME NAME / SUPPLY-SHIFT:
+- Match category + legal parent, never the spelling alone. Do not copy made-in from a same-named product in a different category.
+- A rumor of moving some parts out of China is componentsOrigin only. It does not set madeIn.
 `.trim();
 
 export const COMPANY_FACT_RULES = `
@@ -95,7 +84,7 @@ PARENT vs LOCAL DISTRIBUTOR (critical — never collapse):
 - Two brands sharing the same local distributor, agent, or shop-in-shop does NOT make one brand the parent of the other.
 - A market-desk label like "OtherBrand TW" / "OtherBrand Taiwan" is a local sales identity, not a legal parent.
 - Similar pronunciation of brand names does not mean the same company.
-- If you only know the local seller, omit parents[] (unknown). A distributor may appear in notes, never as parent.
+- If you only know the local seller, omit parents[] (unknown). Never put a distributor in parents[].
 `.trim();
 
 export const ALTERNATIVES_FACT_RULES = `

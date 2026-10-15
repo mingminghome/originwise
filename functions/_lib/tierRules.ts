@@ -28,6 +28,12 @@ export const WEAK_CN_CODES: ReadonlySet<string> = new Set([
   'ownership_weak_cn',
 ]);
 
+/**
+ * An Unknown verdict must not sit next to a high company confidence.
+ * 0.45 matches the direct-conflict cap.
+ */
+export const UNKNOWN_TIER_CONFIDENCE_CAP = 0.45;
+
 export function tierFromCodes(
   codes: readonly string[],
   opts: { unverifiedChinaMention?: boolean } = {}

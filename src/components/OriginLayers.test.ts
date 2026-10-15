@@ -65,10 +65,40 @@ describe('buildOriginLayers', () => {
     assert.ok(model.ownership.some((l) => l.kind === 'candidate' && l.label === 'China'));
     // manufacturing relation is not ownership-class
     assert.ok(!model.ownership.some((l) => l.kind === 'relation' && l.type === 'manufacturing'));
-    // confirmed_coo not duplicated into parts
+    // confirmed_coo not duplicated into parts. A possible part country and a
+    // model-only part are omitted; the product country of origin stays on
+    // the made-in card.
     assert.ok(!model.parts.some((l) => l.kind === 'candidate' && l.label === 'Vietnam'));
+    assert.ok(!model.parts.some((l) => l.kind === 'candidate' && l.label === 'Thailand'));
+    assert.ok(!model.parts.some((l) => l.kind === 'part' && l.name === 'Battery'));
+  });
+
+  it('lists a likely part country and skips possible, omitted, and model-only rows', () => {
+    const model = buildOriginLayers(
+      base({
+        knowledgeBasis: 'web_enriched',
+        partsEvidence: 'web',
+        product: {
+          componentsOrigin: 'Germany / Europe',
+          originCandidates: [
+            { label: 'Thailand', confidence: 0.55, source: 'parts', rating: 'likely' },
+            { label: 'Germany', confidence: 0.5, source: 'parts', rating: 'possible' },
+          ],
+          parts: [
+            { name: 'Platform', kind: 'part', madeIn: 'Germany' },
+            {
+              name: 'Frame',
+              kind: 'part',
+              note: 'Part country omitted: not confirmed by Search/OCR for this part.',
+            },
+          ],
+        },
+      })
+    );
     assert.ok(model.parts.some((l) => l.kind === 'candidate' && l.label === 'Thailand'));
-    assert.ok(model.parts.some((l) => l.kind === 'part' && l.name === 'Battery'));
+    assert.ok(!model.parts.some((l) => l.kind === 'candidate' && /germany/i.test(l.label)));
+    assert.ok(!model.parts.some((l) => l.kind === 'part'));
+    assert.ok(!model.parts.some((l) => l.kind === 'components'));
   });
 
   it('does not invent Final COO from ownership or unknown madeIn', () => {
@@ -147,7 +177,7 @@ describe('buildOriginLayers', () => {
     assert.ok(model.brandOps.some((l) => l.kind === 'brand' && l.value === 'Acme'));
   });
 
-  it('flags model-only parts banner when knowledgeBasis is model_memory', () => {
+  it('omits a model-only part that has no confirmed country', () => {
     const model = buildOriginLayers(
       base({
         knowledgeBasis: 'model_memory',
@@ -156,7 +186,8 @@ describe('buildOriginLayers', () => {
         },
       })
     );
-    assert.equal(model.partsModelOnly, true);
+    assert.equal(model.parts.length, 0);
+    assert.equal(model.partsModelOnly, false);
     assert.deepEqual(model.partsSources, []);
   });
 

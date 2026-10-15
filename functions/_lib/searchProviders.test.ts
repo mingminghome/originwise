@@ -360,6 +360,37 @@ describe('runSearchChain (mocked fetch)', () => {
     assert.match(out.brief, /COO: Japan \| source: manufacturer/);
   });
 
+  it('no barcode: one wide query, no second search', async () => {
+    let calls = 0;
+    let query = '';
+    mockFetch({
+      firecrawl: (_url, init) => {
+        calls += 1;
+        query = String((JSON.parse(String(init?.body || '{}')) as { query?: string }).query || '');
+        return json({
+          success: true,
+          data: [
+            {
+              url: 'https://shop.example/hailo',
+              title: 'Hailo 8040-407 XXL',
+              markdown: 'Hailo 8040-407 XXL safety ladder',
+            },
+          ],
+        });
+      },
+    });
+    const out = await runSearchChain({
+      entity: 'Hailo 8040-407 XXL',
+      locale: 'en',
+      env: { FIRECRAWL_API_KEY: 'fc', SEARCH_PROVIDERS: 'firecrawl' },
+    });
+    assert.equal(out.ok, true);
+    assert.equal(calls, 1);
+    assert.equal(out.requests, 1);
+    assert.ok(query.includes('Hailo 8040-407 XXL'));
+    assert.ok(query.includes('產地') && query.includes('hergestellt'));
+  });
+
   it('JAN / variant mismatch page → 未確認, no made-in country in the brief', async () => {
     mockFetch({
       brave: () =>

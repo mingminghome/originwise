@@ -11,6 +11,7 @@ import { buildOriginLayers, OriginLayers, webQuotaNotice } from './OriginLayers'
 import { OriginMap } from './OriginMap';
 import { RelationGraph } from './RelationGraph';
 import { ChinaCard, Fold, LayersCard, MadeInCard } from './ResultCards';
+import { isUselessCooNote } from '../../functions/_lib/noteText';
 import { buildMadeInView, cleanNotes } from './resultCards.model';
 import { localizeServerText, serverTextKeyOf } from '../core/localizeServerText';
 import { resultTitle } from '../core/resultTitle';
@@ -143,14 +144,21 @@ export function ResultPanel({
   const failCount = agents.filter((a) => a.ok === false && !skippedAgent(a)).length;
   const okCount = agents.filter((a) => a.ok !== false).length;
   // Older cached results may still carry echoed schema keys like "(madeIn)".
-  // The 製造地 card's reason always leads the fold when made-in is unconfirmed
-  // (replacing the server's generic note, or added when the server had none).
+  // A real dispute (pages disagree, sources disagree, one page only) leads
+  // the fold. "AI cited" and "AI only" only repeat the unconfirmed headline,
+  // so they stay on the made-in card.
   const madeIn = buildMadeInView(result);
   const isUnconfirmedNote = (n: string) => serverTextKeyOf(n) === 'cooUnconfirmedNoBarcode';
-  const cardReason =
-    madeIn.state === 'unconfirmed' && madeIn.reason
-      ? t('check.rc.foldUnconfirmed', { reason: t(`check.rc.reason.${madeIn.reason}`) })
+  const foldReason =
+    madeIn.state === 'unconfirmed' &&
+    madeIn.reason &&
+    madeIn.reason !== 'aiCitedUnverified' &&
+    madeIn.reason !== 'aiOnly'
+      ? madeIn.reason
       : null;
+  const cardReason = foldReason
+    ? t('check.rc.foldUnconfirmed', { reason: t(`check.rc.reason.${foldReason}`) })
+    : null;
   const notes = (() => {
     const raw = cleanNotes(result).filter((n) => noteWithinEvidence(result, n));
     if (!cardReason) return raw;
@@ -168,7 +176,9 @@ export function ResultPanel({
   const altCount =
     (result.alternatives?.brands?.length ?? 0) + (result.alternatives?.products?.length ?? 0);
   // Nothing reads stronger than its evidence (src/core/evidence.ts).
-  const caveats = (result.caveats ?? []).filter((c) => noteWithinEvidence(result, c));
+  const caveats = (result.caveats ?? []).filter(
+    (c) => noteWithinEvidence(result, c) && !isUselessCooNote(c)
+  );
   const notice = webQuotaNotice(result);
   const hasEntity = Boolean(result.product || result.company);
 

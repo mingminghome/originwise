@@ -140,9 +140,9 @@ describe('cacheEntryBody', () => {
   });
 });
 
-describe('cache key version (product-page / model-scope made-in evidence, v11)', () => {
-  it('is check:v11, and the key hashes v11 (old v10 entries are never served)', async () => {
-    assert.equal(CACHE_KEY_VERSION, 'check:v11');
+describe('cache key version (AI made-in source votes, v12)', () => {
+  it('is check:v13, and the key hashes v13 (old v12 entries are never served)', async () => {
+    assert.equal(CACHE_KEY_VERSION, 'check:v13');
     const parts = { text: 'Cybex Melio', locale: 'zh-Hant', geoScope: 'prc' as const, dimensions: ['origin' as const] };
     const hex = async (v: string) => {
       const material = [v, normalizeQuery(parts.text), parts.locale, parts.geoScope, 'origin'].join('|');
@@ -150,7 +150,8 @@ describe('cache key version (product-page / model-scope made-in evidence, v11)',
       return Array.from(d.slice(0, 16), (b) => b.toString(16).padStart(2, '0')).join('');
     };
     const key = await cacheKeyHash(parts);
-    assert.equal(key, await hex('check:v11'));
+    assert.equal(key, await hex('check:v13'));
+    assert.notEqual(key, await hex('check:v11'));
     assert.notEqual(key, await hex('check:v10'));
     assert.notEqual(key, await hex('check:v9'));
     assert.notEqual(key, await hex('check:v8'));

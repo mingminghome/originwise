@@ -13,7 +13,7 @@ import type { CheckResult } from '../core/types';
 import { normalizeRegion } from '../../functions/_lib/regions';
 import { zhCountryText } from '../../functions/_lib/zhHant';
 import { canonicalCountry } from '../../functions/_lib/countryLabel';
-import { notesNameMadeIn, notesNameOnlyAsDesign } from '../../functions/_lib/noteText';
+import { isUselessCooNote, notesNameMadeIn, notesNameOnlyAsDesign } from '../../functions/_lib/noteText';
 import { factVerified, quoteNamesBrand } from '../core/evidence';
 import { brandHqFolded, confirmedMadeIn, pickOwner } from './ChinaLink';
 
@@ -79,6 +79,15 @@ export type MadeInView = {
   unconfirmedTier: WeakCandidate[];
   /** Unconfirmed only: the one reason chip. */
   reason?: UnconfirmedReason;
+  /**
+   * What each consulted source said. `n` of `total` (pages plus the AI answer)
+   * named this country, for example Germany (1/5). Not a confirmed made-in.
+   */
+  votes: SourceVote[];
+  /** Consulted sources that named no country. */
+  silent: number;
+  /** Pages fetched plus the AI answer. */
+  sourceTotal: number;
   /**
    * 網頁說法不一 only: each side of the disagreement (爭議 line), in candidate
    * order, with its page counts. The pages are the candidate's source rows.
@@ -257,13 +266,23 @@ export function partCountryEvidence(result: CheckResult, country: string): PartE
     : { kind: 'model' };
 }
 
+/**
+ * A part country is worth a row only when it is relatively confirmed:
+ * read from the package label, or graded confirmed / likely from a web
+ * source that is not the model's own guess. Possible, mentioned, model-only,
+ * and omitted countries stay off the parts list. The product country of
+ * origin stays on the made-in card.
+ */
+export function partOriginShown(ev: PartEvidence | undefined): boolean {
+  if (ev?.kind === 'label') return true;
+  return ev?.kind === 'graded' && (ev.rating === 'confirmed' || ev.rating === 'likely');
+}
+
 
 /**
  * 查到的產地候選（未確認）. One row per country. A model-only made-in (no
- * barcode page, no label) is a 'possible' 模型參考 row only:
- * - an HQ / manufacturer-country echo with no product-specific mention is
- *   dropped (#28),
- * - a web row for the same country absorbs it (no duplicate 中國 rows).
+ * barcode page, no label) is a 'possible' 模型參考 row, including when it
+ * matches HQ. A web row for the same country absorbs it (no duplicate rows).
  * Older cached answers may carry it as madeIn or a 'confirmed_coo' candidate.
  */
 function candidateRows(result: CheckResult, candidates: Candidate[], unconfirmedMadeIn: string): CandRow[] {
@@ -303,12 +322,9 @@ function candidateRows(result: CheckResult, candidates: Candidate[], unconfirmed
     put({ label: c.label, rating: c.rating, source: c.source });
   }
   if (unconfirmedMadeIn) modelLabels.push(unconfirmedMadeIn);
-  const hq = cleanValue(result.company?.hqCountry);
-  const mfg = cleanValue(result.product?.manufacturerCountry);
   for (const label of modelLabels) {
-    const echo = (hq && sameCountryLabel(label, hq)) || (mfg && sameCountryLabel(label, mfg));
-    const productSpecific = rows.some((r) => sameCountryLabel(r.label, label));
-    if (echo && !productSpecific) continue;
+    // Shown even when it matches HQ. The card lists it as an AI vote
+    // (Germany 1/5), not as a confirmed made-in.
     put({ label, rating: 'possible', source: 'model_memory' });
   }
   return rows
@@ -337,6 +353,15 @@ function weakRows(result: CheckResult, candidates: Candidate[], shown: CandRow[]
 }
 
 /** host: the page's domain, shown when the title is not already the domain. */
+export type SourceVote = {
+  country: string;
+  /** Sources that named this country. */
+  n: number;
+  /** Pages consulted plus the AI answer. */
+  total: number;
+  sources: SourceRow[];
+};
+
 export type SourceRow = {
   label: string;
   url?: string;
@@ -432,7 +457,9 @@ function withPathHints(rows: SourceRow[]): SourceRow[] {
   });
 }
 
-function buildMadeInViewCore(result: CheckResult): Omit<MadeInView, 'citedRows' | 'excludedRows' | 'designRows' | 'unconfirmedTier'> {
+function buildMadeInViewCore(
+  result: CheckResult
+): Omit<MadeInView, 'citedRows' | 'excludedRows' | 'designRows' | 'unconfirmedTier' | 'votes' | 'silent' | 'sourceTotal'> {
   const p = result.product;
   const meta = result.meta;
   const sources = Array.isArray(result.sources) ? cleanSources(result.sources, 8) : [];
@@ -607,8 +634,9 @@ export type LayerRowView = {
  * 產地分層 rows. Tags say how far the value is backed:
  * company facts → 有提及 (brand origin → 確認 only with a brand quote naming that
  * country, src/core/evidence.ts); label-read parts
- * → 確認; web parts → their own candidate grade + %; model parts →
- * 模型參考（未經多重確認） + ⓘ (no tag); nothing → 未確認.
+ * → 確認; web parts → their own confirmed / likely grade + %. A part country
+ * that is only possible, mentioned, or model-only is omitted. No empty
+ * 未確認 parts row: the product country of origin stays on the made-in card.
  */
 export function buildLayerRows(result: CheckResult): LayerRowView[] {
   const p = result.product;
@@ -656,18 +684,15 @@ export function buildLayerRows(result: CheckResult): LayerRowView[] {
     // Same evidence as the 零件候選 list (partCountryEvidence): never a grade
     // borrowed from another country or from result-level partsEvidence.
     const ev = partCountryEvidence(result, country);
+    if (!partOriginShown(ev) || ev.kind === 'model') continue;
     const base = { key: 'parts' as const, value: names.join(', '), names, country };
     if (ev.kind === 'label') rows.push({ ...base, tag: 'confirmed' });
-    else if (ev.kind === 'graded')
+    else
       rows.push({
         ...base,
-        tag: ev.rating === 'confirmed' ? 'confirmed' : ev.rating === 'likely' ? 'likely' : 'mentioned',
+        tag: ev.rating === 'confirmed' ? 'confirmed' : 'likely',
         grade: { rating: ev.rating, confidence: ev.confidence },
       });
-    else rows.push({ ...base, tag: 'mentioned', modelRef: true });
-  }
-  if (!byCountry.length) {
-    rows.push({ key: 'parts', value: '', tag: 'unconfirmed' });
   }
 
   const parents = (c?.parents ?? []).filter((x) => x.name?.trim());
@@ -702,7 +727,7 @@ export function cleanNotes(result: CheckResult): string[] {
           )
           .trim()
       )
-      .filter(Boolean) ?? []
+      .filter((n) => Boolean(n) && !isUselessCooNote(n)) ?? []
   );
 }
 
@@ -760,12 +785,96 @@ function tierRows(result: CheckResult, core: ReturnType<typeof buildMadeInViewCo
   return out;
 }
 
+/**
+ * One row per country named by a fetched page or by the AI answer.
+ * The denominator is every fetched page plus the AI answer, so a single
+ * Gemini answer among four silent pages reads Germany (1/5).
+ */
+function buildSourceVotes(result: CheckResult): { votes: SourceVote[]; silent: number; total: number } {
+  const sources = Array.isArray(result.sources) ? cleanSources(result.sources, 12) : [];
+  const urls = new Set<string>();
+  for (const s of sources) {
+    const url = splitSourceLine(s).url?.trim();
+    if (url) urls.add(url);
+  }
+  const hits = (result.meta?.searchCoo ?? []).filter(
+    (h) =>
+      !h.evidenceOnly &&
+      Boolean(cleanValue(h.country)) &&
+      Boolean(h.url?.trim()) &&
+      (h.status === 'likely' || h.basis === 'model')
+  );
+  for (const h of hits) urls.add(h.url!.trim());
+  const total = urls.size + 1;
+
+  const buckets: Array<{ country: string; sources: SourceRow[]; keys: Set<string> }> = [];
+  const named = new Set<string>();
+  const bucketFor = (country: string) => {
+    const label = canonicalCountry(country) ?? country;
+    let b = buckets.find((x) => sameCountryLabel(x.country, label));
+    if (!b) {
+      b = { country: label, sources: [], keys: new Set() };
+      buckets.push(b);
+    }
+    return b;
+  };
+  const add = (country: string, key: string, row: SourceRow) => {
+    const b = bucketFor(country);
+    if (b.keys.has(key)) return;
+    b.keys.add(key);
+    b.sources.push(row);
+    named.add(key);
+  };
+
+  for (const h of hits) {
+    const url = h.url!.trim();
+    const parts = splitSourceLine(sources.find((s) => s.includes(url)) ?? url);
+    const host = sourceLabel({ title: '', url: parts.url ?? url });
+    const label = sourceLabel(parts) || host || url;
+    add(h.country, `page:${url}`, {
+      label,
+      url: parts.url ?? url,
+      host: host && host !== label ? host : undefined,
+    });
+  }
+
+  const confirmedBasis = result.product?.madeInBasis;
+  const confirmed =
+    confirmedBasis === 'barcode' || confirmedBasis === 'label' || confirmedBasis === 'model';
+  if (!confirmed) {
+    const aiCountries: string[] = [];
+    for (const c of result.product?.originCandidates ?? []) {
+      if (c.source === 'model_memory' && cleanValue(c.label)) aiCountries.push(c.label);
+    }
+    const madeIn = cleanValue(result.product?.madeIn);
+    if (madeIn && !aiCountries.some((c) => sameCountryLabel(c, madeIn))) aiCountries.push(madeIn);
+    for (const c of aiCountries) {
+      add(c, 'ai', { label: '', ai: true, country: canonicalCountry(c) ?? c });
+    }
+  }
+
+  const votes = buckets
+    .map((b) => ({
+      country: b.country,
+      n: b.keys.size,
+      total,
+      sources: withPathHints(b.sources).slice(0, 8),
+    }))
+    .filter((v) => v.n > 0)
+    .sort((a, b) => b.n - a.n || a.country.localeCompare(b.country));
+  return { votes, silent: Math.max(0, total - named.size), total };
+}
+
 export function buildMadeInView(result: CheckResult): MadeInView {
   const core = buildMadeInViewCore(result);
   const tier = tierRows(result, core);
+  const { votes, silent, total } = buildSourceVotes(result);
   return {
     ...core,
     unconfirmedTier: tier,
+    votes,
+    silent,
+    sourceTotal: total,
     citedRows: citedRows(result),
     excludedRows: excludedRows(result),
     designRows: designRows(result, core.state === 'confirmed' ? core.country : undefined),

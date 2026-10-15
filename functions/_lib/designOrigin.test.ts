@@ -138,7 +138,10 @@ describe('designedIn (the model reports design separately)', () => {
       partials: { product: { name: 'Cybex Melio', brand: 'Cybex', designedIn: 'Germany', madeIn: 'Germany', confidence: 0.8 } },
     });
     assert.equal(r.product?.madeIn, undefined);
-    assert.ok(!(r.product?.originCandidates ?? []).some((c) => c.label === 'Germany'), JSON.stringify(r.product?.originCandidates));
+    const germany = (r.product?.originCandidates ?? []).filter((c) => c.label === 'Germany');
+    assert.equal(germany.length, 1, JSON.stringify(r.product?.originCandidates));
+    assert.equal(germany[0]?.source, 'model_memory');
+    assert.notEqual(germany[0]?.rating, 'confirmed');
     assert.deepEqual(r.product?.designInfo?.map((d) => [d.country, d.kind]), [['Germany', 'design']]);
   });
   it('a design country equal to the confirmed made-in is left out', () => {

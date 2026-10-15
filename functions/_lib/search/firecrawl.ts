@@ -8,16 +8,11 @@
 
 import {
   MAX_RESULT_PAGES,
-  buildMadeInQuery,
-  buildSearchQuery,
-  extractBriefFromPages,
   fetchWithTimeout,
-  findJans,
   mapSearchHttpError,
-  mergePages,
-  needsMadeInFollowup,
   textBlocks,
 } from './extract';
+import { runMadeInSearch } from './madeInSearch';
 import type { FetchedPage, SearchProvider } from './types';
 
 export const FIRECRAWL_ENDPOINT = 'https://api.firecrawl.dev/v1/search';
@@ -103,33 +98,14 @@ export const firecrawlSearchProvider: SearchProvider = {
     return Boolean(env.FIRECRAWL_API_KEY?.trim());
   },
   async search({ entity, ocrText, env }) {
-    const t0 = Date.now();
     const key = env.FIRECRAWL_API_KEY?.trim() || '';
-    const jans = findJans(entity, ocrText);
-    const first = await firecrawlPages(key, buildSearchQuery(entity, jans), FIRECRAWL_MS);
-    if ('error' in first) {
-      return { ok: false, brief: '', sources: [], error: first.error, ms: Date.now() - t0, requests: 1 };
-    }
-    if (!first.pages.length) {
-      return { ok: false, brief: '', sources: [], error: 'empty_response', ms: Date.now() - t0, requests: 1 };
-    }
-    let pages = first.pages;
-    let requests = 1;
-    // One bounded follow-up: model name + wider made-in wording (產地 / 製造地 /
-    // country of origin), only when the first pages back no made-in yet.
-    if (needsMadeInFollowup(entity, ocrText, pages)) {
-      requests += 1;
-      const extra = await firecrawlPages(key, buildMadeInQuery(entity), FIRECRAWL_FOLLOWUP_MS);
-      if (!('error' in extra)) pages = mergePages(pages, extra.pages);
-    }
-    return extractBriefFromPages({
+    return runMadeInSearch({
       providerId: 'firecrawl',
       entity,
       ocrText,
-      pages,
       env,
-      requests,
-      t0,
+      fetchPages: (query, phase) =>
+        firecrawlPages(key, query, phase === 'first' ? FIRECRAWL_MS : FIRECRAWL_FOLLOWUP_MS),
     });
   },
 };

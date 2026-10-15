@@ -405,7 +405,10 @@ describe('產地說明 fold follows the 製造地 card (Tester #35 item 3)', () 
       for (const r of CASES.slice(2)) {
         const v = buildMadeInView(r);
         const out = fold(r, t);
-        assert.ok(out.includes(t(`check.rc.reason.${v.reason}`)), `${lng} ${v.reason}: ${out}`);
+        const sentence = t('check.rc.foldUnconfirmed', { reason: t(`check.rc.reason.${v.reason}`) });
+        // AI-cited and AI-only only repeat the unconfirmed headline.
+        const quiet = v.reason === 'aiCitedUnverified' || v.reason === 'aiOnly';
+        assert.equal(out.includes(sentence), !quiet, `${lng} ${v.reason}: ${out}`);
         assert.ok(!out.includes('沒有條碼網頁') && !/no barcode page/i.test(out), `${lng}: ${out}`);
       }
     }

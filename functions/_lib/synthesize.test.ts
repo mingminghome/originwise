@@ -51,6 +51,88 @@ describe('synthesize decision table', () => {
     assert.equal(r.relationTier, 'none');
   });
 
+  it('German HQ and a wholly German owner stay unrelated when made-in only echoed the brand home', () => {
+    const r = synthesize({
+      jobId: 'hailo-tier',
+      geoScope: 'prc',
+      webEnriched: true,
+      sources: ['Hailo — https://www.hailo.de/'],
+      partials: {
+        product: {
+          name: 'Hailo 8040-407 XXL',
+          brand: 'Hailo',
+          originCountry: 'Germany',
+          madeIn: 'Germany',
+          confidence: 0.95,
+        },
+        company: {
+          name: 'Hailo',
+          hqCountry: 'Germany',
+          confidence: 0.95,
+          parents: [{ name: 'Joachim Loh Group', country: 'Germany', control: 'wholly' }],
+        },
+      },
+    });
+    assert.equal(r.relationTier, 'none');
+    assert.equal(r.product?.madeIn, undefined);
+    assert.ok(!r.tierReasons.includes('insufficient'));
+    assert.ok((r.confidence ?? 0) >= 0.9);
+    assert.ok(!(r.product?.notes ?? []).some((n) => /Made-in omitted|Final COO unconfirmed/i.test(n)));
+    assert.ok(!(r.caveats ?? []).some((c) => /Made-in omitted|queried signals/i.test(c)));
+  });
+
+  it('a controlling non-China owner is unrelated even when HQ is missing', () => {
+    const r = synthesize({
+      jobId: 'owner-only',
+      geoScope: 'prc',
+      webEnriched: true,
+      sources: ['Hailo — https://www.hailo.de/'],
+      partials: {
+        product: {
+          name: 'Hailo 8040-407 XXL',
+          brand: 'Hailo',
+          originCountry: 'Germany',
+          madeIn: 'Germany',
+          confidence: 0.95,
+        },
+        company: {
+          name: 'Hailo',
+          confidence: 0.95,
+          parents: [
+            {
+              name: 'Joachim Loh Unternehmensgruppe',
+              country: 'Germany',
+              control: 'wholly',
+            },
+          ],
+        },
+      },
+    });
+    assert.equal(r.relationTier, 'none');
+    assert.ok(!r.tierReasons.includes('insufficient'));
+    assert.ok((r.confidence ?? 0) >= 0.9);
+    assert.equal(r.product?.madeIn, undefined);
+  });
+
+  it('brand origin alone stays unknown, and that confidence is capped', () => {
+    const r = synthesize({
+      jobId: 'brand-home-only',
+      geoScope: 'prc',
+      companySkipped: true,
+      partials: {
+        product: {
+          name: 'Widget',
+          originCountry: 'Germany',
+          madeIn: 'Germany',
+          confidence: 0.95,
+        },
+      },
+    });
+    assert.equal(r.relationTier, 'unknown');
+    assert.ok(r.tierReasons.includes('insufficient'));
+    assert.ok((r.confidence ?? 1) <= 0.45);
+  });
+
   it('JP made-in + CN HQ → direct', () => {
     const r = synthesize({
       jobId: 't3',
@@ -277,7 +359,10 @@ describe('product made-in vs design HQ', () => {
     });
     assert.equal(r.product?.madeIn, undefined);
     assert.notEqual(r.relationTier, 'none');
-    assert.ok(r.caveats.some((c) => /brand\/design country/i.test(c)));
+    const nl = (r.product?.originCandidates ?? []).find((c) => c.label === 'Netherlands');
+    assert.equal(nl?.source, 'model_memory');
+    assert.notEqual(nl?.rating, 'confirmed');
+    assert.ok(!(r.caveats ?? []).some((c) => /brand\/design country/i.test(c)));
   });
 });
 
@@ -524,7 +609,8 @@ describe('madeIn unknown sanitize', () => {
     assert.doesNotMatch(r.summary, /Made in: unknown/i);
     assert.match(String(r.product?.componentsOrigin), /CN/);
     assert.ok(
-      (r.caveats ?? []).some((c) => /Final COO unconfirmed/i.test(c))
+      !(r.caveats ?? []).some((c) => /see components|queried signals|do not invent made-in/i.test(c)),
+      JSON.stringify(r.caveats)
     );
     const labels = (r.product?.originCandidates ?? []).map((c) => c.label);
     assert.ok(labels.includes('China'), labels.join(','));
@@ -635,7 +721,7 @@ describe('parts COO sanitize (ungrounded HQ strip + Search cross-check)', () => 
     for (const p of parts) {
       assert.equal(p.madeIn, undefined, p.name);
       assert.equal(p.originCountry, undefined, p.name);
-      assert.match(String(p.note), /no Search\/OCR/i);
+      assert.equal(p.note, undefined, p.name);
     }
     assert.equal(r.knowledgeBasis, 'model_memory');
     assert.ok((r.caveats ?? []).some((c) => /part countries/i.test(c)));
@@ -709,8 +795,9 @@ describe('parts COO sanitize (ungrounded HQ strip + Search cross-check)', () => 
     });
     assert.equal(r.product?.madeIn, undefined);
     assert.ok(
-      (r.product?.notes ?? []).some((n) => /Made-in omitted/i.test(n))
+      (r.product?.originCandidates ?? []).some((c) => c.source === 'model_memory' && c.label === 'Japan')
     );
+    assert.ok(!(r.product?.notes ?? []).some((n) => /Made-in omitted/i.test(n)));
     assert.equal(r.product?.parts?.[0]?.madeIn, undefined);
   });
   it('marks label-OCR parts as label evidence and drops the candidates line', () => {
@@ -1005,7 +1092,7 @@ describe('fairness: what may feed the tier and the confidence', () => {
     assert.ok(!r.tierReasons.includes('made_in_cn'));
   });
 
-  it('model made-in that only repeats the HQ country is dropped (#28)', () => {
+  it('model made-in that repeats the HQ country stays an unconfirmed AI vote', () => {
     const r = synthesize({
       jobId: 'model-mi-echo',
       geoScope: 'prc',
@@ -1014,7 +1101,12 @@ describe('fairness: what may feed the tier and the confidence', () => {
         company: { name: 'Pigeon', hqCountry: 'Japan', confidence: 0.8 },
       },
     });
-    assert.ok(!(r.product?.originCandidates ?? []).some((c) => c.label === 'Japan'));
+    assert.equal(r.product?.madeIn, undefined);
+    const japan = (r.product?.originCandidates ?? []).filter((c) => c.label === 'Japan');
+    assert.equal(japan.length, 1, JSON.stringify(r.product?.originCandidates));
+    assert.equal(japan[0]?.source, 'model_memory');
+    assert.notEqual(japan[0]?.rating, 'confirmed');
+    assert.ok(!r.tierReasons.includes('made_in_cn'));
   });
 
   it('label-confirmed made-in still counts (basis label)', () => {

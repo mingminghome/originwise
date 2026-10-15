@@ -409,7 +409,7 @@ describe('a pure country list in one 產地 field: 未確認 + 爭議, sourced t
     const t = text(r);
     assert.ok(t.includes('爭議：中國（包裝標示）；日本（包裝標示）') && !t.includes(NO_CAND), t);
     // Without a 爭議 line the empty-state text still shows.
-    assert.ok(text(runPages({ pages: [] })).includes(NO_CAND));
+    assert.ok(text(runPages({ pages: [] })).includes(zh('check.rc.noMadeInStated', { total: 1 })));
   });
 });
 
@@ -423,7 +423,7 @@ describe('label 爭議 card layout and merging with a page 爭議', () => {
     }
     // No 爭議 and no candidate: only the empty-state text (#46: no 「查到的產地候選」 list any more).
     const t = text(runPages({ pages: [] }));
-    assert.ok(!t.includes(HEAD) && t.includes(zh('check.rc.noCandidates')), t);
+    assert.ok(!t.includes(HEAD) && t.includes(zh('check.rc.noMadeInStated', { total: 1 })), t);
   });
   it('label China/Japan + page China/Vietnam → one merged 爭議 line, each country once, label first', () => {
     const r = runPages({

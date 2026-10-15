@@ -15,7 +15,8 @@ import { ChinaCard, LayersCard, MadeInCard } from './ResultCards';
 import { OriginLayers } from './OriginLayers';
 import { CAPTURE_UI_SELECTOR, sectionShareCapture } from '../core/util/sectionImage';
 import { ResultPanel } from './ResultPanel';
-import { buildLayerRows, buildMadeInView, partCountryEvidence, sameCountryLabel } from './resultCards.model';
+import { SERVER_TEXT } from '../../functions/_lib/serverText';
+import { buildLayerRows, buildMadeInView, partCountryEvidence, partOriginShown, sameCountryLabel } from './resultCards.model';
 import { zhCountryText } from '../../functions/_lib/zhHant';
 
 // tsx compiles .tsx with the classic JSX runtime here (root tsconfig has no
@@ -152,7 +153,6 @@ describe('buildLayerRows', () => {
       [
         ['brandOrigin', 'confirmed'],
         ['hq', 'mentioned'],
-        ['parts', 'unconfirmed'],
         ['parent', 'mentioned'],
       ]
     );
@@ -193,6 +193,47 @@ describe('made-in card markup', () => {
       const out = html(createElement(MadeInCard, { result: r, t: zh }));
       assert.doesNotMatch(out, /tier-badge|中國公司|中資控股|與中國的關聯|間接|不明/, r.title);
     }
+  });
+});
+
+describe('China card balances unknown against a known non-China company', () => {
+  it('German HQ and owner stay unrelated at 95%, and the lectures stay hidden', () => {
+    const r = base({
+      relationTier: 'unknown',
+      confidence: 0.95,
+      tierReasons: ['explicit_non_cn_geo', 'insufficient'],
+      knowledgeBasis: 'web_enriched',
+      product: {
+        name: 'Hailo 8040-407 XXL',
+        brand: 'Hailo',
+        originCountry: 'Germany',
+        notes: [SERVER_TEXT.madeInOmittedBrand, SERVER_TEXT.cooUnconfirmedCandidates],
+        componentsOrigin: 'Germany / Europe',
+        originCandidates: [{ label: 'Germany', confidence: 0.5, source: 'parts', rating: 'possible' }],
+        parts: [
+          { name: 'Frame & Steps', kind: 'part', note: SERVER_TEXT.partOmittedUnconfirmed },
+          { name: 'Platform', kind: 'part', madeIn: 'Germany' },
+        ],
+      },
+      company: {
+        name: 'Hailo',
+        hqCountry: 'Germany',
+        parents: [{ name: 'Joachim Loh Group', country: 'Germany', control: 'wholly' }],
+      },
+      caveats: [SERVER_TEXT.madeInOmittedBrand, SERVER_TEXT.cooUnconfirmedCandidates],
+      meta: { citedUnverified: [{ url: 'https://example.com/hailo', title: 'Hailo factory' }] },
+    });
+    const en = html(createElement(ResultPanel, { result: r, t: createT('en') }));
+    assert.match(en, /data-testid="china-tier"[^>]*>Unrelated</);
+    assert.ok(en.includes('95% confidence'));
+    assert.ok(!en.includes('Not enough reliable origin or ownership information'));
+    assert.ok(!en.includes('Made-in omitted:'));
+    assert.ok(!en.includes('Final COO unconfirmed'));
+    assert.ok(!en.includes('Final made-in unconfirmed:'));
+    assert.ok(!en.includes('Frame &amp; Steps') && !en.includes('Frame & Steps'));
+    assert.ok(!en.includes('Platform'));
+    assert.ok(!en.includes('Part country omitted'));
+    assert.ok(!en.includes('Germany / Europe'));
   });
 });
 
@@ -422,8 +463,10 @@ describe('model-only made-in (item 9)', () => {
     assert.deepEqual(view.unconfirmedTier, [{ label: 'China', source: 'model_memory' }]);
     const out = html(createElement(MadeInCard, { result: modelOnly, t: zh }));
     assert.ok(out.includes('rc-headline is-unconfirmed">未確認'));
+    assert.ok(out.includes('中國（1/1）'), out);
+    assert.ok(out.includes('AI 回答'), out);
     assert.ok(out.includes('模型參考（未經確認）'));
-    assert.doesNotMatch(out.slice(out.indexOf('rc-candidates')), /\d+\s*%/);
+    assert.doesNotMatch(out.slice(out.indexOf('data-testid="madein-weak"')), /\d+\s*%/);
     const china = html(createElement(ChinaCard, { result: modelOnly, t: zh }));
     assert.ok(!china.includes('中國製造'));
     assert.ok(!china.includes('製造地：'));
@@ -448,6 +491,7 @@ describe('model-only made-in (item 9)', () => {
     assert.equal(rows.length, 2, out);
     assert.ok(rows.some((r) => r.includes('泰國') && r.includes('55% · 零件／物料 · 未確認')), out);
     assert.ok(rows.some((r) => r.includes('中國') && r.includes('模型知識 · 未確認')), out);
+    assert.ok(out.includes('中國（1/1）'), out);
     for (const r of rows) assert.doesNotMatch(r, /較可能|>可能 ·/);
   });
 
@@ -459,6 +503,7 @@ describe('model-only made-in (item 9)', () => {
       const out = html(createElement(MadeInCard, { result: mixed, t }));
       const rows = tierLis(out);
       assert.equal(rows.length, 2, `${lng}: ${out}`);
+      assert.ok(out.includes('1/1'), `${lng}: ${out}`);
       assert.ok(out.includes(t('check.rc.weakTitle')), lng);
       for (const r of rows) {
         assert.ok(r.includes(t('check.rc.tagUnconfirmed')), `${lng}: ${r}`);
@@ -469,12 +514,27 @@ describe('model-only made-in (item 9)', () => {
     }
   });
 
-  it('HQ echo with no product-specific mention is dropped (#28)', () => {
+  it('HQ-matching AI made-in is listed as a source vote, not confirmed', () => {
     const echo = base({
-      product: { name: 'Bottle', madeIn: 'Japan' },
-      company: { name: 'Pigeon', hqCountry: 'Japan' },
+      sources: [
+        'Ubuy — https://www.ubuy.com/a',
+        'idealo — https://www.idealo.de/b',
+        'Desertcart — https://www.desertcart.com/c',
+        'Listing — https://shop.example/d',
+      ],
+      product: { name: 'Hailo 8040-407', madeIn: 'Germany' },
+      company: { name: 'Hailo', hqCountry: 'Germany' },
     });
-    assert.deepEqual(buildMadeInView(echo).candidates, []);
+    const view = buildMadeInView(echo);
+    assert.equal(view.state, 'unconfirmed');
+    assert.equal(view.votes[0]?.country, 'Germany');
+    assert.equal(view.votes[0]?.n, 1);
+    assert.equal(view.votes[0]?.total, 5);
+    assert.equal(view.silent, 4);
+    const out = html(createElement(MadeInCard, { result: echo, t: zh }));
+    assert.ok(out.includes('德國（1/5）'), out);
+    assert.ok(out.includes('AI 回答'), out);
+    assert.ok(!out.includes('>德國<') || out.includes('德國（1/5）'), out);
   });
 
   it('merges into an existing web row for the same country (no duplicate 中國 rows)', () => {
@@ -495,7 +555,7 @@ describe('model-only made-in (item 9)', () => {
   });
 });
 
-describe('零件 rows: own grade + % OR 模型參考 + ⓘ, never neither, never borrowed (#32)', () => {
+describe('零件 rows: only a relatively confirmed country, with its own grade (#32)', () => {
   const SRC = ['Shop — https://shop.example.jp/p/1'];
   // Realistic mixed case: a part country is web-backed only with a web
   // candidate for that country (the server adds one per part country).
@@ -556,8 +616,7 @@ describe('零件 rows: own grade + % OR 模型參考 + ⓘ, never neither, never
 
   const partsSection = (out: string) => {
     const i = out.indexOf('origin-layer--parts');
-    assert.ok(i > -1, out);
-    return out.slice(i);
+    return i === -1 ? '' : out.slice(i);
   };
   const lis = (out: string) => [...out.matchAll(/<li(?: class="is-model")?>.*?<\/li>/g)].map((m) => m[0]);
   const isModelLi = (li: string) => li.startsWith('<li class="is-model"');
@@ -608,46 +667,45 @@ describe('零件 rows: own grade + % OR 模型參考 + ⓘ, never neither, never
     const ref = t('check.rc.modelRef');
     const help = t('check.rc.modelRefHelp');
     const pre = (x: string) => (saved ? stripCapture(x) : x);
-    // 零件候選 list: every row is graded (own % / label 確認) or model-ref.
+    // Unconfirmed parts are omitted. Every row that remains is graded
+    // (own % or label 確認), never 模型參考.
     const list = pre(listHtml(result, t));
-    const rows = lis(list);
-    assert.ok(rows.length > 0, `${name}: ${list}`);
+    const rows = list ? lis(list) : [];
+    const shown = (result.product?.parts ?? []).filter((p) => {
+      const country = p.madeIn || p.originCountry;
+      return Boolean(country && partOriginShown(partCountryEvidence(result, country)));
+    });
+    if (!rows.length) {
+      assert.equal(list, '', `${name}: empty parts section still rendered`);
+      assert.equal(shown.length, 0, name);
+      assert.equal(pre(layersPartsRow(result, t)), '', name);
+      return;
+    }
     for (const li of rows) {
       const text = textOf(li).split(ref).join('').split(help).join('');
       const graded = /\d+%/.test(text) || text.includes(t('check.matchBasis.label'));
-      const model = isModelLi(li) && li.includes(ref);
-      assert.ok(graded !== model, `${name}: neither/both → ${li}`);
-      if (model) assert.doesNotMatch(text, /\d\s*%/, `${name}: ${li}`);
+      assert.ok(graded && !isModelLi(li) && !li.includes(ref), `${name}: ${li}`);
       if (saved) assert.ok(!li.includes('ⓘ') && !textOf(li).includes(help), `${name}: ${li}`);
     }
-    // 產地分層 零件 row: same evidence as the list for the same part + country.
     const row = pre(layersPartsRow(result, t));
-    const part = result.product?.parts?.find((x) => x.madeIn || x.originCountry);
-    if (!part) return;
-    const country = (part.madeIn || part.originCountry)!;
-    const g = ownGrade(result, country, t);
-    const partLi = rows.find((li) => textOf(li).startsWith(part.name));
-    assert.ok(partLi, `${name}: part row missing in list`);
-    if (g.model) {
-      assert.ok(row.includes(ref) && !row.includes('rc-tag'), `${name}: ${row}`);
-      assert.ok(isModelLi(partLi!), `${name}: ${partLi}`);
-      assert.doesNotMatch(textOf(row).split(ref).join('').split(help).join(''), /\d\s*%/);
-    } else {
+    for (const part of result.product?.parts ?? []) {
+      const country = part.madeIn || part.originCountry;
+      const show = Boolean(country && partOriginShown(partCountryEvidence(result, country)));
+      const partLi = rows.find((li) => textOf(li).startsWith(part.name));
+      if (!show) {
+        assert.equal(partLi, undefined, `${name}: showed ${part.name}`);
+        continue;
+      }
+      assert.ok(partLi, `${name}: part row missing in list`);
+      const g = ownGrade(result, country!, t);
       assert.ok(!row.includes('data-testid="model-ref"'), `${name}: ${row}`);
       const tag = textOf(row.match(/<span class="rc-tag[^"]*">.*?<\/span>/)?.[0] ?? '');
       assert.ok(tag.includes(g.rating) && tag.includes(g.pct), `${name}: tag ${tag} vs ${g.rating} ${g.pct}`);
       const liText = textOf(partLi!);
       assert.ok(liText.includes(g.rating) && liText.includes(g.pct), `${name}: list ${liText} vs ${g.rating} ${g.pct}`);
-      if (g.pct) {
-        // Independent of the helper: the % must be a candidate of THIS country.
-        const key = (x: string) => zhCountryText(x.trim());
-        const own = (result.product?.originCandidates ?? []).some(
-          (c) => key(c.label) === key(country) && `${Math.round(c.confidence * 100)}%` === g.pct
-        );
-        assert.ok(own, `${name}: ${g.pct} is not ${country}'s own evidence`);
-      }
     }
-    if (saved) assert.ok(!row.includes('ⓘ') && !textOf(row).includes(help), `${name}: ${row}`);
+    if (!shown.length) assert.equal(row, '', name);
+    if (saved && row) assert.ok(!row.includes('ⓘ') && !textOf(row).includes(help), `${name}: ${row}`);
   }
 
   it('invariant holds for every fixture, in all 16 locales, on screen and in the 780px save', () => {
@@ -662,29 +720,19 @@ describe('零件 rows: own grade + % OR 模型參考 + ⓘ, never neither, never
     }
   });
 
-  it('mixed (zh-Hant): 瓶身-style part row carries its own 日本 grade; no row shows neither', () => {
+  it('mixed (zh-Hant): likely Thailand stays; a possible part country is omitted', () => {
     const rows = lis(listHtml(mixed, zh)).map((li) => [isModelLi(li), textOf(li)] as const);
     assert.deepEqual(
       rows.map(([m, x]) => [m, x.replace(/未經網頁.*$/, '')]),
-      [
-        [false, '泰國 · 較可能 · 55% · 零件／物料'],
-        // The model's made-in guess (中國 · model_memory) is a 製造地 candidate,
-        // never a 零件 row (Tester #35 item 3).
-        [false, 'Bottle body · 零件 · 日本 · 可能 · 50%'],
-      ]
+      [[false, '泰國 · 較可能 · 55% · 零件／物料']]
     );
-    const row = layersPartsRow(mixed, zh);
-    assert.equal(textOf(row), '零件Bottle body · 日本可能 · 50%');
+    assert.equal(layersPartsRow(mixed, zh), '');
   });
 
-  it('no borrowing: without a 日本 candidate, Bottle body · 日本 is 模型參考 in both places', () => {
+  it('no borrowing: an unconfirmed Bottle body · 日本 is omitted; Thailand keeps its grade', () => {
     const list = lis(listHtml(noJapanCandidate, zh));
-    const body = list.find((li) => textOf(li).startsWith('Bottle body'))!;
-    assert.ok(isModelLi(body), body);
-    assert.doesNotMatch(textOf(body), /較可能|55%/);
-    const row = layersPartsRow(noJapanCandidate, zh);
-    assert.ok(row.includes('模型參考（未經多重確認）') && !row.includes('較可能'), row);
-    // Thailand keeps its own grade.
+    assert.ok(!list.some((li) => textOf(li).startsWith('Bottle body')));
+    assert.equal(layersPartsRow(noJapanCandidate, zh), '');
     assert.ok(list.some((li) => textOf(li) === '泰國 · 較可能 · 55% · 零件／物料'));
   });
 
@@ -698,13 +746,12 @@ describe('零件 rows: own grade + % OR 模型參考 + ⓘ, never neither, never
     }
   });
 
-  it('dedupe: the specific part row replaces the bare country row (泰國 once)', () => {
-    const rows = lis(listHtml(modelParts, zh));
-    assert.equal(rows.length, 1, rows.join('\n'));
-    assert.ok(isModelLi(rows[0]!));
-    assert.ok(textOf(rows[0]!).startsWith('Nipple · 零件 · 泰國模型參考（未經多重確認）'), rows[0]);
+  it('dedupe: a model-only part is not listed', () => {
+    const markup = html(createElement(OriginLayers, { result: modelParts, t: zh, detailOnly: true }));
+    assert.ok(!markup.includes('origin-layer--parts'));
+    assert.ok(!markup.includes('Nipple'));
     const mixedRows = lis(listHtml(mixed, zh)).map(textOf);
-    assert.equal(mixedRows.filter((x) => x.includes('日本')).length, 1, mixedRows.join(' | '));
+    assert.equal(mixedRows.filter((x) => x.includes('日本')).length, 0, mixedRows.join(' | '));
   });
 
   it('label parts: 確認 · 依包裝標示 in the list, 確認 tag in 產地分層', () => {

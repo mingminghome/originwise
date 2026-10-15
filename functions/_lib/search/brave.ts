@@ -7,16 +7,11 @@
 
 import {
   MAX_RESULT_PAGES,
-  buildMadeInQuery,
-  buildSearchQuery,
-  extractBriefFromPages,
   fetchSourcePage,
   fetchWithTimeout,
-  findJans,
   mapSearchHttpError,
-  mergePages,
-  needsMadeInFollowup,
 } from './extract';
+import { runMadeInSearch } from './madeInSearch';
 import type { FetchedPage, SearchProvider } from './types';
 
 export const BRAVE_ENDPOINT = 'https://api.search.brave.com/res/v1/web/search';
@@ -97,39 +92,18 @@ export const braveSearchProvider: SearchProvider = {
     return Boolean(env.BRAVE_SEARCH_API_KEY?.trim());
   },
   async search({ entity, ocrText, env }) {
-    const t0 = Date.now();
     const key = env.BRAVE_SEARCH_API_KEY?.trim() || '';
-    const jans = findJans(entity, ocrText);
-    const first = await braveResults(key, buildSearchQuery(entity, jans));
-    if ('error' in first) {
-      return { ok: false, brief: '', sources: [], error: first.error, ms: Date.now() - t0, requests: 1 };
-    }
-    if (!first.results.length) {
-      return { ok: false, brief: '', sources: [], error: 'empty_response', ms: Date.now() - t0, requests: 1 };
-    }
-    let pages = await Promise.all(first.results.map((r) => fetchPageText(r)));
-    let requests = 1;
-    // One bounded follow-up (see firecrawl.ts): only when no made-in yet.
-    if (needsMadeInFollowup(entity, ocrText, pages)) {
-      requests += 1;
-      const extra = await braveResults(
-        key,
-        buildMadeInQuery(entity),
-        new Set(first.results.map((r) => String(r.url)))
-      );
-      if (!('error' in extra) && extra.results.length) {
-        const more = await Promise.all(extra.results.map((r) => fetchPageText(r)));
-        pages = mergePages(pages, more);
-      }
-    }
-    return extractBriefFromPages({
+    return runMadeInSearch({
       providerId: 'brave',
       entity,
       ocrText,
-      pages,
       env,
-      requests,
-      t0,
+      fetchPages: async (query, _phase, skip) => {
+        const got = await braveResults(key, query, skip);
+        if ('error' in got) return got;
+        const pages = await Promise.all(got.results.map((r) => fetchPageText(r)));
+        return { pages };
+      },
     });
   },
 };

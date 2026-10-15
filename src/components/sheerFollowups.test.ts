@@ -112,8 +112,8 @@ describe('item 2: part note never says 中國製 next to 「未列出零件產�
       { webEnriched: true, webBrief: 'Pigeon Sheer PPSU 240ml JAN 4902508277471 生產國 中國', hqCountry: 'Japan' }
     );
     assert.equal(parts[0]!.madeIn, undefined);
-    assert.equal(parts[0]!.note, SERVER_TEXT.partOmittedUnconfirmed);
-    assert.equal(parts[1]!.note, `矽膠材質 — ${SERVER_TEXT.partOmittedUnconfirmed}`);
+    assert.equal(parts[0]!.note, undefined);
+    assert.equal(parts[1]!.note, '矽膠材質');
   });
 
   it('client: an older joined note shows the omitted line only', () => {
@@ -128,7 +128,8 @@ describe('item 2: part note never says 中國製 next to 「未列出零件產�
       },
     };
     const out = details(r);
-    assert.ok(out.includes('PPSUボトル本体 · 零件 · 未列出零件產地'), out);
+    assert.ok(!out.includes('PPSUボトル本体'), out);
+    assert.ok(!out.includes('未列出零件產地'), out);
     assert.ok(!out.includes('中國製造'), out);
   });
 });
@@ -216,8 +217,10 @@ describe('(d): 未知 → 未確認 where it is about a made-in / country', () =
     const out = panel(TAPO);
     assert.ok(!out.includes('未知'), out);
     assert.ok(!/originCountry|madeIn/.test(out), 'field names shown');
-    assert.ok(out.includes('攝影機鏡頭模組 · 元件 · 產地未確認'));
-    assert.ok(out.includes('最終成品產地標示為未確認'));
+    assert.ok(!out.includes('攝影機鏡頭模組 · 元件 · 產地未確認'));
+    // A missing barcode is not a useful note.
+    assert.ok(!out.includes('條碼或包裝產地證明'), out);
+    assert.ok(!out.includes('最終成品產地標示為未確認'), out);
   });
 
   it('unrelated 未知 is left alone', () => {

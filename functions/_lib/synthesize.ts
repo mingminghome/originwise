@@ -1,6 +1,7 @@
 /**
  * Pure-TS merge of agent partials → CheckResult.
- * Owns final relationTier via decision table. LLMs must not set overall tier.
+ * The China link is those facts (HQ, controlling owner, confirmed made-in).
+ * There is no second model and no separate relation score.
  */
 
 import { cleanSources } from './sourceLine';
@@ -45,10 +46,10 @@ import {
   usPlacesAsUsa,
 } from './cooPriority';
 import { hqFoldedIntoParent } from './chinaChip';
-import { tierFromCodes } from './tierRules';
+import { tierFromCodes, UNKNOWN_TIER_CONFIDENCE_CAP } from './tierRules';
 import { COUNTRY_CODE_TO_LABEL, COUNTRY_NAME_PATTERNS, canonicalCountry } from './countryLabel';
 import { SERVER_TEXT, webFailText } from './serverText';
-import { notesNameMadeIn, omittedPartNote } from './noteText';
+import { isUselessCooNote, notesNameMadeIn, textNamesCountry } from './noteText';
 import { designMentions, stripDesignPhrases } from './designOrigin';
 import { exactModelConflict, siteOf } from './search/extract';
 
@@ -145,11 +146,21 @@ function extractFactors(
   // manufacturing) never feed the tier or the confidence; they stay as notes.
   let F_PARENT_CN_MAJORITY = false;
   let F_OWNERSHIP_WEAK_CN = false;
+  // A named majority / wholly owner outside China is the same kind of fact as HQ.
+  let controllingOutside = false;
   for (const parent of c.parents ?? []) {
     const pr = normalizeRegion(parent.country);
     if (regions.indexOf(pr) === -1 && pr !== 'UNKNOWN') regions.push(pr);
-    if (!String(parent.name ?? '').trim() || !inScope(pr, geoScope)) continue;
+    const named = Boolean(String(parent.name ?? '').trim());
     const control = String(parent.control ?? '').toLowerCase();
+    if (
+      named &&
+      (control === 'majority' || control === 'wholly') &&
+      isOutOfScopeGeo(pr, geoScope)
+    ) {
+      controllingOutside = true;
+    }
+    if (!named || !inScope(pr, geoScope)) continue;
     if (control === 'majority' || control === 'wholly') F_PARENT_CN_MAJORITY = true;
     else if (control === 'minority') F_OWNERSHIP_WEAK_CN = true;
   }
@@ -179,8 +190,11 @@ function extractFactors(
     !F_MADE_IN_CN &&
     !F_MFG_CN;
 
-  const geos = [madeIn, origin, mfg, hq];
-  const F_EXPLICIT_NON_CN_GEO = geos.some((r) => isOutOfScopeGeo(r, geoScope));
+  // Brand origin is shown on the card and is not a China-link fact.
+  // Unrelated is a confirmed made-in, the manufacturer country, HQ, or a controlling owner.
+  const geos = [madeIn, mfg, hq];
+  const F_EXPLICIT_NON_CN_GEO =
+    geos.some((r) => isOutOfScopeGeo(r, geoScope)) || controllingOutside;
 
   const F_CONFLICT = v.consistent === false;
 
@@ -465,17 +479,13 @@ function collectOriginCandidates(
   }
 
   // Model-only made-in: one 'possible' row (source model_memory), merged into
-  // an existing row for the same country (a web row keeps its own label). An
-  // HQ / manufacturer echo with no product-specific mention (parts, components
-  // line, notes) is dropped (#28 rule).
+  // an existing row for the same country (a web row keeps its own label).
+  // Kept even when it matches HQ: the card lists it as an AI source vote
+  // (Germany 1/5), never as a confirmed made-in.
   const modelLab = confirmedOriginLabel(opts.modelMadeIn);
   if (modelLab) {
     const label = matchCountryLabel(modelLab) || modelLab;
-    const echo =
-      sameCountry(label, opts.hqCountry) || sameCountry(label, p.manufacturerCountry);
-    if (!echo || out.has(label)) {
-      pushCandidate(out, label, Math.min(0.5, base), 'model_memory', 'possible');
-    }
+    pushCandidate(out, label, Math.min(0.5, base), 'model_memory', 'possible');
   }
 
   // Manufacturer / HQ country is never a made-in candidate on its own: it is
@@ -713,23 +723,24 @@ function sanitizeParts(
     let chinaRelated =
       typeof rec.chinaRelated === 'boolean' ? rec.chinaRelated : undefined;
     let note = rec.note ? String(rec.note).trim().slice(0, 160) : undefined;
-    const stripCountry = (why: string) => {
+    const stripCountry = () => {
       madeIn = undefined;
       originCountry = undefined;
       chinaRelated = undefined;
-      if (!note || !/no Search\/OCR|unknown/i.test(note)) {
-        // The model's note about the dropped country goes too (no
-        // 「中國製」 next to 「未列出零件產地」).
-        note = omittedPartNote(note, why).slice(0, 160);
+      // A dropped country takes its country note with it. A material note stays.
+      if (
+        !note ||
+        textNamesCountry(note) ||
+        /unknown|未確認|未确认|不明|未知|產地|产地|包裝|包装|made\s*in|origin|part country omitted|no Search\/OCR/i.test(note)
+      ) {
+        note = undefined;
       }
     };
 
     if (madeIn || originCountry || chinaRelated) {
       if (!canConfirmCountries) {
         // Search fail / no OCR: never keep model-memory part countries (HQ echo).
-        stripCountry(
-          SERVER_TEXT.partOmittedNoEvidence
-        );
+        stripCountry();
       } else {
         const keepMade =
           madeIn && partCountryCrossCheck(name, madeIn, evidence)
@@ -751,9 +762,7 @@ function sanitizeParts(
             ? keepOrigin
             : undefined;
         if ((madeIn || originCountry) && !madeFinal && !originFinal) {
-          stripCountry(
-            SERVER_TEXT.partOmittedUnconfirmed
-          );
+          stripCountry();
         } else {
           madeIn = madeFinal;
           originCountry = originFinal;
@@ -1061,6 +1070,16 @@ function madeInCopiedFromBrandOrigin(raw: {
   );
 }
 
+/** The model copied brand home or designedIn into madeIn. No user-facing note. */
+function brandHomeCopiedMadeIn(p?: ProductPartial | null): boolean {
+  if (!p) return false;
+  const noteBlob = (p.notes ?? []).join(' ');
+  const copied = (field?: string) =>
+    madeInCopiedFromBrandOrigin({ madeIn: field, originCountry: p.originCountry, note: noteBlob }) ||
+    madeInCopiedFromBrandOrigin({ madeIn: field, originCountry: p.designedIn, note: noteBlob });
+  return copied(p.madeIn) || copied(p.manufacturedIn);
+}
+
 export function looksLikeDistributorParent(name: string): boolean {
   const n = name.trim();
   if (!n) return true;
@@ -1083,29 +1102,11 @@ function sanitizeProduct(
   const mfgCopied =
     madeInCopiedFromBrandOrigin({ madeIn: p.manufacturedIn, originCountry: p.originCountry, note: noteBlob }) ||
     madeInCopiedFromBrandOrigin({ madeIn: p.manufacturedIn, originCountry: p.designedIn, note: noteBlob });
-  const hadVagueMade =
-    (Boolean(p.madeIn && String(p.madeIn).trim()) &&
-      isVagueOriginLabel(p.madeIn)) ||
-    (Boolean(p.manufacturedIn && String(p.manufacturedIn).trim()) &&
-      isVagueOriginLabel(p.manufacturedIn));
   let madeIn = madeCopied ? undefined : confirmedOriginLabel(p.madeIn);
   let manufacturedIn = mfgCopied
     ? undefined
     : confirmedOriginLabel(p.manufacturedIn);
   const notes = [...(p.notes ?? [])];
-  if (madeCopied || mfgCopied) {
-    notes.push(
-      SERVER_TEXT.madeInOmittedBrand
-    );
-  } else if (hadVagueMade && (p.componentsOrigin || (p.parts && p.parts.length))) {
-    notes.push(
-      SERVER_TEXT.cooUnconfirmedSeeParts
-    );
-  } else if (hadVagueMade) {
-    notes.push(
-      SERVER_TEXT.cooUnconfirmedNoLabel
-    );
-  }
 
   // Generic COO priority: OCR → retailer/product page → manufacturer → ownership never stamps
   const coo = applyCooPriority({
@@ -1477,11 +1478,7 @@ export function applyWebCooGate(
     return { product: p, likely, madeInBasis, madeInSupport };
   }
   const notes = [...(p.notes ?? [])];
-  if (stripped) {
-    notes.push(
-      SERVER_TEXT.cooUnconfirmedNoBarcode
-    );
-  }
+  // A stripped AI country stays a source vote (modelSaid). No barcode lecture.
   return {
     product: { ...p, madeIn, manufacturedIn, notes: notes.slice(0, 8) },
     likely,
@@ -1491,12 +1488,37 @@ export function applyWebCooGate(
 }
 
 /**
+ * HQ, or a majority / wholly parent, is a real non-China company fact.
+ * Brand origin alone is not: a made-in copied from the brand home must not
+ * become "Unrelated" on that basis.
+ */
+function companyAnchoredOutsideChina(
+  company: CompanyPartial | null | undefined,
+  geoScope: GeoScope
+): boolean {
+  if (!company) return false;
+  const outside = (raw?: string) =>
+    !isVagueOriginLabel(raw) && isOutOfScopeGeo(normalizeRegion(raw), geoScope);
+  if (outside(company.hqCountry)) return true;
+  return (company.parents ?? []).some(
+    (p) =>
+      String(p.name ?? '').trim() &&
+      (p.control === 'majority' || p.control === 'wholly') &&
+      outside(p.country)
+  );
+}
+
+/**
  * Deterministic synthesize. Safe for Workers CPU budget.
  */
 export function synthesize(input: SynthesizeInput): CheckResult {
   const { jobId, geoScope } = input;
   const companySan =
     sanitizeCompany(input.partials.company) ?? input.partials.company;
+  const brandEcho = brandHomeCopiedMadeIn(input.partials.product);
+  const rawMadeIn =
+    confirmedOriginLabel(input.partials.product?.madeIn) ||
+    confirmedOriginLabel(input.partials.product?.manufacturedIn);
   let productSan =
     sanitizeProduct(input.partials.product, {
       webBrief: input.webBrief,
@@ -1506,8 +1528,12 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   let madeInBasis: MadeInBasis | undefined;
   let madeInSupport: 'web' | 'ai_web' | undefined;
   // What the model said before the web gate (the gate strips it silently).
+  // A made-in cleared because it matched the brand home is still that answer:
+  // the card lists it as one source, and does not confirm it.
   const modelSaid =
-    confirmedOriginLabel(productSan?.madeIn) || confirmedOriginLabel(productSan?.manufacturedIn);
+    confirmedOriginLabel(productSan?.madeIn) ||
+    confirmedOriginLabel(productSan?.manufacturedIn) ||
+    rawMadeIn;
   if (input.webCoo && input.webEnriched) {
     const gated = applyWebCooGate(productSan, input.webCoo, input.ocrText);
     productSan = gated.product;
@@ -1549,11 +1575,15 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   };
   const f = extractFactors(partials, geoScope);
   let { tier, tierReasons } = decideTier(f);
-  const madeInOmitted = (partials.product?.notes ?? []).some((n) =>
-    String(n).includes('Made-in omitted:')
-  );
-  if (madeInOmitted && tier === 'none') {
-    // Brand/design country is not factory evidence for "Unrelated".
+  // A made-in copied from the brand home is not factory evidence. When that
+  // copy was the only reason the tier said Unrelated (no HQ, no controlling
+  // owner, no confirmed made-in), the company link is unknown.
+  if (
+    brandEcho &&
+    !productSan?.madeIn &&
+    tier === 'none' &&
+    !companyAnchoredOutsideChina(companySan, geoScope)
+  ) {
     tier = 'unknown';
     if (!tierReasons.includes('insufficient')) {
       tierReasons = [...tierReasons, 'insufficient'];
@@ -1584,13 +1614,13 @@ export function synthesize(input: SynthesizeInput): CheckResult {
   if (partials.product?.notes?.length) {
     for (const n of partials.product.notes.slice(0, 3)) {
       const s = String(n).trim();
-      if (s) caveats.push(s);
+      if (s && !isUselessCooNote(s)) caveats.push(s);
     }
   }
   if (partials.company?.notes?.length) {
     for (const n of partials.company.notes.slice(0, 2)) {
       const s = String(n).trim();
-      if (s) caveats.push(s);
+      if (s && !isUselessCooNote(s)) caveats.push(s);
     }
   }
 
@@ -1642,6 +1672,10 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     caveats.push(SERVER_TEXT.companyNotAssessed);
   }
 
+  // Unknown is the absence of a company or made-in fact. It does not keep
+  // the high confidence the model gave those other fields.
+  if (tier === 'unknown') confidence = Math.min(confidence, UNKNOWN_TIER_CONFIDENCE_CAP);
+
   // TW country note
   if (tierReasons.includes('taiwan_as_country')) {
     caveats.push(SERVER_TEXT.taiwanSeparate);
@@ -1684,12 +1718,6 @@ export function synthesize(input: SynthesizeInput): CheckResult {
     madeInBasis,
     madeInSupport,
   });
-
-  if (p && !p.madeIn) {
-    caveats.push(
-      SERVER_TEXT.cooUnconfirmedCandidates
-    );
-  }
 
   const summaryParts: string[] = [];
   if (p?.madeIn) {
@@ -1842,7 +1870,7 @@ export function synthesize(input: SynthesizeInput): CheckResult {
           notes: Array.isArray(p.notes)
             ? p.notes
                 .map((n) => stripSchemaKeys(String(n)).slice(0, 220))
-                .filter(Boolean)
+                .filter((n) => n && !isUselessCooNote(n))
                 .slice(0, 5)
             : undefined,
           originCandidates: originCandidates.length

@@ -18,6 +18,7 @@ import { ModelRefLabel } from './ModelRef';
 import {
   backedCandidate,
   partCountryEvidence,
+  partOriginShown,
   partsListCandidates,
   sameCountryLabel,
   type PartEvidence,
@@ -233,8 +234,10 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
 
   const finalCoo = isConfirmedMadeIn(p?.madeIn);
 
-  // Every 零件 row with a country shows EITHER its own country's sourced
-  // grade + % (or 確認 · 依包裝標示 from the label) OR 模型參考 + ⓘ.
+  // A part country is listed only when it is relatively confirmed (label,
+  // or confirmed / likely from the web). Possible, model-only, and omitted
+  // countries are left off; the product country of origin stays on the
+  // made-in card.
   const parts: PartsLine[] = [];
   const components = isConfirmedMadeIn(p?.componentsOrigin);
   if (components) {
@@ -245,32 +248,35 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
             .filter((x) => sameCountryLabel(x.label, components) || components.includes(x.label))
             .map((x) => backedCandidate(result, x.label, true))
             .find(Boolean);
-    parts.push({
-      kind: 'components',
-      value: components,
-      evidence:
-        result.partsEvidence === 'label'
-          ? { kind: 'label' }
-          : backed
-            ? { kind: 'graded', rating: backed.rating, confidence: backed.confidence, source: backed.source }
-            : { kind: 'model' },
-    });
+    const evidence: PartEvidence =
+      result.partsEvidence === 'label'
+        ? { kind: 'label' }
+        : backed
+          ? { kind: 'graded', rating: backed.rating, confidence: backed.confidence, source: backed.source }
+          : { kind: 'model' };
+    if (partOriginShown(evidence)) {
+      parts.push({ kind: 'components', value: components, evidence });
+    }
   }
-  const partLines: PartsLine[] = (p?.parts ?? []).map((part) => {
+  const partLines: PartsLine[] = [];
+  for (const part of p?.parts ?? []) {
     const where = part.madeIn || part.originCountry || undefined;
-    return {
+    if (!where) continue;
+    const evidence = partCountryEvidence(result, where);
+    if (!partOriginShown(evidence)) continue;
+    partLines.push({
       kind: 'part',
       name: part.name,
       partKind: part.kind,
       where,
       chinaRelated: part.chinaRelated,
       note: part.note?.trim() || undefined,
-      evidence: where ? partCountryEvidence(result, where) : undefined,
-    };
-  });
+      evidence,
+    });
+  }
   const coveredByRow = (country: string) =>
     partLines.some((l) => l.kind === 'part' && l.where && sameCountryLabel(l.where, country)) ||
-    Boolean(components && sameCountryLabel(components, country));
+    Boolean(components && sameCountryLabel(components, country) && parts.some((l) => l.kind === 'components'));
   // Bare country rows: one per country; a more specific part row (or the
   // components line) for the same country replaces it (no duplicate 泰國).
   // Label-read parts already answer it, so no queried candidates then.
@@ -280,11 +286,14 @@ export function buildOriginLayers(result: CheckResult): OriginLayersModel {
     seen.push(cand.label);
     if (coveredByRow(cand.label)) continue;
     const best = backedCandidate(result, cand.label);
-    parts.push(
-      best
-        ? { kind: 'candidate', label: best.label, rating: best.rating, confidence: best.confidence, source: best.source }
-        : { kind: 'candidate', label: cand.label, rating: cand.rating, confidence: cand.confidence, source: cand.source, modelOnly: true }
-    );
+    if (!best || (best.rating !== 'confirmed' && best.rating !== 'likely')) continue;
+    parts.push({
+      kind: 'candidate',
+      label: best.label,
+      rating: best.rating,
+      confidence: best.confidence,
+      source: best.source,
+    });
   }
   parts.push(...partLines);
   const partsLines = parts;

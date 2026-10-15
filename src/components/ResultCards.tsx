@@ -324,11 +324,51 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
           </ul>
         ) : null}
 
+        {!confirmed && view.votes.length ? (
+          // Germany (1/5): how many of the consulted sources named each country.
+          <div className="rc-votes" data-testid="madein-votes">
+            <ul>
+              {view.votes.map((v) => (
+                <li key={v.country}>
+                  <span className="rc-cand-country">
+                    <span className="rc-cand-name">
+                      {t('check.rc.vote', {
+                        country: localizeCountry(t, v.country),
+                        n: v.n,
+                        total: v.total,
+                      })}
+                    </span>
+                  </span>
+                  {v.sources.length ? (
+                    <ol className="rc-cand-sources">
+                      {v.sources.map((src, i) => {
+                        const { before, after } = sourcePrefix(t, i + 1);
+                        return (
+                          <li key={src.ai ? 'ai-answer' : (src.url ?? src.label)} className="rc-source">
+                            <SourceLine
+                              t={t}
+                              prefix={before}
+                              suffix={after}
+                              src={src.ai ? { ...src, label: t('check.rc.sourceAiAnswer') } : src}
+                              plain={src.ai}
+                            />
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+            {view.silent > 0 ? (
+              <p className="rc-empty">{t('check.rc.sourcesSilent', { n: view.silent })}</p>
+            ) : null}
+          </div>
+        ) : null}
+
         {view.unconfirmedTier.length ? (
-          // The main list holds only the confirmed country (the headline). Every
-          // other candidate, from any source: country · % · source · 未確認, with
-          // the pages behind it. Never a grade, never 確認; design / brand
-          // wording stays in its own rows below.
+          // The main list holds only the confirmed country. Every other
+          // candidate stays here, with the source vote (Germany 1/5) above.
           <div className="rc-candidates rc-candidates--weak" data-testid="madein-weak">
             <p className="rc-sub">{t('check.rc.weakTitle')}</p>
             <ul>
@@ -364,11 +404,13 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
               ))}
             </ul>
           </div>
-        ) : !confirmed && !view.dispute?.length ? (
-          // 「沒有可信候選」 only when no candidate of any kind is left; a 爭議
-          // line already says why there is no answer.
+        ) : !confirmed && !view.votes.length && !view.dispute?.length ? (
           <div className="rc-candidates">
-            <p className="rc-empty">{t('check.rc.noCandidates')}</p>
+            <p className="rc-empty">
+              {view.sourceTotal > 0
+                ? t('check.rc.noMadeInStated', { total: view.sourceTotal })
+                : t('check.rc.noCandidates')}
+            </p>
           </div>
         ) : null}
 

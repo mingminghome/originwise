@@ -10,6 +10,27 @@ import { COUNTRY_LIST_CJK, COUNTRY_LIST_LATIN_RE } from './countryNames';
 import { CITY_NAMES, CN_PLACES, CN_PLACES_LATIN } from './placeNames';
 import { SERVER_TEXT } from './serverText';
 
+/**
+ * Notes that only restate "made-in unknown" or scold the user for not having
+ * a barcode. The made-in card already says unconfirmed and lists source votes.
+ */
+const USELESS_COO_NOTES = [
+  SERVER_TEXT.cooUnconfirmedSeeParts,
+  SERVER_TEXT.cooUnconfirmedNoLabel,
+  SERVER_TEXT.cooUnconfirmedNoBarcode,
+  SERVER_TEXT.cooUnconfirmedCandidates,
+  SERVER_TEXT.madeInOmittedBrand,
+];
+
+export function isUselessCooNote(note: string): boolean {
+  const s = note.trim();
+  if (!s) return true;
+  if (USELESS_COO_NOTES.some((line) => s === line || s.includes(line))) return true;
+  const wantsProof = /barcode|\bJAN\b|\bEAN\b|條碼|条码|官方包裝|官方包装|包裝產地|包装产地/i.test(s);
+  const saysUnknown = /未確認|未确认|未知|unconfirmed|\bunknown\b/i.test(s);
+  return wantsProof && saysUnknown;
+}
+
 /** Clauses: a country and a made-in word only count together in one clause. */
 const CLAUSE_SPLIT = /[，。；;！？!?\n]|,\s|\.\s/;
 

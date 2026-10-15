@@ -180,7 +180,11 @@ describe('weak tier: every candidate, % and source, under 模型參考（未經�
       company: { ...F2.company, hqCountry: 'Poland' },
     } as CheckResult;
     const v = buildMadeInView(r);
-    assert.ok(v.weakCandidates?.some((c) => c.label === 'Poland' && c.confidence === 0.5 && c.source === 'model_memory'), JSON.stringify(v));
+    assert.ok(
+      v.unconfirmedTier.some((c) => c.label === 'Poland' && c.confidence === 0.5 && c.source === 'model_memory'),
+      JSON.stringify(v)
+    );
+    assert.equal(v.votes.find((x) => x.country === 'Poland')?.n, 1);
     const t = card(r);
     assert.ok(t.includes('模型參考（未經確認）'), t);
     assert.ok(t.includes('50% · 模型知識 · 未確認'), t);
@@ -188,9 +192,9 @@ describe('weak tier: every candidate, % and source, under 模型參考（未經�
     const te = card(r, en);
     assert.ok(te.includes('Model reference (unconfirmed)'), te);
   });
-  it('live_f2 Milano: truly empty → 「沒有查到可信的產地候選」 still shows', () => {
+  it('live_f2 Milano: truly empty → no source stated a made-in', () => {
     const t = card(F2);
-    assert.ok(t.includes(zh('check.rc.noCandidates')), t);
+    assert.ok(t.includes(zh('check.rc.noMadeInStated', { total: buildMadeInView(F2).sourceTotal })), t);
     assert.ok(!t.includes('模型參考（未經確認）'), t);
   });
   it('nothing in the weak tier reads as confirmed', () => {

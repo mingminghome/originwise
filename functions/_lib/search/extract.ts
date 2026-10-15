@@ -355,9 +355,9 @@ export function barcodeTiedToCoo(
  * Used only for name-only matches: a made-in on such a page can't be tied to
  * the queried variant, so the claim is dropped (stays 未確認).
  */
-export function pageListsMultipleVariants(text: string, entity?: string): boolean {
+/** Sizes or a variant selector: the page sells more than one variant. */
+function pageHasSizeSplit(text: string, entity?: string): boolean {
   const t = nfkc(text);
-  if (pageBarcodes(t).length >= 2) return true;
   const vol = distinctAmounts(t, VOLUME_RE, (n, u) =>
     u === 'l' || u === 'ℓ' || u === 'リットル' ? n * 1000 : /oz/.test(u) ? n * 29.5735 : n
   );
@@ -376,22 +376,45 @@ export function pageListsMultipleVariants(text: string, entity?: string): boolea
   return VARIANT_SELECTOR_RE.test(t);
 }
 
-/** Search query: entity + JAN + made-in terms (EN / JA). */
+export function pageListsMultipleVariants(text: string, entity?: string): boolean {
+  const t = nfkc(text);
+  if (pageBarcodes(t).length >= 2) return true;
+  return pageHasSizeSplit(t, entity);
+}
+
+const QUERY_ENTITY_MAX = 160;
+
+function queryEntity(entity: string): string {
+  return entity.trim().slice(0, QUERY_ENTITY_MAX);
+}
+
+function orTerms(terms: readonly string[]): string {
+  return terms.join(' OR ');
+}
+
+/**
+ * First-query made-in words. Narrower than the follow-up so a barcode query
+ * stays specific. Every term here is also in MADE_IN_FOLLOWUP_TERMS.
+ */
+export const FIRST_MADE_IN_TERMS = ['"made in"', 'hergestellt', '生産国', '原産国'] as const;
+
+/** Search query: entity + JAN (when we have one) + the narrow made-in terms. */
 export function buildSearchQuery(entity: string, jans: string[]): string {
-  const base = entity.trim().slice(0, 160);
+  const base = queryEntity(entity);
   const jan = jans[0] ? ` ${jans[0]}` : '';
-  return `${base}${jan} "made in" OR 生産国 OR 原産国`;
+  return `${base}${jan} ${orTerms(FIRST_MADE_IN_TERMS)}`;
 }
 
 /**
  * Wider made-in wording for the one follow-up query: how retailer and spec
  * pages state it in EN, zh-Hant / zh (產地 / 製造地 / 原產地) and JA. The
- * first query only has "made in" / 生産国 / 原産国, so a Taiwan retailer page
- * that says 「產地：中國」 never matched it.
+ * first query only has "made in" / hergestellt / 生産国 / 原産国, so a Taiwan
+ * retailer page that says 「產地：中國」 never matched it.
  */
 export const MADE_IN_FOLLOWUP_TERMS = [
   '"made in"',
   '"country of origin"',
+  'hergestellt',
   '產地',
   '製造地',
   '原產地',
@@ -401,8 +424,7 @@ export const MADE_IN_FOLLOWUP_TERMS = [
 
 /** The follow-up query: the model name (no barcode) + the wider made-in terms. */
 export function buildMadeInQuery(entity: string): string {
-  const base = entity.trim().slice(0, 160);
-  return `${base} ${MADE_IN_FOLLOWUP_TERMS.join(' OR ')}`;
+  return `${queryEntity(entity)} ${orTerms(MADE_IN_FOLLOWUP_TERMS)}`;
 }
 
 /** Pages handed to the one extraction after a follow-up (first query's pages first). */
@@ -553,6 +575,9 @@ const MODEL_GENERIC_WORDS = new Set([
   'with', 'and', 'or', 'made', 'und', 'mit', 'von', 'für', 'der', 'die', 'das', 'le', 'la',
   'les', 'de', 'du', 'des', 'et', 'il', 'di', 'e', 'el', 'y', 'en', 'het', 'een', 'og', 'och',
   'i', 'w', 'z', 'na', 'ja', 'és', 'si', 'și', 'em', 'do', 'da',
+  // Product-type words on retailer titles ("L60 Safety Ladder"). Not an edition.
+  'safety', 'ladder', 'ladders', 'stepladder', 'stepladders', 'step', 'steps',
+  'household', 'platform',
 ]);
 
 /** "<brand> <model>" in text, case and spacing kept (so name-like tokens show). */
@@ -572,6 +597,15 @@ function normModelText(s: string): string {
 }
 
 const YEAR_RE = /^(19|20)\d\d$/;
+
+/**
+ * A number followed by one of these is a count or measure ("4 Steps",
+ * "4 Stufen"), not another model ("Melio 2", "Liberty 4 NC").
+ */
+const SPEC_COUNT_WORDS = new Set([
+  'step', 'steps', 'tread', 'treads', 'rung', 'rungs', 'stufe', 'stufen',
+  'piece', 'pieces', 'pcs', 'pack', 'packs', 'count',
+]);
 
 /**
  * Base colour words. Shop titles put the colour after the model ("Cybex
@@ -652,7 +686,12 @@ function variantAfter(rest: string): string | null {
   const lw = w.toLowerCase();
   if (YEAR_RE.test(w)) return null;
   // Version tokens: V2, Mk2, Gen 3, 2, II.
-  if (/^(v|mk|gen|ver)\d+$/i.test(w) || /^\d+$/.test(w) || /^(ii|iii|iv|vi)$/i.test(w)) return w;
+  if (/^(v|mk|gen|ver)\d+$/i.test(w) || /^(ii|iii|iv|vi)$/i.test(w)) return w;
+  if (/^\d+$/.test(w)) {
+    const next = /^[\s,，、]*([A-Za-z]+)/.exec(s.slice(w.length))?.[1]?.toLowerCase() ?? '';
+    if (SPEC_COUNT_WORDS.has(next)) return null;
+    return w;
+  }
   if (/^(mk|gen|ver|version)$/i.test(w) && /^ ?\d/.test(s.slice(w.length))) {
     return `${w} ${/^ ?(\d+)/.exec(s.slice(w.length))![1]}`;
   }
@@ -2071,6 +2110,29 @@ export function quoteInModelScope(text: string, entity: string, quote: string | 
     const before = ourAt.filter((o) => o.end <= at);
     const anchor = before[before.length - 1];
     const from = anchor ? anchor.end : 0;
+    // A retailer title puts the made-in on the model's own line, after a
+    // feature list ("Safety Ladder, 4 Steps, Multifunction Tray, …, Made in
+    // Germany"). Dictionary words and compounds (multi+function) are features.
+    // An edition word or a name that is not a word ("Callisto") still blocks.
+    if (anchor && lineAt(anchor.start) === L && lineAt(at) === L) {
+      const between = t.slice(anchor.end, at);
+      const words = between.match(/[A-Za-z][A-Za-z0-9'’-]*/g) ?? [];
+      const feature = (w: string) => {
+        const lw = w.toLowerCase();
+        if (MODEL_EDITION_WORDS.has(lw)) return false;
+        if (SPEC_COUNT_WORDS.has(lw) || MODEL_GENERIC_WORDS.has(lw) || inDictionary(lw)) return true;
+        for (let i = 3; i <= lw.length - 3; i += 1) {
+          if (inDictionary(lw.slice(0, i)) && inDictionary(lw.slice(i))) return true;
+        }
+        return false;
+      };
+      if (words.every(feature)) {
+        const le = L + 1 < lineStart.length ? lineStart[L + 1]! - 1 : t.length;
+        const post = t.slice(Math.min(at + len, le), le);
+        if (post.trim().length > 1 && unsafe(post, 'tail')) return false;
+        return true;
+      }
+    }
     const fromLine = lineAt(from);
     let lastBoundary = -1;
     for (let i = L - 1; i > fromLine; i -= 1) if (boundary[i]) {
@@ -2946,14 +3008,18 @@ export function enforceCooClaims(
     }
     if (!multi.has(c.page)) multi.set(c.page, pageListsMultipleVariants(page.text, entity));
     const multiVariant = multi.get(c.page) === true;
-    if (match === 'name' && multiVariant) {
+    // Name match on an exact-model page: the made-in line must sit under this
+    // model, not under another model's heading or block on the same page.
+    if (!exactPage.has(c.page)) exactPage.set(c.page, Boolean(entity) && exactModelPage(page.text, entity!));
+    const exact = exactPage.get(c.page) === true;
+    // Two GTINs on one product page (Amazon often prints both) are still this
+    // model. A size split or a page that is not this exact model still drops.
+    const extraBarcodesOnly = exact && multiVariant && !pageHasSizeSplit(page.text, entity);
+    if (match === 'name' && multiVariant && !extraBarcodesOnly) {
       dropped += 1;
       droppedMultiVariant += 1;
       continue;
     }
-    // Name match on an exact-model page: the made-in line must sit under this
-    // model, not under another model's heading or block on the same page.
-    if (!exactPage.has(c.page)) exactPage.set(c.page, Boolean(entity) && exactModelPage(page.text, entity!));
     if (match === 'name' && exactPage.get(c.page) && !quoteInModelScope(page.text, entity!, quote)) {
       dropped += 1;
       continue;
@@ -3108,7 +3174,7 @@ export async function extractBriefFromPages(opts: {
   const label = PROVIDER_LABEL[providerId] ?? providerId;
   const lines: string[] = [];
   lines.push(
-    `Web search via ${label} — ${pages.length} page(s) fetched; made-in is confirmed only when the page shows the barcode/JAN.`
+    `Web search via ${label} — ${pages.length} page(s) fetched. A made-in is confirmed only when pages agree or a package label says so. One page, or the AI answer alone, is still listed as a source.`
   );
   lines.push('STRUCTURED FINISHED-UNIT COO:');
   if (confirmed.length) {
@@ -3122,7 +3188,7 @@ export async function extractBriefFromPages(opts: {
     }
   } else {
     lines.push(
-      `- COO: 未確認 (unconfirmed) — no fetched page showed the ${jans.length ? `barcode/JAN ${jans.join('/')}` : 'product barcode/JAN'} next to a made-in / 生産国 / 原産国 statement. Do not state a finished-unit country.`
+      `- COO: 未確認 (unconfirmed) — no fetched page stated a made-in for this model. If you know where this exact model is made, set madeIn to that country anyway. It is listed as the AI source and is not confirmed unless pages agree. Do not write a note about a missing barcode or package photo.`
     );
   }
   // Wording avoids "Made in X" / "原産国 X" shapes so COO parsers never read

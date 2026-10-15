@@ -153,6 +153,50 @@ describe('displayTier', () => {
     );
     assert.deepEqual(shown, { tier: 'none', confidence: 0.6 });
   });
+
+  it('unknown at 95% with a German HQ and wholly German owner reads as unrelated', () => {
+    const res = base({
+      relationTier: 'unknown',
+      confidence: 0.95,
+      tierReasons: ['explicit_non_cn_geo', 'insufficient'],
+      product: { brand: 'Hailo', originCountry: 'Germany' },
+      company: {
+        name: 'Hailo',
+        hqCountry: 'Germany',
+        parents: [{ name: 'Joachim Loh Group', country: 'Germany', control: 'wholly' }],
+      },
+    });
+    const v = buildChinaCard(res);
+    assert.equal(v.tier, 'none');
+    assert.equal(v.confidence, 0.95);
+    assert.ok(!v.reasons.some((r) => r.kind === 'code' && r.code === 'insufficient'));
+    assert.deepEqual(displayTier(res), { tier: 'none', confidence: 0.95 });
+  });
+
+  it('brand origin alone stays unknown and the confidence is capped', () => {
+    const res = base({
+      relationTier: 'unknown',
+      confidence: 0.95,
+      tierReasons: ['explicit_non_cn_geo', 'insufficient'],
+      product: { originCountry: 'Germany' },
+    });
+    const v = buildChinaCard(res);
+    assert.equal(v.tier, 'unknown');
+    assert.equal(v.confidence, 0.45);
+    assert.ok(v.reasons.some((r) => r.kind === 'code' && r.code === 'insufficient'));
+  });
+
+  it('a minority non-China owner does not make the verdict unrelated', () => {
+    const res = base({
+      relationTier: 'unknown',
+      confidence: 0.95,
+      tierReasons: ['insufficient'],
+      company: { name: 'Co', parents: [{ name: 'Fund', country: 'Germany', control: 'minority' }] },
+    });
+    const v = buildChinaCard(res);
+    assert.equal(v.tier, 'unknown');
+    assert.equal(v.confidence, 0.45);
+  });
 });
 
 describe('folded parent HQ (real Cybex payload)', () => {

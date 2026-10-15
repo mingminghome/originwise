@@ -13,8 +13,8 @@ History and settings stay in the browser — **not stored as a server-side produ
 ```
 Browser  →  Pages (SPA)  →  localStorage (history, settings)
          →  POST /api/check  (SSE or JSON)
-              → multi-agent pool | dual | monolith
-              → pure-TS relation tiers
+              → one JSON check (product, company, ownership)
+              → China link read from those facts
 ```
 
 ---
@@ -28,10 +28,10 @@ Useful for:
 | Area | What you get |
 |------|----------------|
 | **Text or photo check** | Product / brand name and optional packaging image (camera, gallery, drop, or paste) |
-| **Relation tiers** | Origin, manufacturer, and company-link style badges (pure-TS synthesize) |
-| **Multi-agent AI** | Provider pool (Gemini / OpenAI / Grok / Claude) with SSE progress |
+| **China link** | Read from the check’s own facts: HQ, controlling owner, and a confirmed made-in. There is no separate scoring step |
+| **One JSON check** | Provider pool (Gemini / OpenAI / Grok / Claude). One call returns the facts; SSE shows progress |
 | **Live web search** | Google Search via Gemini, with Brave and Firecrawl as fallbacks; reads made-in lines and barcodes from result pages |
-| **Evidence labels** | Each made-in says how it was matched: barcode, product name, or unconfirmed |
+| **Evidence labels** | Each made-in says how it was matched: package label, barcode, exact model, or unconfirmed |
 | **Graph & alternatives** | Visual links plus optional alternative suggestions |
 | **History** | Local history + settings; wipe on device anytime |
 | **Privacy** | No account; check history stays on-device |
@@ -43,8 +43,9 @@ Taiwan is always treated as a **separate country** for relation tiers. AI result
 ## Features
 
 - **Text and/or packaging photo** — camera, gallery, drag-and-drop, or paste; client-side compress before upload
-- **Multi-agent pipeline** — AI pool (Gemini / OpenAI / Grok / Claude)
-- **Live web search** — Gemini Google Search first; Brave Search and Firecrawl run only if the previous provider fails or finds nothing (`SEARCH_PROVIDERS`). The server fetches up to 4 result pages to read the made-in line and barcode.
+- **One JSON check** — AI pool (Gemini / OpenAI / Grok / Claude). Dimensions choose sections of that one call. `CHECK_MODE` is ignored
+- **China link** — a non-China HQ or a named majority/wholly non-China owner is Unrelated, at that company’s confidence. Brand origin alone is not. A confirmed made-in in mainland China is a China link whatever the HQ says
+- **Live web search** — Gemini Google Search first; Brave Search and Firecrawl run only if the previous provider fails or finds nothing (`SEARCH_PROVIDERS`). With no barcode the search is one wide made-in query. The server fetches up to 4 result pages and reads made-in lines and barcodes, including a retailer title such as “Made in Germany”
 - **Evidence rules** — see [How a made-in is confirmed](#how-a-made-in-is-confirmed)
 - **Clear service notices** — if search or AI quota (429) or prepaid credits (402) run out, the result says so and falls back to model knowledge instead of guessing
 - **SSE progress UI** — relation tier badges, region chips, graph, alternatives
@@ -63,11 +64,13 @@ Taiwan is always treated as a **separate country** for relation tiers. AI result
 
 | Result | When |
 |--------|------|
-| **Confirmed** (barcode match) | From a package label photo, or a web page showing the same barcode (JAN/EAN) next to the made-in line |
-| **Likely** (name match) | A page matches the product name only, not the barcode |
-| **Unconfirmed** | A page lists several sizes or variants, sources disagree, or only model knowledge is available; candidate countries are noted |
+| **Confirmed** (package label) | The photo’s label names the country |
+| **Confirmed** (barcode) | A page shows this barcode (JAN/EAN) next to the made-in line |
+| **Confirmed** (exact model) | Two different sites each name this model and the same made-in country, or the model’s answer names that country and one such page agrees |
+| **Source, not confirmed** | One retailer page names this model and a made-in country. It is listed. It does not confirm on its own |
+| **Unconfirmed** | The page is another model or several sizes, sources disagree, or the only country is the brand’s home or the model’s memory |
 
-Model knowledge alone never counts as confirmed, and results without live search are labelled as model-only.
+A step count in a title (“4 Steps”, “4 Stufen”) and a second barcode printed on the same product page stay on this model. Another edition (“Melio Carbon”, “Liberty 4 NC”) does not. Brand home or model memory alone never confirms a made-in.
 
 ---
 

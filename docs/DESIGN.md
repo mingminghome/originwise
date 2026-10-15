@@ -6,7 +6,7 @@
 | **Repo / workspace** | `originwise` |
 | **Author** | MingMingHomeWork |
 | **Date** | 2026-08-02 |
-| **Status** | Implemented |
+| **Status** | Implemented. The check is one JSON call. `CHECK_MODE` is ignored. The China link is read from the returned facts (HQ, controlling owner, confirmed made-in), not from a second model. See [README](../README.md). |
 | **Deploy target** | Cloudflare Pages (SPA + Pages Functions) |
 | **Scaffold** | Greenfield React + Vite SPA with Pages Functions |
 
@@ -14,11 +14,16 @@
 
 ## Overview
 
-**OriginWise** is a local-first progressive web app that helps users check whether a product, food item, brand, or company is related to the **People’s Republic of China (PRC)** — covering place of origin, manufacturer origin, company ownership/relations, and similar brand/product alternatives. Users submit a product name and/or a packaging/label photo; the server runs a **multi-agent AI pipeline** (identify, product, company, verify, alternatives) across a **free-tier AI provider pool**, then a **deterministic TypeScript synthesizer** builds a structured `CheckResult` (relation tier, explainable factors, origin regions, company graph, alternatives).
+**OriginWise** is a local-first progressive web app that helps users check whether a product, food item, brand, or company is related to the **People’s Republic of China (PRC)** — covering place of origin, manufacturer origin, company ownership/relations, and similar brand/product alternatives.
 
-Stack: React 19 + Vite + TypeScript, Cloudflare Pages SPA + `functions/`, localStorage-only history/settings, client image compress, server-built prompts, multi-provider LLM keys, Cache API rate limits, EN + zh-Hant i18n. The check path is **orchestrated multi-agent fan-out with progress streaming** and pure-TS tier synthesis — not a single monolithic LLM call.
+**Current check.** One JSON call returns the product, company, and ownership facts. The China link is read from those facts: headquarters, a named majority or wholly controlling owner, and a confirmed made-in. `CHECK_MODE` is ignored. With no barcode, web search is one wide made-in query. A retailer title that names this model keeps its made-in line, including a step count (“4 Steps”) and a second barcode on the same product page. Another edition on that line (“Melio Carbon”, “Liberty 4 NC”) does not. Confirmation rules are in the [README](../README.md).
+
+The sections below, including the diagram, are the original multi-agent design. They are history.
+
+Stack: React 19 + Vite + TypeScript, Cloudflare Pages SPA + `functions/`, localStorage-only history/settings, client image compress, server-built prompts, multi-provider LLM keys, Cache API rate limits, EN + zh-Hant and EU locales.
 
 ```
+Original design (not the current check):
 Browser (SPA)  →  localStorage (history, settings)
                →  POST /api/check  →  Orchestrator (CHECK_MODE: multi | dual | monolith)
                                       ├─ Agent: Identify (vision once, if needed)
@@ -52,6 +57,8 @@ Browser (SPA)  →  localStorage (history, settings)
 ## Goals & Non-Goals
 
 ### Goals
+
+Original design goals. The shipped check is the one JSON call described above.
 
 1. Deploy to **Cloudflare Pages** (static SPA + Pages Functions under `functions/`).
 2. **Text and/or photo** check input (camera + gallery), with client-side compress.
