@@ -89,14 +89,10 @@ export function AlternativeCards({
         ) : null}
       </div>
       {b.madeIn || b.originCountry || b.hqCountry ? (
-        <p className="muted alt-geo">
-          {[
-            b.madeIn ? `${t('check.madeIn')}: ${b.madeIn}` : null,
-            b.originCountry ? `${t('check.origin')}: ${b.originCountry}` : null,
-            b.hqCountry ? `${t('check.hq')}: ${b.hqCountry}` : null,
-          ]
-            .filter(Boolean)
-            .join(' · ')}
+        <p className="alt-facts">
+          {b.madeIn ? <span className="rc-chip">{`${t('check.madeIn')} ${b.madeIn}`}</span> : null}
+          {b.originCountry ? <span className="rc-chip">{`${t('check.origin')} ${b.originCountry}`}</span> : null}
+          {b.hqCountry ? <span className="rc-chip">{`${t('check.hq')} ${b.hqCountry}`}</span> : null}
         </p>
       ) : null}
       {b.note ? <p className="muted">{localizeServerText(t, b.note)}</p> : null}

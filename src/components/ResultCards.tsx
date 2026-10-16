@@ -22,6 +22,7 @@ import {
   type DisputeSide,
   type LayerTag,
 } from './resultCards.model';
+import { InfoTip } from './InfoTip';
 import { ModelRefLabel } from './ModelRef';
 import { SectionShare } from './SectionShare';
 
@@ -103,19 +104,28 @@ export function ChinaCard({ result, t }: { result: CheckResult; t: TFunction }) 
   return (
     <SectionShare label={title} t={t} className="rc-card rc-china">
       <div data-testid="china-card">
-        <p className="rc-eyebrow">{title}</p>
+        <div className="rc-eyebrow">
+          <span>{title}</span>
+          <InfoTip label={t('check.rc.moreInfo')} text={t('check.rc.tip.tier')} />
+        </div>
         <div className="rc-verdict">
           {v.chips.map((chip) => (
-            <span key={chip} className={`rc-chip rc-china-chip is-${chip}`} data-testid="china-chip">
-              {t(`check.chinaLink.${chip}`)}
+            <span key={chip} className="rc-tip" title={t('check.rc.tip.tier')}>
+              <span className={`rc-chip rc-china-chip is-${chip}`} data-testid="china-chip">
+                {t(`check.chinaLink.${chip}`)}
+              </span>
             </span>
           ))}
-          <span className={`rc-chip rc-tier-chip is-${v.tier}`} data-testid="china-tier">
-            {t(`tier.${v.tier}`)}
+          <span className="rc-tip" title={t('check.rc.tip.tier')}>
+            <span className={`rc-chip rc-tier-chip is-${v.tier}`} data-testid="china-tier">
+              {t(`tier.${v.tier}`)}
+            </span>
           </span>
           {conf != null ? (
-            <span className="rc-chip" data-testid="china-confidence">
-              {t('check.confidence', { n: conf })}
+            <span className="rc-tip" title={t('check.rc.tip.confidence')}>
+              <span className="rc-chip" data-testid="china-confidence">
+                {t('check.confidence', { n: conf })}
+              </span>
             </span>
           ) : null}
         </div>
@@ -213,22 +223,26 @@ function SourceLine({
         <span className="rc-source-title">{src.label}</span>
       )}
       {suffix ? suffix : null}
-      {src.host || src.pathHint ? (
-        <>
-          {' · '}
-          <span className="rc-source-host">
-            {src.host ?? ''}
-            {src.pathHint ?? ''}
-          </span>
-        </>
-      ) : null}
-      {src.country ? (
-        <>
-          {' · '}
-          <span className="rc-source-country">
-            {t('check.rc.sourceCountry', { country: localizeCountry(t, src.country) })}
-          </span>
-        </>
+      {src.host || src.pathHint || src.country ? (
+        <span className="rc-source-meta">
+          {src.host || src.pathHint ? (
+            <>
+              {' · '}
+              <span className="rc-source-host">
+                {src.host ?? ''}
+                {src.pathHint ?? ''}
+              </span>
+            </>
+          ) : null}
+          {src.country ? (
+            <>
+              {' · '}
+              <span className="rc-source-country">
+                {t('check.rc.sourceCountry', { country: localizeCountry(t, src.country) })}
+              </span>
+            </>
+          ) : null}
+        </span>
       ) : null}
     </>
   );
@@ -245,7 +259,9 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
   return (
     <SectionShare label={title} t={t} className={`rc-card rc-madein is-${view.state}`}>
       <div data-testid="madein-card" data-state={view.state}>
-        <p className="rc-eyebrow">{title}</p>
+        <div className="rc-eyebrow">
+          <span title={t('check.rc.tip.madeIn')}>{title}</span>
+        </div>
         {/* Only a confirmed country reaches the headline; anything else is 未確認. */}
         {confirmed ? (
           <p className="rc-headline">{country}</p>
@@ -255,17 +271,25 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
 
         <div className="rc-chips">
           {confirmed && view.basis ? (
-            <span className="rc-chip rc-chip--solid">{t(`check.matchBasis.${view.basis}`)}</span>
+            <span className="rc-tip" title={t('check.rc.tip.confirmed')}>
+              <span className="rc-chip rc-chip--solid">{t(`check.matchBasis.${view.basis}`)}</span>
+            </span>
           ) : null}
           {confirmed && conf != null ? (
-            <span className="rc-chip">{t('check.confidence', { n: conf })}</span>
+            <span className="rc-tip" title={t('check.rc.tip.confidence')}>
+              <span className="rc-chip">{t('check.confidence', { n: conf })}</span>
+            </span>
           ) : null}
           {confirmed && view.sourceCount > 0 ? (
-            <span className="rc-chip">{t('check.rc.sourceCount', { n: view.sourceCount })}</span>
+            <span className="rc-tip" title={t('check.rc.tip.vote')}>
+              <span className="rc-chip">{t('check.rc.sourceCount', { n: view.sourceCount })}</span>
+            </span>
           ) : null}
           {!confirmed && view.reason ? (
-            <span className="rc-chip" data-testid="madein-reason">
-              {t(`check.rc.reason.${view.reason}`)}
+            <span className="rc-tip" title={t('check.rc.tip.unconfirmed')}>
+              <span className="rc-chip" data-testid="madein-reason">
+                {t(`check.rc.reason.${view.reason}`)}
+              </span>
             </span>
           ) : null}
         </div>
@@ -331,12 +355,14 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
               {view.votes.map((v) => (
                 <li key={v.country}>
                   <span className="rc-cand-country">
-                    <span className="rc-cand-name">
-                      {t('check.rc.vote', {
-                        country: localizeCountry(t, v.country),
-                        n: v.n,
-                        total: v.total,
-                      })}
+                    <span className="rc-tip" title={t('check.rc.tip.vote')}>
+                      <span className="rc-cand-name">
+                        {t('check.rc.vote', {
+                          country: localizeCountry(t, v.country),
+                          n: v.n,
+                          total: v.total,
+                        })}
+                      </span>
                     </span>
                   </span>
                   {v.sources.length ? (
@@ -428,8 +454,13 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
                   </span>
                   {d.kind === 'brand' ? (
                     // Brand row: 確認 only with a quote read on a fetched page or the label.
+                    <span
+                      className="rc-tip"
+                      title={t(d.verified ? 'check.rc.tip.confirmed' : 'check.rc.tip.mentioned')}
+                    >
                     <span className={`rc-tag is-${d.verified ? 'confirmed' : 'mentioned'}`} data-testid="brand-tag">
                       {t(d.verified ? 'check.rc.tagConfirmed' : 'check.rc.tagMentioned')}
+                    </span>
                     </span>
                   ) : null}
                   {d.source ? (
@@ -454,6 +485,13 @@ const TAG_KEY: Record<LayerTag, string> = {
   unconfirmed: 'check.rc.tagUnconfirmed',
 };
 
+const TAG_TIP: Record<LayerTag, string> = {
+  confirmed: 'check.rc.tip.confirmed',
+  likely: 'check.rc.tip.likely',
+  mentioned: 'check.rc.tip.mentioned',
+  unconfirmed: 'check.rc.tip.unconfirmed',
+};
+
 const LAYER_LABEL: Record<string, string> = {
   brandOrigin: 'check.chinaLink.brandOrigin',
   hq: 'check.chinaLink.hq',
@@ -469,7 +507,10 @@ export function LayersCard({ result, t }: { result: CheckResult; t: TFunction })
   return (
     <SectionShare label={title} t={t} className="rc-card rc-layers">
       <div data-testid="layers-card">
-        <p className="rc-title">{title}</p>
+        <div className="rc-title">
+          <span>{title}</span>
+          <InfoTip label={t('check.rc.moreInfo')} text={t('check.rc.tip.layers')} />
+        </div>
         <dl className="rc-rows">
           {rows.map((r) => {
             const country = r.country ? localizeCountry(t, r.country) : '';
@@ -487,6 +528,7 @@ export function LayersCard({ result, t }: { result: CheckResult; t: TFunction })
                 ) : (
                   <>
                     <dd className="rc-row-value">{value}</dd>
+                    <span className="rc-tip" title={t(TAG_TIP[r.tag])}>
                     <span className={`rc-tag is-${r.tag}`}>
                       {r.grade ? (
                         // Parts: the part country's own grade + %, same as 零件候選.
@@ -499,6 +541,7 @@ export function LayersCard({ result, t }: { result: CheckResult; t: TFunction })
                           {t(TAG_KEY[r.tag])}
                         </>
                       )}
+                    </span>
                     </span>
                   </>
                 )}
@@ -529,11 +572,7 @@ export function Fold({
       <summary>
         <span className="rc-fold-title">
           {title}
-          {typeof count === 'number'
-            ? localeOfT(t) === 'zh-Hant'
-              ? `（${count}）`
-              : ` (${count})`
-            : null}
+          {typeof count === 'number' ? <span className="rc-count">{count}</span> : null}
         </span>
         <span className="rc-fold-toggle">
           <span className="rc-fold-open">{t('check.rc.expand')} ▾</span>

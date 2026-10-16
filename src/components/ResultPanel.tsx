@@ -191,15 +191,13 @@ export function ResultPanel({
             {t('check.identifiedAs', { name: title.modelName })}
           </p>
         ) : null}
-        <p className="ask-result-meta muted">
-          {[
-            provider ? t('check.answeredBy', { name: providerLabel(provider, t) }) : null,
-            cached ? t('check.cached') : null,
-            result.meta?.degraded ? t('check.degraded') : null,
-          ]
-            .filter(Boolean)
-            .join(' · ')}
-        </p>
+        <div className="ask-result-meta rc-chips">
+          {provider ? (
+            <span className="rc-chip">{t('check.answeredBy', { name: providerLabel(provider, t) })}</span>
+          ) : null}
+          {cached ? <span className="rc-chip">{t('check.cached')}</span> : null}
+          {result.meta?.degraded ? <span className="rc-chip">{t('check.degraded')}</span> : null}
+        </div>
       </header>
 
       <ChinaCard result={result} t={t} />
@@ -221,7 +219,7 @@ export function ResultPanel({
         {originDetailCount ? (
           <Fold title={t('check.productNotes')} count={originDetailCount} t={t} testId="fold-notes">
             {notes.length ? (
-              <ul className="tier-reasons-list">
+              <ul className="rc-note-list">
                 {notes.map((n) => (
                   <li key={n}>{foldNote(n)}</li>
                 ))}
@@ -233,7 +231,7 @@ export function ResultPanel({
 
         {caveats.length ? (
           <Fold title={t('check.caveats')} count={caveats.length} t={t} testId="fold-caveats">
-            <ul className="tier-reasons-list">
+            <ul className="rc-note-list">
               {caveats.map((c) => (
                 <li key={c}>{localizeServerText(t, c)}</li>
               ))}
