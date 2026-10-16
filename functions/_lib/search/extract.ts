@@ -12,6 +12,7 @@
  */
 
 import { ENGLISH_WORDS } from './dictionary';
+import { queryMarket } from '../queryMarket';
 import { notProductPageUrl } from '../pageUrl';
 import { isSearchResultUrl } from '../sourceLine';
 import { MADE_IN_CODE_LABEL, NOT_PRODUCT_FIELD, canonicalCountry, madeInCodeMatches } from '../countryLabel';
@@ -398,11 +399,31 @@ function orTerms(terms: readonly string[]): string {
  */
 export const FIRST_MADE_IN_TERMS = ['"made in"', 'hergestellt', '生産国', '原産国'] as const;
 
+/**
+ * Narrow terms for the query's market. A Japanese query looks up the
+ * Japan-sold unit (原産国 / 日本製), not Chinese retailer wording that
+ * surfaces the same name sold in another market. No market marker keeps
+ * the shared list.
+ */
+function narrowMadeInTerms(entity: string): readonly string[] {
+  const market = queryMarket(entity);
+  if (market === 'ja') return ['原産国', '生産国', '日本製'];
+  if (market === 'zh-Hans') return ['产地', '原产地'];
+  return FIRST_MADE_IN_TERMS;
+}
+
+function wideMadeInTerms(entity: string): readonly string[] {
+  const market = queryMarket(entity);
+  if (market === 'ja') return ['"made in"', '原産国', '生産国', '日本製', '国内'];
+  if (market === 'zh-Hans') return ['"made in"', '产地', '原产地', '制造'];
+  return MADE_IN_FOLLOWUP_TERMS;
+}
+
 /** Search query: entity + JAN (when we have one) + the narrow made-in terms. */
 export function buildSearchQuery(entity: string, jans: string[]): string {
   const base = queryEntity(entity);
   const jan = jans[0] ? ` ${jans[0]}` : '';
-  return `${base}${jan} ${orTerms(FIRST_MADE_IN_TERMS)}`;
+  return `${base}${jan} ${orTerms(narrowMadeInTerms(entity))}`;
 }
 
 /**
@@ -424,7 +445,7 @@ export const MADE_IN_FOLLOWUP_TERMS = [
 
 /** The follow-up query: the model name (no barcode) + the wider made-in terms. */
 export function buildMadeInQuery(entity: string): string {
-  return `${queryEntity(entity)} ${orTerms(MADE_IN_FOLLOWUP_TERMS)}`;
+  return `${queryEntity(entity)} ${orTerms(wideMadeInTerms(entity))}`;
 }
 
 /** Pages handed to the one extraction after a follow-up (first query's pages first). */

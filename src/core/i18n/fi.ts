@@ -76,6 +76,8 @@ export const fi = {
       sourcesSilent: '{n} lähdettä ei ilmoita valmistusmaata.',
       noMadeInStated: 'Yksikään {total} lähteestä ei ilmoita valmistusmaata.',
       weakTitle: 'Mallin arvio (vahvistamaton)',
+      mostly: 'Enimmäkseen {country}',
+      mostlyHelp: 'Tärkeimmät osat viittaavat tähän. Tämä ei ole vahvistettu valmistusmaa.',
       sourceCount: 'Lähteet: {n}',
       sourceFirst: 'Lähde 1: {label}',
       sourceNth: 'Lähde {n}: {label}',

@@ -439,6 +439,92 @@ describe('China card fairness (real payloads)', () => {
   });
 });
 
+describe('mostly headline when parts lead', () => {
+  const partsLead = base({
+    partsEvidence: 'web',
+    knowledgeBasis: 'web_enriched',
+    product: {
+      name: 'Sheer 240ml',
+      originCandidates: [
+        { label: 'China', confidence: 0.65, source: 'parts', rating: 'likely' },
+        { label: 'Thailand', confidence: 0.45, source: 'components_line', rating: 'possible' },
+      ],
+    },
+    company: { name: 'Pigeon', hqCountry: 'Japan' },
+    meta: { citedUnverified: [{ url: 'https://www.aeonretail.com/x', title: 'AEON' }] },
+  });
+
+  it('China 65% parts over Thailand 45% components: Mostly China, still unconfirmed', () => {
+    const view = buildMadeInView(partsLead);
+    assert.equal(view.state, 'unconfirmed');
+    assert.equal(view.mostly, 'China');
+    assert.ok(view.unconfirmedTier.some((c) => c.label === 'Thailand'));
+    const en = createT('en');
+    const out = html(createElement(MadeInCard, { result: partsLead, t: en }));
+    assert.match(out, /<p class="rc-headline is-unconfirmed" title="[^"]*">Mostly China<\/p>/);
+    assert.ok(out.includes('Thailand'));
+    assert.ok(!out.includes('rc-chip--solid'));
+    const zhOut = html(createElement(MadeInCard, { result: partsLead, t: zh }));
+    assert.ok(zhOut.includes('大多產自中國'), zhOut);
+  });
+
+  it('model-only parts stay Unconfirmed', () => {
+    const model = { ...partsLead, partsEvidence: 'model' as const, knowledgeBasis: 'model_memory' as const };
+    assert.equal(buildMadeInView(model).mostly, undefined);
+    const out = html(createElement(MadeInCard, { result: model, t: zh }));
+    assert.match(out, /<p class="rc-headline is-unconfirmed">未確認<\/p>/);
+  });
+
+  it('two close part countries stay Unconfirmed', () => {
+    const split = base({
+      partsEvidence: 'web',
+      product: {
+        name: 'Bottle',
+        originCandidates: [
+          { label: 'China', confidence: 0.62, source: 'parts', rating: 'likely' },
+          { label: 'Thailand', confidence: 0.58, source: 'parts', rating: 'likely' },
+        ],
+      },
+    });
+    assert.equal(buildMadeInView(split).mostly, undefined);
+  });
+
+  it('a finished-unit country that is not the parts country blocks Mostly', () => {
+    const japan = base({
+      partsEvidence: 'web',
+      product: {
+        name: 'Sheer 240ml',
+        madeIn: 'Japan',
+        originCandidates: [
+          { label: 'China', confidence: 0.65, source: 'parts', rating: 'likely' },
+          { label: 'Japan', confidence: 0.5, source: 'model_memory', rating: 'possible' },
+        ],
+      },
+    });
+    assert.equal(buildMadeInView(japan).mostly, undefined);
+    const out = html(createElement(MadeInCard, { result: japan, t: createT('en') }));
+    assert.match(out, /<p class="rc-headline is-unconfirmed">Unconfirmed<\/p>/);
+  });
+
+  it('a page naming another country blocks Mostly', () => {
+    const page = base({
+      partsEvidence: 'web',
+      sources: ['Shop — https://shop.example.jp/item/1'],
+      product: {
+        name: 'Bottle',
+        originCandidates: [
+          { label: 'China', confidence: 0.65, source: 'parts', rating: 'likely' },
+          { label: 'Germany', confidence: 0.6, source: 'web_name', rating: 'likely' },
+        ],
+      },
+      meta: {
+        searchCoo: [{ country: 'Germany', basis: 'name', status: 'likely', url: 'https://shop.example.jp/item/1' }],
+      },
+    });
+    assert.equal(buildMadeInView(page).mostly, undefined);
+  });
+});
+
 describe('model-only made-in (item 9)', () => {
   // Model says China; web search found nothing; no label.
   const modelOnly = base({

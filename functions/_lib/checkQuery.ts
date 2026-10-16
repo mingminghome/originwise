@@ -4,6 +4,7 @@
  */
 
 import { langLabel } from './locale';
+import { queryMarketLine } from './queryMarket';
 import {
   ALTERNATIVES_FACT_RULES,
   COMPANY_FACT_RULES,
@@ -177,6 +178,8 @@ geoScope=${opts.geoScope} (Taiwan is never China for tiers; greater_china may in
 Requested sections: ${sections.map((section) => section.id).join(', ') || '(none)'}
 
 ${rules}
+
+${queryMarketLine(opts.text)}
 
 Return ONLY JSON:
 {

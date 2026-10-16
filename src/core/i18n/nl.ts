@@ -76,6 +76,8 @@ export const nl = {
       sourcesSilent: '{n} bronnen noemen geen productieland.',
       noMadeInStated: 'Geen van de {total} bronnen noemt een productieland.',
       weakTitle: 'Modelreferentie (onbevestigd)',
+      mostly: 'Voornamelijk {country}',
+      mostlyHelp: 'De belangrijkste onderdelen wijzen hierheen. Dit is geen bevestigd productieland.',
       sourceCount: 'Bronnen: {n}',
       sourceFirst: 'Bron 1: {label}',
       sourceNth: 'Bron {n}: {label}',

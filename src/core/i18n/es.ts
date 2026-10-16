@@ -76,6 +76,8 @@ export const es = {
       sourcesSilent: '{n} fuentes no indican el país de fabricación.',
       noMadeInStated: 'Ninguna de las {total} fuentes indica el país de fabricación.',
       weakTitle: 'Referencia del modelo (sin confirmar)',
+      mostly: 'Principalmente {country}',
+      mostlyHelp: 'Las piezas principales apuntan a este país. No es un país de fabricación confirmado.',
       sourceCount: 'Fuentes: {n}',
       sourceFirst: 'Fuente 1: {label}',
       sourceNth: 'Fuente {n}: {label}',

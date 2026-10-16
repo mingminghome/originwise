@@ -60,6 +60,19 @@ describe('origin accuracy prompt contracts', () => {
     assert.match(p, /different category/);
   });
 
+  it('names the market from the query writing', () => {
+    const ja = prompt(['origin'], 'Pigeon 哺乳びん');
+    assert.match(ja, /MARKET OF THIS QUERY/);
+    assert.match(ja, /unit sold in Japan/);
+    assert.match(ja, /does not set madeIn/);
+    const hans = prompt(['origin'], '贝亲奶瓶');
+    assert.match(hans, /unit sold in mainland China/);
+    const hant = prompt(['origin'], 'Cybex Melio 嬰兒推車');
+    assert.match(hant, /Taiwan or Hong Kong/);
+    const latin = prompt(['origin'], 'Hailo ladder');
+    assert.doesNotMatch(latin, /QUERY MARKET:/);
+  });
+
   it('asks verification to flag distributor-as-parent and HQ-copied madeIn', () => {
     const p = prompt(['origin', 'company_relations']);
     assert.match(p, /local distributor/);

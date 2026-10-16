@@ -70,6 +70,12 @@ DESIGN HQ ≠ FACTORY:
 SAME NAME / SUPPLY-SHIFT:
 - Match category + legal parent, never the spelling alone. Do not copy made-in from a same-named product in a different category.
 - A rumor of moving some parts out of China is componentsOrigin only. It does not set madeIn.
+
+MARKET OF THIS QUERY:
+- The writing of the user text selects the unit on sale. Kana (hiragana or katakana) = the unit sold in Japan. Simplified-only characters = the unit sold in mainland China. Traditional-only characters = the unit sold in Taiwan or Hong Kong. Latin script names no market.
+- madeIn is the finished unit in THAT market. The same model name sold in another market can be finished in a different country. Do not copy that other unit's factory into madeIn.
+- A part made in another country stays in parts[] / componentsOrigin. It does not set madeIn.
+- When a QUERY MARKET line is present, follow it: search and cite that market's unit, not another market's listing of the same name.
 `.trim();
 
 export const COMPANY_FACT_RULES = `

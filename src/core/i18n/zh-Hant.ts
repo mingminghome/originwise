@@ -76,6 +76,8 @@ export const zhHant = {
       sourcesSilent: '另外 {n} 個來源沒有寫明製造地。',
       noMadeInStated: '{total} 個來源都沒有寫明製造地。',
       weakTitle: '模型參考（未經確認）',
+      mostly: '大多產自{country}',
+      mostlyHelp: '主要零件指向這裡，這不是已確認的製造地。',
       sourceCount: '{n} 個來源',
       sourceFirst: '來源 1：{label}',
       sourceNth: '來源 {n}：{label}',

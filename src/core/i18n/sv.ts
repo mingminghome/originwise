@@ -76,6 +76,8 @@ export const sv = {
       sourcesSilent: '{n} källor anger inget tillverkningsland.',
       noMadeInStated: 'Ingen av {total} källor anger ett tillverkningsland.',
       weakTitle: 'Modellreferens (obekräftad)',
+      mostly: 'Mestadels {country}',
+      mostlyHelp: 'Huvuddelarna pekar hit. Det är inte ett bekräftat tillverkningsland.',
       sourceCount: 'Källor: {n}',
       sourceFirst: 'Källa 1: {label}',
       sourceNth: 'Källa {n}: {label}',

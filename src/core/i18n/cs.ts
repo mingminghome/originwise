@@ -76,6 +76,8 @@ export const cs = {
       sourcesSilent: '{n} zdrojů neuvádí zemi výroby.',
       noMadeInStated: 'Žádný z {total} zdrojů neuvádí zemi výroby.',
       weakTitle: 'Modelová reference (nepotvrzeno)',
+      mostly: 'Převážně {country}',
+      mostlyHelp: 'Hlavní díly ukazují sem. Nejde o potvrzenou zemi výroby.',
       sourceCount: 'Zdroje: {n}',
       sourceFirst: 'Zdroj 1: {label}',
       sourceNth: 'Zdroj {n}: {label}',

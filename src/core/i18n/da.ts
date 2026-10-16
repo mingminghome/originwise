@@ -76,6 +76,8 @@ export const da = {
       sourcesSilent: '{n} kilder angiver ikke et fremstillingsland.',
       noMadeInStated: 'Ingen af de {total} kilder angiver et fremstillingsland.',
       weakTitle: 'Modelreference (ubekræftet)',
+      mostly: 'Mestendels {country}',
+      mostlyHelp: 'De vigtigste dele peger herhen. Det er ikke et bekræftet produktionsland.',
       sourceCount: 'Kilder: {n}',
       sourceFirst: 'Kilde 1: {label}',
       sourceNth: 'Kilde {n}: {label}',

@@ -262,9 +262,13 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
         <div className="rc-eyebrow">
           <span title={t('check.rc.tip.madeIn')}>{title}</span>
         </div>
-        {/* Only a confirmed country reaches the headline; anything else is 未確認. */}
+        {/* Confirmed country, or 「大多產自」 when parts lead. Else 未確認. */}
         {confirmed ? (
           <p className="rc-headline">{country}</p>
+        ) : view.mostly ? (
+          <p className="rc-headline is-unconfirmed" title={t('check.rc.mostlyHelp')}>
+            {t('check.rc.mostly', { country: localizeCountry(t, view.mostly) })}
+          </p>
         ) : (
           <p className="rc-headline is-unconfirmed">{t('check.chinaLink.unconfirmed')}</p>
         )}

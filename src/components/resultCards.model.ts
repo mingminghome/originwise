@@ -34,12 +34,18 @@ export type UnconfirmedReason = 'pagesDisagree' | 'sourcesDisagree' | 'aiCitedUn
 
 export type MadeInView = {
   /**
-   * confirmed (barcode / label / 依型號比對) or unconfirmed. Nothing else ever
-   * reaches the headline: a likely country is a candidate under 未確認.
+   * confirmed (barcode / label / 依型號比對) or unconfirmed. A likely web
+   * page never becomes the headline country. Parts that clearly lead can
+   * read 「大多產自 X」 (`mostly`) while the card stays unconfirmed.
    */
   state: 'confirmed' | 'unconfirmed';
   /** Headline country (confirmed only). */
   country?: string;
+  /**
+   * Unconfirmed headline when web-graded parts name one country clearly
+   * ahead of the others. Not a confirmed made-in.
+   */
+  mostly?: string;
   basis?: MadeInBasis;
   /** 0–1, for the confidence chip. */
   confidence?: number;
@@ -154,6 +160,13 @@ export function sameCountryLabel(a: string, b: string): boolean {
 
 /** Candidate sources that name a part / component country. */
 const PART_SOURCES = new Set(['parts', 'components_line', 'notes']);
+
+/** Parts / components line only: these can support a 「大多產自」 headline. */
+const MOSTLY_SOURCES = new Set(['parts', 'components_line']);
+/** Likely-band floor (chinaRelated parts with a web pass sit at 0.65). */
+const MOSTLY_MIN = 0.55;
+/** Two part countries this close stay 未確認 instead of 「大多產自」. */
+const MOSTLY_GAP = 0.1;
 
 /**
  * Part countries came from the model only: no package label photo and no
@@ -865,12 +878,57 @@ function buildSourceVotes(result: CheckResult): { votes: SourceVote[]; silent: n
   return { votes, silent: Math.max(0, total - named.size), total };
 }
 
+/**
+ * 「大多產自中國」: web-graded parts (or the components line) name one
+ * country at likely/confirmed, clearly ahead of any other part country.
+ * A model-only guess, a page that names a different country, and a
+ * two-sided dispute stay 未確認. This is not a confirmed made-in.
+ */
+function mostlyCountry(
+  result: CheckResult,
+  core: { state: MadeInView['state']; candidates: CandRow[]; dispute?: DisputeSide[] },
+  tier: WeakCandidate[]
+): string | undefined {
+  if (core.state !== 'unconfirmed' || (core.dispute?.length ?? 0) >= 2) return undefined;
+  const cands = result.product?.originCandidates ?? [];
+  const lead: { label: string; confidence: number }[] = [];
+  for (const row of tier) {
+    if (!MOSTLY_SOURCES.has(String(row.source)) || modelOnlyPartCandidate(result, row)) continue;
+    const own = cands.find((c) => c.source === row.source && sameCountryLabel(c.label, row.label));
+    if (own?.rating !== 'likely' && own?.rating !== 'confirmed') continue;
+    const confidence = row.confidence ?? own.confidence ?? 0;
+    if (confidence < MOSTLY_MIN) continue;
+    const i = lead.findIndex((x) => sameCountryLabel(x.label, row.label));
+    if (i === -1) lead.push({ label: row.label, confidence });
+    else if (confidence > lead[i]!.confidence) lead[i]!.confidence = confidence;
+  }
+  lead.sort((a, b) => b.confidence - a.confidence);
+  const top = lead[0];
+  if (!top) return undefined;
+  const next = lead[1];
+  if (next && top.confidence - next.confidence < MOSTLY_GAP) return undefined;
+  // A finished-unit country (the model's made-in, or a page) that is not the
+  // parts country stays the made-in story. Parts do not become 「大多產自」.
+  if (
+    core.candidates.some(
+      (c) =>
+        (c.source === 'web_name' || c.source === 'model_memory' || c.source === 'confirmed_coo') &&
+        !sameCountryLabel(c.label, top.label)
+    )
+  ) {
+    return undefined;
+  }
+  return top.label;
+}
+
 export function buildMadeInView(result: CheckResult): MadeInView {
   const core = buildMadeInViewCore(result);
   const tier = tierRows(result, core);
+  const mostly = mostlyCountry(result, core, tier);
   const { votes, silent, total } = buildSourceVotes(result);
   return {
     ...core,
+    ...(mostly ? { mostly } : {}),
     unconfirmedTier: tier,
     votes,
     silent,

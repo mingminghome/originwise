@@ -528,6 +528,13 @@ describe('bounded made-in follow-up query', () => {
       assert.ok(MADE_IN_FOLLOWUP_TERMS.includes(term), term);
       assert.ok(buildSearchQuery('Cybex Melio', []).includes(term), term);
     }
+    const ja = buildMadeInQuery('Pigeon 母乳実感 哺乳びん');
+    assert.ok(ja.includes('日本製') && ja.includes('原産国') && ja.includes('国内'), ja);
+    assert.ok(!ja.includes('產地') && !ja.includes('产地'), ja);
+    assert.ok(buildSearchQuery('Pigeon 母乳実感 哺乳びん', []).includes('日本製'));
+    const hans = buildMadeInQuery('贝亲 奶瓶');
+    assert.ok(hans.includes('产地') && hans.includes('原产地'), hans);
+    assert.ok(!hans.includes('日本製') && !hans.includes('原産国'), hans);
   });
 
   it('runs only when the first pages give < 2 usable made-in pages and nothing confirmed', () => {

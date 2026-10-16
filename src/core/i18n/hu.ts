@@ -76,6 +76,8 @@ export const hu = {
       sourcesSilent: '{n} forrás nem nevezi meg a gyártási országot.',
       noMadeInStated: 'A {total} forrás egyike sem nevezi meg a gyártási országot.',
       weakTitle: 'Modell-referencia (nem megerősített)',
+      mostly: 'Többnyire {country}',
+      mostlyHelp: 'A fő alkatrészek ide mutatnak. Ez nem megerősített gyártási ország.',
       sourceCount: 'Források: {n}',
       sourceFirst: '1. forrás: {label}',
       sourceNth: '{n}. forrás: {label}',

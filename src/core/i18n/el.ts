@@ -76,6 +76,8 @@ export const el = {
       sourcesSilent: '{n} πηγές δεν αναφέρουν χώρα κατασκευής.',
       noMadeInStated: 'Καμία από τις {total} πηγές δεν αναφέρει χώρα κατασκευής.',
       weakTitle: 'Αναφορά μοντέλου (μη επιβεβαιωμένο)',
+      mostly: 'Κυρίως {country}',
+      mostlyHelp: 'Τα κύρια εξαρτήματα δείχνουν εδώ. Δεν είναι επιβεβαιωμένη χώρα κατασκευής.',
       sourceCount: 'Πηγές: {n}',
       sourceFirst: 'Πηγή 1: {label}',
       sourceNth: 'Πηγή {n}: {label}',

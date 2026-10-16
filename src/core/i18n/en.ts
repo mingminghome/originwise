@@ -79,6 +79,8 @@ export const en: MessageTree = {
       sourcesSilent: '{n} sources did not state a made-in.',
       noMadeInStated: 'None of the {total} sources stated a made-in.',
       weakTitle: 'Model reference (unconfirmed)',
+      mostly: 'Mostly {country}',
+      mostlyHelp: 'The main parts point here. This is not a confirmed made-in.',
       sourceCount: 'Sources: {n}',
       sourceFirst: 'Source 1: {label}',
       sourceNth: 'Source {n}: {label}',

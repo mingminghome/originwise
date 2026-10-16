@@ -76,6 +76,8 @@ export const pl = {
       sourcesSilent: '{n} źródeł nie podaje kraju produkcji.',
       noMadeInStated: 'Żadne z {total} źródeł nie podaje kraju produkcji.',
       weakTitle: 'Odniesienie modelu (niepotwierdzone)',
+      mostly: 'Głównie {country}',
+      mostlyHelp: 'Główne części wskazują ten kraj. To nie jest potwierdzony kraj produkcji.',
       sourceCount: 'Źródła: {n}',
       sourceFirst: 'Źródło 1: {label}',
       sourceNth: 'Źródło {n}: {label}',

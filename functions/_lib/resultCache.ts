@@ -37,8 +37,10 @@ function sortedDims(dims: CheckDimension[]): string {
  *     asks for the product page and the exact grounding redirect link
  * v12: AI made-in is kept as a source vote (Germany 1/5), including when it
  *     matches brand home; barcode-apology notes are not stored as the answer
+ * v14: the query's writing selects the market unit (kana = Japan-sold).
+ *     Another market's factory is not this unit's made-in.
  */
-export const CACHE_KEY_VERSION = 'check:v13';
+export const CACHE_KEY_VERSION = 'check:v14';
 
 export async function cacheKeyHash(parts: CacheLookupKey): Promise<string> {
   const material = [

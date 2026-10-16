@@ -76,6 +76,8 @@ export const ro = {
       sourcesSilent: '{n} surse nu indică țara de fabricație.',
       noMadeInStated: 'Niciuna dintre cele {total} surse nu indică țara de fabricație.',
       weakTitle: 'Referință model (neconfirmat)',
+      mostly: 'În mare parte {country}',
+      mostlyHelp: 'Piesele principale indică această țară. Nu este o țară de fabricație confirmată.',
       sourceCount: 'Surse: {n}',
       sourceFirst: 'Sursa 1: {label}',
       sourceNth: 'Sursa {n}: {label}',

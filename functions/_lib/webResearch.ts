@@ -28,6 +28,7 @@
  */
 
 import { langLabel } from './locale';
+import { queryMarketLine } from './queryMarket';
 import { isCreditsDepleted, type LlmEnv } from './llm';
 
 export type WebResearchEnv = LlmEnv & {
@@ -336,6 +337,8 @@ Rules:
 - Two brands sharing a local distributor does not mean one owns the other.
 - Same spelling can be two companies: split by category and legal parent. Do not mix their factories.
 - Talk of moving some parts or assembly out of China is not the finished-unit "Made in" unless the label for THIS SKU says so.
+- The writing of ENTITY selects the market: kana = the Japan-sold unit, simplified Chinese = the mainland-sold unit, traditional Chinese = the Taiwan/Hong Kong-sold unit. Search that unit. Another market's factory is not this unit's COO. A part made elsewhere is a part origin, not the finished COO.
+${queryMarketLine(opts.entity)}
 - Taiwan (TW) companies (e.g. Foxconn/Hon Hai) are Taiwan — never call them China.
 - If sources conflict, list BOTH COO lines with source tags — do not pick China from ownership alone.
 - If little is found, say so clearly — do not invent registry data or factory countries.
