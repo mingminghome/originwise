@@ -49,49 +49,52 @@ export function HistoryScreen({ state }: { state: AppState }) {
       ) : (
         <section className="card ask-history-card span-2">
           <ul className="ask-history-list">
-            {checkHistory.map((item) => (
-              <li key={item.id} className="ask-history-item">
-                <button
-                  type="button"
-                  className="ask-history-main"
-                  onClick={() => {
-                    trackEvent({
-                      event: 'history_open_result',
-                      relation_tier: item.result.relationTier,
-                      has_photo: item.hadImage,
-                    });
-                    setActiveResult(item);
-                    setTab('check');
-                  }}
-                >
-                  <span className="ask-history-query">
-                    {item.hadImage ? (
-                      <ImageIcon size={14} style={{ marginRight: 4 }} />
-                    ) : null}
-                    {item.query}
-                  </span>
-                  <span className="ask-history-meta muted">
-                    {formatWhen(item.at, settings.locale)}
-                    {item.hadImage ? ` · ${t('history.withPhoto')}` : ''}
-                  </span>
-                  <span className="ask-history-tier">
-                    <TierBadge
-                      tier={displayTier(item.result).tier}
-                      label={t(`tier.${displayTier(item.result).tier}`)}
-                      size="sm"
-                    />
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="ask-history-delete"
-                  aria-label={t('history.remove')}
-                  onClick={() => removeCheckHistory(item.id)}
-                >
-                  <Trash2 size={16} />
-                </button>
-              </li>
-            ))}
+            {checkHistory.map((item) => {
+              const tier = displayTier(item.result).tier;
+              return (
+                <li key={item.id} className={`ask-history-item is-${tier}`}>
+                  <button
+                    type="button"
+                    className="ask-history-main"
+                    onClick={() => {
+                      trackEvent({
+                        event: 'history_open_result',
+                        relation_tier: item.result.relationTier,
+                        has_photo: item.hadImage,
+                      });
+                      setActiveResult(item);
+                      setTab('check');
+                    }}
+                  >
+                    <span className="ask-history-query">
+                      {item.hadImage ? (
+                        <ImageIcon size={14} style={{ marginRight: 4 }} />
+                      ) : null}
+                      {item.query}
+                    </span>
+                    <span className="ask-history-meta muted">
+                      {formatWhen(item.at, settings.locale)}
+                      {item.hadImage ? ` · ${t('history.withPhoto')}` : ''}
+                    </span>
+                    <span className="ask-history-tier">
+                      <TierBadge
+                        tier={tier}
+                        label={t(`tier.${tier}`)}
+                        size="sm"
+                      />
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="ask-history-delete"
+                    aria-label={t('history.remove')}
+                    onClick={() => removeCheckHistory(item.id)}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

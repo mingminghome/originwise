@@ -1305,6 +1305,25 @@ p {
   background: var(--bg-subtle);
   overflow: hidden;
 }
+/* Same relation colours as the China card and the tier badge. */
+.ask-history-item.is-none {
+  border-color: rgba(34, 160, 90, 0.45);
+  background: rgba(34, 160, 90, 0.1);
+  box-shadow: inset 4px 0 0 #1b7a4a;
+}
+.ask-history-item.is-indirect {
+  border-color: rgba(180, 120, 20, 0.5);
+  background: rgba(217, 160, 32, 0.16);
+  box-shadow: inset 4px 0 0 #a16207;
+}
+.ask-history-item.is-direct {
+  border-color: rgba(200, 50, 40, 0.5);
+  background: rgba(220, 60, 50, 0.1);
+  box-shadow: inset 4px 0 0 #b42318;
+}
+.ask-history-item.is-unknown {
+  box-shadow: inset 4px 0 0 #737373;
+}
 
 .ask-history-main {
   flex: 1;
@@ -1324,6 +1343,15 @@ p {
 
 .ask-history-main:hover {
   background: color-mix(in srgb, var(--primary-soft) 40%, transparent);
+}
+.ask-history-item.is-none .ask-history-main:hover {
+  background: rgba(34, 160, 90, 0.18);
+}
+.ask-history-item.is-indirect .ask-history-main:hover {
+  background: rgba(217, 160, 32, 0.24);
+}
+.ask-history-item.is-direct .ask-history-main:hover {
+  background: rgba(220, 60, 50, 0.16);
 }
 
 .ask-history-main:focus-visible {
@@ -2052,7 +2080,7 @@ p {
   align-self: flex-start;
 }
 /*
- * Relation tier badges — the only chromatic accents (mono app otherwise).
+ * Relation colour, shared by the tier badge, the China card, and history rows.
  * none=green · indirect=amber · direct=red · unknown=gray
  */
 .tier-badge {
@@ -5114,21 +5142,66 @@ p {
   line-height: 1.3;
   white-space: nowrap;
 }
-.rc-chip--solid,
-.rc-tier-chip {
-  background: var(--text);
-  border-color: var(--text);
-  color: var(--bg-card);
+.rc-chip--solid {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #fff;
+  font-weight: 700;
+}
+/* Same colours as the relation badge: none green, indirect amber, direct red. */
+.rc-tier-chip.is-none {
+  color: #1b7a4a;
+  background: rgba(34, 160, 90, 0.14);
+  border-color: rgba(34, 160, 90, 0.4);
+}
+.rc-tier-chip.is-indirect {
+  color: #a16207;
+  background: rgba(217, 160, 32, 0.18);
+  border-color: rgba(180, 120, 20, 0.45);
+}
+.rc-tier-chip.is-direct,
+.rc-china-chip {
+  color: #b42318;
+  background: rgba(220, 60, 50, 0.12);
+  border-color: rgba(200, 50, 40, 0.4);
   font-weight: 700;
 }
 .rc-tier-chip.is-unknown {
+  color: #525252;
   background: transparent;
-  color: var(--text-muted);
+  border-color: rgba(0, 0, 0, 0.18);
   border-style: dashed;
 }
-.rc-china-chip {
-  font-weight: 700;
-  background: var(--bg-subtle);
+.rc-card.rc-china:has(.rc-tier-chip.is-none) {
+  border-color: rgba(34, 160, 90, 0.45);
+  background: linear-gradient(180deg, rgba(34, 160, 90, 0.1), var(--bg-card) 5.5rem);
+}
+.rc-card.rc-china:has(.rc-tier-chip.is-indirect) {
+  border-color: rgba(180, 120, 20, 0.5);
+  background: linear-gradient(180deg, rgba(217, 160, 32, 0.14), var(--bg-card) 5.5rem);
+}
+.rc-card.rc-china:has(.rc-tier-chip.is-direct) {
+  border-color: rgba(200, 50, 40, 0.5);
+  background: linear-gradient(180deg, rgba(220, 60, 50, 0.1), var(--bg-card) 5.5rem);
+}
+.rc-madein.is-confirmed {
+  border-color: rgba(15, 118, 110, 0.5);
+  background: linear-gradient(180deg, rgba(15, 118, 110, 0.1), var(--bg-card) 6rem);
+}
+.rc-madein.is-confirmed .rc-headline {
+  color: #0f766e;
+}
+.rc-madein.is-unconfirmed {
+  border-color: rgba(180, 120, 20, 0.5);
+  background: linear-gradient(180deg, rgba(217, 160, 32, 0.12), var(--bg-card) 6rem);
+}
+.rc-madein.is-unconfirmed .rc-headline,
+.rc-madein.is-unconfirmed [data-testid='madein-reason'] {
+  color: #a16207;
+}
+.rc-madein.is-unconfirmed [data-testid='madein-reason'] {
+  background: rgba(217, 160, 32, 0.16);
+  border-color: rgba(180, 120, 20, 0.4);
 }
 .rc-tip {
   display: inline-flex;
@@ -5166,6 +5239,9 @@ p {
 .rc-row:nth-child(odd) {
   background: var(--bg-subtle);
 }
+.rc-row:has(> .is-china) {
+  background: rgba(220, 60, 50, 0.08);
+}
 .rc-row-label {
   margin: 0;
   font-size: 0.75rem;
@@ -5186,7 +5262,17 @@ p {
 .rc-china .rc-row {
   grid-template-columns: 6.8rem minmax(0, 1fr);
 }
+.rc-row-value.is-china,
+.rc-cand-country.is-china .rc-cand-name,
+.rc-votes li.is-china .rc-cand-name {
+  color: #b42318;
+}
+.rc-candidates li:has(.rc-cand-country.is-china),
+.rc-votes li.is-china {
+  background: rgba(220, 60, 50, 0.08);
+}
 .rc-row-value.is-china > span:first-child {
+  color: #b42318;
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
@@ -5525,16 +5611,24 @@ p {
   white-space: nowrap;
 }
 .rc-tag.is-confirmed {
-  background: var(--text);
-  border-color: var(--text);
-  color: var(--bg-card);
+  color: #1b7a4a;
+  background: rgba(34, 160, 90, 0.14);
+  border-color: rgba(34, 160, 90, 0.4);
 }
 .rc-tag.is-likely {
-  color: var(--text);
-  border-color: var(--text);
+  color: #a16207;
+  background: rgba(217, 160, 32, 0.18);
+  border-color: rgba(180, 120, 20, 0.45);
 }
-.rc-tag.is-mentioned,
+.rc-tag.is-mentioned {
+  color: #525252;
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.14);
+}
 .rc-tag.is-unconfirmed {
+  color: #a16207;
+  background: transparent;
+  border-color: rgba(180, 120, 20, 0.45);
   border-style: dashed;
 }
 .rc-count {
@@ -5659,4 +5753,77 @@ p {
 .rc-layer-row .rc-row-value {
   word-break: keep-all;
   overflow-wrap: anywhere;
+}
+[data-theme='dark'] .rc-tier-chip.is-none,
+[data-theme='dark'] .rc-tag.is-confirmed {
+  color: #6ee7a8;
+  background: rgba(34, 197, 120, 0.16);
+  border-color: rgba(52, 211, 140, 0.4);
+}
+[data-theme='dark'] .rc-tier-chip.is-indirect,
+[data-theme='dark'] .rc-tag.is-likely,
+[data-theme='dark'] .rc-tag.is-unconfirmed,
+[data-theme='dark'] .rc-madein.is-unconfirmed .rc-headline,
+[data-theme='dark'] .rc-madein.is-unconfirmed [data-testid='madein-reason'] {
+  color: #fbbf24;
+}
+[data-theme='dark'] .rc-tier-chip.is-indirect,
+[data-theme='dark'] .rc-tag.is-likely,
+[data-theme='dark'] .rc-madein.is-unconfirmed [data-testid='madein-reason'] {
+  background: rgba(251, 191, 36, 0.14);
+  border-color: rgba(251, 191, 36, 0.35);
+}
+[data-theme='dark'] .rc-tier-chip.is-direct,
+[data-theme='dark'] .rc-china-chip,
+[data-theme='dark'] .rc-row-value.is-china,
+[data-theme='dark'] .rc-row-value.is-china > span:first-child,
+[data-theme='dark'] .rc-cand-country.is-china .rc-cand-name,
+[data-theme='dark'] .rc-votes li.is-china .rc-cand-name {
+  color: #fca5a5;
+}
+[data-theme='dark'] .ask-history-item.is-none {
+  border-color: rgba(52, 211, 140, 0.4);
+  background: rgba(34, 197, 120, 0.12);
+  box-shadow: inset 4px 0 0 #6ee7a8;
+}
+[data-theme='dark'] .ask-history-item.is-indirect {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(251, 191, 36, 0.12);
+  box-shadow: inset 4px 0 0 #fbbf24;
+}
+[data-theme='dark'] .ask-history-item.is-direct {
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.12);
+  box-shadow: inset 4px 0 0 #fca5a5;
+}
+[data-theme='dark'] .ask-history-item.is-unknown {
+  box-shadow: inset 4px 0 0 #a3a3a3;
+}
+[data-theme='dark'] .ask-history-item.is-none .ask-history-main:hover {
+  background: rgba(34, 197, 120, 0.2);
+}
+[data-theme='dark'] .ask-history-item.is-indirect .ask-history-main:hover {
+  background: rgba(251, 191, 36, 0.2);
+}
+[data-theme='dark'] .ask-history-item.is-direct .ask-history-main:hover {
+  background: rgba(248, 113, 113, 0.2);
+}
+[data-theme='dark'] .rc-tier-chip.is-direct,
+[data-theme='dark'] .rc-china-chip {
+  background: rgba(248, 113, 113, 0.14);
+  border-color: rgba(248, 113, 113, 0.35);
+}
+[data-theme='dark'] .rc-madein.is-confirmed .rc-headline,
+[data-theme='dark'] .rc-chip--solid {
+  color: #5eead4;
+}
+[data-theme='dark'] .rc-chip--solid {
+  background: rgba(15, 118, 110, 0.35);
+  border-color: rgba(94, 234, 212, 0.45);
+}
+[data-theme='dark'] .rc-tier-chip.is-unknown,
+[data-theme='dark'] .rc-tag.is-mentioned {
+  color: #a3a3a3;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
 }

@@ -1,8 +1,8 @@
 import type { RelationTier } from '../core/types';
 
 /**
- * Only place in the UI that uses semantic color for relation results.
- * Rest of the app stays monochrome.
+ * Compact relation colour (history and other short labels).
+ * The China card uses the same colours on .rc-tier-chip.
  */
 export function TierBadge({
   tier,

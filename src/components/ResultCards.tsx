@@ -353,7 +353,7 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
           <div className="rc-votes" data-testid="madein-votes">
             <ul>
               {view.votes.map((v) => (
-                <li key={v.country}>
+                <li key={v.country} className={isChinaCountry(v.country) ? 'is-china' : undefined}>
                   <span className="rc-cand-country">
                     <span className="rc-tip" title={t('check.rc.tip.vote')}>
                       <span className="rc-cand-name">
@@ -400,7 +400,7 @@ export function MadeInCard({ result, t }: { result: CheckResult; t: TFunction })
             <ul>
               {view.unconfirmedTier.map((c) => (
                 <li key={`weak-${c.label}-${c.source}`} className="is-model">
-                  <span className="rc-cand-country is-model">
+                  <span className={`rc-cand-country is-model${isChinaCountry(c.label) ? ' is-china' : ''}`}>
                     <span className="rc-cand-name">{localizeCountry(t, c.label)}</span>
                   </span>
                   <span className="rc-cand-meta" data-testid={c.exactPages ? 'cand-exact-one' : undefined}>
@@ -516,18 +516,19 @@ export function LayersCard({ result, t }: { result: CheckResult; t: TFunction })
             const country = r.country ? localizeCountry(t, r.country) : '';
             const name = r.names?.length ? r.names.join(listSep) : r.value;
             const value = [name, country].filter(Boolean).join(' · ') || '—';
+            const china = Boolean(r.country && isChinaCountry(r.country));
             return (
               <div key={`${r.key}-${r.country ?? ''}`} className={`rc-row rc-layer-row${r.modelRef ? ' is-model' : ''}`}>
                 <dt className="rc-row-label">{t(LAYER_LABEL[r.key])}</dt>
                 {r.modelRef ? (
                   // Model-only parts: value + 模型參考 + ⓘ in one cell, no tag/grade.
-                  <dd className="rc-row-value rc-layer-model">
+                  <dd className={`rc-row-value rc-layer-model${china ? ' is-china' : ''}`}>
                     <span>{value}</span>
                     <ModelRefLabel t={t} />
                   </dd>
                 ) : (
                   <>
-                    <dd className="rc-row-value">{value}</dd>
+                    <dd className={`rc-row-value${china ? ' is-china' : ''}`}>{value}</dd>
                     <span className="rc-tip" title={t(TAG_TIP[r.tag])}>
                     <span className={`rc-tag is-${r.tag}`}>
                       {r.grade ? (

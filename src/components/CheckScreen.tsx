@@ -405,9 +405,13 @@ export function CheckScreen({
     }
   }, [activeResult]);
 
-  // Brand / home: force empty front page
+  // Brand / home bumps resetToken. This screen unmounts on other tabs, so a
+  // remount must ignore the token it was born with. Otherwise a history open
+  // paints the saved result, then this effect clears it and the landing returns.
+  const appliedReset = useRef(resetToken);
   useEffect(() => {
-    if (resetToken <= 0) return;
+    if (appliedReset.current === resetToken) return;
+    appliedReset.current = resetToken;
     setResult(null);
     setActiveResult(null);
     setError(null);
