@@ -1,0 +1,622 @@
+/**
+ * Multi-provider LLM calls for Ask (Gemini, OpenAI, Grok/xAI, Claude).
+ * Secrets stay on the server — never accept client API keys.
+ *
+ * Auto model selection: when *_MODEL is unset / "auto" / "free", ask that
+ * provider's models endpoint and try the ids it returns. Pin a model id to
+ * use that id only. One fallback id is used when the list call fails.
+ */
+
+export type AskProviderId = 'gemini' | 'openai' | 'grok' | 'claude';
+
+export type LlmEnv = {
+  GEMINI_API_KEY?: string;
+  GEMINI_MODEL?: string;
+  OPENAI_API_KEY?: string;
+  OPENAI_MODEL?: string;
+  /** xAI Grok */
+  XAI_API_KEY?: string;
+  XAI_MODEL?: string;
+  /** Alias accepted for convenience */
+  GROK_API_KEY?: string;
+  ANTHROPIC_API_KEY?: string;
+  ANTHROPIC_MODEL?: string;
+};
+
+export type AskErrorCode =
+  | 'provider_not_configured'
+  | 'gemini_not_configured'
+  | 'upstream_error'
+  | 'upstream_quota'
+  | 'upstream_credits'
+  | 'upstream_unavailable'
+  | 'empty_response';
+
+export const ASK_PROVIDERS: AskProviderId[] = [
+  'gemini',
+  'openai',
+  'grok',
+  'claude',
+];
+
+/**
+ * Used only when the models list cannot be read. The list itself is the order.
+ */
+const FALLBACK_MODEL: Record<AskProviderId, string> = {
+  gemini: 'gemini-flash-lite-latest',
+  openai: 'gpt-4.1-mini',
+  grok: 'grok-4',
+  claude: 'claude-haiku-4-5',
+};
+
+const LISTED_MODELS = new Map<AskProviderId, string[]>();
+const MODEL_LIST_CAP = 4;
+/** How many listed ids to consider before keeping the smaller ones. */
+const MODEL_LIST_SCAN = 40;
+const MODEL_LIST_MS = 4000;
+const NOT_CHAT_MODEL = /embed|tts|whisper|dall-e|imagen|image|veo|lyria|moderation|realtime|audio|transcribe|computer-use/i;
+
+/**
+ * Visible JSON plus Gemini thinking share this budget.
+ * 1400 was enough to cut product/COO and alternatives JSON mid-object (parse_error).
+ * 8192 kept a large model generating long after the card was done.
+ */
+const MAX_OUTPUT_TOKENS = 3072;
+
+type ProviderSpec = {
+  /** Lower-case names accepted by normalizeProvider (besides the id itself). */
+  aliases: string[];
+  /** API key env vars, first non-empty wins. */
+  keyEnv: Array<keyof LlmEnv>;
+  /** Optional pinned-model env var. */
+  modelEnv: keyof LlmEnv;
+  call: (
+    key: string,
+    model: string,
+    prompt: string,
+    image?: LlmImage
+  ) => Promise<CallOnce>;
+};
+
+/** One entry per provider — add a new provider here. */
+const PROVIDERS: Record<AskProviderId, ProviderSpec> = {
+  gemini: {
+    aliases: [],
+    keyEnv: ['GEMINI_API_KEY'],
+    modelEnv: 'GEMINI_MODEL',
+    call: (key, model, prompt, image) =>
+      callGeminiOnce(key, model, prompt, image),
+  },
+  openai: {
+    aliases: ['gpt'],
+    keyEnv: ['OPENAI_API_KEY'],
+    modelEnv: 'OPENAI_MODEL',
+    call: (apiKey, model, prompt, image) =>
+      callOpenAiCompatibleWithJsonFallback({
+        baseUrl: 'https://api.openai.com/v1',
+        apiKey,
+        model,
+        prompt,
+        image,
+      }),
+  },
+  grok: {
+    aliases: ['xai', 'x-ai'],
+    keyEnv: ['XAI_API_KEY', 'GROK_API_KEY'],
+    modelEnv: 'XAI_MODEL',
+    call: (apiKey, model, prompt, image) =>
+      callOpenAiCompatibleWithJsonFallback({
+        baseUrl: 'https://api.x.ai/v1',
+        apiKey,
+        model,
+        prompt,
+        image,
+      }),
+  },
+  claude: {
+    aliases: ['anthropic'],
+    keyEnv: ['ANTHROPIC_API_KEY'],
+    modelEnv: 'ANTHROPIC_MODEL',
+    call: (key, model, prompt, image) => callClaude(key, model, prompt, image),
+  },
+};
+
+export function normalizeProvider(raw: unknown): AskProviderId {
+  const s = String(raw ?? '')
+    .toLowerCase()
+    .trim();
+  for (const id of ASK_PROVIDERS) {
+    if (s === id || PROVIDERS[id].aliases.includes(s)) return id;
+  }
+  return 'gemini';
+}
+
+export function providerConfigured(
+  provider: AskProviderId,
+  env: LlmEnv
+): boolean {
+  return Boolean(apiKeyFor(provider, env));
+}
+
+function apiKeyFor(provider: AskProviderId, env: LlmEnv): string {
+  for (const name of PROVIDERS[provider].keyEnv) {
+    const v = env[name]?.trim();
+    if (v) return v;
+  }
+  return '';
+}
+
+function envModelOverride(
+  provider: AskProviderId,
+  env: LlmEnv
+): string | undefined {
+  const raw = env[PROVIDERS[provider].modelEnv];
+
+  const s = raw?.trim().replace(/^models\//, '') || '';
+  if (!s) return undefined;
+  const lower = s.toLowerCase();
+  // auto / free → walk free-tier chain only
+  if (lower === 'auto' || lower === 'free' || lower === 'default') {
+    return undefined;
+  }
+  return s;
+}
+
+function keepChatModel(id: string): string | undefined {
+  const s = id.replace(/^models\//, '').trim();
+  if (!s || NOT_CHAT_MODEL.test(s)) return undefined;
+  return s;
+}
+
+/**
+ * Smaller chat ids first. The ids still come from the provider list.
+ * A large model first is what makes a short JSON call take a minute.
+ */
+export function preferFasterChatModels(ids: readonly string[]): string[] {
+  const rank = (id: string) => {
+    const s = id.toLowerCase();
+    if (/pro|opus|ultra/.test(s)) return 2;
+    if (/flash|lite|mini|haiku|nano/.test(s)) return 0;
+    return 1;
+  };
+  return [...ids].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+}
+
+async function readModelIds(url: string, init: RequestInit): Promise<string[]> {
+  const res = await fetch(url, { ...init, signal: AbortSignal.timeout(MODEL_LIST_MS) });
+  if (!res.ok) return [];
+  const data = (await res.json()) as {
+    models?: Array<{ name?: string; supportedGenerationMethods?: string[] }>;
+    data?: Array<{ id?: string }>;
+  };
+  const out: string[] = [];
+  for (const row of data.models ?? []) {
+    const methods = row.supportedGenerationMethods ?? [];
+    if (methods.length && !methods.includes('generateContent')) continue;
+    const id = keepChatModel(row.name || '');
+    if (id && !out.includes(id)) out.push(id);
+    if (out.length >= MODEL_LIST_SCAN) break;
+  }
+  for (const row of data.data ?? []) {
+    const id = keepChatModel(row.id || '');
+    if (id && !out.includes(id)) out.push(id);
+    if (out.length >= MODEL_LIST_SCAN) break;
+  }
+  return preferFasterChatModels(out).slice(0, MODEL_LIST_CAP);
+}
+
+/** Models this key can call, in the order the provider lists them. */
+async function listedModels(provider: AskProviderId, key: string): Promise<string[]> {
+  const hit = LISTED_MODELS.get(provider);
+  if (hit?.length) return hit;
+  let ids: string[] = [];
+  try {
+    if (provider === 'gemini') {
+      const url = new URL('https://generativelanguage.googleapis.com/v1beta/models');
+      url.searchParams.set('pageSize', '100');
+      ids = await readModelIds(url.toString(), { headers: { 'x-goog-api-key': key } });
+    } else if (provider === 'openai') {
+      ids = await readModelIds('https://api.openai.com/v1/models', {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+    } else if (provider === 'grok') {
+      ids = await readModelIds('https://api.x.ai/v1/models', {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+    } else {
+      ids = await readModelIds('https://api.anthropic.com/v1/models', {
+        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      });
+    }
+  } catch {
+    ids = [];
+  }
+  if (ids.length) LISTED_MODELS.set(provider, ids);
+  return ids;
+}
+
+/**
+ * Pin → that id only. Otherwise the provider's own list. One fallback id
+ * when the list cannot be read.
+ */
+export async function modelChain(provider: AskProviderId, env: LlmEnv): Promise<string[]> {
+  const preferred = envModelOverride(provider, env);
+  if (preferred) return [preferred];
+  const key = apiKeyFor(provider, env);
+  const listed = key ? await listedModels(provider, key) : [];
+  return listed.length ? listed : [FALLBACK_MODEL[provider]];
+}
+
+export type LlmCallError = Error & {
+  code: AskErrorCode;
+  httpStatus: number;
+};
+
+function llmFail(code: AskErrorCode, httpStatus: number): LlmCallError {
+  return Object.assign(new Error(code), { code, httpStatus });
+}
+
+type CallOnce =
+  | { ok: true; text: string }
+  | { ok: false; kind: AskErrorCode };
+
+function mapHttpError(status: number, bodyText: string): AskErrorCode {
+  const msg = bodyText.toLowerCase();
+  // Prepaid balance at zero (e.g. Gemini "prepayment credits are depleted").
+  // Not a daily reset — the whole project is blocked until credit is added.
+  if (isCreditsDepleted(status, msg)) return 'upstream_credits';
+  if (status === 429 || /quota|rate limit|resource exhausted|insufficient_quota|billing/.test(msg)) {
+    return 'upstream_quota';
+  }
+  if (status === 503 || status === 504) return 'upstream_unavailable';
+  return 'upstream_error';
+}
+
+/** HTTP 402 / prepaid-credit exhaustion (exported for unit tests). */
+export function isCreditsDepleted(status: number, body: string): boolean {
+  const msg = String(body || '').toLowerCase();
+  return (
+    status === 402 ||
+    /prepayment credits|credits are depleted|credit balance is too low|payment required/.test(
+      msg
+    )
+  );
+}
+
+export { mapHttpError as mapLlmHttpError };
+
+/** True when the failure is worth trying the next listed model. */
+function shouldTryNextModel(kind: AskErrorCode): boolean {
+  return (
+    kind === 'upstream_error' ||
+    kind === 'upstream_quota' ||
+    kind === 'upstream_unavailable' ||
+    kind === 'empty_response'
+  );
+}
+
+/** Optional vision attachment (base64, no data: prefix). */
+export type LlmImage = {
+  mimeType: string;
+  data: string;
+};
+
+function geminiParts(prompt: string, image?: LlmImage) {
+  const parts: Array<Record<string, unknown>> = [{ text: prompt }];
+  if (image?.data) {
+    parts.push({
+      inline_data: {
+        mime_type: image.mimeType,
+        data: image.data,
+      },
+    });
+  }
+  return parts;
+}
+
+type GeminiPart = { text?: string; thought?: boolean };
+
+/** Skip thought parts so reasoning text is not concatenated into the JSON. */
+export function geminiVisibleText(parts: GeminiPart[] | undefined): string {
+  return (parts ?? [])
+    .filter((p) => p && p.thought !== true && typeof p.text === 'string')
+    .map((p) => p.text)
+    .join('');
+}
+
+/**
+ * Keep structured JSON from being eaten by thinking tokens.
+ * Gemini 3.x: thinkingLevel minimal. Gemini 2.5: thinkingBudget 0 turns thinking off.
+ * Older models omit the field (a rejected config is retried once without it).
+ */
+function geminiThinkingConfig(
+  model: string
+): Record<string, unknown> | undefined {
+  const id = model.toLowerCase();
+  if (/gemini-3|gemini-flash-lite-latest|gemini-flash-latest/.test(id)) {
+    return { thinkingLevel: 'minimal', includeThoughts: false };
+  }
+  if (/gemini-2\.5/.test(id)) {
+    return { thinkingBudget: 0 };
+  }
+  return undefined;
+}
+
+async function callGeminiOnce(
+  apiKey: string,
+  model: string,
+  prompt: string,
+  image?: LlmImage,
+  withThinking = true
+): Promise<CallOnce> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const generationConfig: Record<string, unknown> = {
+    temperature: 0.15,
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
+    responseMimeType: 'application/json',
+  };
+  const thinking = withThinking ? geminiThinkingConfig(model) : undefined;
+  if (thinking) generationConfig.thinkingConfig = thinking;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: geminiParts(prompt, image) }],
+        generationConfig,
+      }),
+    });
+  } catch {
+    return { ok: false, kind: 'upstream_unavailable' };
+  }
+
+  let data: {
+    error?: { message?: string };
+    candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
+  };
+  try {
+    data = (await res.json()) as typeof data;
+  } catch {
+    return { ok: false, kind: 'upstream_error' };
+  }
+
+  if (!res.ok) {
+    const message = data.error?.message || '';
+    if (
+      withThinking &&
+      thinking &&
+      res.status === 400 &&
+      /thinking/i.test(message)
+    ) {
+      return callGeminiOnce(apiKey, model, prompt, image, false);
+    }
+    return { ok: false, kind: mapHttpError(res.status, message) };
+  }
+
+  const text = geminiVisibleText(data.candidates?.[0]?.content?.parts);
+  if (!text.trim()) return { ok: false, kind: 'empty_response' };
+  return { ok: true, text };
+}
+
+function openAiUserContent(
+  prompt: string,
+  image?: LlmImage
+): string | Array<Record<string, unknown>> {
+  if (!image?.data) return prompt;
+  return [
+    { type: 'text', text: prompt },
+    {
+      type: 'image_url',
+      image_url: {
+        url: `data:${image.mimeType};base64,${image.data}`,
+      },
+    },
+  ];
+}
+
+/** GPT-5+ chat models often want max_completion_tokens and omit temperature. */
+function isOpenAiGpt5Family(model: string): boolean {
+  return /^gpt-5/i.test(model.trim());
+}
+
+async function callOpenAiCompatible(opts: {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  prompt: string;
+  image?: LlmImage;
+  /** OpenAI supports json_object; xAI often does too */
+  jsonMode?: boolean;
+  /** OpenAI GPT-5 path vs classic max_tokens (xAI stays classic) */
+  openAiStyle?: boolean;
+}): Promise<CallOnce> {
+  const openAi = opts.openAiStyle !== false && opts.baseUrl.includes('api.openai.com');
+  const gpt5 = openAi && isOpenAiGpt5Family(opts.model);
+
+  const body: Record<string, unknown> = {
+    model: opts.model,
+    messages: [
+      { role: 'user', content: openAiUserContent(opts.prompt, opts.image) },
+    ],
+  };
+  if (gpt5) {
+    // Reasoning/chat GPT-5 family: use max_completion_tokens; default temperature
+    body.max_completion_tokens = MAX_OUTPUT_TOKENS;
+  } else {
+    body.temperature = 0.15;
+    body.max_tokens = MAX_OUTPUT_TOKENS;
+  }
+  if (opts.jsonMode !== false) {
+    body.response_format = { type: 'json_object' };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${opts.baseUrl.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${opts.apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    return { ok: false, kind: 'upstream_unavailable' };
+  }
+
+  let data: {
+    error?: { message?: string };
+    choices?: Array<{ message?: { content?: string | null } }>;
+  };
+  const raw = await res.text();
+  try {
+    data = JSON.parse(raw) as typeof data;
+  } catch {
+    return {
+      ok: false,
+      kind: res.ok ? 'upstream_error' : mapHttpError(res.status, raw),
+    };
+  }
+
+  if (!res.ok) {
+    // Some models reject response_format — caller may retry without json mode
+    return {
+      ok: false,
+      kind: mapHttpError(res.status, data.error?.message || raw),
+    };
+  }
+
+  const text = data.choices?.[0]?.message?.content ?? '';
+  if (!String(text).trim()) return { ok: false, kind: 'empty_response' };
+  return { ok: true, text: String(text) };
+}
+
+function claudeUserContent(
+  prompt: string,
+  image?: LlmImage
+): string | Array<Record<string, unknown>> {
+  if (!image?.data) return prompt;
+  return [
+    {
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: image.mimeType,
+        data: image.data,
+      },
+    },
+    { type: 'text', text: prompt },
+  ];
+}
+
+async function callClaude(
+  apiKey: string,
+  model: string,
+  prompt: string,
+  image?: LlmImage
+): Promise<CallOnce> {
+  let res: Response;
+  try {
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        temperature: 0.15,
+        messages: [{ role: 'user', content: claudeUserContent(prompt, image) }],
+      }),
+    });
+  } catch {
+    return { ok: false, kind: 'upstream_unavailable' };
+  }
+
+  let data: {
+    error?: { message?: string; type?: string };
+    content?: Array<{ type?: string; text?: string }>;
+  };
+  const raw = await res.text();
+  try {
+    data = JSON.parse(raw) as typeof data;
+  } catch {
+    return {
+      ok: false,
+      kind: res.ok ? 'upstream_error' : mapHttpError(res.status, raw),
+    };
+  }
+
+  if (!res.ok) {
+    return {
+      ok: false,
+      kind: mapHttpError(res.status, data.error?.message || raw),
+    };
+  }
+
+  const text = (data.content ?? [])
+    .filter((p) => p.type === 'text' && p.text)
+    .map((p) => p.text)
+    .join('');
+  if (!text.trim()) return { ok: false, kind: 'empty_response' };
+  return { ok: true, text };
+}
+
+/** OpenAI / xAI: try json_object, then plain chat if the model rejects it. */
+async function callOpenAiCompatibleWithJsonFallback(opts: {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  prompt: string;
+  image?: LlmImage;
+}): Promise<CallOnce> {
+  let out = await callOpenAiCompatible({ ...opts, jsonMode: true });
+  if (!out.ok && out.kind === 'upstream_error') {
+    out = await callOpenAiCompatible({ ...opts, jsonMode: false });
+  }
+  return out;
+}
+
+/**
+ * Call the selected provider. Throws LlmCallError on hard failure.
+ * Tries the pinned model, or the ids from that provider's models list.
+ * Optional image enables multimodal (vision) on supporting models.
+ */
+export async function callProvider(
+  provider: AskProviderId,
+  prompt: string,
+  env: LlmEnv,
+  image?: LlmImage
+): Promise<string> {
+  const key = apiKeyFor(provider, env);
+  if (!key) {
+    // Keep gemini_not_configured for older clients when default missing
+    const code: AskErrorCode =
+      provider === 'gemini' ? 'gemini_not_configured' : 'provider_not_configured';
+    throw llmFail(code, 503);
+  }
+
+  const models = await modelChain(provider, env);
+  let last: AskErrorCode = 'upstream_error';
+
+  for (const model of models) {
+    const out = await PROVIDERS[provider].call(key, model, prompt, image);
+
+    if (out.ok) return out.text;
+    last = out.kind;
+    if (shouldTryNextModel(out.kind)) continue;
+    break;
+  }
+
+  throw llmFail(
+    last,
+    last === 'upstream_credits' ? 402 : last === 'upstream_quota' ? 429 : 502
+  );
+}

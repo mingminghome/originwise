@@ -1,0 +1,694 @@
+import type { MessageTree } from './en';
+
+export const ro = {
+  appName: 'OriginWise',
+  tabs: {
+    check: 'Verifică',
+    history: 'Istoric',
+    about: 'Despre',
+    settings: 'Setări',
+    navMore: 'Meniu',
+  },
+  common: {
+    present: 'Da',
+    /** Separator after a short label (full-width in CJK). */
+    labelSep: ': ',
+    missing: 'Nu',
+    cancel: 'Anulează',
+    confirm: 'Confirmă',
+    delete: 'Șterge',
+    back: 'Înapoi',
+    loading: 'Se încarcă…',
+    optional: 'Opțional',
+  },
+  install: {
+    aria: 'Instalează OriginWise',
+    title: 'Instalează OriginWise',
+    body: 'Adaugă pe ecranul principal pentru o verificare rapidă, ca o aplicație.',
+    bodyIos: 'Adaugă pe ecranul principal pentru utilizare pe tot ecranul.',
+    iosStep1: 'Atinge',
+    iosStep2: 'Partajează, apoi Adaugă pe ecranul principal.',
+    action: 'Instalează',
+    dismiss: 'Închide invitația de instalare',
+  },
+  support: {
+    buyMeAPint: 'Invită-mă la o halbă',
+    pintShort: 'Halbă',
+    thanks: 'Dacă OriginWise te ajută, poți să mă inviți la o halbă:',
+  },
+  welcome: {
+    title: 'Bun venit la OriginWise',
+    body: 'Verificare rapidă: acest produs sau brand este legat de China? Scrie un nume sau fotografiază ambalajul. IA poate greși — nu este sfat juridic.',
+    accept: 'Am înțeles — începe verificarea',
+  },
+  check: {
+    identifiedAs: 'Identificat ca: {name}',
+    chinaLink: {
+      title: 'Legătura cu China',
+      chinaCompany: 'Companie chineză',
+      chinaControlled: 'Sub control chinez',
+      hq: 'Sediu',
+      owner: 'Proprietar care deține controlul',
+      brandOrigin: 'Originea mărcii',
+      madeIn: 'Fabricat în',
+      parts: 'Componente',
+      china: 'China',
+      unconfirmed: 'Neconfirmat',
+      partsChina: 'Unele componente fabricate în China',
+      hqParentNote: 'Sediul din China din răspuns aparține companiei-mamă',
+      madeInBelow: 'Țara de fabricație se stabilește doar în cardul „Fabricat în” (cod de bare, etichetă sau potrivire de model).',
+      madeInChina: 'Fabricat în China',
+      factory: 'Fabrică / OEM',
+      supply: 'Aprovizionare',
+      footnote: 'Acest card descrie doar unde își are sediul compania, cine o deține și unde este fabricat produsul. Nu este o judecată asupra calității sau siguranței produsului ori asupra companiei.',
+      controlling: 'Control',
+      reasonParent: 'Compania-mamă care deține controlul se află în China continentală.',
+      reasonBrandOrigin: 'Originea mărcii: {place}.',
+      madeInLineBarcode: 'Fabricat în: {place} (potrivire cod de bare, vezi cardul „Fabricat în” mai jos)',
+      madeInLineLabel: 'Fabricat în: {place} (eticheta ambalajului, vezi cardul „Fabricat în” mai jos)',
+      madeInLineModel: 'Fabricat în: {place} (potrivire după modelul exact, vezi cardul „Fabricat în” mai jos)',
+    },
+    rc: {
+      modelRef: 'Referință model (neconfirmată)',
+      modelRefHelp: 'Nu este confirmat de nicio pagină web sau de eticheta ambalajului; este doar o presupunere a modelului. Luați în considerare eticheta de pe ambalaj.',
+      moreInfo: 'Mai multe informații',
+      candidatesTitle: 'Țări de fabricație candidate găsite (neconfirmate)',
+      noCandidates: 'Nu s-au găsit candidați de încredere.',
+      vote: '{country} ({n}/{total})',
+      sourcesSilent: '{n} surse nu indică țara de fabricație.',
+      noMadeInStated: 'Niciuna dintre cele {total} surse nu indică țara de fabricație.',
+      weakTitle: 'Referință model (neconfirmat)',
+      mostly: 'În mare parte {country}',
+      mostlyHelp: 'Sursele care indică locul de fabricație se întâlnesc aici. Nu este o confirmare de pe etichetă.',
+      sourceCount: 'Surse: {n}',
+      sourceFirst: 'Sursa 1: {label}',
+      sourceNth: 'Sursa {n}: {label}',
+      sourceAiAnswer: 'Răspunsul AI',
+      oneExactModelPage: '1 pagină cu modelul exact',
+      dispute: 'Contestat: {sides}',
+      disputeSideExact: '{country} (pagini cu modelul exact: {n})',
+      disputeSideMixed: '{country} (pagini: {n}, cu modelul exact: {e})',
+      disputeSidePages: '{country} (pagini: {n})',
+      disputeSideLabel: '{country} (eticheta ambalajului)',
+      disputeSideLabelPages: '{country} (eticheta ambalajului; pagini: {n})',
+      disputeSideLabelExact: '{country} (eticheta ambalajului; pagini cu modelul exact: {n})',
+      disputeSideLabelMixed: '{country} (eticheta ambalajului; pagini: {n}, cu modelul exact: {e})',
+      disputeSep: '; ',
+      designInfo: 'Informații suplimentare: design / inginerie conform mărcii: {country}. Nu este locul de fabricație.',
+      brandInfo: 'Informații suplimentare: originea mărcii conform descrierii: {country}. Nu este locul de fabricație.',
+      infoSource: 'Sursa: {label}',
+      foldUnconfirmed: 'Țara de fabricație finală neconfirmată: {reason}. Celelalte țări sunt doar candidați.',
+      citedUnverified: 'Citat de AI, neverificat',
+      excludedOtherModel: 'Alt model ({model}), nu se ia în calcul',
+      reason: {
+        aiOnly: 'Doar răspunsul AI, nicio pagină web nu îl susține',
+        pagesDisagree: 'Paginile web se contrazic',
+        sourcesDisagree: 'Sursele nu concordă',
+        aiCitedUnverified: 'Linkul citat de AI nu a putut fi verificat',
+        onePageOnly: 'O singură pagină web îl menționează',
+      },
+      sourceCountry: 'fabricat în {country}',
+      labelSource: 'Sursă: fotografia etichetei ambalajului',
+      parent: 'Companie-mamă',
+      tagConfirmed: 'Confirmat',
+      tagLikely: 'Probabil',
+      tagMentioned: 'Menționat',
+      tagUnconfirmed: 'Neconfirmat',
+      foldSources: 'Toate sursele',
+      foldAlts: 'Mărci alternative',
+      foldAi: 'Detalii AI / căutare',
+      tip: {
+        tier: 'Legătura cu China continentală: sediu, proprietar cu control și țara de fabricație confirmată.',
+        madeIn: 'Confirmat doar de etichetă, cod de bare, două pagini ale modelului exact sau răspunsul modelului plus o astfel de pagină. Celelalte țări sunt voturi.',
+        layers: 'Un fapt pe rând. Insigna spune dacă îl confirmă o etichetă sau o pagină.',
+        confidence: 'Cât de tare susțin datele firmei această legătură. Necunoscut rămâne la cel mult 45%.',
+        confirmed: 'Etichetă, cod de bare sau două pagini ale modelului exact (sau răspunsul modelului plus o astfel de pagină).',
+        likely: 'Numit pe o pagină a acestui model. O singură pagină nu confirmă.',
+        mentioned: 'Menționat, fără o pagină care îl confirmă.',
+        unconfirmed: 'Neconfirmat de etichetă sau de pagini potrivite.',
+        vote: 'Surse care au numit această țară, din paginile citite plus răspunsul modelului.',
+      },
+      expand: 'Afișează',
+      collapse: 'Ascunde',
+    },
+    matchBasis: {
+      barcode: 'Potrivire după codul de bare',
+      name: 'Potrivire după numele produsului',
+      label: 'Conform etichetei de pe ambalaj',
+      model: 'Potrivire după modelul exact',
+    },
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Cercetare web — interogare trimisă către {name}',
+    searchUsage: 'Căutare web: {provider} · cereri de căutare: {n}',
+    knowledgeWebVia:
+      'Include o trecere de cercetare web live ({provider}) plus cunoștințele modelului. Tot nu este un registru de companii sau o bază vamală — etichetele și documentele oficiale pot diferi de paginile web. Informativ — nu sfat juridic, comercial sau privind sancțiunile.',
+    title: 'Verificare rapidă',
+    subtitle: 'Acest articol este legat de China? Scrie un nume sau fotografiază ambalajul.',
+    placeholder: 'ex. brand de snacks, telefon, jucărie…',
+    placeholderWithPhoto: 'Opțional: ce produs este acesta?',
+    photo: 'Cameră',
+    gallery: 'Galerie',
+    removePhoto: 'Elimină fotografia',
+    photoLabelHint: 'Citim eticheta dacă textul este clar',
+    noteOptional: 'Notă opțională',
+    submit: 'Verifică acum',
+    submitting: 'Se verifică…',
+    needInput: 'Scrie un nume de produs sau adaugă o fotografie.',
+    howLink: 'Cum funcționează',
+    newCheck: 'Verificare nouă',
+    comingSoon:
+      'API-ul de verificare vine într-un PR ulterior. Istoricul și setările sunt gata.',
+    photoTooLarge: 'Fotografia este încă prea mare după comprimare.',
+    photoInvalid: 'Nu s-a putut citi acea imagine.',
+    dropPhoto: 'Trage fotografia aici',
+    unnamedPhoto: '(foto)',
+    partsTitle: 'Piese, rezerve și ingrediente',
+    partsHint:
+      'Izolat din acest produs — componente, piese de rezervă sau ingrediente majore și dacă par legate de China.',
+    partKind: {
+      part: 'Piesă',
+      spare: 'Rezervă',
+      ingredient: 'Ingredient',
+      component: 'Componentă',
+    },
+    progressHint: 'Analiză origine și companie…',
+    stepMonolith: 'Colectare semnale produs și companie',
+    answeredBy: 'Răspuns principal prin {name}',
+    agentsUsed: '{n} agenți',
+    agentsTitle: 'Pool IA folosit',
+    agentsSummary: '{total} apeluri · {ok} ok · {fail} eșuate',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'legătură puternică',
+      moderate: 'legătură moderată',
+      weak: 'legătură slabă',
+      unverified: 'legătură (neconfirmată)',
+    },
+    agentsHint:
+      'Fiecare rând este un apel IA al serverului gratuit. Eșecurile înseamnă adesea cotă, acces la model sau timeout; încercăm altele sau un fallback. Web-ul live are nevoie de Gemini Search grounding (nu este același lucru cu RPM-ul de text).',
+    agentsHintVia:
+      'Fiecare rând este un apel IA al serverului gratuit. Eșecurile înseamnă adesea cotă, acces la model sau timeout; încercăm altele sau un fallback. Căutarea web live a rulat prin {provider}.',
+    agentOk: 'OK',
+    agentFail: 'Eșuat ({err})',
+    agentSkipped: 'Omis ({err})',
+    agentFailUnknown: 'eroare',
+    agentError: {
+      upstream_quota: 'cotă / limită de ritm',
+      upstream_credits: 'credit AI epuizat',
+      upstream_error: 'eroare upstream',
+      upstream_unavailable: 'serviciu indisponibil',
+      empty_response: 'răspuns gol',
+      model_unavailable: 'model indisponibil pe această cheie API',
+      search_grounding_unavailable:
+        'Google Search grounding indisponibil pe această cheie (încearcă modelele din pool-ul Implicit / activează facturarea; Gemini 3 Search este adesea 0/0)',
+      disabled: 'dezactivat',
+      gemini_not_configured: 'Gemini nu este configurat',
+      no_entity: 'fără nume de produs',
+    },
+    agent: {
+      identify: 'Citește eticheta / numele',
+      product: 'Locul produsului',
+      company: 'Legături ale companiei',
+      verify: 'Verificare dublă',
+      alternatives: 'Alternative cu legătură CN mai mică',
+      monolith: 'Verificare completă (un apel)',
+      dual_core: 'Produs + companie',
+      dual_alts: 'Alternative cu legătură CN mai mică',
+      web: 'Căutare web',
+      score: 'Scor general',
+      unknownProvider: 'IA necunoscută',
+    },
+    provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+      gemini: 'Gemini',
+      openai: 'OpenAI',
+      grok: 'Grok (xAI)',
+      claude: 'Claude',
+    },
+    reasons: 'De ce acest nivel',
+    reason: {
+      made_in_cn: 'Produsul este fabricat în China continentală.',
+      made_in_cn_detail: 'Produsul este fabricat în {place}.',
+      origin_cn: 'Originea produsului este legată de China continentală.',
+      origin_cn_detail: 'Originea produsului este listată ca {place}.',
+      manufacturer_cn: 'Producătorul este legat de China continentală.',
+      manufacturer_cn_detail: 'Locație/legătură producător: {place}.',
+      hq_cn: 'Sediu al companiei în China continentală.',
+      hq_cn_detail: 'Sediu al companiei în {place}.',
+      parent_majority_cn:
+        'O societate-mamă majoritară/de control este legată de China continentală.',
+      ownership_strong_cn:
+        'Au fost raportate legături puternice de proprietate sau control cu China continentală.',
+      ownership_weak_cn:
+        'Au fost raportate legături mai slabe (ex. participație minoritară, aprovizionare sau retail) cu China continentală.',
+      component_cn:
+        'Unele componente sau asamblarea sunt legate de China continentală, fără o afirmație completă „made in China”.',
+      explicit_non_cn_geo:
+        'Semnale clare de loc indică în afara Chinei continentale (pentru sfera acestui instrument).',
+      explicit_non_cn_geo_detail:
+        'Semnale clare de loc în afara Chinei continentale: {places}.',
+      verify_conflict:
+        'Semnalele de produs și companie nu au fost pe deplin de acord (verificarea încrucișată a găsit conflicte).',
+      conflict_no_strong:
+        'Semnalele erau în conflict și nu exista o legătură puternică cu China continentală — rezultatul a rămas incert.',
+      insufficient:
+        'Nu există suficiente informații fiabile despre origine sau proprietate pentru a judeca legăturile cu China.',
+      ownership_not_assessed:
+        'Proprietatea companiei nu a fost evaluată pe deplin în această verificare.',
+      taiwan_as_country:
+        'Taiwanul este tratat ca o țară separată și nu contează ca „legat de China” pentru acest scor.',
+      taiwan_as_country_detail:
+        'Taiwanul este tratat ca o țară separată (văzut în: {places}) și nu contează ca „legat de China” pentru acest scor.',
+    },
+    caveats: 'Rezerve',
+    disclaimer:
+      'Doar informativ — cunoștințe ale modelului și cercetare web opțională, nu sfat juridic sau privind sancțiunile. IA poate greși.',
+    knowledgeModel:
+      'Bazat doar pe cunoștințele generale ale modelului (fără căutare web live). Originea brandului, fabricile de componente și asamblarea finală/țara de origine pot diferi după SKU/piață — preferă etichetele. Nu este un registru de companii sau o bază vamală. Informativ — nu sfat juridic, comercial sau privind sancțiunile.',
+    knowledgeWeb:
+      'Include o trecere de cercetare web live (Google Search prin grounding Gemini) plus cunoștințele modelului. Tot nu este un registru de companii sau o bază vamală — etichetele și documentele oficiale pot diferi de paginile web. Informativ — nu sfat juridic, comercial sau privind sancțiunile.',
+    providerNotConfigured:
+      'Verificarea IA nu este configurată. Adaugă o cheie în .dev.vars și rulează `npm run pages:dev` (vezi README).',
+    rateLimited:
+      'Limită server gratuit: 1 verificare la fiecare 30 de secunde. Așteaptă puțin.',
+    rateLimitedDay:
+      'Limită server gratuit: max. 10 verificări la 6 ore. Încearcă mai târziu.',
+    rateLimitBadge: 'Limită server gratuit',
+    rateLimitFreeNote:
+      'Server gratuit · 1 verificare / 30s · max. 10 / 6 ore · 1 odată',
+    rateLimitRpmTitle: 'Limită de ritm a serverului gratuit (30s)',
+    rateLimitedLongTitle: 'Limită 6 ore a serverului gratuit',
+    rateLimitInflightTitle: 'O verificare este deja în curs',
+    rateLimitShortDetail:
+      'Limită server gratuit: {n} verificare(ări) la fiecare {w}s. Așteaptă circa {s}s, apoi încearcă din nou.',
+    rateLimitLongDetail:
+      'Limită server gratuit: {n} verificări la {h} ore. Încearcă din nou în circa {m} minute.',
+    rateLimitMinuteDetail:
+      'Limită server gratuit: {n} verificare(ări) la fiecare {w}s. Așteaptă circa {s}s, apoi încearcă din nou.',
+    rateLimitDayDetail:
+      'Limită server gratuit: {n} verificări la {h} ore. Încearcă mai târziu.',
+    rateLimitInflightDetail:
+      'Serverul gratuit permite doar 1 verificare odată. Așteaptă să se termine verificarea curentă.',
+    rateLimitAutoIn: 'Automat în {s}s…',
+    rateLimitAutoHint:
+      'Se va trimite automat în {s}s când se deschide fereastra serverului gratuit.',
+    rateLimitAutoStop: 'Oprește',
+    rateLimitAutoCancelled:
+      'Trimiterea automată a fost anulată. Poți încerca din nou când ești gata.',
+    forbiddenOrigin: 'Cerere nepermisă de la această origine.',
+    badRequest: 'Cerere nevalidă.',
+    parseError: 'Nu s-a putut înțelege răspunsul. Încearcă din nou.',
+    upstreamError: 'Serviciul de răspuns a eșuat. Încearcă mai târziu.',
+    upstreamQuota: 'Serviciul de răspuns este ocupat. Încearcă mai târziu.',
+    upstreamUnavailable: 'Serviciul de răspuns este temporar indisponibil.',
+    emptyResponse: 'Nu s-a returnat niciun răspuns. Încearcă din nou.',
+    serverError: 'Ceva nu a mers bine. Încearcă din nou.',
+    forceRefresh: 'Verifică din nou (omite cache-ul)',
+    forceRefreshHint:
+      'Acest răspuns era în cache. Verificarea din nou rulează o trecere IA nouă (contează totuși la limitele serverului gratuit).',
+    cached: 'cache',
+    degraded: 'rezultat parțial',
+    relationLabel: 'Relație cu China',
+    confidence: '{n}% încredere',
+    confidenceRelation: '{n}% legătură firmă',
+    productFacts: 'Produs',
+    companyFacts: 'Companie',
+    brand: 'Brand',
+    madeIn: 'Fabricat în (această unitate / țara de origine finală)',
+    madeInUnconfirmed: 'Țara de origine finală neconfirmată — vezi componente / linie globală',
+    originLayersTitle: 'Straturi de origine',
+    originLayersIntro:
+      'Separă brand/ops, proprietate, COO final și piese — proprietatea nu este made-in.',
+    layerBrandOps: 'Brand / ops',
+    layerOwnership: 'Proprietate / societăți-mamă',
+    layerOwnershipHint: 'Nu este COO final / made-in',
+    layerOwnershipEmpty: 'Niciun semnal de proprietate/societate-mamă în acest rezultat',
+    layerFinalCoo: 'COO final',
+    layerParts: 'Candidați piese',
+    partsModelOnlyBanner:
+      'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'Cota de căutare AI a fost epuizată — informații mai precise nu sunt disponibile acum. Verificați din nou după resetarea zilnică.',
+    aiCreditsUsedUp:
+      'Creditul serviciului AI s-a epuizat temporar — informații mai precise nu sunt disponibile acum. Încercați din nou mai târziu.',
+    srv: {
+      partOmittedNoEvidence:
+        'Țara piesei omisă: nicio dovadă din căutare/etichetă (sediul mărcii nu este originea unei piese).',
+      partOmittedUnconfirmed:
+        'Țara piesei omisă: neconfirmată prin căutare/etichetă pentru această piesă.',
+      madeInOmittedBrand:
+        'Țara de fabricație omisă: corespundea doar țării mărcii/designului, fără dovezi de fabrică sau origine.',
+      madeInOmittedOwnership:
+        'Țara de fabricație omisă: China provine doar din date de proprietate/companie-mamă, nu de pe produs, etichetă sau de la un comerciant.',
+      cooUnconfirmedSeeParts:
+        'Originea finală neconfirmată – vedeți rândul componente/producție globală sau piesele pentru candidați (fabricație neconfirmată).',
+      cooUnconfirmedNoLabel:
+        'Originea finală neconfirmată – nicio țară de origine pe produs/etichetă; nu se inventează una.',
+      cooUnconfirmedNoBarcode:
+        'Țara de fabricație finală neconfirmată; celelalte țări sunt doar candidați.',
+      cooUnconfirmedCandidates:
+        'Originea finală neconfirmată – candidații de mai jos sunt semnale de căutare, nu un „Made in” tipărit.',
+      distributorOmitted:
+        'Distribuitorul local / agentul de piață omis din companiile-mamă (nu este proprietar legal).',
+      chinaLinkUnclear:
+        'Legătura cu China este neclară – nu o considerați confirmat fără China.',
+      verifyConflict:
+        'Verificarea a semnalat indicii contradictorii',
+      companyNotAssessed:
+        'Datele despre companie/proprietate nu au fost evaluate',
+      taiwanSeparate:
+        'Taiwanul este tratat ca țară separată pentru nivelurile de legătură',
+      webUnavailableLabel:
+        'Căutarea web în timp real indisponibilă – țările pieselor provin din fotografia etichetei, nu din căutare.',
+      altsAim:
+        'Mărcile/produsele alternative urmăresc o implicare mai mică a Chinei (nu doar asemănare). Nivelurile sunt estimări; sediul singur nu dovedește fabricația în afara Chinei.',
+      altsNone:
+        'Nu s-au găsit alternative cu implicare mai mică a Chinei cu suficientă certitudine.',
+      sumCooUnconfirmed:
+        'Originea finală neconfirmată',
+      tierUnknown:
+        'Dovezi insuficiente pentru a evalua legăturile cu China.',
+      tierNone:
+        'Nu s-au găsit legături cu China în semnalele disponibile.',
+      tierDirect:
+        'S-au găsit semnale de legătură directă cu China.',
+      tierIndirect:
+        'S-au găsit semnale de legătură indirectă cu China.',
+      cooConflictChina:
+        'Originea finală neconfirmată – semnalul {source} ({label}) contrazice „Made in China”; proprietatea/compania-mamă singure nu stabilesc țara de fabricație.',
+      cooConflictMadeIn:
+        'Originea finală neconfirmată – semnalul {source} ({label}) contrazice fabricația în {madeIn}; păstrat doar ca candidat.',
+      candidate:
+        '{label} ({rating}, {pct}%, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Modelele de căutare în timp real nu erau disponibile cu această cheie API – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_search_grounding_unavailable:
+        'Căutarea Google în timp real nu era disponibilă cu această cheie API – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_upstream_credits:
+        'Creditele serviciului AI s-au epuizat (sold preplătit gol) – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_upstream_quota:
+        'Cota zilnică gratuită de căutare Google s-a epuizat – reîncercați după resetarea zilnică – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_upstream_unavailable:
+        'Căutarea web în timp real a expirat sau serviciul era ocupat – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_empty_response:
+        'Căutarea web în timp real a returnat un răspuns gol – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_disabled:
+        'Căutarea web în timp real a fost dezactivată pentru această verificare – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_gemini_not_configured:
+        'Gemini nu este configurat pentru căutarea web în timp real – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_no_entity:
+        'Niciun nume de produs pentru căutarea web în timp real – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      webFail_default:
+        'Fără căutare web în timp real pentru această verificare – țările de fabricație și ale pieselor sunt mai prudente (doar cunoștințele modelului).',
+      sum: {
+        madeIn: 'Fabricat în: {value}',
+        candidates: 'Candidați: {value}',
+        brandOrigin: 'Originea mărcii: {value}',
+        components: 'Componente/producție globală: {value}',
+        parts: 'Piese: {value}',
+        hq: 'Sediu: {value}',
+        company: 'Companie: {value}',
+      },
+      signal: {
+        ocr: 'etichetă',
+        retailer: 'comerciant',
+        manufacturer: 'producător',
+        ownership: 'proprietate',
+        unknown: 'necunoscut',
+      },
+    },
+    partsSourcesLabel: 'Sources',
+    sectionShareSave: 'Salvează imaginea',
+    sectionShareShare: 'Distribuie',
+    sectionShareSaved: 'Salvat',
+    sectionShareFailed: 'Nu s-a putut salva imaginea',
+    sectionShareHint: 'Treci cu mouse-ul pe un strat pentru salvare/distribuire',
+    originCandidates: 'Queried origin candidates',
+    candidateRating: {
+      confirmed: 'confirmed COO',
+      likely: 'likely',
+      possible: 'possible',
+      mentioned: 'mentioned',
+    },
+    candidateSource: {
+      web_name: 'pagină web (potrivire după nume)',
+      confirmed_coo: 'stamped COO',
+      parts: 'parts / BOM',
+      components_line: 'components / global line',
+      notes: 'notes',
+      manufacturer: 'manufacturer',
+      filings: 'filings',
+      model_memory: 'model knowledge',
+      ownership: 'proprietate / mamă',
+    },
+    origin: 'Origine',
+    brandOrigin: 'Originea brandului',
+    componentsOrigin: 'Componente / linie globală',
+    productNotes: 'Note de origine',
+    manufacturer: 'Producător',
+    company: 'Companie',
+    hq: 'Sediu',
+    parents: 'Societăți-mamă',
+    graphTitle: 'Graf de relații',
+    graphHint:
+      'Săgețile arată cum se leagă produsul, piesele, compania, fabricile, societățile-mamă și locurile. Extinde sau mărește dacă etichetele sunt înghesuite.',
+    graphControls: 'Controale graf',
+    graphZoomIn: 'Mărește',
+    graphZoomOut: 'Micșorează',
+    graphExpand: 'Extinde',
+    graphCollapse: 'Restrânge',
+    graphRelations: 'Relații',
+    graphNoEdges: 'Nu s-au dedus legături de relație pentru acest rezultat.',
+    graphLink: 'legat',
+    graphChinaLinked: 'Legat de China',
+    graphLegendCn: 'Nod/muchie legat de China',
+    graphLegendOther: 'Altele',
+    graphEdge: {
+      brand: 'brand',
+      brand_company: 'brand',
+      'brand/company': 'brand',
+      made_in: 'fabricat în',
+      hq: 'sediu',
+      parent: 'societate-mamă',
+      majority: 'proprietar majoritar',
+      wholly: 'deținut integral',
+      minority: 'participație minoritară',
+      ownership: 'proprietate',
+      affiliation: 'brand',
+      manufacturing: 'fabrică / OEM',
+      design: 'design',
+      company: 'companie',
+      model: 'răspunsul modelului',
+      supply: 'aprovizionare',
+      part: 'piesă',
+      spare: 'rezervă',
+      ingredient: 'ingredient',
+      component: 'componentă',
+    },
+    regionsTitle: 'Regiuni',
+    altBrands: 'Branduri cu implicare chineză mai mică (estimat)',
+    altProducts: 'Produse cu implicare chineză mai mică (estimat)',
+    altDisclaimer:
+      'Doar substitute estimate ca nefiind Direct legate de China (fără umpluturi „made in China”). Un sediu din SUA/UE nu dovedește singur fabricație în afara Chinei. Un loc de fabricație neclar este Necunoscut, nu Fără legătură.',
+    estimated: 'est.',
+    twNote:
+      'Taiwanul este tratat ca o țară separată și niciodată ca legat de China pentru niveluri.',
+    region: {
+      CN: 'China continentală',
+      HK: 'Hong Kong',
+      TW: 'Taiwan',
+      MO: 'Macao',
+      OTHER: 'Altele',
+      UNKNOWN: 'Necunoscut',
+    },
+    overall: {
+      title: 'Per total',
+      score: 'Scor',
+    },
+    steps: {
+      start: 'Pornire',
+      cache: 'Cache',
+      identify: 'Citire etichetă',
+      web: 'Cercetare web',
+      monolith: 'Analiză completă',
+      score: 'Scor general',
+    },
+  },
+  history: {
+    title: 'Istoric',
+    subtitle: 'Verificări anterioare pe acest dispozitiv',
+    empty: 'Nicio verificare anterioară încă.',
+    withPhoto: 'Foto',
+    open: 'Deschide',
+    remove: 'Elimină',
+    search: 'Caută',
+    searchPlaceholder: 'Caută verificări',
+    sort: 'Sortează',
+    sortNewest: 'Cele mai noi',
+    sortOldest: 'Cele mai vechi',
+    sortScoreHigh: 'Scorul cel mai mare',
+    sortScoreLow: 'Scorul cel mai mic',
+    sortName: 'Nume',
+    removeAll: 'Elimină toate',
+    removeAllConfirm: 'Elimini toate verificările salvate?',
+    noMatches: 'Nicio verificare nu corespunde căutării.',
+  },
+  settings: {
+    title: 'Setări',
+    subtitle: 'Preferințe și date pe acest dispozitiv',
+    panelDisplay: 'Limbă și temă',
+    panelCheck: 'Ce să verifici',
+    panelData: 'Șterge datele',
+    language: 'Limbă',
+    theme: 'Temă',
+    themeSystem: 'Sistem',
+    themeLight: 'Deschisă',
+    themeDark: 'Întunecată',
+    geoScope: 'Sfera Chinei pentru niveluri',
+    geoScopeHint:
+      'Taiwanul este întotdeauna tratat ca o țară separată și nu conduce niciodată nivelurile de relație cu China. Doar RPC folosește China continentală. Greater China poate include opțional Hong Kong și Macao (nu Taiwan).',
+    geoScopePrc: 'Doar RPC / continental (implicit)',
+    geoScopeGreater: 'CN + Hong Kong + Macao (nu Taiwan)',
+    dimensions: 'Ce să verifici',
+    dimensionsHint:
+      'Alternativele cu implicare chineză mai mică sunt dezactivate implicit. Activează alternative de brand sau produs dacă vrei substitute cu mai puțină legătură cu China (apel IA suplimentar).',
+    dimOrigin: 'Locul de origine',
+    dimManufacturer: 'Originea producătorului',
+    dimCompany: 'Relații ale companiei',
+    dimAltBrands: 'Alternative de brand cu implicare chineză mai mică',
+    dimAltProducts: 'Alternative de produs cu implicare chineză mai mică',
+    howItWorks: 'Cum funcționează',
+    about: 'Despre OriginWise',
+    version: 'Versiunea {v}',
+    cleanData: 'Șterge datele locale',
+    cleanDataHint:
+      'Datele rămân doar în acest browser. Alege ce să elimini. Nu se poate anula.',
+    dataSummary: 'Pe acest dispozitiv',
+    dataNone: 'Nicio dată OriginWise stocată.',
+    dataHistory: 'Verificări anterioare: {n}',
+    dataSettings: 'Setări personalizate',
+    dataDisclaimer: 'Declinarea acceptată',
+    cleanAll: 'Tot',
+    cleanHistory: 'Doar verificări anterioare',
+    cleanSettings: 'Doar setări',
+    cleanConfirm: 'Ștergi datele selectate?',
+    cleanConfirmBtn: 'Șterge acum',
+    cleanDoneAll: 'Toate datele locale OriginWise au fost șterse.',
+    cleanDoneHistory: 'Verificările anterioare au fost șterse.',
+    cleanDoneSettings: 'Setările au fost resetate la valorile implicite.',
+  },
+  about: {
+    title: 'Despre',
+    tagline: 'O verificare simplă a produselor legate de China',
+    intro:
+      'OriginWise te ajută să vezi rapid dacă un produs sau un brand pare legat de China — loc de origine, producător și legături ale companiei — cu alternative opționale de implicare mai mică. Verificările rămân pe acest dispozitiv.',
+    body: 'OriginWise este un instrument simplu pentru o verificare rapidă a legăturii cu China la produse și branduri de zi cu zi. IA poate fi incompletă sau greșită.',
+    privacy: 'Fără cont. Istoricul rămâne pe acest telefon/browser.',
+    license: 'Licență MIT',
+    licenseShort: 'MIT',
+    openSourceTitle: 'Open source · MIT',
+    openSourceBody:
+      'Acest proiect este software liber sub licența MIT. Îl poți folosi, copia, modifica, îmbina, publica, distribui și sublicenția — inclusiv pentru propriul tău deployment cu cheile tale API.',
+    copyrightLine: 'Copyright © {year} {name}',
+    licenseAsIs:
+      'Furnizat „ca atare”, fără garanție. Vezi textul complet al licenței pe GitHub.',
+    linkSource: 'Cod sursă',
+    linkLicense: 'Licență MIT',
+    linkIssues: 'Probleme și feedback',
+    linkReleases: 'Versiuni',
+    linkSecurity: 'Politică de securitate',
+    privacyTitle: 'Confidențialitatea ta',
+    privacyLead:
+      'Păstrăm lucrurile simple: fără cont, iar istoricul verificărilor rămâne pe telefonul sau calculatorul tău.',
+    privacyBullet1:
+      'Verificările anterioare, setările și preferințele sunt salvate doar în acest browser, pe dispozitivul tău.',
+    privacyBullet2: 'Nu există autentificare și nicio copie în cloud a jurnalului de verificări.',
+    privacyBullet3:
+      'Poți șterge totul oricând cu Șterge datele locale în Setări.',
+    privacyBullet4:
+      'Când rulezi o verificare, numele sau fotografia este trimisă doar pentru acel răspuns. Nu păstrăm ambalajele ca un catalog de produse.',
+    privacyBullet5:
+      'Fotografiile sunt comprimate pe dispozitivul tău înainte de încărcare și nu sunt stocate ca înregistrări pe server.',
+    privacyBullet6:
+      'Cu cercetarea web live activă, numele produsului (și textul etichetei) este trimis și o dată unui serviciu de căutare: mai întâi Google Search prin Gemini și doar dacă eșuează Brave Search sau Firecrawl. Pașii de progres și rezultatul arată serviciul folosit efectiv. Nu păstrăm niciun jurnal al căutărilor.',
+    privacyPolicyLink: 'Politică de confidențialitate',
+    termsLink: 'Termeni de utilizare',
+    designTitle: 'Cum funcționează',
+    designLead:
+      'Verificare IA multi-agent rapidă, apoi un tabel de punctaj fix — nu o bază de date juridică.',
+    designLocalTitle: 'Ce rămâne pe dispozitivul tău',
+    designLocalBody:
+      'După încărcarea aplicației, istoricul, limba, tema și preferințele de verificare sunt salvate doar în acest browser. Șterge datele site-ului sau folosește Șterge datele locale.',
+    designWhyTitle: 'De ce am construit-o astfel',
+    designWhy1: 'Verificări mobile rapide fără a crea un cont.',
+    designWhy2: 'Istoricul rămâne la tine — șterge-l oricând.',
+    designWhy3:
+      'IA poate greși; afișăm rezerve și tratăm Taiwanul ca o țară separată pentru niveluri.',
+    disclaimerTitle: 'Atenție',
+    disclaimerBody:
+      'OriginWise este doar informativ — nu sfat juridic, vamal sau privind sancțiunile. IA și etichetele de nivel pot fi incomplete sau greșite. Verifică întotdeauna deciziile critice tu însuți.',
+    createdBy: 'Întreținut de',
+    contributionsWelcome: 'Issue-urile și pull request-urile sunt binevenite pe GitHub.',
+  },
+  how: {
+    title: 'Cum funcționează',
+    subtitle: 'Verificare rapidă a legăturii cu China — păstrează-o simplă',
+    aimTitle: 'Pentru ce este această aplicație',
+    aimBody:
+      'Să te ajute să vezi rapid dacă un produs sau un brand pare legat de China — fabricat acolo, legături ale companiei ș.a. Nu este un instrument de cercetare profundă, nu o verificare juridică.',
+    stepsTitle: 'Pe scurt',
+    step1Title: 'Trimiți ceva',
+    step1Body: 'Un nume de produs, un brand sau o fotografie a ambalajului.',
+    step2Title: 'Căutăm cu IA',
+    step2Body:
+      'Rulează verificări mici: locul produsului și compania (împreună), apoi o verificare dublă rapidă. Opțional: alternative de brand/produs cu implicare chineză mai mică dacă le activezi.',
+    step3Title: 'Primești un rezultat simplu',
+    step3Body:
+      'Un insignă colorată: Fără legătură, Indirect, Direct sau Necunoscut — plus un scurt de ce.',
+    graphTitle: 'Flux complet',
+    graphHint: 'De la datele tale la insigna colorată.',
+    flowYou: 'Tu (nume / foto)',
+    flowAi: 'Verificări IA',
+    flowProduct: 'Locul produsului',
+    flowCompany: 'Companie',
+    flowVerify: 'Verificare dublă',
+    flowScore: 'Punctaj simplu',
+    flowResult: 'Rezultat colorat',
+    flowAiDetail:
+      'Mai întâi locul produsului + compania, apoi o verificare dublă rapidă.',
+    flowScoreDetail: 'Combinăm răspunsurile într-un punctaj simplu.',
+    badgeTitle: 'Ce înseamnă culorile',
+    badgeNone: 'Fără legătură — nu s-a găsit o legătură clară cu China',
+    badgeIndirect: 'Indirect — legătură mai slabă sau parțială',
+    badgeDirect: 'Direct — legătură clară (ex. made in China sau sediu acolo)',
+    badgeUnknown: 'Necunoscut — informații insuficiente clare',
+    twTitle: 'Taiwan',
+    twBody:
+      'Taiwanul contează întotdeauna aici ca o țară proprie. Nu contează de la sine ca „legat de China”.',
+    evidenceTitle:
+      'Când o țară de fabricație contează ca fiind confirmată',
+    evidenceBody:
+      'O țară de fabricație apare ca fiind confirmată în trei moduri. Cel mai puternic: o fotografie a etichetei ambalajului sau o pagină web care arată același cod de bare (JAN/EAN) lângă mențiunea de origine (potrivire după codul de bare). Apoi, potrivirea după modelul exact: răspunsul AI și cel puțin o pagină web cu marca și modelul exacte indică aceeași țară, sau două ori mai multe astfel de pagini de pe site-uri diferite sunt de acord; răspunsul AI apare atunci ca una dintre surse. În ambele cazuri, nicio pagină cu modelul exact nu poate indica altă țară. Răspunsul AI singur nu confirmă niciodată și rămâne o referință a modelului; dacă paginile cu modelul exact se contrazic, țara rămâne neconfirmată, cu candidații enumerați. Un link citat de AI contează doar după o verificare: pagina (returnată de căutarea web sau încărcată) trebuie să indice modelul exact și aceeași țară și să nu fi fost exclusă ca alt model; altfel apare ca „Citat de AI, neverificat” și nu contează. O potrivire vagă după numele produsului apare doar ca candidat sub „Neconfirmat”, iar o pagină cu mai multe mărimi sau variante rămâne neconfirmată. Dacă căutarea web live nu este disponibilă, rezultatul se bazează doar pe cunoștințele modelului și o spune.',
+    flowWeb:
+      'Căutare web',
+    flowWebDetail:
+      'Căutarea paginilor web după numele produsului sau codul de bare și verificarea mențiunii de origine.',
+    privacyTitle: 'Datele tale',
+    privacyBody:
+      'Istoricul rămâne pe acest dispozitiv, iar fotografiile nu sunt stocate pe server. Cu căutarea web live activată, numele produsului sau codul de bare este trimis serviciilor de căutare. AI poate greși — verifică mereu deciziile importante.',
+    tryBtn: 'Încearcă o verificare',
+  },
+  tier: {
+    none: 'Fără legătură',
+    indirect: 'Indirect',
+    direct: 'Direct',
+    unknown: 'Necunoscut',
+  },
+} satisfies MessageTree;

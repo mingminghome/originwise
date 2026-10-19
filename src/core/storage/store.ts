@@ -1,0 +1,214 @@
+import { normalizeLocale, parseLocale, type Locale } from '../i18n/locales';
+import {
+  ALL_DIMENSIONS,
+  DEFAULT_DIMENSIONS,
+  type AppSettings,
+  type CheckDimension,
+  type CheckHistoryItem,
+  type DataCategory,
+  type GeoScope,
+  type ThemeMode,
+} from '../types';
+import { LEGACY_STORAGE_PREFIX, STORAGE_KEYS, STORAGE_PREFIX } from './keys';
+
+const DEFAULT_SETTINGS: AppSettings = {
+  locale: 'en',
+  theme: 'system',
+  geoScope: 'prc',
+  defaultDimensions: [...DEFAULT_DIMENSIONS],
+};
+
+/**
+ * Move originwise_v1_* into originwise_v2_*. The share image is now one card
+ * drawn from the score JSON, so new writes use v2. Saved checks and settings
+ * are copied, not dropped.
+ */
+export function migrateLegacyStorage(): void {
+  try {
+    const pending: Array<[string, string]> = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(LEGACY_STORAGE_PREFIX)) continue;
+      pending.push([key, STORAGE_PREFIX + key.slice(LEGACY_STORAGE_PREFIX.length)]);
+    }
+    for (const [from, to] of pending) {
+      if (localStorage.getItem(to) === null) {
+        const value = localStorage.getItem(from);
+        if (value !== null) localStorage.setItem(to, value);
+      }
+      localStorage.removeItem(from);
+    }
+  } catch {
+    /* private mode or a full quota: leave the old keys in place */
+  }
+}
+
+function readJson<T>(key: string, fallback: T): T {
+  migrateLegacyStorage();
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeJson(key: string, value: unknown): void {
+  migrateLegacyStorage();
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.warn('OriginWise storage write failed:', e);
+  }
+}
+
+function detectLocale(): Locale {
+  try {
+    if (typeof navigator === 'undefined') return 'en';
+    const candidates = [navigator.language, ...(navigator.languages ?? [])];
+    for (const item of candidates) {
+      const matched = parseLocale(item);
+      if (matched) return matched;
+    }
+  } catch {
+    /* ignore */
+  }
+  return 'en';
+}
+
+function normalizeTheme(raw: unknown): ThemeMode {
+  const s = String(raw ?? '');
+  if (s === 'light' || s === 'dark' || s === 'system') return s;
+  if (s === 'warm-light') return 'light';
+  if (s === 'warm-dark') return 'dark';
+  return 'system';
+}
+
+function normalizeGeoScope(raw: unknown): GeoScope {
+  return raw === 'greater_china' ? 'greater_china' : 'prc';
+}
+
+function normalizeDimensions(raw: unknown): CheckDimension[] {
+  if (!Array.isArray(raw)) return [...DEFAULT_DIMENSIONS];
+  const allowed = new Set<string>(ALL_DIMENSIONS);
+  const next = raw
+    .map(String)
+    .filter((d): d is CheckDimension => allowed.has(d));
+  return next.length ? next : [...DEFAULT_DIMENSIONS];
+}
+
+export function getDefaultSettings(): AppSettings {
+  return structuredClone(DEFAULT_SETTINGS);
+}
+
+export function getSettings(): AppSettings {
+  const stored = readJson<Partial<AppSettings> | null>(
+    STORAGE_KEYS.settings,
+    null
+  );
+  if (!stored) {
+    return { ...getDefaultSettings(), locale: detectLocale() };
+  }
+  return {
+    ...getDefaultSettings(),
+    ...stored,
+    locale: normalizeLocale(stored.locale),
+    theme: normalizeTheme(stored.theme),
+    geoScope: normalizeGeoScope(stored.geoScope),
+    defaultDimensions: normalizeDimensions(stored.defaultDimensions),
+  };
+}
+
+export function saveSettings(settings: AppSettings): void {
+  writeJson(STORAGE_KEYS.settings, settings);
+}
+
+export function getCheckHistory(): CheckHistoryItem[] {
+  return readJson<CheckHistoryItem[]>(STORAGE_KEYS.checkHistory, []);
+}
+
+export function saveCheckHistory(items: CheckHistoryItem[]): void {
+  writeJson(STORAGE_KEYS.checkHistory, items.slice(0, 30));
+}
+
+/** List every originwise_v2_* key currently in localStorage. */
+export function listOriginwiseKeys(): string[] {
+  migrateLegacyStorage();
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k?.startsWith(STORAGE_PREFIX)) keys.push(k);
+  }
+  return keys.sort();
+}
+
+/**
+ * Clean local data. Selective categories or full wipe of all originwise keys.
+ */
+export function clearLocalData(category: DataCategory = 'all'): string[] {
+  const removed: string[] = [];
+
+  const removeKey = (key: string) => {
+    if (localStorage.getItem(key) !== null) {
+      localStorage.removeItem(key);
+      removed.push(key);
+    }
+  };
+
+  switch (category) {
+    case 'settings':
+      removeKey(STORAGE_KEYS.settings);
+      break;
+    case 'checkHistory':
+      removeKey(STORAGE_KEYS.checkHistory);
+      break;
+    case 'disclaimer':
+      removeKey(STORAGE_KEYS.disclaimerAck);
+      break;
+    case 'all':
+    default: {
+      for (const key of listOriginwiseKeys()) {
+        localStorage.removeItem(key);
+        removed.push(key);
+      }
+      break;
+    }
+  }
+
+  return removed;
+}
+
+export function hasDisclaimerAck(): boolean {
+  try {
+    migrateLegacyStorage();
+    return Boolean(localStorage.getItem(STORAGE_KEYS.disclaimerAck));
+  } catch {
+    return false;
+  }
+}
+
+export function saveDisclaimerAck(): void {
+  migrateLegacyStorage();
+  try {
+    localStorage.setItem(STORAGE_KEYS.disclaimerAck, new Date().toISOString());
+  } catch (e) {
+    console.warn('OriginWise disclaimer ack failed:', e);
+  }
+}
+
+export function summarizeLocalData(): {
+  checkCount: number;
+  hasCustomSettings: boolean;
+  hasDisclaimer: boolean;
+  keyCount: number;
+} {
+  return {
+    checkCount: getCheckHistory().length,
+    hasCustomSettings: localStorage.getItem(STORAGE_KEYS.settings) !== null,
+    hasDisclaimer: hasDisclaimerAck(),
+    keyCount: listOriginwiseKeys().length,
+  };
+}
+
+export { STORAGE_KEYS, STORAGE_PREFIX };

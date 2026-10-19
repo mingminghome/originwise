@@ -1,0 +1,77 @@
+# Copy to .dev.vars for `npm run pages:dev` (gitignored).
+# At least one provider key is required for live /api/check.
+#
+#   cp .dev.vars.example .dev.vars
+#   # edit .dev.vars — set GEMINI_API_KEY=...
+#   npm run pages:dev
+#
+# NOTE: Do not put VITE_* vars here — Wrangler secrets are for Functions only.
+# Client env (e.g. VITE_GTM_ID, VITE_BUY_ME_A_PINT_URL) belongs in .env / Cloudflare Pages *build* env.
+
+# Gemini = most reliable free API (leave this on)
+GEMINI_API_KEY=
+# Optional free-ish keys — only uncomment if that console actually has free quota:
+#   OpenAI Free tier: low RPD (~50/day) + model TPM/RPM. Prefer mini (gpt-5.4-mini).
+#     upstream_quota = hit RPM/RPD/TPD or no usable Free access — check Usage Tiers.
+#   Anthropic: trial credits only (no ongoing free tier)
+#   xAI: needs trial/credits (no unlimited free)
+# OPENAI_API_KEY=
+# XAI_API_KEY=
+# ANTHROPIC_API_KEY=
+
+# ---------------------------------------------------------------------------
+# Model selection (optional)
+#   auto | free | default | (empty)  → ask that provider's models endpoint,
+#                                      try up to four chat ids
+#   <model-id>                       → that id only (no walk into other models)
+#
+# If the list call fails, one fallback id is used:
+#   Gemini gemini-flash-lite-latest, OpenAI gpt-4.1-mini,
+#   Grok grok-4, Claude claude-haiku-4-5
+# ---------------------------------------------------------------------------
+# GEMINI_MODEL=auto
+# OPENAI_MODEL=auto
+# XAI_MODEL=auto
+# ANTHROPIC_MODEL=auto
+#
+# Pin examples (that id only):
+# OPENAI_MODEL=gpt-4.1-mini
+# XAI_MODEL=grok-4
+# ANTHROPIC_MODEL=claude-haiku-4-5
+
+# Live web research. Search does not name the country. Tidy writes claims
+# from the fetched pages, and a claim stays only when its quote is on a page.
+#   WEB_LOOKUP=auto  (default) — on when any SEARCH_PROVIDERS key is set
+#   WEB_LOOKUP=on    — same as auto (still needs at least one provider key)
+#   WEB_LOOKUP=off   — no web fetch
+# WEB_LOOKUP=auto
+#
+# GEMINI_WEB_MODEL is the grounded-search pin only (not GEMINI_MODEL).
+# Unset or auto lists chat models for this key. If that list fails, the
+# fallback is gemini-flash-lite-latest.
+# GEMINI_WEB_MODEL=auto
+# WEB_LOOKUP=off  # skip web if needed
+#
+# Search-provider chain (functions/_lib/search/providers/). The next provider
+# runs until two fetched pages have text longer than 80 characters. Providers
+# without a key are skipped. A Gemini quota notice is kept when a later
+# provider never answers. No search query is logged or stored.
+#   gemini    = Google Search grounding, then fetch up to 4 source pages
+#   brave     = Brave Search API, then fetch those pages
+#               (https://api.search.brave.com/res/v1/web/search, X-Subscription-Token)
+#   firecrawl = Firecrawl /v1/search with markdown scrape (storeInCache:false)
+# Brave and Firecrawl run one wider follow-up when the first batch has only
+# one usable page. The tidy step, not the search provider, writes the card.
+# SEARCH_PROVIDERS=gemini,brave,firecrawl
+# BRAVE_SEARCH_API_KEY=
+# FIRECRAWL_API_KEY=
+# CHECK_ALLOWED_ORIGINS=http://localhost:8788
+# Free-server rate limits (defaults shown)
+# CHECK_RATE_SHORT_LIMIT=1
+# CHECK_RATE_SHORT_WINDOW_SEC=30
+# CHECK_RATE_LONG_LIMIT=10
+# CHECK_RATE_LONG_WINDOW_SEC=21600
+# CHECK_CACHE_TTL_SEC=86400
+# Free-tier default: Gemini only (OpenAI Free RPD is easy to exhaust)
+# POOL_DISABLE_PROVIDERS=openai,grok,claude
+# LOG_IP_SALT=

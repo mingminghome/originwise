@@ -1,0 +1,372 @@
+/**
+ * China link first: one line per link to China, from fields the result
+ * already has (HQ, controlling owner, brand origin, made-in, parts).
+ * Made-in keeps its strict rule; a company link never stands in for it.
+ *
+ * "China" here uses the same region rules as the server tier
+ * (functions/_lib/regions.ts): mainland China (PRC) only by default.
+ * Taiwan is never China. Hong Kong / Macau count only when the result was
+ * checked with geoScope 'greater_china' — under the default 'prc' scope they
+ * are separate places, so an HK-HQ company gets no chip.
+ */
+import { hqFoldedIntoParent, parentNamedInCompany } from '../../functions/_lib/chinaChip';
+import { inScope, normalizeRegion, type GeoScope } from '../../functions/_lib/regions';
+import { cleanSources } from '../../functions/_lib/sourceLine';
+import {
+  STRONG_CN_CODES,
+  UNKNOWN_TIER_CONFIDENCE_CAP,
+  WEAK_CN_CODES,
+  tierFromCodes,
+} from '../../functions/_lib/tierRules';
+import type { CheckResult, RelationTier } from '../core/types';
+
+export type LinkStatus = 'china' | 'notChina' | 'unconfirmed';
+export type ChinaLinkRow = {
+  key: 'hq' | 'owner' | 'brandOrigin' | 'madeIn' | 'parts';
+  status: LinkStatus;
+  value: string;
+  detail?: string;
+};
+
+/**
+ * Company-level chip:
+ * - 'chinaCompany' only when the company's own HQ is in China (BrandC, Brandd).
+ * - 'chinaControlled' when the HQ is elsewhere but a majority / wholly
+ *   controlling parent is in China (Acme → Parentco).
+ */
+export type ChinaChip = 'chinaCompany' | 'chinaControlled' | null;
+
+const VAGUE_RE = /^(unknown|n\/?a|none|null|unclear|not\s+(known|stated|confirmed)|unconfirmed|未知|不明|不詳|未確認|未确认|-|—)?$/i;
+
+/** A made-in page or candidate names China. Not a confirmed made-in. */
+function madeInNamesChina(result: CheckResult): boolean {
+  const scope = scopeOf(result);
+  const isCn = (v?: string) => Boolean(clean(v)) && isChinaCountry(v, scope);
+  for (const h of result.meta?.searchCoo ?? []) {
+    if (isCn(h.country)) return true;
+  }
+  for (const c of result.product?.originCandidates ?? []) {
+    if (c.source === 'ownership' || c.source === 'manufacturer') continue;
+    if (isCn(c.label)) return true;
+  }
+  return false;
+}
+
+export function isChinaCountry(raw?: string, scope: GeoScope = 'prc'): boolean {
+  return inScope(normalizeRegion(String(raw ?? '').trim()), scope);
+}
+
+function clean(raw?: string): string {
+  const s = String(raw ?? '').trim();
+  return VAGUE_RE.test(s) ? '' : s;
+}
+
+function scopeOf(result: CheckResult): GeoScope {
+  return result.geoScope === 'greater_china' ? 'greater_china' : 'prc';
+}
+
+/**
+ * True when the answer's China HQ is really a Chinese parent folded into the
+ * company (brand origin elsewhere). See functions/_lib/chinaChip.ts.
+ */
+export function brandHqFolded(result: CheckResult): boolean {
+  return hqFoldedIntoParent(
+    {
+      brandOrigin: clean(result.product?.originCountry),
+      hqCountry: clean(result.company?.hqCountry),
+      companyName: result.company?.name,
+      parents: result.company?.parents,
+    },
+    scopeOf(result)
+  );
+}
+
+/** The parent shown in 控股／母公司 (China-controlling first). */
+export function pickOwner(result: CheckResult):
+  | { name: string; country: string; control?: string }
+  | undefined {
+  const scope = scopeOf(result);
+  const c = result.company;
+  const folded = brandHqFolded(result);
+  const owners = (c?.parents ?? []).filter((o) => o.name?.trim());
+  const controlling = owners.filter((o) => o.control === 'majority' || o.control === 'wholly');
+  const isCn = (v?: string) => isChinaCountry(clean(v), scope);
+  const owner = folded
+    ? owners.find((o) => isCn(o.country)) ??
+      owners.find((o) => parentNamedInCompany(c?.name, o))
+    : controlling.find((o) => isCn(o.country)) ?? controlling[0];
+  if (!owner) return undefined;
+  // Folded: a parent with no country owns the China HQ the answer reported.
+  const country = clean(owner.country) || (folded ? clean(c?.hqCountry) : '');
+  return { name: owner.name.trim(), country, control: owner.control };
+}
+
+export function buildChinaLinks(result: CheckResult): {
+  rows: ChinaLinkRow[];
+  chip: ChinaChip;
+  /** The reported China HQ belongs to the parent, not the brand. */
+  hqFolded: boolean;
+} {
+  const scope = scopeOf(result);
+  const isCn = (v: string) => isChinaCountry(v, scope);
+  const statusOf = (country: string): LinkStatus =>
+    !country ? 'unconfirmed' : isCn(country) ? 'china' : 'notChina';
+
+  const p = result.product;
+  const c = result.company;
+  const rows: ChinaLinkRow[] = [];
+  const hqFolded = brandHqFolded(result);
+  const hq = hqFolded ? '' : clean(c?.hqCountry);
+  const company = c?.name?.trim() || p?.brand?.trim() || '';
+  if (hq) rows.push({ key: 'hq', status: statusOf(hq), value: hq, detail: company || undefined });
+  else if (hqFolded) rows.push({ key: 'hq', status: 'unconfirmed', value: '' });
+
+  const owner = pickOwner(result);
+  const controlsBrand =
+    owner !== undefined &&
+    (hqFolded || owner.control === 'majority' || owner.control === 'wholly');
+  if (owner) {
+    rows.push({
+      key: 'owner',
+      status: statusOf(owner.country),
+      value: owner.country,
+      detail: owner.name,
+    });
+  }
+
+  const brandOrigin = clean(p?.originCountry);
+  if (brandOrigin && !(hq && brandOrigin.toLowerCase() === hq.toLowerCase())) {
+    rows.push({ key: 'brandOrigin', status: statusOf(brandOrigin), value: brandOrigin });
+  }
+
+  // No made-in / parts rows: made-in is decided only in the 製造地 card.
+
+  const hqChina = hq !== '' && isCn(hq);
+  const ownerChina = controlsBrand && isCn(owner!.country);
+  // 中國公司 only for the brand's own China HQ; a Chinese parent → 中資控股.
+  const chip: ChinaChip = hqChina ? 'chinaCompany' : ownerChina ? 'chinaControlled' : null;
+  return { rows, chip, hqFolded };
+}
+
+/**
+ * Result as the China card should read it: only company-level places, so a
+ * reason line like 「明確地點訊號在中國大陸以外：…」 never lists a made-in
+ * country, and a folded parent HQ is not shown as the brand's HQ.
+ */
+export function companyView(result: CheckResult): CheckResult {
+  const p = result.product;
+  return {
+    ...result,
+    product: p
+      ? { ...p, madeIn: undefined, manufacturedIn: undefined, manufacturerCountry: undefined }
+      : p,
+    company:
+      result.company && brandHqFolded(result)
+        ? { ...result.company, hqCountry: undefined }
+        : result.company,
+  };
+}
+
+/** Floor for a China HQ / China-controlling parent (company-level evidence). */
+export const COMPANY_DIRECT_MIN_CONFIDENCE = 0.75;
+
+/**
+ * Company rows count as sourced (tag 確認) only after web research that left
+ * at least one Source line. Model memory alone is 有提及 and gets no floor.
+ */
+export function companyFactsSourced(result: CheckResult): boolean {
+  return (
+    result.knowledgeBasis === 'web_enriched' &&
+    cleanSources(Array.isArray(result.sources) ? result.sources : [], 8).length > 0
+  );
+}
+
+/**
+ * Made-in confirmed by a barcode page, the package label, or 依型號比對
+ * (exact model on 2+ domains, or the AI answer plus an exact-model page). A
+ * made-in without one of those is a model reference only (candidate row,
+ * never a verdict).
+ */
+export function confirmedMadeIn(
+  result: CheckResult
+): { country: string; basis: 'barcode' | 'label' | 'model' } | undefined {
+  const p = result.product;
+  const madeIn = clean(p?.madeIn);
+  if (!madeIn) return undefined;
+  if (p?.madeInBasis === 'barcode' || p?.madeInBasis === 'label' || p?.madeInBasis === 'model') {
+    return { country: madeIn, basis: p.madeInBasis };
+  }
+  const meta = result.meta;
+  if (
+    meta?.searchMatch === 'barcode' &&
+    (meta.searchCoo ?? []).some((c) => c.status === 'confirmed' && c.basis === 'barcode')
+  ) {
+    return { country: madeIn, basis: 'barcode' };
+  }
+  return undefined;
+}
+
+/** The owner row already carries a control word. No title scan. */
+export function stakeInSources(_result: CheckResult, control?: string): boolean {
+  const c = (control ?? '').trim().toLowerCase();
+  return Boolean(c) && c !== 'unknown';
+}
+
+export type ChinaCardChip = 'chinaCompany' | 'chinaControlled' | 'madeInChina';
+
+/** One line in the China card; each maps to a row / fact shown in the card. */
+export type ChinaCardReason =
+  | { kind: 'code'; code: string }
+  | { kind: 'parent' }
+  | { kind: 'brandOrigin'; country: string }
+  | { kind: 'madeIn'; country: string; basis: 'barcode' | 'label' | 'model' }
+  | { kind: 'pointer' };
+
+export type ChinaCardView = {
+  chips: ChinaCardChip[];
+  tier: RelationTier;
+  /** undefined → no confidence chip (made-in-only link: see the 製造地 card). */
+  confidence?: number;
+  hqFolded: boolean;
+  hq: string;
+  owner?: { name: string; country: string; control?: string };
+  /** 'stated' stake word, neutral 「控股」, or nothing. */
+  stake: { kind: 'stated'; control: string } | { kind: 'neutral' } | { kind: 'none' };
+  brandOrigin: string;
+  reasons: ChinaCardReason[];
+};
+
+/** Codes that never speak for a shown row; kept as caveats. */
+const META_CODES = new Set([
+  'verify_conflict',
+  'taiwan_as_country',
+  'conflict_no_strong',
+  'insufficient',
+  'ownership_not_assessed',
+]);
+
+/**
+ * The China card, built only from facts it shows on screen:
+ * - hq_cn → 總部 row (not when the HQ was reassigned to the parent)
+ * - parent_majority_cn → 控股／母公司 row (one line per fact; a folded hq_cn or
+ *   a named-parent ownership_strong_cn is the same fact)
+ * - ownership_weak_cn → only with a named China parent holding a minority stake
+ * - origin_cn → 品牌來源地 row
+ * - made_in_cn → only label / barcode confirmed, as one 製造地 line
+ * Unnamed ownership relations are dropped and do not feed tier / confidence.
+ */
+export function buildChinaCard(result: CheckResult): ChinaCardView {
+  const scope = scopeOf(result);
+  const isCn = (v?: string) => Boolean(v) && isChinaCountry(v, scope);
+  const { chip, hqFolded } = buildChinaLinks(result);
+  const c = result.company;
+  const codes = result.tierReasons ?? [];
+  const has = (k: string) => codes.includes(k);
+
+  const hq = hqFolded ? '' : clean(c?.hqCountry);
+  const parents = (c?.parents ?? []).filter((x) => x.name?.trim());
+  const picked = pickOwner(result);
+  const owner =
+    picked ??
+    (parents[0]
+      ? { name: parents[0].name.trim(), country: clean(parents[0].country), control: parents[0].control }
+      : undefined);
+  const controlling =
+    owner !== undefined &&
+    (hqFolded || owner.control === 'majority' || owner.control === 'wholly');
+  const ownerCnControlling = controlling && isCn(owner!.country);
+  const ownerCnMinority = owner !== undefined && owner.control === 'minority' && isCn(owner.country);
+  const brandOrigin = clean(result.product?.originCountry);
+  const made = confirmedMadeIn(result);
+  const madeCn = made !== undefined && isCn(made.country);
+
+  // Codes as the card reads them (what may feed tier / confidence).
+  const cardCodes: string[] = [];
+  const add = (k: string) => {
+    if (!cardCodes.includes(k)) cardCodes.push(k);
+  };
+  for (const k of codes) {
+    if (k === 'hq_cn') add(hqFolded ? 'parent_majority_cn' : 'hq_cn');
+    else if (k === 'ownership_strong_cn') {
+      if (ownerCnControlling) add('parent_majority_cn');
+    } else if (k === 'ownership_weak_cn') {
+      if (ownerCnMinority) add('ownership_weak_cn');
+    } else if (k === 'made_in_cn') {
+      if (madeCn) add('made_in_cn');
+    } else add(k);
+  }
+  if (madeCn) add('made_in_cn');
+  const same =
+    cardCodes.length === codes.length && cardCodes.every((k) => codes.includes(k));
+  let tier: RelationTier = same ? result.relationTier : tierFromCodes(cardCodes);
+  if (chip || madeCn) tier = 'direct';
+  // A cached check can say Unknown at 95% after a brand-home made-in was
+  // dropped, while this card already shows a non-China HQ or controlling
+  // owner. Those company facts are Unrelated. Brand origin alone is not.
+  // A China country on the made-in card (a page vote or a candidate) is not
+  // Unrelated, even while that made-in stays unconfirmed.
+  const cnCode = (k: string) => STRONG_CN_CODES.has(k) || WEAK_CN_CODES.has(k);
+  const ownerCountry = owner?.country ?? '';
+  const anchoredOutside =
+    (hq !== '' && !isCn(hq)) ||
+    (controlling && ownerCountry !== '' && !isCn(ownerCountry));
+  const chinaMadeInNamed = !madeCn && madeInNamesChina(result);
+  if (
+    tier === 'unknown' &&
+    !cardCodes.some(cnCode) &&
+    !has('verify_conflict') &&
+    anchoredOutside &&
+    !chinaMadeInNamed
+  ) {
+    tier = 'none';
+  }
+  if (tier === 'none' && chinaMadeInNamed && !cardCodes.some(cnCode) && !chip && !madeCn) {
+    tier = 'unknown';
+  }
+
+  const chips: ChinaCardChip[] = [];
+  if (chip) chips.push(chip);
+  if (madeCn) chips.push('madeInChina');
+
+  let confidence: number | undefined =
+    typeof result.confidence === 'number' ? result.confidence : undefined;
+  if (!chip && madeCn) {
+    // Made-in-only link: the number lives once, in the 製造地 card.
+    confidence = undefined;
+  } else if (chip && confidence !== undefined && companyFactsSourced(result)) {
+    confidence = Math.max(confidence, COMPANY_DIRECT_MIN_CONFIDENCE);
+  } else if (tier === 'unknown' && confidence !== undefined && confidence > 0.5) {
+    confidence = UNKNOWN_TIER_CONFIDENCE_CAP;
+  }
+
+  const reasons: ChinaCardReason[] = [];
+  if (cardCodes.includes('hq_cn') && isCn(hq)) reasons.push({ kind: 'code', code: 'hq_cn' });
+  if (cardCodes.includes('parent_majority_cn') && ownerCnControlling) reasons.push({ kind: 'parent' });
+  if (cardCodes.includes('ownership_weak_cn') && ownerCnMinority) {
+    reasons.push({ kind: 'code', code: 'ownership_weak_cn' });
+  }
+  if (has('origin_cn') && isCn(brandOrigin)) reasons.push({ kind: 'brandOrigin', country: brandOrigin });
+  if (madeCn) reasons.push({ kind: 'madeIn', country: made!.country, basis: made!.basis });
+  // explicit_non_cn_geo is not a card line: its places are the 總部 and
+  // 品牌來源地 rows right above (德國 on Acme, 日本 on Delta / Gamma), and
+  // on a 直接 card it read like a reason for the tier.
+  for (const k of codes) {
+    if (!META_CODES.has(k)) continue;
+    // "Not enough ownership information" contradicts a card that already
+    // shows the HQ or the controlling owner.
+    if (k === 'insufficient' && tier === 'none') continue;
+    reasons.push({ kind: 'code', code: k });
+  }
+  const madeInTalk = ['made_in_cn', 'manufacturer_cn', 'component_cn'].some(has);
+  if ((madeInTalk && !madeCn) || chinaMadeInNamed) reasons.push({ kind: 'pointer' });
+
+  const stake: ChinaCardView['stake'] = !owner
+    ? { kind: 'none' }
+    : stakeInSources(result, owner.control)
+      ? { kind: 'stated', control: owner.control! }
+      : controlling
+        ? { kind: 'neutral' }
+        : { kind: 'none' };
+
+  return { chips, tier, confidence, hqFolded, hq, owner, stake, brandOrigin, reasons };
+}

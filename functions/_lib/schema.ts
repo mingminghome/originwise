@@ -1,0 +1,303 @@
+/**
+ * CheckResult schema. Field names match src/core/types.ts.
+ */
+
+/** Scope the user picked. The model names countries; this is not a gazetteer. */
+export type GeoScope = 'prc' | 'greater_china';
+
+/** Stored on older results. New checks leave this empty. */
+export type RegionCode = 'CN' | 'HK' | 'TW' | 'MO' | 'OTHER' | 'UNKNOWN';
+
+export type RelationTier = 'none' | 'indirect' | 'direct' | 'unknown';
+
+export type ChinaRelationType =
+  | 'ownership'
+  | 'subsidiary'
+  | 'hq'
+  | 'manufacturing'
+  | 'supply'
+  | 'retail'
+  | 'parent_of'
+  | 'owned_by'
+  | 'controlling_shareholder'
+  | 'state_owned_cn'
+  | 'minority_stake'
+  | 'supplier'
+  | 'assembled_in'
+  | 'retail_presence'
+  | 'licensed_in'
+  | 'joint_venture_minority'
+  | 'other';
+
+export type CheckDimension =
+  | 'origin'
+  | 'manufacturer'
+  | 'company_relations'
+  | 'alt_brands'
+  | 'alt_products';
+
+export type GraphNode = {
+  id: string;
+  label: string;
+  kind?: string;
+  chinaRelated?: boolean;
+  region?: RegionCode;
+};
+
+export type GraphEdge = {
+  from: string;
+  to: string;
+  label?: string;
+  type?: string;
+  strength?: 'strong' | 'moderate' | 'weak';
+  chinaRelated?: boolean;
+};
+
+export type PartKind = 'part' | 'spare' | 'ingredient' | 'component';
+
+export type ProductPart = {
+  name: string;
+  kind?: PartKind;
+  originCountry?: string;
+  madeIn?: string;
+  chinaRelated?: boolean;
+  note?: string;
+};
+
+
+/** A search page left out: it is about another model of that name (Beta Carbon). */
+export type WebExcludedPage = { url: string; model: string; title?: string; country?: string };
+
+/**
+ * Design / brand wording ("Engineered in Germany", 德國品牌): never a made-in,
+ * shown as 附加資訊. url only when a search page said it.
+ */
+export type DesignInfo = {
+  country: string;
+  kind: 'design' | 'brand';
+  url?: string;
+  quote?: string;
+  /** The quote was read on a page we fetched, or on the package label photo (a verified source). */
+  fetched?: boolean;
+  /** #48: the page unit the brand quote was read from (names this brand / product and nothing else). */
+  quoteLine?: string;
+  /** #48: read on the package label photo (exempt from the unit rule). */
+  label?: boolean;
+};
+
+/** A page the model cites for its made-in answer (checked before it counts). */
+export type CitedSource = { url: string; title?: string; quote?: string };
+
+/** Made-in claim from a Brave/Firecrawl page, after the barcode/name gate. */
+export type WebCooClaim = {
+  country: string;
+  /**
+   * 'barcode' = JAN/EAN on the page; 'name' = product name only; 'model' =
+   * the exact model with this made-in on 2+ domains, none disagreeing (依型號比對).
+   */
+  basis: 'barcode' | 'name' | 'model';
+  /** barcode / model → confirmed; one name-matched page → likely. */
+  status: 'confirmed' | 'likely';
+  /**
+   * The page names the exact model (brand + model, no other model of that
+   * name) and no exact-model page names another country. One such page plus
+   * the AI answer naming the same country confirms (依型號比對).
+   */
+  exactModel?: boolean;
+  /**
+   * A page the AI cited for its made-in: 'search' = the same URL the web
+   * search returned; 'fetched' = fetched and checked (loads, names the exact
+   * model and the country). Counts as an exact-model page.
+   */
+  cited?: 'search' | 'fetched';
+  /**
+   * An exact-model made-in line the page gate dropped (e.g. a multi-size
+   * page), kept only when exact-model evidence disagrees so the conflict is
+   * seen. Never counts toward a made-in.
+   */
+  evidenceOnly?: boolean;
+  /**
+   * The page is about this product and states a made-in, but lists several
+   * sizes, so the line is not tied to this unit. A source vote only.
+   */
+  voteOnly?: boolean;
+  url?: string;
+  /** Words copied from that page. Kept only when the page contains them. */
+  quote?: string;
+};
+
+export type OriginCandidateSource =
+  | 'web_name'
+  | 'confirmed_coo'
+  | 'parts'
+  | 'components_line'
+  | 'notes'
+  | 'manufacturer'
+  | 'filings'
+  | 'model_memory';
+
+export type OriginCandidateRating =
+  | 'confirmed'
+  | 'likely'
+  | 'possible'
+  | 'mentioned';
+
+/** Queried origin places with confidence — not a confirmed final COO unless rating=confirmed. */
+export type OriginCandidate = {
+  label: string;
+  confidence: number;
+  source: OriginCandidateSource;
+  rating: OriginCandidateRating;
+};
+
+export type AlternativeItem = {
+  name: string;
+  /** Advisory — sanitized server-side; prefer unknown over false "none" */
+  relationTier?: RelationTier;
+  note?: string;
+  /** Manufacturing country if known (helps reject false "unrelated") */
+  madeIn?: string;
+  originCountry?: string;
+  hqCountry?: string;
+};
+
+/** One card the score step wrote. The page prints it as written. */
+export type ScoreCard = {
+  headline: string;
+  lines?: string[];
+};
+
+/** Overall result written by the score step. The page shows these strings as written. */
+export type OverallScore = {
+  summary: string;
+  /** 0–100. How strongly the facts connect this product to China. */
+  score: number;
+  madeIn?: ScoreCard;
+  company?: ScoreCard;
+};
+
+export type CheckResult = {
+  schemaVersion: 1;
+  relationTier: RelationTier;
+  title: string;
+  summary: string;
+  /** Set by the score step after the facts are gated. Absent on older results. */
+  overall?: OverallScore;
+  confidence: number;
+  tierReasons: string[];
+  caveats: string[];
+  regions: RegionCode[];
+  geoScope: GeoScope;
+  disclaimerKey: string;
+  knowledgeBasis: 'model_memory' | 'web_enriched';
+  /** Where part countries came from: package label OCR, grounded web, or model only. */
+  partsEvidence?: 'label' | 'web' | 'model';
+  knowledgeCutoffNote: string;
+  /** Grounding Sources from live Search (when web_enriched). */
+  sources?: string[];
+  product?: {
+    name?: string;
+    brand?: string;
+    originCountry?: string;
+    madeIn?: string;
+    manufacturedIn?: string;
+    manufacturer?: string;
+    manufacturerCountry?: string;
+    category?: string;
+    /** Major parts / global line when different from final madeIn */
+    componentsOrigin?: string;
+    /** Structured BOM / spares / ingredients when known */
+    parts?: ProductPart[];
+    /** Multi-layer origin explanations (brand vs factory vs final COO) */
+    notes?: string[];
+    /** All queried origin candidates (confirmed COO is rating=confirmed only) */
+    originCandidates?: OriginCandidate[];
+    /**
+     * How the made-in was confirmed: a web page showing the barcode/JAN with a
+     * made-in ('barcode'), or the package label photo ('label').
+     */
+    madeInBasis?: 'barcode' | 'label' | 'model';
+    /**
+     * 依型號比對 only: 'web' = 2+ exact-model pages on different domains;
+     * 'ai_web' = the AI answer plus 1+ exact-model page (shown as a source row).
+     */
+    madeInSupport?: 'web' | 'ai_web';
+    /** Design / brand country wording (附加資訊); never a made-in candidate. */
+    designInfo?: DesignInfo[];
+    /** Two explicit made-in claims in one label field (「產地：中國 日本製」): the 爭議 sides. */
+    labelDispute?: string[];
+  };
+  company?: {
+    name?: string;
+    legalName?: string;
+    hqCountry?: string;
+    parents?: Array<{
+      name: string;
+      country?: string;
+      control?: 'majority' | 'wholly' | 'minority' | 'unknown';
+    }>;
+    chinaRelations?: Array<{
+      type: ChinaRelationType | string;
+      note?: string;
+      country?: string;
+      strength?: 'strong' | 'moderate' | 'weak';
+      /** Present when this row's words were found on a fetched page. */
+      quote?: string;
+    }>;
+  };
+  verification?: {
+    consistent?: boolean;
+    conflicts?: string[];
+    confidence?: number;
+    caveats?: string[];
+  };
+  alternatives?: {
+    brands?: AlternativeItem[];
+    products?: AlternativeItem[];
+  };
+  graph: {
+    nodes: GraphNode[];
+    edges: GraphEdge[];
+  };
+  meta: {
+    jobId: string;
+    cached?: boolean;
+    cachedAt?: string;
+    degraded?: boolean;
+    agents?: Array<{
+      id: string;
+      provider?: string;
+      ok?: boolean;
+      error?: string;
+      ms?: number;
+      /** Search API requests (web row). */
+      requests?: number;
+    }>;
+    /** Web search provider used ('gemini' | 'brave' | 'firecrawl'), or last tried. */
+    searchProvider?: string;
+    /** Search API requests made for this check (all providers tried). */
+    searchRequests?: number;
+    /** Strongest match basis among kept Brave/Firecrawl made-in claims. */
+    searchMatch?: 'barcode' | 'model' | 'name';
+    /** Gated Brave/Firecrawl made-in claims with their match basis. */
+    searchCoo?: WebCooClaim[];
+    /** Pages about another model of that name: shown as 型號不符，未計算. */
+    searchExcluded?: WebExcludedPage[];
+    /** AI-cited made-in pages that failed the check (shown, never counted). */
+    citedUnverified?: CitedSource[];
+    /** Page fetches spent checking AI-cited pages (at most MAX_CITED_SOURCES). */
+    citedFetches?: number;
+  };
+};
+
+const WEB_SEARCH_NAME: Record<string, string> = {
+  gemini: 'Google Search via Gemini grounding',
+  brave: 'Brave Search',
+  firecrawl: 'Firecrawl',
+};
+/** Web-enriched note naming the search service that actually ran. */
+export function webKnowledgeNote(provider = 'gemini'): string {
+  const name = WEB_SEARCH_NAME[provider] ?? WEB_SEARCH_NAME.gemini;
+  return `Includes a live web research pass (${name}) plus model knowledge. Still not a corporate registry or customs database — labels and official filings can disagree with web pages. Informational — not legal, trade, or sanctions advice.`;
+}
+export const WEB_KNOWLEDGE_NOTE = webKnowledgeNote('gemini');

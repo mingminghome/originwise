@@ -1,0 +1,694 @@
+import type { MessageTree } from './en';
+
+export const pl = {
+  appName: 'OriginWise',
+  tabs: {
+    check: 'Sprawdź',
+    history: 'Historia',
+    about: 'O aplikacji',
+    settings: 'Ustawienia',
+    navMore: 'Menu',
+  },
+  common: {
+    present: 'Tak',
+    /** Separator after a short label (full-width in CJK). */
+    labelSep: ': ',
+    missing: 'Nie',
+    cancel: 'Anuluj',
+    confirm: 'Potwierdź',
+    delete: 'Usuń',
+    back: 'Wstecz',
+    loading: 'Ładowanie…',
+    optional: 'Opcjonalnie',
+  },
+  install: {
+    aria: 'Zainstaluj OriginWise',
+    title: 'Zainstaluj OriginWise',
+    body: 'Dodaj do ekranu głównego, by szybko sprawdzać jak w aplikacji.',
+    bodyIos: 'Dodaj do ekranu początkowego, by korzystać na pełnym ekranie.',
+    iosStep1: 'Dotknij',
+    iosStep2: 'Udostępnij, potem Dodaj do ekranu początkowego.',
+    action: 'Zainstaluj',
+    dismiss: 'Zamknij monit instalacji',
+  },
+  support: {
+    buyMeAPint: 'Postaw mi kufel',
+    pintShort: 'Kufel',
+    thanks: 'Jeśli OriginWise Ci pomaga, możesz postawić mi kufel:',
+  },
+  welcome: {
+    title: 'Witamy w OriginWise',
+    body: 'Szybkie sprawdzenie: czy ten produkt lub marka ma związek z Chinami? Wpisz nazwę lub zrób zdjęcie opakowania. AI może się mylić — to nie jest porada prawna.',
+    accept: 'Rozumiem — zacznij sprawdzać',
+  },
+  check: {
+    identifiedAs: 'Rozpoznano jako: {name}',
+    chinaLink: {
+      title: 'Powiązanie z Chinami',
+      chinaCompany: 'Chińska firma',
+      chinaControlled: 'Pod chińską kontrolą',
+      hq: 'Siedziba',
+      owner: 'Właściciel kontrolujący',
+      brandOrigin: 'Pochodzenie marki',
+      madeIn: 'Wyprodukowano w',
+      parts: 'Części',
+      china: 'Chiny',
+      unconfirmed: 'Niepotwierdzone',
+      partsChina: 'Część elementów wyprodukowana w Chinach',
+      hqParentNote: 'Siedziba w Chinach z odpowiedzi należy do spółki matki',
+      madeInBelow: 'Kraj produkcji ustala się tylko w karcie „Wyprodukowano w” (kod kreskowy, etykieta lub zgodność modelu).',
+      madeInChina: 'Wyprodukowano w Chinach',
+      factory: 'Fabryka / OEM',
+      supply: 'Dostawy',
+      footnote: 'Ta karta opisuje tylko, gdzie firma ma siedzibę, kto jest jej właścicielem i gdzie produkt jest wytwarzany. Nie jest oceną jakości ani bezpieczeństwa produktu ani samej firmy.',
+      controlling: 'Kontrola',
+      reasonParent: 'Kontrolująca spółka matka ma siedzibę w Chinach kontynentalnych.',
+      reasonBrandOrigin: 'Pochodzenie marki: {place}.',
+      madeInLineBarcode: 'Wyprodukowano w: {place} (zgodność kodu kreskowego, zob. kartę „Wyprodukowano w” poniżej)',
+      madeInLineLabel: 'Wyprodukowano w: {place} (etykieta opakowania, zob. kartę „Wyprodukowano w” poniżej)',
+      madeInLineModel: 'Wyprodukowano w: {place} (zgodność dokładnego modelu, zob. kartę „Wyprodukowano w” poniżej)',
+    },
+    rc: {
+      modelRef: 'Wskazanie modelu (niepotwierdzone)',
+      modelRefHelp: 'Nie potwierdza tego żadna strona internetowa ani etykieta na opakowaniu; to tylko przypuszczenie modelu. Kieruj się etykietą na opakowaniu.',
+      moreInfo: 'Więcej informacji',
+      candidatesTitle: 'Znalezione kraje produkcji (niepotwierdzone)',
+      noCandidates: 'Nie znaleziono wiarygodnych kandydatów.',
+      vote: '{country} ({n}/{total})',
+      sourcesSilent: '{n} źródeł nie podaje kraju produkcji.',
+      noMadeInStated: 'Żadne z {total} źródeł nie podaje kraju produkcji.',
+      weakTitle: 'Odniesienie modelu (niepotwierdzone)',
+      mostly: 'Głównie {country}',
+      mostlyHelp: 'Źródła, które podają kraj produkcji, wskazują tutaj. To nie jest potwierdzenie z etykiety.',
+      sourceCount: 'Źródła: {n}',
+      sourceFirst: 'Źródło 1: {label}',
+      sourceNth: 'Źródło {n}: {label}',
+      sourceAiAnswer: 'Odpowiedź AI',
+      oneExactModelPage: '1 strona z dokładnie tym modelem',
+      dispute: 'Sporne: {sides}',
+      disputeSideExact: '{country} (strony z dokładnie tym modelem: {n})',
+      disputeSideMixed: '{country} (strony: {n}, z dokładnie tym modelem: {e})',
+      disputeSidePages: '{country} (strony: {n})',
+      disputeSideLabel: '{country} (etykieta opakowania)',
+      disputeSideLabelPages: '{country} (etykieta opakowania; strony: {n})',
+      disputeSideLabelExact: '{country} (etykieta opakowania; strony z dokładnie tym modelem: {n})',
+      disputeSideLabelMixed: '{country} (etykieta opakowania; strony: {n}, z dokładnie tym modelem: {e})',
+      disputeSep: '; ',
+      designInfo: 'Dodatkowa informacja: projekt / inżynieria według marki: {country}. To nie jest miejsce produkcji.',
+      brandInfo: 'Dodatkowa informacja: pochodzenie marki według opisu: {country}. To nie jest miejsce produkcji.',
+      infoSource: 'Źródło: {label}',
+      foldUnconfirmed: 'Ostateczny kraj produkcji niepotwierdzony: {reason}. Pozostałe kraje to tylko kandydaci.',
+      citedUnverified: 'Cytowane przez AI, nie udało się zweryfikować',
+      excludedOtherModel: 'Inny model ({model}), nie liczy się',
+      reason: {
+        aiOnly: 'Tylko odpowiedź AI, żadna strona jej nie potwierdza',
+        pagesDisagree: 'Strony internetowe są sprzeczne',
+        sourcesDisagree: 'Źródła są niezgodne',
+        aiCitedUnverified: 'Nie udało się zweryfikować linku cytowanego przez AI',
+        onePageOnly: 'Wspomina o tym tylko jedna strona',
+      },
+      sourceCountry: 'wyprodukowano w: {country}',
+      labelSource: 'Źródło: zdjęcie etykiety opakowania',
+      parent: 'Spółka matka',
+      tagConfirmed: 'Potwierdzone',
+      tagLikely: 'Prawdopodobne',
+      tagMentioned: 'Wspomniane',
+      tagUnconfirmed: 'Niepotwierdzone',
+      foldSources: 'Wszystkie źródła',
+      foldAlts: 'Alternatywne marki',
+      foldAi: 'Szczegóły AI / wyszukiwania',
+      tip: {
+        tier: 'Związek z Chinami kontynentalnymi: siedziba, właściciel kontrolujący i potwierdzone miejsce produkcji.',
+        madeIn: 'Potwierdzone tylko etykietą, kodem kreskowym, dwiema stronami dokładnego modelu albo odpowiedzią modelu plus jedną taką stroną. Inne kraje to głosy.',
+        layers: 'Jeden fakt w wierszu. Plakietka mówi, czy potwierdza go etykieta lub strona.',
+        confidence: 'Jak mocno fakty o firmie wspierają ten związek. Nieznane zostaje na poziomie co najwyżej 45%.',
+        confirmed: 'Etykieta, kod kreskowy albo dwie strony dokładnego modelu (albo odpowiedź modelu plus jedna taka strona).',
+        likely: 'Wymienione na stronie tego modelu. Jedna strona nie potwierdza.',
+        mentioned: 'Wymienione, bez strony, która to potwierdza.',
+        unconfirmed: 'Niepotwierdzone etykietą ani pasującymi stronami.',
+        vote: 'Źródła, które podały ten kraj, spośród przeczytanych stron plus odpowiedzi modelu.',
+      },
+      expand: 'Pokaż',
+      collapse: 'Ukryj',
+    },
+    matchBasis: {
+      barcode: 'Dopasowano po kodzie kreskowym',
+      name: 'Dopasowano po nazwie produktu',
+      label: 'Według oznaczenia na opakowaniu',
+      model: 'Zgodność dokładnego modelu',
+    },
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Badanie w sieci — zapytanie wysłane do {name}',
+    searchUsage: 'Wyszukiwanie w sieci: {provider} · liczba zapytań: {n}',
+    knowledgeWebVia:
+      'Obejmuje badanie w sieci na żywo ({provider}) oraz wiedzę modelu. Nadal nie jest to rejestr spółek ani baza celna — etykiety i dokumenty urzędowe mogą się różnić od stron WWW. Informacyjnie — nie porada prawna, handlowa ani sankcyjna.',
+    title: 'Szybkie sprawdzenie',
+    subtitle: 'Czy ten produkt ma związek z Chinami? Wpisz nazwę lub zrób zdjęcie opakowania.',
+    placeholder: 'np. marka przekąsek, telefon, zabawka…',
+    placeholderWithPhoto: 'Opcjonalnie: co to za produkt?',
+    photo: 'Aparat',
+    gallery: 'Galeria',
+    removePhoto: 'Usuń zdjęcie',
+    photoLabelHint: 'Odczytamy etykietę, jeśli tekst jest czytelny',
+    noteOptional: 'Opcjonalna notatka',
+    submit: 'Sprawdź teraz',
+    submitting: 'Sprawdzanie…',
+    needInput: 'Wpisz nazwę produktu lub dodaj zdjęcie.',
+    howLink: 'Jak to działa',
+    newCheck: 'Nowe sprawdzenie',
+    comingSoon:
+      'API sprawdzania pojawi się w późniejszym PR. Historia i ustawienia są gotowe.',
+    photoTooLarge: 'Zdjęcie jest nadal za duże po kompresji.',
+    photoInvalid: 'Nie udało się odczytać tego obrazu.',
+    dropPhoto: 'Upuść zdjęcie tutaj',
+    unnamedPhoto: '(zdjęcie)',
+    partsTitle: 'Części, zamienniki i składniki',
+    partsHint:
+      'Wyodrębnione z tego produktu — główne komponenty, części zamienne lub składniki i czy wyglądają na związane z Chinami.',
+    partKind: {
+      part: 'Część',
+      spare: 'Zamiennik',
+      ingredient: 'Składnik',
+      component: 'Komponent',
+    },
+    progressHint: 'Analiza pochodzenia i firmy…',
+    stepMonolith: 'Zbieranie sygnałów produktu i firmy',
+    answeredBy: 'Główna odpowiedź przez {name}',
+    agentsUsed: '{n} agentów',
+    agentsTitle: 'Użyta pula AI',
+    agentsSummary: '{total} wywołań · {ok} ok · {fail} nieudanych',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'silne powiązanie',
+      moderate: 'umiarkowane powiązanie',
+      weak: 'słabe powiązanie',
+      unverified: 'powiązanie (niepotwierdzone)',
+    },
+    agentsHint:
+      'Każdy wiersz to jedno darmowe wywołanie AI serwera. Niepowodzenia często oznaczają limit, brak dostępu do modelu lub timeout; próbujemy innych albo zapasowego. Live web wymaga Gemini Search grounding (to nie to samo co RPM tekstu).',
+    agentsHintVia:
+      'Każdy wiersz to jedno darmowe wywołanie AI serwera. Niepowodzenia często oznaczają limit, brak dostępu do modelu lub timeout; próbujemy innych albo zapasowego. Wyszukiwanie w sieci na żywo wykonano przez {provider}.',
+    agentOk: 'OK',
+    agentFail: 'Niepowodzenie ({err})',
+    agentSkipped: 'Pominięto ({err})',
+    agentFailUnknown: 'błąd',
+    agentError: {
+      upstream_quota: 'limit / ograniczenie tempa',
+      upstream_credits: 'środki AI wyczerpane',
+      upstream_error: 'błąd źródła',
+      upstream_unavailable: 'usługa niedostępna',
+      empty_response: 'pusta odpowiedź',
+      model_unavailable: 'model niedostępny na tym kluczu API',
+      search_grounding_unavailable:
+        'Google Search grounding niedostępny na tym kluczu (spróbuj modeli puli Default / włącz rozliczenia; Gemini 3 Search często 0/0)',
+      disabled: 'wyłączone',
+      gemini_not_configured: 'Gemini nie skonfigurowano',
+      no_entity: 'brak nazwy produktu',
+    },
+    agent: {
+      identify: 'Odczyt etykiety / nazwy',
+      product: 'Miejsce produktu',
+      company: 'Powiązania firmy',
+      verify: 'Weryfikacja',
+      alternatives: 'Alternatywy o mniejszym powiązaniu CN',
+      monolith: 'Pełne sprawdzenie (jedno wywołanie)',
+      dual_core: 'Produkt + firma',
+      dual_alts: 'Alternatywy o mniejszym powiązaniu CN',
+      web: 'Wyszukiwanie w sieci',
+      score: 'Wynik ogólny',
+      unknownProvider: 'Nieznane AI',
+    },
+    provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+      gemini: 'Gemini',
+      openai: 'OpenAI',
+      grok: 'Grok (xAI)',
+      claude: 'Claude',
+    },
+    reasons: 'Dlaczego ten poziom',
+    reason: {
+      made_in_cn: 'Produkt jest wytwarzany w Chinach kontynentalnych.',
+      made_in_cn_detail: 'Produkt jest wytwarzany w: {place}.',
+      origin_cn: 'Pochodzenie produktu jest powiązane z Chinami kontynentalnymi.',
+      origin_cn_detail: 'Pochodzenie produktu podano jako {place}.',
+      manufacturer_cn: 'Producent jest powiązany z Chinami kontynentalnymi.',
+      manufacturer_cn_detail: 'Lokalizacja/powiązanie producenta: {place}.',
+      hq_cn: 'Siedziba firmy jest w Chinach kontynentalnych.',
+      hq_cn_detail: 'Siedziba firmy jest w: {place}.',
+      parent_majority_cn:
+        'Większościowa/kontrolująca spółka matka jest powiązana z Chinami kontynentalnymi.',
+      ownership_strong_cn:
+        'Zgłoszono silne powiązania własnościowe lub kontrolne z Chinami kontynentalnymi.',
+      ownership_weak_cn:
+        'Zgłoszono słabsze powiązania (np. udział mniejszościowy, łańcuch dostaw lub sprzedaż) z Chinami kontynentalnymi.',
+      component_cn:
+        'Niektóre komponenty lub montaż są powiązane z Chinami kontynentalnymi, bez pełnego twierdzenia „made in China”.',
+      explicit_non_cn_geo:
+        'Wyraźne sygnały miejsca wskazują poza Chiny kontynentalne (w zakresie tego narzędzia).',
+      explicit_non_cn_geo_detail:
+        'Wyraźne sygnały miejsca poza Chinami kontynentalnymi: {places}.',
+      verify_conflict:
+        'Sygnały produktu i firmy nie były w pełni zgodne (weryfikacja krzyżowa znalazła konflikty).',
+      conflict_no_strong:
+        'Sygnały się gryzły i nie było silnego powiązania z Chinami kontynentalnymi — wynik pozostawiono niepewny.',
+      insufficient:
+        'Za mało wiarygodnych informacji o pochodzeniu lub własności, by ocenić powiązania z Chinami.',
+      ownership_not_assessed:
+        'Własność firmy nie została w pełni oceniona w tym sprawdzeniu.',
+      taiwan_as_country:
+        'Tajwan jest traktowany jako osobne państwo i nie liczy się jako „związany z Chinami” w tej ocenie.',
+      taiwan_as_country_detail:
+        'Tajwan jest traktowany jako osobne państwo (występuje w: {places}) i nie liczy się jako „związany z Chinami” w tej ocenie.',
+    },
+    caveats: 'Zastrzeżenia',
+    disclaimer:
+      'Tylko informacyjnie — wiedza modelu i opcjonalne badanie w sieci, nie porada prawna ani sankcyjna. AI może się mylić.',
+    knowledgeModel:
+      'Wyłącznie na podstawie ogólnej wiedzy modelu (bez wyszukiwania w sieci na żywo). Pochodzenie marki, zakłady komponentów i montaż końcowy/kraj pochodzenia mogą się różnić w zależności od SKU/rynku — ufaj etykietom. To nie rejestr spółek ani baza celna. Informacyjnie — nie porada prawna, handlowa ani sankcyjna.',
+    knowledgeWeb:
+      'Obejmuje badanie w sieci na żywo (Google Search przez grounding Gemini) oraz wiedzę modelu. Nadal nie jest to rejestr spółek ani baza celna — etykiety i dokumenty urzędowe mogą się różnić od stron WWW. Informacyjnie — nie porada prawna, handlowa ani sankcyjna.',
+    providerNotConfigured:
+      'Sprawdzanie AI nie jest skonfigurowane. Dodaj klucz w .dev.vars i uruchom `npm run pages:dev` (zob. README).',
+    rateLimited:
+      'Limit darmowego serwera: 1 sprawdzenie co 30 sekund. Poczekaj chwilę.',
+    rateLimitedDay:
+      'Limit darmowego serwera: maks. 10 sprawdzeń na 6 godzin. Spróbuj później.',
+    rateLimitBadge: 'Limit darmowego serwera',
+    rateLimitFreeNote:
+      'Darmowy serwer · 1 sprawdzenie / 30 s · maks. 10 / 6 godz. · 1 naraz',
+    rateLimitRpmTitle: 'Limit tempa darmowego serwera (30 s)',
+    rateLimitedLongTitle: 'Limit 6 godzin darmowego serwera',
+    rateLimitInflightTitle: 'Sprawdzanie już trwa',
+    rateLimitShortDetail:
+      'Limit darmowego serwera: {n} sprawdzeń co {w} s. Poczekaj ok. {s} s i spróbuj ponownie.',
+    rateLimitLongDetail:
+      'Limit darmowego serwera: {n} sprawdzeń na {h} godz. Spróbuj za ok. {m} min.',
+    rateLimitMinuteDetail:
+      'Limit darmowego serwera: {n} sprawdzeń co {w} s. Poczekaj ok. {s} s i spróbuj ponownie.',
+    rateLimitDayDetail:
+      'Limit darmowego serwera: {n} sprawdzeń na {h} godz. Spróbuj później.',
+    rateLimitInflightDetail:
+      'Darmowy serwer pozwala na tylko 1 sprawdzenie naraz. Poczekaj, aż obecne się skończy.',
+    rateLimitAutoIn: 'Automatycznie za {s} s…',
+    rateLimitAutoHint:
+      'Zostanie wysłane automatycznie za {s} s, gdy otworzy się okno darmowego serwera.',
+    rateLimitAutoStop: 'Stop',
+    rateLimitAutoCancelled:
+      'Automatyczne wysłanie anulowane. Możesz spróbować ponownie, gdy będziesz gotów.',
+    forbiddenOrigin: 'Żądanie niedozwolone z tego źródła.',
+    badRequest: 'Nieprawidłowe żądanie.',
+    parseError: 'Nie udało się zrozumieć odpowiedzi. Spróbuj ponownie.',
+    upstreamError: 'Usługa odpowiedzi zawiodła. Spróbuj później.',
+    upstreamQuota: 'Usługa odpowiedzi jest zajęta. Spróbuj później.',
+    upstreamUnavailable: 'Usługa odpowiedzi jest chwilowo niedostępna.',
+    emptyResponse: 'Nie zwrócono odpowiedzi. Spróbuj ponownie.',
+    serverError: 'Coś poszło nie tak. Spróbuj ponownie.',
+    forceRefresh: 'Sprawdź ponownie (pomiń cache)',
+    forceRefreshHint:
+      'Ta odpowiedź pochodziła z cache. Ponowne sprawdzenie uruchamia świeży przebieg AI (nadal liczy się do limitów darmowego serwera).',
+    cached: 'cache',
+    degraded: 'wynik częściowy',
+    relationLabel: 'Związek z Chinami',
+    confidence: '{n}% pewności',
+    confidenceRelation: '{n}% powiązanie firmy',
+    productFacts: 'Produkt',
+    companyFacts: 'Firma',
+    brand: 'Marka',
+    madeIn: 'Wyprodukowano w (ta sztuka / końcowy kraj pochodzenia)',
+    madeInUnconfirmed: 'Ostateczny kraj pochodzenia niepotwierdzony — zobacz komponenty / linię globalną',
+    originLayersTitle: 'Warstwy pochodzenia',
+    originLayersIntro:
+      'Oddziela markę/ops, własność, końcowe COO i części — własność to nie made-in.',
+    layerBrandOps: 'Marka / ops',
+    layerOwnership: 'Własność / spółki matki',
+    layerOwnershipHint: 'To nie końcowe COO / made-in',
+    layerOwnershipEmpty: 'Brak sygnału własności/spółki matki w tym wyniku',
+    layerFinalCoo: 'Końcowe COO',
+    layerParts: 'Kandydaci części',
+    partsModelOnlyBanner:
+      'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'Limit wyszukiwania AI wyczerpany — dokładniejsze informacje są teraz niedostępne. Sprawdź ponownie po dziennym resecie.',
+    aiCreditsUsedUp:
+      'Środki usługi AI tymczasowo się wyczerpały — dokładniejsze informacje są teraz niedostępne. Spróbuj ponownie później.',
+    srv: {
+      partOmittedNoEvidence:
+        'Pominięto kraj części: brak dowodów z wyszukiwania/etykiety (siedziba marki nie jest krajem pochodzenia części).',
+      partOmittedUnconfirmed:
+        'Pominięto kraj części: niepotwierdzony przez wyszukiwanie/etykietę dla tej części.',
+      madeInOmittedBrand:
+        'Pominięto kraj produkcji: pasował tylko do kraju marki/projektu, bez dowodów z fabryki lub pochodzenia.',
+      madeInOmittedOwnership:
+        'Pominięto kraj produkcji: Chiny pochodzą wyłącznie z danych o własności/spółce matce, nie z produktu, etykiety ani sprzedawcy.',
+      cooUnconfirmedSeeParts:
+        'Ostateczny kraj pochodzenia niepotwierdzony – kandydatów szukaj w linii komponentów/produkcji globalnej lub w częściach (produkcja niepotwierdzona).',
+      cooUnconfirmedNoLabel:
+        'Ostateczny kraj pochodzenia niepotwierdzony – brak kraju pochodzenia na produkcie/etykiecie; żaden nie jest zmyślany.',
+      cooUnconfirmedNoBarcode:
+        'Ostateczny kraj produkcji niepotwierdzony; pozostałe kraje to tylko kandydaci.',
+      cooUnconfirmedCandidates:
+        'Ostateczny kraj pochodzenia niepotwierdzony – poniżsi kandydaci to sygnały z wyszukiwania, nie nadrukowane „Made in”.',
+      distributorOmitted:
+        'Lokalnego dystrybutora / agenta rynkowego pominięto wśród spółek matek (nie jest prawnym właścicielem).',
+      chinaLinkUnclear:
+        'Powiązanie z Chinami niejasne – nie traktuj jako potwierdzonego braku powiązań.',
+      verifyConflict:
+        'Weryfikacja wykazała sprzeczne sygnały',
+      companyNotAssessed:
+        'Nie oceniono danych o firmie/własności',
+      taiwanSeparate:
+        'Tajwan jest traktowany jako odrębny kraj w poziomach powiązań',
+      webUnavailableLabel:
+        'Wyszukiwanie w sieci na żywo niedostępne – kraje części pochodzą ze zdjęcia etykiety, nie z wyszukiwania.',
+      altsAim:
+        'Alternatywne marki/produkty mają mniejsze zaangażowanie Chin (nie tylko podobieństwo). Poziomy są szacunkowe; sama siedziba nie dowodzi produkcji poza Chinami.',
+      altsNone:
+        'Nie znaleziono z wystarczającą pewnością alternatyw o mniejszym zaangażowaniu Chin.',
+      sumCooUnconfirmed:
+        'Ostateczny kraj pochodzenia niepotwierdzony',
+      tierUnknown:
+        'Za mało dowodów, by ocenić powiązania z Chinami.',
+      tierNone:
+        'W dostępnych sygnałach nie znaleziono powiązań z Chinami.',
+      tierDirect:
+        'Znaleziono sygnały bezpośrednich powiązań z Chinami.',
+      tierIndirect:
+        'Znaleziono sygnały pośrednich powiązań z Chinami.',
+      cooConflictChina:
+        'Ostateczny kraj pochodzenia niepotwierdzony – sygnał {source} ({label}) przeczy „Made in China”; sama własność/spółka matka nie wyznacza kraju produkcji.',
+      cooConflictMadeIn:
+        'Ostateczny kraj pochodzenia niepotwierdzony – sygnał {source} ({label}) przeczy produkcji w {madeIn}; zachowano tylko jako kandydata.',
+      candidate:
+        '{label} ({rating}, {pct}%, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Modele wyszukiwania na żywo były niedostępne dla tego klucza API – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_search_grounding_unavailable:
+        'Wyszukiwarka Google na żywo była niedostępna dla tego klucza API – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_upstream_credits:
+        'Wyczerpano środki usługi AI (saldo przedpłacone puste) – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_upstream_quota:
+        'Wyczerpano dzienny darmowy limit wyszukiwania Google – spróbuj po dziennym resecie – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_upstream_unavailable:
+        'Wyszukiwanie w sieci na żywo przekroczyło czas lub usługa była przeciążona – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_empty_response:
+        'Wyszukiwanie w sieci na żywo zwróciło pustą odpowiedź – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_disabled:
+        'Wyszukiwanie w sieci na żywo było wyłączone dla tego sprawdzenia – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_gemini_not_configured:
+        'Gemini nie jest skonfigurowany do wyszukiwania na żywo – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_no_entity:
+        'Brak nazwy produktu do wyszukiwania na żywo – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      webFail_default:
+        'Brak wyszukiwania w sieci na żywo dla tego sprawdzenia – kraje produkcji i części są ostrożniejsze (tylko wiedza modelu).',
+      sum: {
+        madeIn: 'Wyprodukowano w: {value}',
+        candidates: 'Kandydaci: {value}',
+        brandOrigin: 'Pochodzenie marki: {value}',
+        components: 'Komponenty/produkcja globalna: {value}',
+        parts: 'Części: {value}',
+        hq: 'Siedziba: {value}',
+        company: 'Firma: {value}',
+      },
+      signal: {
+        ocr: 'etykieta',
+        retailer: 'sprzedawca',
+        manufacturer: 'producent',
+        ownership: 'własność',
+        unknown: 'nieznane',
+      },
+    },
+    partsSourcesLabel: 'Sources',
+    sectionShareSave: 'Zapisz obraz',
+    sectionShareShare: 'Udostępnij',
+    sectionShareSaved: 'Zapisano',
+    sectionShareFailed: 'Nie udało się zapisać obrazu',
+    sectionShareHint: 'Najedź na warstwę, by zapisać lub udostępnić',
+    originCandidates: 'Queried origin candidates',
+    candidateRating: {
+      confirmed: 'confirmed COO',
+      likely: 'likely',
+      possible: 'possible',
+      mentioned: 'mentioned',
+    },
+    candidateSource: {
+      web_name: 'strona WWW (dopasowanie nazwy)',
+      confirmed_coo: 'stamped COO',
+      parts: 'parts / BOM',
+      components_line: 'components / global line',
+      notes: 'notes',
+      manufacturer: 'manufacturer',
+      filings: 'filings',
+      model_memory: 'model knowledge',
+      ownership: 'własność / matka',
+    },
+    origin: 'Pochodzenie',
+    brandOrigin: 'Pochodzenie marki',
+    componentsOrigin: 'Komponenty / linia globalna',
+    productNotes: 'Uwagi o pochodzeniu',
+    manufacturer: 'Producent',
+    company: 'Firma',
+    hq: 'Siedziba',
+    parents: 'Spółki matki',
+    graphTitle: 'Graf powiązań',
+    graphHint:
+      'Strzałki pokazują, jak łączą się produkt, części, firma, fabryki, spółki matki i miejsca. Rozwiń lub powiększ, jeśli etykiety są ciasne.',
+    graphControls: 'Sterowanie grafem',
+    graphZoomIn: 'Powiększ',
+    graphZoomOut: 'Pomniejsz',
+    graphExpand: 'Rozwiń',
+    graphCollapse: 'Zwiń',
+    graphRelations: 'Powiązania',
+    graphNoEdges: 'Dla tego wyniku nie wywnioskowano powiązań.',
+    graphLink: 'powiązane',
+    graphChinaLinked: 'Powiązane z Chinami',
+    graphLegendCn: 'Węzeł/krawędź powiązana z Chinami',
+    graphLegendOther: 'Inne',
+    graphEdge: {
+      brand: 'marka',
+      brand_company: 'marka',
+      'brand/company': 'marka',
+      made_in: 'wyprodukowano w',
+      hq: 'siedziba',
+      parent: 'spółka matka',
+      majority: 'właściciel większościowy',
+      wholly: 'w pełni własność',
+      minority: 'udział mniejszościowy',
+      ownership: 'własność',
+      affiliation: 'marka',
+      manufacturing: 'fabryka / OEM',
+      design: 'projekt',
+      company: 'firma',
+      model: 'odpowiedź modelu',
+      supply: 'dostawa',
+      part: 'część',
+      spare: 'zamiennik',
+      ingredient: 'składnik',
+      component: 'komponent',
+    },
+    regionsTitle: 'Regiony',
+    altBrands: 'Marki o mniejszym udziale Chin (szacunek)',
+    altProducts: 'Produkty o mniejszym udziale Chin (szacunek)',
+    altDisclaimer:
+      'Tylko substytuty szacowane jako nie bezpośrednio powiązane z Chinami (bez wypełniaczy „made in China”). Siedziba w USA/UE sama w sobie nie dowodzi produkcji poza Chinami. Niejasne miejsce produkcji to Nieznane, nie Bez związku.',
+    estimated: 'szac.',
+    twNote:
+      'Tajwan jest traktowany jako osobne państwo i nigdy jako związany z Chinami przy poziomach.',
+    region: {
+      CN: 'Chiny kontynentalne',
+      HK: 'Hongkong',
+      TW: 'Tajwan',
+      MO: 'Makau',
+      OTHER: 'Inne',
+      UNKNOWN: 'Nieznane',
+    },
+    overall: {
+      title: 'Ogółem',
+      score: 'Wynik',
+    },
+    steps: {
+      start: 'Start',
+      cache: 'Cache',
+      identify: 'Odczyt etykiety',
+      web: 'Badanie w sieci',
+      monolith: 'Pełna analiza',
+      score: 'Wynik ogólny',
+    },
+  },
+  history: {
+    title: 'Historia',
+    subtitle: 'Poprzednie sprawdzenia na tym urządzeniu',
+    empty: 'Brak poprzednich sprawdzeń.',
+    withPhoto: 'Zdjęcie',
+    open: 'Otwórz',
+    remove: 'Usuń',
+    search: 'Szukaj',
+    searchPlaceholder: 'Szukaj sprawdzeń',
+    sort: 'Sortuj',
+    sortNewest: 'Najnowsze',
+    sortOldest: 'Najstarsze',
+    sortScoreHigh: 'Najwyższy wynik',
+    sortScoreLow: 'Najniższy wynik',
+    sortName: 'Nazwa',
+    removeAll: 'Usuń wszystkie',
+    removeAllConfirm: 'Usunąć wszystkie zapisane sprawdzenia?',
+    noMatches: 'Żadne sprawdzenie nie pasuje do wyszukiwania.',
+  },
+  settings: {
+    title: 'Ustawienia',
+    subtitle: 'Preferencje i dane na tym urządzeniu',
+    panelDisplay: 'Język i motyw',
+    panelCheck: 'Co sprawdzać',
+    panelData: 'Usuń dane',
+    language: 'Język',
+    theme: 'Motyw',
+    themeSystem: 'System',
+    themeLight: 'Jasny',
+    themeDark: 'Ciemny',
+    geoScope: 'Zakres Chin dla poziomów',
+    geoScopeHint:
+      'Tajwan zawsze jest traktowany jako osobne państwo i nigdy nie steruje poziomami związku z Chinami. Tylko ChRL używa Chin kontynentalnych. Greater China może opcjonalnie obejmować Hongkong i Makau (nie Tajwan).',
+    geoScopePrc: 'Tylko ChRL / kontynent (domyślnie)',
+    geoScopeGreater: 'CN + Hongkong + Makau (nie Tajwan)',
+    dimensions: 'Co sprawdzać',
+    dimensionsHint:
+      'Alternatywy o mniejszym udziale Chin są domyślnie wyłączone. Włącz alternatywy marek lub produktów, jeśli chcesz substytuty z mniejszym powiązaniem z Chinami (dodatkowe wywołanie AI).',
+    dimOrigin: 'Miejsce pochodzenia',
+    dimManufacturer: 'Pochodzenie producenta',
+    dimCompany: 'Relacje firmy',
+    dimAltBrands: 'Alternatywy marek o mniejszym udziale Chin',
+    dimAltProducts: 'Alternatywy produktów o mniejszym udziale Chin',
+    howItWorks: 'Jak to działa',
+    about: 'O OriginWise',
+    version: 'Wersja {v}',
+    cleanData: 'Usuń dane lokalne',
+    cleanDataHint:
+      'Dane zostają tylko w tej przeglądarce. Wybierz, co usunąć. Tego nie da się cofnąć.',
+    dataSummary: 'Na tym urządzeniu',
+    dataNone: 'Brak zapisanych danych OriginWise.',
+    dataHistory: 'Poprzednie sprawdzenia: {n}',
+    dataSettings: 'Własne ustawienia',
+    dataDisclaimer: 'Zastrzeżenie zaakceptowane',
+    cleanAll: 'Wszystko',
+    cleanHistory: 'Tylko poprzednie sprawdzenia',
+    cleanSettings: 'Tylko ustawienia',
+    cleanConfirm: 'Usunąć wybrane dane?',
+    cleanConfirmBtn: 'Usuń teraz',
+    cleanDoneAll: 'Usunięto wszystkie lokalne dane OriginWise.',
+    cleanDoneHistory: 'Usunięto poprzednie sprawdzenia.',
+    cleanDoneSettings: 'Ustawienia przywrócono do wartości domyślnych.',
+  },
+  about: {
+    title: 'O aplikacji',
+    tagline: 'Proste sprawdzenie związku produktu z Chinami',
+    intro:
+      'OriginWise pomaga szybko zobaczyć, czy produkt lub marka wygląda na związaną z Chinami — miejsce pochodzenia, producent i powiązania firmy — z opcjonalnymi alternatywami o mniejszym udziale. Sprawdzenia zostają na tym urządzeniu.',
+    body: 'OriginWise to proste narzędzie do szybkiego sprawdzenia związku z Chinami codziennych produktów i marek. AI może być niekompletne lub błędne.',
+    privacy: 'Bez konta. Historia zostaje na tym telefonie/przeglądarce.',
+    license: 'Licencja MIT',
+    licenseShort: 'MIT',
+    openSourceTitle: 'Open source · MIT',
+    openSourceBody:
+      'Ten projekt to wolne oprogramowanie na licencji MIT. Możesz go używać, kopiować, modyfikować, łączyć, publikować, rozpowszechniać i sublicencjonować — także we własnym wdrożeniu z własnymi kluczami API.',
+    copyrightLine: 'Copyright © {year} {name}',
+    licenseAsIs:
+      'Dostarczane „tak jak jest”, bez gwarancji. Pełny tekst licencji na GitHubie.',
+    linkSource: 'Kod źródłowy',
+    linkLicense: 'Licencja MIT',
+    linkIssues: 'Zgłoszenia i opinie',
+    linkReleases: 'Wydania',
+    linkSecurity: 'Polityka bezpieczeństwa',
+    privacyTitle: 'Twoja prywatność',
+    privacyLead:
+      'Trzymamy to prosto: bez konta, a historia sprawdzeń zostaje na Twoim telefonie lub komputerze.',
+    privacyBullet1:
+      'Poprzednie sprawdzenia, ustawienia i preferencje są zapisywane tylko w tej przeglądarce na Twoim urządzeniu.',
+    privacyBullet2: 'Nie ma logowania ani kopii w chmurze Twojego dziennika sprawdzeń.',
+    privacyBullet3:
+      'W każdej chwili możesz wszystko wyczyścić przez „Usuń dane lokalne” w Ustawieniach.',
+    privacyBullet4:
+      'Gdy uruchamiasz sprawdzenie, nazwa lub zdjęcie są wysyłane tylko po tę odpowiedź. Nie przechowujemy opakowań jako katalogu produktów.',
+    privacyBullet5:
+      'Zdjęcia są kompresowane na Twoim urządzeniu przed wysłaniem i nie są przechowywane jako rekordy serwera.',
+    privacyBullet6:
+      'Przy włączonym badaniu w sieci na żywo nazwa produktu (i tekst etykiety) jest też jednorazowo wysyłana do usługi wyszukiwania: najpierw Google Search przez Gemini, a Brave Search lub Firecrawl tylko wtedy, gdy to się nie uda. Kroki postępu i wynik podają faktycznie użytą usługę. Nie zapisujemy zapytań wyszukiwania.',
+    privacyPolicyLink: 'Polityka prywatności',
+    termsLink: 'Warunki korzystania',
+    designTitle: 'Jak to działa',
+    designLead:
+      'Szybkie sprawdzenie AI wieloma agentami, potem stała tabela ocen — nie baza prawna.',
+    designLocalTitle: 'Co zostaje na Twoim urządzeniu',
+    designLocalBody:
+      'Po załadowaniu aplikacji historia, język, motyw i preferencje sprawdzeń są zapisywane tylko w tej przeglądarce. Wyczyść dane witryny lub użyj „Usuń dane lokalne”.',
+    designWhyTitle: 'Dlaczego tak to zbudowaliśmy',
+    designWhy1: 'Szybkie sprawdzenia na telefonie bez zakładania konta.',
+    designWhy2: 'Historia zostaje u Ciebie — możesz ją wyczyścić w każdej chwili.',
+    designWhy3:
+      'AI może się mylić; pokazujemy zastrzeżenia i traktujemy Tajwan jako osobne państwo przy poziomach.',
+    disclaimerTitle: 'Uwaga',
+    disclaimerBody:
+      'OriginWise jest tylko informacyjne — to nie porada prawna, celna ani sankcyjna. AI i etykiety poziomów mogą być niekompletne lub błędne. Krytyczne decyzje zawsze weryfikuj samodzielnie.',
+    createdBy: 'Utrzymywane przez',
+    contributionsWelcome: 'Zgłoszenia i pull requesty są mile widziane na GitHubie.',
+  },
+  how: {
+    title: 'Jak to działa',
+    subtitle: 'Szybkie sprawdzenie związku z Chinami — po prostu',
+    aimTitle: 'Do czego jest ta aplikacja',
+    aimBody:
+      'Pomaga szybko zobaczyć, czy produkt lub marka wygląda na związaną z Chinami — wytwarzana tam, powiązania firmy itd. To nie narzędzie głębokiego researchu ani sprawdzenie prawne.',
+    stepsTitle: 'Prosto mówiąc',
+    step1Title: 'Wysyłasz coś',
+    step1Body: 'Nazwę produktu, markę albo zdjęcie opakowania.',
+    step2Title: 'Szukamy z AI',
+    step2Body:
+      'Uruchamiane są małe sprawdzenia: miejsce produktu i firma (razem), potem szybka weryfikacja. Opcjonalnie: alternatywy marek/produktów o mniejszym udziale Chin, jeśli je włączysz.',
+    step3Title: 'Dostajesz prosty wynik',
+    step3Body:
+      'Kolorowa odznaka: Bez związku, Pośredni, Bezpośredni lub Nieznane — plus krótkie dlaczego.',
+    graphTitle: 'Pełny przebieg',
+    graphHint: 'Od Twojego wpisu do kolorowej odznaki.',
+    flowYou: 'Ty (nazwa / zdjęcie)',
+    flowAi: 'Sprawdzenia AI',
+    flowProduct: 'Miejsce produktu',
+    flowCompany: 'Firma',
+    flowVerify: 'Weryfikacja',
+    flowScore: 'Prosta ocena',
+    flowResult: 'Kolorowy wynik',
+    flowAiDetail:
+      'Najpierw miejsce produktu + firma, potem szybka weryfikacja.',
+    flowScoreDetail: 'Łączymy odpowiedzi w jedną prostą ocenę.',
+    badgeTitle: 'Co oznaczają kolory',
+    badgeNone: 'Bez związku — nie znaleziono jasnego powiązania z Chinami',
+    badgeIndirect: 'Pośredni — słabsze lub częściowe powiązanie',
+    badgeDirect: 'Bezpośredni — jasne powiązanie (np. made in China lub siedziba tam)',
+    badgeUnknown: 'Nieznane — za mało jasnych informacji',
+    twTitle: 'Tajwan',
+    twBody:
+      'Tajwan zawsze liczy się tu jako własne państwo. Sam w sobie nie liczy się jako „związany z Chinami”.',
+    evidenceTitle:
+      'Kiedy kraj produkcji uznaje się za potwierdzony',
+    evidenceBody:
+      'Kraj produkcji może zostać pokazany jako potwierdzony na trzy sposoby. Najsilniejszy: zdjęcie etykiety opakowania lub strona internetowa z tym samym kodem kreskowym (JAN/EAN) obok informacji o pochodzeniu (zgodność kodu kreskowego). Dalej zgodność dokładnego modelu: odpowiedź AI i co najmniej jedna strona z dokładną marką i modelem podają ten sam kraj albo zgadzają się co najmniej dwie takie strony z różnych serwisów; odpowiedź AI jest wtedy pokazana jako jedno ze źródeł. W obu przypadkach żadna strona z dokładnym modelem nie może podawać innego kraju. Sama odpowiedź AI nigdy nie jest potwierdzeniem i pozostaje odniesieniem modelu; gdy strony z dokładnym modelem są sprzeczne, kraj pozostaje niepotwierdzony, a kandydaci są wymienieni. Link cytowany przez AI liczy się dopiero po sprawdzeniu: strona (zwrócona przez wyszukiwanie albo wczytana) musi podawać dokładny model i ten sam kraj i nie może być odrzucona jako inny model; w przeciwnym razie jest oznaczony jako „Cytowane przez AI, nie udało się zweryfikować” i się nie liczy. Luźne dopasowanie po nazwie produktu jest pokazywane tylko jako kandydat pod „Niepotwierdzone”, a strona z kilkoma rozmiarami lub wariantami pozostaje niepotwierdzona. Gdy wyszukiwanie w sieci na żywo jest niedostępne, wynik opiera się wyłącznie na wiedzy modelu i jest tak oznaczony.',
+    flowWeb:
+      'Wyszukiwanie w sieci',
+    flowWebDetail:
+      'Wyszukiwanie stron po nazwie produktu lub kodzie kreskowym i sprawdzenie informacji o pochodzeniu.',
+    privacyTitle: 'Twoje dane',
+    privacyBody:
+      'Historia zostaje na tym urządzeniu, a zdjęcia nie są przechowywane na serwerze. Gdy wyszukiwanie w sieci na żywo jest włączone, nazwa produktu lub kod kreskowy trafia do usług wyszukiwania. AI może się mylić — ważne decyzje zawsze sprawdzaj.',
+    tryBtn: 'Wypróbuj sprawdzenie',
+  },
+  tier: {
+    none: 'Bez związku',
+    indirect: 'Pośredni',
+    direct: 'Bezpośredni',
+    unknown: 'Nieznane',
+  },
+} satisfies MessageTree;

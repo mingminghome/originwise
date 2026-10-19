@@ -1,0 +1,115 @@
+/**
+ * Map machine tierReason codes → user-facing copy.
+ * Codes stay stable in storage/API; only the UI label is localized.
+ */
+
+import type { CheckResult } from '../types';
+import { localeOfT, type TFunction } from './index';
+import { inScope, normalizeRegion } from '../../../functions/_lib/regions';
+import { localizeCountry } from './countries';
+
+const KNOWN = new Set([
+  'made_in_cn',
+  'origin_cn',
+  'manufacturer_cn',
+  'hq_cn',
+  'parent_majority_cn',
+  'ownership_strong_cn',
+  'ownership_weak_cn',
+  'component_cn',
+  'explicit_non_cn_geo',
+  'verify_conflict',
+  'taiwan_as_country',
+  'conflict_no_strong',
+  'insufficient',
+  'ownership_not_assessed',
+]);
+
+
+function uniquePlaces(result: CheckResult): string[] {
+  const raw = [
+    result.product?.madeIn,
+    result.product?.manufacturedIn,
+    result.product?.originCountry,
+    result.product?.manufacturerCountry,
+    result.company?.hqCountry,
+  ]
+    .map((s) => (s ? String(s).trim() : ''))
+    .filter(Boolean);
+  return [...new Set(raw)];
+}
+
+/**
+ * Places outside the China scope (for "non-CN geo" reason bullets).
+ * Same region rules as the server tier, so 中國 / 中国 never land here
+ * (the old \b regex missed CJK names). Taiwan always counts as outside.
+ */
+function uniqueNonCnPlaces(result: CheckResult): string[] {
+  const scope = result.geoScope === 'greater_china' ? 'greater_china' : 'prc';
+  return uniquePlaces(result).filter((p) => {
+    const r = normalizeRegion(p);
+    return r !== 'UNKNOWN' && !inScope(r, scope);
+  });
+}
+
+function humanizeCode(code: string): string {
+  return code
+    .replace(/_/g, ' ')
+    .replace(/\bcn\b/gi, 'China')
+    .replace(/\bhq\b/gi, 'HQ');
+}
+
+/**
+ * One bullet for the "Why this tier" list.
+ */
+export function formatTierReason(
+  code: string,
+  t: TFunction,
+  result: CheckResult
+): string {
+  const loc = (p: string) => localizeCountry(t, p);
+  const listSep = localeOfT(t) === 'zh-Hant' ? '、' : ', ';
+  const places = uniquePlaces(result).map(loc);
+  const placeStr = [...new Set(places)].join(listSep);
+  const nonCnStr = [...new Set(uniqueNonCnPlaces(result).map(loc))].join(listSep);
+
+  // Prefer detail variants when we have concrete place names
+  if (code === 'explicit_non_cn_geo' && nonCnStr) {
+    return t('check.reason.explicit_non_cn_geo_detail', { places: nonCnStr });
+  }
+  if (code === 'explicit_non_cn_geo') {
+    return t('check.reason.explicit_non_cn_geo');
+  }
+  if (code === 'made_in_cn') {
+    const p = result.product?.madeIn || result.product?.manufacturedIn;
+    if (p) return t('check.reason.made_in_cn_detail', { place: loc(p) });
+  }
+  if (code === 'origin_cn' && result.product?.originCountry) {
+    return t('check.reason.origin_cn_detail', {
+      place: loc(result.product.originCountry),
+    });
+  }
+  if (code === 'manufacturer_cn') {
+    const country = result.product?.manufacturerCountry;
+    const p = country ? loc(country) : result.product?.manufacturer;
+    if (p) return t('check.reason.manufacturer_cn_detail', { place: p });
+  }
+  if (code === 'hq_cn' && result.company?.hqCountry) {
+    return t('check.reason.hq_cn_detail', {
+      place: loc(result.company.hqCountry),
+    });
+  }
+  if (code === 'taiwan_as_country' && placeStr) {
+    return t('check.reason.taiwan_as_country_detail', { places: placeStr });
+  }
+
+  if (KNOWN.has(code)) {
+    return t(`check.reason.${code}`);
+  }
+
+  // Unknown / future codes: soft humanize, never show raw snake_case alone if avoidable
+  const key = `check.reason.${code}`;
+  const translated = t(key);
+  if (translated !== key) return translated;
+  return humanizeCode(code);
+}

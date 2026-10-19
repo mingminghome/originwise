@@ -1,0 +1,39 @@
+{
+  "name": "originwise",
+  "private": true,
+  "version": "0.4.15",
+  "description": "Product origin checker",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && tsc -p tsconfig.functions.json && vite build",
+    "lint": "oxlint",
+    "typecheck": "tsc -b && tsc -p tsconfig.functions.json",
+    "preview": "vite preview",
+    "pages:dev": "npm run build && npx --yes wrangler pages dev dist --compatibility-date=2024-09-23",
+    "deploy": "npm run build && npx --yes wrangler pages deploy dist --project-name=originwise",
+    "deploy:preview": "npm run build && npx --yes wrangler pages deploy dist --project-name=originwise --branch=preview",
+    "build:dictionary": "node scripts/build-dictionary.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mingminghome/originwise.git"
+  },
+  "dependencies": {
+    "html-to-image": "^1.11.13",
+    "lucide-react": "^1.25.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "oxlint": "^1.71.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1",
+    "wordlist-english": "1.2.1"
+  }
+}

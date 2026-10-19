@@ -1,0 +1,694 @@
+import type { MessageTree } from './en';
+
+export const sv = {
+  appName: 'OriginWise',
+  tabs: {
+    check: 'Kolla',
+    history: 'Historik',
+    about: 'Om',
+    settings: 'Inställningar',
+    navMore: 'Meny',
+  },
+  common: {
+    present: 'Ja',
+    /** Separator after a short label (full-width in CJK). */
+    labelSep: ': ',
+    missing: 'Nej',
+    cancel: 'Avbryt',
+    confirm: 'Bekräfta',
+    delete: 'Ta bort',
+    back: 'Tillbaka',
+    loading: 'Laddar…',
+    optional: 'Valfritt',
+  },
+  install: {
+    aria: 'Installera OriginWise',
+    title: 'Installera OriginWise',
+    body: 'Lägg till på hemskärmen för en snabb app-liknande koll.',
+    bodyIos: 'Lägg till på hemskärmen för helskärm.',
+    iosStep1: 'Tryck',
+    iosStep2: 'Dela, sedan Lägg till på hemskärmen.',
+    action: 'Installera',
+    dismiss: 'Stäng installationsprompten',
+  },
+  support: {
+    buyMeAPint: 'Bjud mig på en pint',
+    pintShort: 'Pint',
+    thanks: 'Om OriginWise hjälper dig kan du bjuda mig på en pint:',
+  },
+  welcome: {
+    title: 'Välkommen till OriginWise',
+    body: 'Snabbkoll: är den här produkten eller det här varumärket relaterat till Kina? Skriv ett namn eller fotografera förpackningen. AI kan ha fel — inte juridisk rådgivning.',
+    accept: 'Uppfattat — börja kolla',
+  },
+  check: {
+    identifiedAs: 'Identifierad som: {name}',
+    chinaLink: {
+      title: 'Koppling till Kina',
+      chinaCompany: 'Kinesiskt företag',
+      chinaControlled: 'Under kinesisk kontroll',
+      hq: 'Huvudkontor',
+      owner: 'Kontrollerande ägare',
+      brandOrigin: 'Varumärkets ursprung',
+      madeIn: 'Tillverkad i',
+      parts: 'Delar',
+      china: 'Kina',
+      unconfirmed: 'Ej bekräftat',
+      partsChina: 'Vissa delar tillverkade i Kina',
+      hqParentNote: 'Huvudkontoret i Kina i svaret tillhör moderbolaget',
+      madeInBelow: 'Tillverkningslandet avgörs bara i kortet ”Tillverkad i” (streckkod, förpackningsetikett eller modellmatchning).',
+      madeInChina: 'Tillverkad i Kina',
+      factory: 'Fabrik / OEM',
+      supply: 'Leverans',
+      footnote: 'Det här kortet beskriver bara var företaget har sitt säte, vem som äger det och var produkten tillverkas. Det är inte ett omdöme om produktens kvalitet eller säkerhet eller om företaget.',
+      controlling: 'Kontroll',
+      reasonParent: 'Det kontrollerande moderbolaget finns i Fastlandskina.',
+      reasonBrandOrigin: 'Varumärkets ursprung: {place}.',
+      madeInLineBarcode: 'Tillverkad i: {place} (streckkodsmatchning, se kortet ”Tillverkad i” nedan)',
+      madeInLineLabel: 'Tillverkad i: {place} (förpackningsetikett, se kortet ”Tillverkad i” nedan)',
+      madeInLineModel: 'Tillverkad i: {place} (matchning på exakt modell, se kortet ”Tillverkad i” nedan)',
+    },
+    rc: {
+      modelRef: 'Modellens uppgift (obekräftad)',
+      modelRefHelp: 'Inte bekräftad av någon webbsida eller förpackningsetikett; det är bara modellens gissning. Utgå från etiketten på förpackningen.',
+      moreInfo: 'Mer info',
+      candidatesTitle: 'Hittade kandidater för tillverkningsland (ej bekräftade)',
+      noCandidates: 'Inga tillförlitliga kandidater hittades.',
+      vote: '{country} ({n}/{total})',
+      sourcesSilent: '{n} källor anger inget tillverkningsland.',
+      noMadeInStated: 'Ingen av {total} källor anger ett tillverkningsland.',
+      weakTitle: 'Modellreferens (obekräftad)',
+      mostly: 'Mestadels {country}',
+      mostlyHelp: 'Källorna som anger ett tillverkningsland pekar hit. Det här är inte en etikettbekräftelse.',
+      sourceCount: 'Källor: {n}',
+      sourceFirst: 'Källa 1: {label}',
+      sourceNth: 'Källa {n}: {label}',
+      sourceAiAnswer: 'AI-svar',
+      oneExactModelPage: '1 sida med exakt denna modell',
+      dispute: 'Omtvistat: {sides}',
+      disputeSideExact: '{country} (sidor med exakt denna modell: {n})',
+      disputeSideMixed: '{country} (sidor: {n}, med exakt denna modell: {e})',
+      disputeSidePages: '{country} (sidor: {n})',
+      disputeSideLabel: '{country} (förpackningsetikett)',
+      disputeSideLabelPages: '{country} (förpackningsetikett; sidor: {n})',
+      disputeSideLabelExact: '{country} (förpackningsetikett; sidor med exakt denna modell: {n})',
+      disputeSideLabelMixed: '{country} (förpackningsetikett; sidor: {n}, med exakt denna modell: {e})',
+      disputeSep: '; ',
+      designInfo: 'Extra info: design / konstruktion enligt varumärket: {country}. Det är inte tillverkningslandet.',
+      brandInfo: 'Extra info: varumärkets ursprung enligt uppgift: {country}. Det är inte tillverkningslandet.',
+      infoSource: 'Källa: {label}',
+      foldUnconfirmed: 'Slutligt tillverkningsland ej bekräftat: {reason}. Andra länder är bara kandidater.',
+      citedUnverified: 'Citerad av AI, kunde inte verifieras',
+      excludedOtherModel: 'Annan modell ({model}), räknas inte',
+      reason: {
+        aiOnly: 'Bara AI-svaret, ingen webbsida stöder det',
+        pagesDisagree: 'Webbsidorna säger emot varandra',
+        sourcesDisagree: 'Källorna är oense',
+        aiCitedUnverified: 'AI-citerad länk kunde inte verifieras',
+        onePageOnly: 'Bara en webbsida nämner det',
+      },
+      sourceCountry: 'tillverkad i {country}',
+      labelSource: 'Källa: foto av förpackningens etikett',
+      parent: 'Moderbolag',
+      tagConfirmed: 'Bekräftat',
+      tagLikely: 'Trolig',
+      tagMentioned: 'Nämnd',
+      tagUnconfirmed: 'Ej bekräftat',
+      foldSources: 'Alla källor',
+      foldAlts: 'Alternativa varumärken',
+      foldAi: 'AI-/sökdetaljer',
+      tip: {
+        tier: 'Koppling till Fastlandskina: säte, kontrollerande ägare och bekräftat tillverkningsland.',
+        madeIn: 'Bekräftas bara av förpackningstext, streckkod, två sidor för exakt modell, eller modellens svar plus en sådan sida. Andra länder är röster.',
+        layers: 'Ett faktum per rad. Märket säger om en etikett eller en sida bekräftar det.',
+        confidence: 'Hur starkt företagsfakta stöder kopplingen. Okänt stannar på högst 45 %.',
+        confirmed: 'Förpackningstext, streckkod eller två sidor för exakt modell (eller modellens svar plus en sådan sida).',
+        likely: 'Nämnt på en sida för den här modellen. En sida räcker inte.',
+        mentioned: 'Nämnt, utan en sida som bekräftar det.',
+        unconfirmed: 'Inte bekräftat av etikett eller matchande sidor.',
+        vote: 'Källor som nämnde det här landet, av lästa sidor plus modellens svar.',
+      },
+      expand: 'Visa',
+      collapse: 'Dölj',
+    },
+    matchBasis: {
+      barcode: 'Matchad via streckkod',
+      name: 'Matchad via produktnamn',
+      label: 'Enligt förpackningens märkning',
+      model: 'Matchning på exakt modell',
+    },
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Webbforskning — sökning skickad till {name}',
+    searchUsage: 'Webbsökning: {provider} · sökförfrågningar: {n}',
+    knowledgeWebVia:
+      'Inkluderar en live-webforskning ({provider}) plus modellkunskap. Fortfarande inte ett företagsregister eller en tullbas — etiketter och officiella handlingar kan skilja sig från webbsidor. Informativt — inte juridisk, handels- eller sanktionsrådgivning.',
+    title: 'Snabbkoll',
+    subtitle: 'Är den här varan relaterad till Kina? Skriv ett namn eller fotografera förpackningen.',
+    placeholder: 't.ex. snacksvarumärke, telefon, leksak…',
+    placeholderWithPhoto: 'Valfritt: vad är den här produkten?',
+    photo: 'Kamera',
+    gallery: 'Galleri',
+    removePhoto: 'Ta bort foto',
+    photoLabelHint: 'Vi läser etiketten om texten är tydlig',
+    noteOptional: 'Valfri anteckning',
+    submit: 'Kolla nu',
+    submitting: 'Kollar…',
+    needInput: 'Skriv ett produktnamn eller lägg till ett foto.',
+    howLink: 'Så fungerar det',
+    newCheck: 'Ny koll',
+    comingSoon:
+      'Koll-API:t kommer i en senare PR. Historik och inställningar är redo.',
+    photoTooLarge: 'Fotot är fortfarande för stort efter komprimering.',
+    photoInvalid: 'Kunde inte läsa den bilden.',
+    dropPhoto: 'Släpp fotot här',
+    unnamedPhoto: '(foto)',
+    partsTitle: 'Delar, reservdelar och ingredienser',
+    partsHint:
+      'Isolerat från den här produkten — viktiga komponenter, reservdelar eller ingredienser och om de verkar Kina-kopplade.',
+    partKind: {
+      part: 'Del',
+      spare: 'Reservdel',
+      ingredient: 'Ingrediens',
+      component: 'Komponent',
+    },
+    progressHint: 'Analyserar ursprung och företag…',
+    stepMonolith: 'Samlar produkt- och företagssignaler',
+    answeredBy: 'Huvudsvar via {name}',
+    agentsUsed: '{n} agenter',
+    agentsTitle: 'AI-pool som använts',
+    agentsSummary: '{total} anrop · {ok} ok · {fail} misslyckade',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'stark koppling',
+      moderate: 'måttlig koppling',
+      weak: 'svag koppling',
+      unverified: 'koppling (obekräftad)',
+    },
+    agentsHint:
+      'Varje rad är ett gratisserver-AI-anrop. Misslyckanden beror ofta på kvot, modellåtkomst eller timeout; vi försöker andra eller en reserv. Live-web kräver Gemini Search grounding (inte samma sak som text-RPM).',
+    agentsHintVia:
+      'Varje rad är ett gratisserver-AI-anrop. Misslyckanden beror ofta på kvot, modellåtkomst eller timeout; vi försöker andra eller en reserv. Live-webbsökningen kördes via {provider}.',
+    agentOk: 'OK',
+    agentFail: 'Misslyckades ({err})',
+    agentSkipped: 'Hoppad över ({err})',
+    agentFailUnknown: 'fel',
+    agentError: {
+      upstream_quota: 'kvot / hastighetsgräns',
+      upstream_credits: 'AI-kredit slut',
+      upstream_error: 'uppströmsfel',
+      upstream_unavailable: 'tjänsten otillgänglig',
+      empty_response: 'tomt svar',
+      model_unavailable: 'modellen inte tillgänglig på den här API-nyckeln',
+      search_grounding_unavailable:
+        'Google Search grounding inte tillgänglig på den här nyckeln (prova Default-poolmodeller / aktivera fakturering; Gemini 3 Search är ofta 0/0)',
+      disabled: 'avstängd',
+      gemini_not_configured: 'Gemini inte konfigurerad',
+      no_entity: 'inget produktnamn',
+    },
+    agent: {
+      identify: 'Läs etikett / namn',
+      product: 'Produktplats',
+      company: 'Företagskopplingar',
+      verify: 'Dubbelkolla',
+      alternatives: 'Alternativ med mindre CN-koppling',
+      monolith: 'Full koll (ett anrop)',
+      dual_core: 'Produkt + företag',
+      dual_alts: 'Alternativ med mindre CN-koppling',
+      web: 'Webbsökning',
+      score: 'Samlad poäng',
+      unknownProvider: 'Okänd AI',
+    },
+    provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+      gemini: 'Gemini',
+      openai: 'OpenAI',
+      grok: 'Grok (xAI)',
+      claude: 'Claude',
+    },
+    reasons: 'Varför den här nivån',
+    reason: {
+      made_in_cn: 'Produkten tillverkas i Fastlandskina.',
+      made_in_cn_detail: 'Produkten tillverkas i {place}.',
+      origin_cn: 'Produktens ursprung är kopplat till Fastlandskina.',
+      origin_cn_detail: 'Produktens ursprung anges som {place}.',
+      manufacturer_cn: 'Tillverkaren är kopplad till Fastlandskina.',
+      manufacturer_cn_detail: 'Tillverkarens plats/koppling: {place}.',
+      hq_cn: 'Företagets huvudkontor ligger i Fastlandskina.',
+      hq_cn_detail: 'Företagets huvudkontor ligger i {place}.',
+      parent_majority_cn:
+        'Ett majoritets-/kontrollerande moderbolag är kopplat till Fastlandskina.',
+      ownership_strong_cn:
+        'Starka ägar- eller kontrollkopplingar till Fastlandskina rapporterades.',
+      ownership_weak_cn:
+        'Svagare kopplingar (t.ex. minoritetsandel, leverans eller detaljhandel) till Fastlandskina rapporterades.',
+      component_cn:
+        'Vissa komponenter eller montering är kopplade till Fastlandskina, utan ett fullständigt ”made in China”-påstående.',
+      explicit_non_cn_geo:
+        'Tydliga platssignaler pekar utanför Fastlandskina (för det här verktygets omfattning).',
+      explicit_non_cn_geo_detail:
+        'Tydliga platssignaler utanför Fastlandskina: {places}.',
+      verify_conflict:
+        'Produkt- och företagssignaler stämde inte helt (korskontrollen fann konflikter).',
+      conflict_no_strong:
+        'Signalerna krockade och det fanns ingen stark Fastlandskina-koppling — resultatet lämnades osäkert.',
+      insufficient:
+        'Inte tillräckligt med tillförlitlig ursprungs- eller ägarinformation för att bedöma Kina-relaterade kopplingar.',
+      ownership_not_assessed:
+        'Företagets ägande bedömdes inte fullt ut i den här kollen.',
+      taiwan_as_country:
+        'Taiwan behandlas som ett eget land och räknas inte som ”Kina-relaterat” för den här poängen.',
+      taiwan_as_country_detail:
+        'Taiwan behandlas som ett eget land (syns i: {places}) och räknas inte som ”Kina-relaterat” för den här poängen.',
+    },
+    caveats: 'Förbehåll',
+    disclaimer:
+      'Endast information — modellkunskap och valfri live-webforskning, inte juridisk eller sanktionsrådgivning. AI kan ha fel.',
+    knowledgeModel:
+      'Endast baserat på allmän modellkunskap (ingen live-websökning). Varumärkesursprung, komponentfabriker och slutmontering/ursprungsland kan skilja sig per SKU/marknad — prioritera förpackningsetiketter. Inte ett företagsregister eller en tullbas. Informativt — inte juridisk, handels- eller sanktionsrådgivning.',
+    knowledgeWeb:
+      'Inkluderar en live-webforskning (Google Search via Gemini-grounding) plus modellkunskap. Fortfarande inte ett företagsregister eller en tullbas — etiketter och officiella handlingar kan skilja sig från webbsidor. Informativt — inte juridisk, handels- eller sanktionsrådgivning.',
+    providerNotConfigured:
+      'AI-kollen är inte konfigurerad. Lägg till en nyckel i .dev.vars och kör `npm run pages:dev` (se README).',
+    rateLimited:
+      'Gratisservergräns: 1 koll var 30:e sekund. Vänta en stund.',
+    rateLimitedDay:
+      'Gratisservergräns: max 10 kollar per 6 timmar. Försök igen senare.',
+    rateLimitBadge: 'Gratisservergräns',
+    rateLimitFreeNote:
+      'Gratisserver · 1 koll / 30s · max 10 / 6 timmar · 1 i taget',
+    rateLimitRpmTitle: 'Gratisserverns hastighetsgräns (30s)',
+    rateLimitedLongTitle: 'Gratisserverns 6-timmarsgräns',
+    rateLimitInflightTitle: 'En koll pågår redan',
+    rateLimitShortDetail:
+      'Gratisservergräns: {n} koll(ar) var {w}s. Vänta ungefär {s}s och försök igen.',
+    rateLimitLongDetail:
+      'Gratisservergräns: {n} kollar per {h} timmar. Försök igen om ungefär {m} minuter.',
+    rateLimitMinuteDetail:
+      'Gratisservergräns: {n} koll(ar) var {w}s. Vänta ungefär {s}s och försök igen.',
+    rateLimitDayDetail:
+      'Gratisservergräns: {n} kollar per {h} timmar. Försök igen senare.',
+    rateLimitInflightDetail:
+      'Gratisservern tillåter bara 1 koll i taget. Vänta tills den pågående kollen är klar.',
+    rateLimitAutoIn: 'Automatiskt om {s}s…',
+    rateLimitAutoHint:
+      'Skickas automatiskt om {s}s när gratisserverns fönster öppnas.',
+    rateLimitAutoStop: 'Stoppa',
+    rateLimitAutoCancelled:
+      'Automatisk sändning avbruten. Du kan försöka igen när du är redo.',
+    forbiddenOrigin: 'Begäran tillåts inte från den här origin.',
+    badRequest: 'Ogiltig begäran.',
+    parseError: 'Kunde inte förstå svaret. Försök igen.',
+    upstreamError: 'Svartjänsten misslyckades. Försök igen senare.',
+    upstreamQuota: 'Svartjänsten är upptagen. Försök igen senare.',
+    upstreamUnavailable: 'Svartjänsten är tillfälligt otillgänglig.',
+    emptyResponse: 'Inget svar returnerades. Försök igen.',
+    serverError: 'Något gick fel. Försök igen.',
+    forceRefresh: 'Kolla igen (hoppa över cache)',
+    forceRefreshHint:
+      'Det här svaret var cachat. Att kolla igen kör en ny AI-omgång (räknas fortfarande mot gratisservergränserna).',
+    cached: 'cache',
+    degraded: 'delresultat',
+    relationLabel: 'Kina-relation',
+    confidence: '{n} % konfidens',
+    confidenceRelation: '{n} % företagskoppling',
+    productFacts: 'Produkt',
+    companyFacts: 'Företag',
+    brand: 'Varumärke',
+    madeIn: 'Tillverkad i (denna enhet / slutligt ursprungsland)',
+    madeInUnconfirmed: 'Slutligt ursprungsland obekräftat — se komponenter / global linje',
+    originLayersTitle: 'Ursprungsskikt',
+    originLayersIntro:
+      'Separera varumärke/drift, ägarskap, slutlig COO och delar — ägarskap är inte made-in.',
+    layerBrandOps: 'Varumärke / drift',
+    layerOwnership: 'Ägarskap / moderbolag',
+    layerOwnershipHint: 'Inte slutlig COO / made-in',
+    layerOwnershipEmpty: 'Ingen ägarskaps-/moderbolagssignal i detta resultat',
+    layerFinalCoo: 'Slutlig COO',
+    layerParts: 'Delkandidater',
+    partsModelOnlyBanner:
+      'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'AI-sökkvoten är slut — mer exakt information finns inte just nu. Försök igen efter den dagliga återställningen.',
+    aiCreditsUsedUp:
+      'AI-tjänstens kredit är tillfälligt slut — mer exakt information är inte tillgänglig just nu. Försök igen senare.',
+    srv: {
+      partOmittedNoEvidence:
+        'Delens land utelämnat: inga belägg från sökning/etikett (varumärkets huvudkontor är inte en dels ursprung).',
+      partOmittedUnconfirmed:
+        'Delens land utelämnat: inte bekräftat av sökning/etikett för denna del.',
+      madeInOmittedBrand:
+        'Tillverkningsland utelämnat: det stämde bara med varumärkets/designens land, utan belägg från fabrik eller ursprung.',
+      madeInOmittedOwnership:
+        'Tillverkningsland utelämnat: Kina kommer bara från ägar-/moderbolagsdata, inte från produkt, etikett eller återförsäljare.',
+      cooUnconfirmedSeeParts:
+        'Slutligt ursprungsland obekräftat – se raden komponenter/global produktion eller delarna för kandidater (tillverkning inte bekräftad).',
+      cooUnconfirmedNoLabel:
+        'Slutligt ursprungsland obekräftat – inget ursprungsland på produkt/etikett; inget hittas på.',
+      cooUnconfirmedNoBarcode:
+        'Slutligt tillverkningsland ej bekräftat; andra länder är bara kandidater.',
+      cooUnconfirmedCandidates:
+        'Slutligt ursprungsland obekräftat – kandidaterna nedan är söksignaler, inte en tryckt ”Made in”.',
+      distributorOmitted:
+        'Lokal distributör / marknadsagent utelämnad från moderbolag (inte juridisk ägare).',
+      chinaLinkUnclear:
+        'Koppling till Kina oklar – behandla det inte som bekräftat utan Kina.',
+      verifyConflict:
+        'Kontrollen fann motstridiga signaler',
+      companyNotAssessed:
+        'Företags-/ägardata inte bedömda',
+      taiwanSeparate:
+        'Taiwan behandlas som ett eget land i kopplingsnivåerna',
+      webUnavailableLabel:
+        'Live webbsökning otillgänglig – delarnas länder kommer från fotot av etiketten, inte från sökning.',
+      altsAim:
+        'Alternativa varumärken/produkter siktar på mindre kinesisk inblandning (inte bara likhet). Nivåerna är uppskattningar; huvudkontoret ensamt bevisar inte tillverkning utanför Kina.',
+      altsNone:
+        'Inga alternativ med mindre kinesisk inblandning hittades med tillräcklig säkerhet.',
+      sumCooUnconfirmed:
+        'Slutligt ursprungsland obekräftat',
+      tierUnknown:
+        'För lite belägg för att bedöma kopplingar till Kina.',
+      tierNone:
+        'Inga kopplingar till Kina hittades i tillgängliga signaler.',
+      tierDirect:
+        'Direkta signaler om koppling till Kina hittades.',
+      tierIndirect:
+        'Indirekta signaler om koppling till Kina hittades.',
+      cooConflictChina:
+        'Slutligt ursprungsland obekräftat – {source}-signal ({label}) motsäger ”Made in China”; ägare/moderbolag ensamt avgör inte tillverkningslandet.',
+      cooConflictMadeIn:
+        'Slutligt ursprungsland obekräftat – {source}-signal ({label}) motsäger tillverkning i {madeIn}; behålls bara som kandidat.',
+      candidate:
+        '{label} ({rating}, {pct} %, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Live-sökmodeller var inte tillgängliga med denna API-nyckel – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_search_grounding_unavailable:
+        'Live Google-sökning var inte tillgänglig med denna API-nyckel – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_upstream_credits:
+        'AI-krediter slut (förbetalt saldo tomt) – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_upstream_quota:
+        'Dagens gratis Google-sökkvot är slut – försök igen efter den dagliga återställningen – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_upstream_unavailable:
+        'Live webbsökning fick timeout eller tjänsten var upptagen – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_empty_response:
+        'Live webbsökning gav ett tomt svar – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_disabled:
+        'Live webbsökning var avstängd för denna kontroll – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_gemini_not_configured:
+        'Gemini är inte konfigurerat för live webbsökning – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_no_entity:
+        'Inget produktnamn för live webbsökning – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      webFail_default:
+        'Ingen live webbsökning för denna kontroll – tillverknings- och delländer är mer försiktiga (endast modellkunskap).',
+      sum: {
+        madeIn: 'Tillverkad i: {value}',
+        candidates: 'Kandidater: {value}',
+        brandOrigin: 'Varumärkets ursprung: {value}',
+        components: 'Komponenter/global produktion: {value}',
+        parts: 'Delar: {value}',
+        hq: 'Huvudkontor: {value}',
+        company: 'Företag: {value}',
+      },
+      signal: {
+        ocr: 'etikett',
+        retailer: 'återförsäljare',
+        manufacturer: 'tillverkare',
+        ownership: 'ägande',
+        unknown: 'okänt',
+      },
+    },
+    partsSourcesLabel: 'Sources',
+    sectionShareSave: 'Spara bild',
+    sectionShareShare: 'Dela',
+    sectionShareSaved: 'Sparad',
+    sectionShareFailed: 'Kunde inte spara bilden',
+    sectionShareHint: 'Hovra över ett lager för att spara eller dela',
+    originCandidates: 'Queried origin candidates',
+    candidateRating: {
+      confirmed: 'confirmed COO',
+      likely: 'likely',
+      possible: 'possible',
+      mentioned: 'mentioned',
+    },
+    candidateSource: {
+      web_name: 'webbsida (namnmatchning)',
+      confirmed_coo: 'stamped COO',
+      parts: 'parts / BOM',
+      components_line: 'components / global line',
+      notes: 'notes',
+      manufacturer: 'manufacturer',
+      filings: 'filings',
+      model_memory: 'model knowledge',
+      ownership: 'ägarskap / moder',
+    },
+    origin: 'Ursprung',
+    brandOrigin: 'Varumärkesursprung',
+    componentsOrigin: 'Komponenter / global linje',
+    productNotes: 'Ursprungsanteckningar',
+    manufacturer: 'Tillverkare',
+    company: 'Företag',
+    hq: 'Huvudkontor',
+    parents: 'Moderbolag',
+    graphTitle: 'Relationsgraf',
+    graphHint:
+      'Pilar visar hur produkt, delar, företag, fabriker, moderbolag och platser hänger ihop. Expandera eller zooma om etiketterna känns trånga.',
+    graphControls: 'Grafvy',
+    graphZoomIn: 'Zooma in',
+    graphZoomOut: 'Zooma ut',
+    graphExpand: 'Expandera',
+    graphCollapse: 'Fäll ihop',
+    graphRelations: 'Relationer',
+    graphNoEdges: 'Inga relationslänkar härleddes för det här resultatet.',
+    graphLink: 'relaterad',
+    graphChinaLinked: 'Kina-kopplad',
+    graphLegendCn: 'Kina-kopplad nod/kant',
+    graphLegendOther: 'Övrigt',
+    graphEdge: {
+      brand: 'varumärke',
+      brand_company: 'varumärke',
+      'brand/company': 'varumärke',
+      made_in: 'tillverkad i',
+      hq: 'huvudkontor',
+      parent: 'moderbolag',
+      majority: 'majoritetsägare',
+      wholly: 'helägt',
+      minority: 'minoritetsandel',
+      ownership: 'ägande',
+      affiliation: 'varumärke',
+      manufacturing: 'fabrik / OEM',
+      design: 'design',
+      company: 'företag',
+      model: 'modellsvar',
+      supply: 'leverans',
+      part: 'del',
+      spare: 'reservdel',
+      ingredient: 'ingrediens',
+      component: 'komponent',
+    },
+    regionsTitle: 'Regioner',
+    altBrands: 'Varumärken med mindre Kinainblandning (uppskattat)',
+    altProducts: 'Produkter med mindre Kinainblandning (uppskattat)',
+    altDisclaimer:
+      'Endast substitut som uppskattas som inte direkt Kina-kopplade (inga made-in-China-ifyllnader). Ett USA-/EU-huvudkontor bevisar inte ensamt tillverkning utanför Kina. Oklart tillverkningsland är Okänt, inte Orelaterat.',
+    estimated: 'uppsk.',
+    twNote:
+      'Taiwan behandlas som ett eget land och aldrig som Kina-relaterat för nivåerna.',
+    region: {
+      CN: 'Fastlandskina',
+      HK: 'Hongkong',
+      TW: 'Taiwan',
+      MO: 'Macao',
+      OTHER: 'Övrigt',
+      UNKNOWN: 'Okänt',
+    },
+    overall: {
+      title: 'Samlat',
+      score: 'Poäng',
+    },
+    steps: {
+      start: 'Startar',
+      cache: 'Cache',
+      identify: 'Läser etikett',
+      web: 'Webforskning',
+      monolith: 'Full analys',
+      score: 'Samlad poäng',
+    },
+  },
+  history: {
+    title: 'Historik',
+    subtitle: 'Tidigare kollar på den här enheten',
+    empty: 'Inga tidigare kollar ännu.',
+    withPhoto: 'Foto',
+    open: 'Öppna',
+    remove: 'Ta bort',
+    search: 'Sök',
+    searchPlaceholder: 'Sök kollar',
+    sort: 'Sortera',
+    sortNewest: 'Nyaste',
+    sortOldest: 'Äldsta',
+    sortScoreHigh: 'Högst poäng',
+    sortScoreLow: 'Lägst poäng',
+    sortName: 'Namn',
+    removeAll: 'Ta bort alla',
+    removeAllConfirm: 'Ta bort alla sparade kollar?',
+    noMatches: 'Inga kollar matchar sökningen.',
+  },
+  settings: {
+    title: 'Inställningar',
+    subtitle: 'Preferenser och data på den här enheten',
+    panelDisplay: 'Språk och tema',
+    panelCheck: 'Vad som ska kollas',
+    panelData: 'Radera data',
+    language: 'Språk',
+    theme: 'Tema',
+    themeSystem: 'System',
+    themeLight: 'Ljust',
+    themeDark: 'Mörkt',
+    geoScope: 'Kinaomfattning för nivåer',
+    geoScopeHint:
+      'Taiwan behandlas alltid som ett eget land och styr aldrig Kina-relationsnivåer. Endast Kina (Kina) använder Fastlandskina. Greater China kan valfritt inkludera Hongkong och Macao (inte Taiwan).',
+    geoScopePrc: 'Endast Kina / fastland (standard)',
+    geoScopeGreater: 'CN + Hongkong + Macao (inte Taiwan)',
+    dimensions: 'Vad som ska kollas',
+    dimensionsHint:
+      'Alternativ med mindre Kinainblandning är avstängda som standard. Slå på varumärkes- eller produktalternativ om du vill ha substitut med mindre Kinakoppling (extra AI-anrop).',
+    dimOrigin: 'Ursprungsplats',
+    dimManufacturer: 'Tillverkarens ursprung',
+    dimCompany: 'Företagsrelationer',
+    dimAltBrands: 'Varumärkesalternativ med mindre Kinainblandning',
+    dimAltProducts: 'Produktalternativ med mindre Kinainblandning',
+    howItWorks: 'Så fungerar det',
+    about: 'Om OriginWise',
+    version: 'Version {v}',
+    cleanData: 'Radera lokal data',
+    cleanDataHint:
+      'Data stannar bara i den här webbläsaren. Välj vad som ska tas bort. Detta kan inte ångras.',
+    dataSummary: 'På den här enheten',
+    dataNone: 'Ingen OriginWise-data sparad.',
+    dataHistory: 'Tidigare kollar: {n}',
+    dataSettings: 'Egna inställningar',
+    dataDisclaimer: 'Ansvarsfriskrivning accepterad',
+    cleanAll: 'Allt',
+    cleanHistory: 'Endast tidigare kollar',
+    cleanSettings: 'Endast inställningar',
+    cleanConfirm: 'Radera vald data?',
+    cleanConfirmBtn: 'Radera nu',
+    cleanDoneAll: 'All lokal OriginWise-data raderad.',
+    cleanDoneHistory: 'Tidigare kollar raderade.',
+    cleanDoneSettings: 'Inställningar återställda till standard.',
+  },
+  about: {
+    title: 'Om',
+    tagline: 'En enkel Kina-relaterad produktkoll',
+    intro:
+      'OriginWise hjälper dig att snabbt se om en produkt eller ett varumärke verkar relaterat till Kina — ursprungsplats, tillverkare och företagskopplingar — med valfria alternativ med mindre inblandning. Kollar stannar på den här enheten.',
+    body: 'OriginWise är ett enkelt verktyg för en snabb Kina-relaterad koll av vardagsprodukter och varumärken. AI kan vara ofullständig eller fel.',
+    privacy: 'Inget konto. Din historik stannar på den här telefonen/webbläsaren.',
+    license: 'MIT-licens',
+    licenseShort: 'MIT',
+    openSourceTitle: 'Öppen källkod · MIT',
+    openSourceBody:
+      'Det här projektet är fri programvara under MIT-licensen. Du får använda, kopiera, ändra, slå ihop, publicera, sprida och underlicensiera det — även för din egen driftsättning med egna API-nycklar.',
+    copyrightLine: 'Copyright © {year} {name}',
+    licenseAsIs:
+      'Tillhandahålls ”i befintligt skick”, utan garanti. Se den fullständiga licenstexten på GitHub.',
+    linkSource: 'Källkod',
+    linkLicense: 'MIT-licens',
+    linkIssues: 'Ärenden och feedback',
+    linkReleases: 'Utgåvor',
+    linkSecurity: 'Säkerhetspolicy',
+    privacyTitle: 'Din integritet',
+    privacyLead:
+      'Vi håller det enkelt: inget konto, och din kollhistorik stannar på din telefon eller dator.',
+    privacyBullet1:
+      'Tidigare kollar, inställningar och preferenser sparas bara i den här webbläsaren på din enhet.',
+    privacyBullet2: 'Det finns ingen inloggning och ingen molnkopia av din kolldagbok.',
+    privacyBullet3:
+      'Du kan radera allt när som helst med Radera lokal data i Inställningar.',
+    privacyBullet4:
+      'När du kör en koll skickas namnet eller fotot bara för det svaret. Vi sparar inte förpackningar som en produktkatalog.',
+    privacyBullet5:
+      'Foton komprimeras på din enhet före uppladdning och lagras inte som serverposter.',
+    privacyBullet6:
+      'Med live-webbforskning påslagen skickas produktnamnet (och etikettexten) också en gång till en söktjänst: först Google Search via Gemini och bara om det misslyckas Brave Search eller Firecrawl. Förloppsstegen och resultatet visar vilken tjänst som faktiskt användes. Vi sparar ingen logg över sökningar.',
+    privacyPolicyLink: 'Integritetspolicy',
+    termsLink: 'Användarvillkor',
+    designTitle: 'Så fungerar det',
+    designLead:
+      'Snabb multiagent-AI-koll, sedan en fast poängtabell — inte en juridisk databas.',
+    designLocalTitle: 'Vad som stannar på din enhet',
+    designLocalBody:
+      'Efter att appen laddats sparas historik, språk, tema och kollpreferenser bara i den här webbläsaren. Rensa webbplatsdata eller använd Radera lokal data.',
+    designWhyTitle: 'Varför vi byggde det så här',
+    designWhy1: 'Snabba mobilkollar utan att skapa ett konto.',
+    designWhy2: 'Historiken stannar hos dig — radera den när du vill.',
+    designWhy3:
+      'AI kan ha fel; vi visar förbehåll och behandlar Taiwan som ett eget land för nivåerna.',
+    disclaimerTitle: 'Observera',
+    disclaimerBody:
+      'OriginWise är endast information — inte juridisk, tull- eller sanktionsrådgivning. AI och nivåetiketter kan vara ofullständiga eller fel. Verifiera alltid kritiska beslut själv.',
+    createdBy: 'Underhålls av',
+    contributionsWelcome: 'Ärenden och pull requests är välkomna på GitHub.',
+  },
+  how: {
+    title: 'Så fungerar det',
+    subtitle: 'Snabb Kina-relaterad koll — håll det enkelt',
+    aimTitle: 'Vad den här appen är till för',
+    aimBody:
+      'Hjälpa dig att snabbt se om en produkt eller ett varumärke verkar relaterat till Kina — tillverkat där, företagskopplingar och så vidare. Inte ett djupforskningsverktyg, inte en juridisk kontroll.',
+    stepsTitle: 'Med enkla ord',
+    step1Title: 'Du skickar något',
+    step1Body: 'Ett produktnamn, ett varumärke eller ett foto av förpackningen.',
+    step2Title: 'Vi slår upp det med AI',
+    step2Body:
+      'Små kollar körs: produktplats och företag (tillsammans), sedan en snabb dubbelkoll. Valfritt: varumärkes-/produktalternativ med mindre Kinainblandning om du slår på dem.',
+    step3Title: 'Du får ett enkelt resultat',
+    step3Body:
+      'Ett färgmärke: Orelaterat, Indirekt, Direkt eller Okänt — plus ett kort varför.',
+    graphTitle: 'Hela flödet',
+    graphHint: 'Från din inmatning till färgmärket.',
+    flowYou: 'Du (namn / foto)',
+    flowAi: 'AI-kollar',
+    flowProduct: 'Produktplats',
+    flowCompany: 'Företag',
+    flowVerify: 'Dubbelkoll',
+    flowScore: 'Enkel poäng',
+    flowResult: 'Färgresultat',
+    flowAiDetail:
+      'Först produktplats + företag, sedan en snabb dubbelkoll.',
+    flowScoreDetail: 'Vi slår ihop svaren till en enkel poäng.',
+    badgeTitle: 'Vad färgerna betyder',
+    badgeNone: 'Orelaterat — ingen tydlig Kinakoppling hittades',
+    badgeIndirect: 'Indirekt — svagare eller delvis koppling',
+    badgeDirect: 'Direkt — tydlig koppling (t.ex. made in China eller huvudkontor där)',
+    badgeUnknown: 'Okänt — inte tillräckligt tydlig information',
+    twTitle: 'Taiwan',
+    twBody:
+      'Taiwan räknas här alltid som ett eget land. Det räknas inte i sig som ”Kina-relaterat”.',
+    evidenceTitle:
+      'När ett tillverkningsland räknas som bekräftat',
+    evidenceBody:
+      'Ett tillverkningsland visas som bekräftat på tre sätt. Starkast: ett foto av förpackningsetiketten, eller en webbsida som visar samma streckkod (JAN/EAN) bredvid ursprungsuppgiften (streckkodsmatchning). Därefter matchning på exakt modell: AI-svaret och minst en webbsida med exakt samma märke och modell anger samma land, eller två eller fler sådana sidor från olika webbplatser är överens; AI-svaret visas då som en av källorna. I båda fallen får ingen sida med den exakta modellen ange ett annat land. AI-svaret ensamt bekräftar aldrig något och förblir en modellreferens; om sidor med den exakta modellen säger emot varandra förblir landet obekräftat och kandidaterna listas. En länk som AI:n citerar räknas först efter en kontroll: sidan (från webbsökningen eller laddad) måste ange exakt modell och samma land och får inte vara utesluten som en annan modell; annars visas den som ”Citerad av AI, kunde inte verifieras” och räknas inte. En lös matchning på produktnamn visas bara som kandidat under ”Ej bekräftat”, och en sida med flera storlekar eller varianter förblir obekräftad. Om live-webbsökning inte är tillgänglig bygger resultatet bara på modellkunskap och anger det.',
+    flowWeb:
+      'Webbsökning',
+    flowWebDetail:
+      'Söka webbsidor på produktnamn eller streckkod och kontrollera ursprungsuppgiften.',
+    privacyTitle: 'Din data',
+    privacyBody:
+      'Historiken stannar på den här enheten och foton sparas inte på servern. Med live-webbsökning på skickas produktnamnet eller streckkoden till söktjänster. AI kan ha fel – dubbelkolla alltid viktiga beslut.',
+    tryBtn: 'Prova en koll',
+  },
+  tier: {
+    none: 'Orelaterat',
+    indirect: 'Indirekt',
+    direct: 'Direkt',
+    unknown: 'Okänt',
+  },
+} satisfies MessageTree;

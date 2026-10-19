@@ -1,0 +1,694 @@
+import type { MessageTree } from './en';
+
+export const nl = {
+  appName: 'OriginWise',
+  tabs: {
+    check: 'Checken',
+    history: 'Geschiedenis',
+    about: 'Over',
+    settings: 'Instellingen',
+    navMore: 'Menu',
+  },
+  common: {
+    present: 'Ja',
+    /** Separator after a short label (full-width in CJK). */
+    labelSep: ': ',
+    missing: 'Nee',
+    cancel: 'Annuleren',
+    confirm: 'Bevestigen',
+    delete: 'Verwijderen',
+    back: 'Terug',
+    loading: 'Laden…',
+    optional: 'Optioneel',
+  },
+  install: {
+    aria: 'OriginWise installeren',
+    title: 'OriginWise installeren',
+    body: 'Voeg toe aan je startscherm voor een snelle app-achtige check.',
+    bodyIos: 'Voeg toe aan het beginscherm voor gebruik op volledig scherm.',
+    iosStep1: 'Tik',
+    iosStep2: 'Deel, daarna Zet op beginscherm.',
+    action: 'Installeren',
+    dismiss: 'Installatieprompt sluiten',
+  },
+  support: {
+    buyMeAPint: 'Trakteer me op een pint',
+    pintShort: 'Pint',
+    thanks: 'Als OriginWise je helpt, kun je me een pint trakteren:',
+  },
+  welcome: {
+    title: 'Welkom bij OriginWise',
+    body: 'Snelle check: is dit product of dit merk China-gerelateerd? Typ een naam of fotografeer de verpakking. AI kan ernaast zitten — geen juridisch advies.',
+    accept: 'Begrepen — starten',
+  },
+  check: {
+    identifiedAs: 'Herkend als: {name}',
+    chinaLink: {
+      title: 'Band met China',
+      chinaCompany: 'Chinees bedrijf',
+      chinaControlled: 'Onder Chinese zeggenschap',
+      hq: 'Hoofdkantoor',
+      owner: 'Eigenaar met zeggenschap',
+      brandOrigin: 'Herkomst merk',
+      madeIn: 'Gemaakt in',
+      parts: 'Onderdelen',
+      china: 'China',
+      unconfirmed: 'Niet bevestigd',
+      partsChina: 'Sommige onderdelen gemaakt in China',
+      hqParentNote: 'Het hoofdkantoor in China uit het antwoord is dat van het moederbedrijf',
+      madeInBelow: 'Het productieland wordt alleen bepaald in de kaart ‘Gemaakt in’ (barcode, verpakkingslabel of modelmatch).',
+      madeInChina: 'Gemaakt in China',
+      factory: 'Fabriek / OEM',
+      supply: 'Levering',
+      footnote: 'Deze kaart beschrijft alleen waar het bedrijf gevestigd is, wie de eigenaar is en waar het product wordt gemaakt. Het is geen oordeel over de kwaliteit of veiligheid van het product of over het bedrijf.',
+      controlling: 'Zeggenschap',
+      reasonParent: 'Het moederbedrijf met zeggenschap is gevestigd in het Chinese vasteland.',
+      reasonBrandOrigin: 'Herkomst van het merk: {place}.',
+      madeInLineBarcode: 'Gemaakt in: {place} (barcode-match, zie de kaart ‘Gemaakt in’ hieronder)',
+      madeInLineLabel: 'Gemaakt in: {place} (verpakkingslabel, zie de kaart ‘Gemaakt in’ hieronder)',
+      madeInLineModel: 'Gemaakt in: {place} (match op exact model, zie de kaart ‘Gemaakt in’ hieronder)',
+    },
+    rc: {
+      modelRef: 'Modelvermelding (onbevestigd)',
+      modelRefHelp: 'Niet bevestigd door een webpagina of het verpakkingslabel; dit is alleen een inschatting van het model. Ga uit van het label op de verpakking.',
+      moreInfo: 'Meer info',
+      candidatesTitle: 'Gevonden kandidaat-productielanden (niet bevestigd)',
+      noCandidates: 'Geen betrouwbare kandidaten gevonden.',
+      vote: '{country} ({n}/{total})',
+      sourcesSilent: '{n} bronnen noemen geen productieland.',
+      noMadeInStated: 'Geen van de {total} bronnen noemt een productieland.',
+      weakTitle: 'Modelreferentie (onbevestigd)',
+      mostly: 'Voornamelijk {country}',
+      mostlyHelp: 'De bronnen die een productieland noemen, wijzen hierheen. Dit is geen etiketbevestiging.',
+      sourceCount: 'Bronnen: {n}',
+      sourceFirst: 'Bron 1: {label}',
+      sourceNth: 'Bron {n}: {label}',
+      sourceAiAnswer: 'AI-antwoord',
+      oneExactModelPage: '1 pagina met exact dit model',
+      dispute: 'Betwist: {sides}',
+      disputeSideExact: '{country} (pagina’s met exact dit model: {n})',
+      disputeSideMixed: '{country} (pagina’s: {n}, met exact dit model: {e})',
+      disputeSidePages: '{country} (pagina’s: {n})',
+      disputeSideLabel: '{country} (verpakkingslabel)',
+      disputeSideLabelPages: '{country} (verpakkingslabel; pagina’s: {n})',
+      disputeSideLabelExact: '{country} (verpakkingslabel; pagina’s met exact dit model: {n})',
+      disputeSideLabelMixed: '{country} (verpakkingslabel; pagina’s: {n}, met exact dit model: {e})',
+      disputeSep: '; ',
+      designInfo: 'Extra info: ontwerp / engineering volgens het merk: {country}. Dit is niet waar het gemaakt is.',
+      brandInfo: 'Extra info: herkomst van het merk volgens opgave: {country}. Dit is niet waar het gemaakt is.',
+      infoSource: 'Bron: {label}',
+      foldUnconfirmed: 'Uiteindelijk productieland niet bevestigd: {reason}. Andere landen zijn alleen kandidaten.',
+      citedUnverified: 'Door AI geciteerd, niet te controleren',
+      excludedOtherModel: 'Ander model ({model}), niet meegeteld',
+      reason: {
+        aiOnly: 'Alleen het AI-antwoord, geen webpagina steunt het',
+        pagesDisagree: 'Webpagina’s spreken elkaar tegen',
+        sourcesDisagree: 'Bronnen zijn het oneens',
+        aiCitedUnverified: 'Door AI geciteerde link niet te controleren',
+        onePageOnly: 'Slechts één webpagina noemt het',
+      },
+      sourceCountry: 'gemaakt in {country}',
+      labelSource: 'Bron: foto van het verpakkingslabel',
+      parent: 'Moederbedrijf',
+      tagConfirmed: 'Bevestigd',
+      tagLikely: 'Waarschijnlijk',
+      tagMentioned: 'Genoemd',
+      tagUnconfirmed: 'Niet bevestigd',
+      foldSources: 'Alle bronnen',
+      foldAlts: 'Alternatieve merken',
+      foldAi: 'AI-/zoekdetails',
+      tip: {
+        tier: 'Band met vasteland-China: hoofdkantoor, zeggenschaps-eigenaar en bevestigde productieland.',
+        madeIn: 'Alleen bevestigd via etiket, barcode, twee pagina’s van het exacte model, of het modelantwoord plus één zo’n pagina. Andere landen zijn stemmen.',
+        layers: 'Eén feit per rij. De badge zegt of een etiket of een pagina het bevestigt.',
+        confidence: 'Hoe sterk de bedrijfsfeiten dit verband steunen. Onbekend blijft op 45% of lager.',
+        confirmed: 'Etiket, barcode, of twee pagina’s van het exacte model (of het modelantwoord plus één zo’n pagina).',
+        likely: 'Genoemd op een pagina van dit model. Eén pagina bevestigt het niet.',
+        mentioned: 'Genoemd, zonder een pagina die het bevestigt.',
+        unconfirmed: 'Niet bevestigd door een etiket of passende pagina’s.',
+        vote: 'Bronnen die dit land noemen, van gelezen pagina’s plus het modelantwoord.',
+      },
+      expand: 'Tonen',
+      collapse: 'Verbergen',
+    },
+    matchBasis: {
+      barcode: 'Gekoppeld via barcode',
+      name: 'Gekoppeld via productnaam',
+      label: 'Volgens het verpakkingslabel',
+      model: 'Match op exact model',
+    },
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Webonderzoek — zoekopdracht verstuurd naar {name}',
+    searchUsage: 'Webzoeken: {provider} · zoekverzoeken: {n}',
+    knowledgeWebVia:
+      'Bevat een live webonderzoek ({provider}) plus modelkennis. Nog steeds geen ondernemingsregister of douanedatabase — etiketten en officiële stukken kunnen afwijken van webpagina’s. Informatief — geen juridisch, handels- of sanctieadvies.',
+    title: 'Snelle check',
+    subtitle: 'Is dit artikel China-gerelateerd? Typ een naam of fotografeer de verpakking.',
+    placeholder: 'bijv. snackmerk, telefoon, speelgoed…',
+    placeholderWithPhoto: 'Optioneel: welk product is dit?',
+    photo: 'Camera',
+    gallery: 'Galerij',
+    removePhoto: 'Foto verwijderen',
+    photoLabelHint: 'We lezen het etiket als de tekst duidelijk is',
+    noteOptional: 'Optionele notitie',
+    submit: 'Nu checken',
+    submitting: 'Bezig met checken…',
+    needInput: 'Typ een productnaam of voeg een foto toe.',
+    howLink: 'Hoe het werkt',
+    newCheck: 'Nieuwe check',
+    comingSoon:
+      'De check-API komt in een latere PR. Geschiedenis en instellingen zijn klaar.',
+    photoTooLarge: 'Foto is na comprimeren nog te groot.',
+    photoInvalid: 'Die afbeelding kon niet worden gelezen.',
+    dropPhoto: 'Sleep de foto hierheen',
+    unnamedPhoto: '(foto)',
+    partsTitle: 'Onderdelen, reservedelen en ingrediënten',
+    partsHint:
+      'Uit dit product gehaald — belangrijke componenten, reservedelen of ingrediënten en of ze China-gerelateerd lijken.',
+    partKind: {
+      part: 'Onderdeel',
+      spare: 'Reservedel',
+      ingredient: 'Ingrediënt',
+      component: 'Component',
+    },
+    progressHint: 'Herkomst- en bedrijfsanalyse…',
+    stepMonolith: 'Product- en bedrijfssignalen verzamelen',
+    answeredBy: 'Hoofantwoord via {name}',
+    agentsUsed: '{n} agenten',
+    agentsTitle: 'Gebruikte AI-pool',
+    agentsSummary: '{total} aanroepen · {ok} ok · {fail} mislukt',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'sterke band',
+      moderate: 'matige band',
+      weak: 'zwakke band',
+      unverified: 'band (onbevestigd)',
+    },
+    agentsHint:
+      'Elke rij is een gratis-server-AI-aanroep. Mislukkingen komen vaak door quota, modeltoegang of timeout; we proberen anderen of een fallback. Live web vereist Gemini Search grounding (niet hetzelfde als tekst-RPM).',
+    agentsHintVia:
+      'Elke rij is een gratis-server-AI-aanroep. Mislukkingen komen vaak door quota, modeltoegang of timeout; we proberen anderen of een fallback. De live webzoekopdracht liep via {provider}.',
+    agentOk: 'OK',
+    agentFail: 'Mislukt ({err})',
+    agentSkipped: 'Overgeslagen ({err})',
+    agentFailUnknown: 'fout',
+    agentError: {
+      upstream_quota: 'quota / snelheidslimiet',
+      upstream_credits: 'AI-tegoed op',
+      upstream_error: 'upstreamfout',
+      upstream_unavailable: 'dienst niet beschikbaar',
+      empty_response: 'leeg antwoord',
+      model_unavailable: 'model niet beschikbaar op deze API-sleutel',
+      search_grounding_unavailable:
+        'Google Search grounding niet beschikbaar op deze sleutel (probeer Default-poolmodellen / schakel facturering in; Gemini 3 Search is vaak 0/0)',
+      disabled: 'uitgeschakeld',
+      gemini_not_configured: 'Gemini niet geconfigureerd',
+      no_entity: 'geen productnaam',
+    },
+    agent: {
+      identify: 'Etiket / naam lezen',
+      product: 'Productplaats',
+      company: 'Bedrijfskoppelingen',
+      verify: 'Dubbelcheck',
+      alternatives: 'Alternatieven met minder CN-link',
+      monolith: 'Volledige check (één aanroep)',
+      dual_core: 'Product + bedrijf',
+      dual_alts: 'Alternatieven met minder CN-link',
+      web: 'Zoeken op het web',
+      score: 'Totaalscore',
+      unknownProvider: 'Onbekende AI',
+    },
+    provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+      gemini: 'Gemini',
+      openai: 'OpenAI',
+      grok: 'Grok (xAI)',
+      claude: 'Claude',
+    },
+    reasons: 'Waarom dit niveau',
+    reason: {
+      made_in_cn: 'Het product wordt gemaakt in vasteland-China.',
+      made_in_cn_detail: 'Het product wordt gemaakt in {place}.',
+      origin_cn: 'De productherkomst is gekoppeld aan vasteland-China.',
+      origin_cn_detail: 'De productherkomst staat vermeld als {place}.',
+      manufacturer_cn: 'De fabrikant is gekoppeld aan vasteland-China.',
+      manufacturer_cn_detail: 'Locatie/koppeling fabrikant: {place}.',
+      hq_cn: 'Het hoofdkantoor van het bedrijf ligt in vasteland-China.',
+      hq_cn_detail: 'Het hoofdkantoor van het bedrijf ligt in {place}.',
+      parent_majority_cn:
+        'Een meerderheids-/controlerende moedermaatschappij is gekoppeld aan vasteland-China.',
+      ownership_strong_cn:
+        'Er zijn sterke eigendoms- of controlekoppelingen met vasteland-China gerapporteerd.',
+      ownership_weak_cn:
+        'Er zijn zwakkere koppelingen (bijv. minderheidsbelang, toelevering of retail) met vasteland-China gerapporteerd.',
+      component_cn:
+        'Sommige onderdelen of assemblage zijn gekoppeld aan vasteland-China, zonder een volledige “made in China”-claim.',
+      explicit_non_cn_geo:
+        'Duidelijke plaatssignalen wijzen buiten vasteland-China (voor de scope van deze tool).',
+      explicit_non_cn_geo_detail:
+        'Duidelijke plaatssignalen buiten vasteland-China: {places}.',
+      verify_conflict:
+        'Product- en bedrijfssignalen kwamen niet volledig overeen (de kruischeck vond conflicten).',
+      conflict_no_strong:
+        'Signalen botsten en er was geen sterke vasteland-China-koppeling — resultaat onzeker gelaten.',
+      insufficient:
+        'Niet genoeg betrouwbare herkomst- of eigendomsinformatie om China-gerelateerde koppelingen te beoordelen.',
+      ownership_not_assessed:
+        'Bedrijfseigendom is voor deze check niet volledig beoordeeld.',
+      taiwan_as_country:
+        'Taiwan wordt als een apart land behandeld en telt voor deze score niet als “China-gerelateerd”.',
+      taiwan_as_country_detail:
+        'Taiwan wordt als een apart land behandeld (gezien in: {places}) en telt voor deze score niet als “China-gerelateerd”.',
+    },
+    caveats: 'Kanttekeningen',
+    disclaimer:
+      'Alleen ter informatie — modelkennis en optioneel live webonderzoek, geen juridisch of sanctieadvies. AI kan ernaast zitten.',
+    knowledgeModel:
+      'Alleen gebaseerd op algemene modelkennis (geen live weblookup). Merkherkomst, componentenfabrieken en eindassemblage/oorsprongsland kunnen per SKU/markt verschillen — geef voorrang aan verpakkingsetiketten. Geen ondernemingsregister of douanedatabase. Informatief — geen juridisch, handels- of sanctieadvies.',
+    knowledgeWeb:
+      'Bevat een live webonderzoek (Google Search via Gemini-grounding) plus modelkennis. Nog steeds geen ondernemingsregister of douanedatabase — etiketten en officiële stukken kunnen afwijken van webpagina’s. Informatief — geen juridisch, handels- of sanctieadvies.',
+    providerNotConfigured:
+      'AI-check is niet geconfigureerd. Voeg een sleutel toe in .dev.vars en voer `npm run pages:dev` uit (zie README).',
+    rateLimited:
+      'Gratis serverlimiet: 1 check per 30 seconden. Even wachten.',
+    rateLimitedDay:
+      'Gratis serverlimiet: max. 10 checks per 6 uur. Probeer later opnieuw.',
+    rateLimitBadge: 'Gratis serverlimiet',
+    rateLimitFreeNote:
+      'Gratis server · 1 check / 30s · max. 10 / 6 uur · 1 tegelijk',
+    rateLimitRpmTitle: 'Gratis serversnelheidslimiet (30s)',
+    rateLimitedLongTitle: 'Gratis server 6-uurslimiet',
+    rateLimitInflightTitle: 'Er loopt al een check',
+    rateLimitShortDetail:
+      'Gratis serverlimiet: {n} check(s) per {w}s. Wacht ongeveer {s}s en probeer opnieuw.',
+    rateLimitLongDetail:
+      'Gratis serverlimiet: {n} checks per {h} uur. Probeer over ongeveer {m} minuten opnieuw.',
+    rateLimitMinuteDetail:
+      'Gratis serverlimiet: {n} check(s) per {w}s. Wacht ongeveer {s}s en probeer opnieuw.',
+    rateLimitDayDetail:
+      'Gratis serverlimiet: {n} checks per {h} uur. Probeer later opnieuw.',
+    rateLimitInflightDetail:
+      'De gratis server staat slechts 1 check tegelijk toe. Wacht tot de huidige check klaar is.',
+    rateLimitAutoIn: 'Automatisch over {s}s…',
+    rateLimitAutoHint:
+      'Wordt over {s}s automatisch verzonden wanneer het gratis-servervenster opengaat.',
+    rateLimitAutoStop: 'Stop',
+    rateLimitAutoCancelled:
+      'Automatisch verzenden geannuleerd. Je kunt het opnieuw proberen wanneer je klaar bent.',
+    forbiddenOrigin: 'Verzoek niet toegestaan vanaf deze origin.',
+    badRequest: 'Ongeldig verzoek.',
+    parseError: 'Het antwoord kon niet worden begrepen. Probeer opnieuw.',
+    upstreamError: 'De antwoordservice is mislukt. Probeer later opnieuw.',
+    upstreamQuota: 'De antwoordservice is druk. Probeer later opnieuw.',
+    upstreamUnavailable: 'De antwoordservice is tijdelijk niet beschikbaar.',
+    emptyResponse: 'Er kwam geen antwoord terug. Probeer opnieuw.',
+    serverError: 'Er ging iets mis. Probeer opnieuw.',
+    forceRefresh: 'Opnieuw checken (cache overslaan)',
+    forceRefreshHint:
+      'Dit antwoord kwam uit de cache. Opnieuw checken start een verse AI-run (telt nog steeds mee voor de gratis-serverlimieten).',
+    cached: 'cache',
+    degraded: 'gedeeltelijk resultaat',
+    relationLabel: 'China-relatie',
+    confidence: '{n}% betrouwbaarheid',
+    confidenceRelation: '{n}% bedrijfsband',
+    productFacts: 'Product',
+    companyFacts: 'Bedrijf',
+    brand: 'Merk',
+    madeIn: 'Gemaakt in (deze eenheid / definitief oorsprongsland)',
+    madeInUnconfirmed: 'Definitief land van herkomst niet bevestigd — zie onderdelen / wereldwijde lijn',
+    originLayersTitle: 'Herkomstlagen',
+    originLayersIntro:
+      'Scheidt merk/ops, eigendom, definitieve COO en onderdelen — eigendom is geen made-in.',
+    layerBrandOps: 'Merk / ops',
+    layerOwnership: 'Eigendom / moederbedrijven',
+    layerOwnershipHint: 'Geen definitieve COO / made-in',
+    layerOwnershipEmpty: 'Geen eigendoms-/moederbedrijfssignaal in dit resultaat',
+    layerFinalCoo: 'Definitieve COO',
+    layerParts: 'Onderdeel-kandidaten',
+    partsModelOnlyBanner:
+      'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'AI-zoekquotum verbruikt — preciezere informatie is nu niet beschikbaar. Probeer het opnieuw na de dagelijkse reset.',
+    aiCreditsUsedUp:
+      'Tegoed van de AI-dienst is tijdelijk op — preciezere informatie is nu niet beschikbaar. Probeer het later opnieuw.',
+    srv: {
+      partOmittedNoEvidence:
+        'Land van onderdeel weggelaten: geen bewijs uit zoeken/etiket (hoofdkantoor van het merk is geen herkomst van een onderdeel).',
+      partOmittedUnconfirmed:
+        'Land van onderdeel weggelaten: niet bevestigd door zoeken/etiket voor dit onderdeel.',
+      madeInOmittedBrand:
+        'Land van productie weggelaten: kwam alleen overeen met het merk-/ontwerpland, zonder bewijs van fabriek of herkomst.',
+      madeInOmittedOwnership:
+        'Land van productie weggelaten: China komt alleen uit eigendoms-/moedergegevens, niet van product, etiket of winkelier.',
+      cooUnconfirmedSeeParts:
+        'Uiteindelijke herkomst onbevestigd – zie de regel componenten/wereldwijde productie of de onderdelen voor kandidaten (productie niet bevestigd).',
+      cooUnconfirmedNoLabel:
+        'Uiteindelijke herkomst onbevestigd – geen land van herkomst op product/etiket; er wordt er geen verzonnen.',
+      cooUnconfirmedNoBarcode:
+        'Uiteindelijk productieland niet bevestigd; andere landen zijn alleen kandidaten.',
+      cooUnconfirmedCandidates:
+        'Uiteindelijke herkomst onbevestigd – de kandidaten hieronder zijn zoeksignalen, geen gedrukte „Made in”.',
+      distributorOmitted:
+        'Lokale distributeur / marktvertegenwoordiger weggelaten uit moederbedrijven (geen juridische eigenaar).',
+      chinaLinkUnclear:
+        'Band met China onduidelijk – niet behandelen als bevestigd zonder China.',
+      verifyConflict:
+        'De controle meldde tegenstrijdige signalen',
+      companyNotAssessed:
+        'Bedrijfs-/eigendomsgegevens niet beoordeeld',
+      taiwanSeparate:
+        'Taiwan wordt voor de relatieniveaus als apart land behandeld',
+      webUnavailableLabel:
+        'Live webonderzoek niet beschikbaar – landen van onderdelen komen van de foto van het etiket, niet uit zoeken.',
+      altsAim:
+        'Alternatieve merken/producten mikken op minder betrokkenheid van China (niet alleen gelijkenis). Niveaus zijn schattingen; het hoofdkantoor alleen bewijst geen productie buiten China.',
+      altsNone:
+        'Geen alternatieven met minder betrokkenheid van China gevonden met voldoende zekerheid.',
+      sumCooUnconfirmed:
+        'Uiteindelijke herkomst onbevestigd',
+      tierUnknown:
+        'Onvoldoende bewijs om banden met China te beoordelen.',
+      tierNone:
+        'Geen banden met China gevonden in de beschikbare signalen.',
+      tierDirect:
+        'Directe signalen van banden met China gevonden.',
+      tierIndirect:
+        'Indirecte signalen van banden met China gevonden.',
+      cooConflictChina:
+        'Uiteindelijke herkomst onbevestigd – {source}-signaal ({label}) spreekt „Made in China” tegen; eigendom/moederbedrijf alleen bepaalt het productieland niet.',
+      cooConflictMadeIn:
+        'Uiteindelijke herkomst onbevestigd – {source}-signaal ({label}) spreekt productie in {madeIn} tegen; alleen als kandidaat behouden.',
+      candidate:
+        '{label} ({rating}, {pct}%, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Live zoekmodellen waren niet beschikbaar met deze API-sleutel – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_search_grounding_unavailable:
+        'Live Google Zoeken was niet beschikbaar met deze API-sleutel – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_upstream_credits:
+        'AI-tegoed op (prepaid saldo leeg) – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_upstream_quota:
+        'Dagelijks gratis Google-zoekquotum op – probeer opnieuw na de dagelijkse reset – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_upstream_unavailable:
+        'Live webonderzoek kreeg een time-out of de dienst was overbelast – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_empty_response:
+        'Live webonderzoek gaf een leeg antwoord – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_disabled:
+        'Live webonderzoek was uitgeschakeld voor deze controle – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_gemini_not_configured:
+        'Gemini is niet ingesteld voor live webonderzoek – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_no_entity:
+        'Geen productnaam voor live webonderzoek – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      webFail_default:
+        'Geen live webonderzoek voor deze controle – productie- en onderdeellanden zijn voorzichtiger (alleen modelkennis).',
+      sum: {
+        madeIn: 'Gemaakt in: {value}',
+        candidates: 'Kandidaten: {value}',
+        brandOrigin: 'Herkomst merk: {value}',
+        components: 'Componenten/wereldwijde productie: {value}',
+        parts: 'Onderdelen: {value}',
+        hq: 'Hoofdkantoor: {value}',
+        company: 'Bedrijf: {value}',
+      },
+      signal: {
+        ocr: 'etiket',
+        retailer: 'winkelier',
+        manufacturer: 'fabrikant',
+        ownership: 'eigendom',
+        unknown: 'onbekend',
+      },
+    },
+    partsSourcesLabel: 'Sources',
+    sectionShareSave: 'Afbeelding opslaan',
+    sectionShareShare: 'Delen',
+    sectionShareSaved: 'Opgeslagen',
+    sectionShareFailed: 'Afbeelding opslaan mislukt',
+    sectionShareHint: 'Hover een laag om op te slaan of te delen',
+    originCandidates: 'Queried origin candidates',
+    candidateRating: {
+      confirmed: 'confirmed COO',
+      likely: 'likely',
+      possible: 'possible',
+      mentioned: 'mentioned',
+    },
+    candidateSource: {
+      web_name: 'webpagina (naamovereenkomst)',
+      confirmed_coo: 'stamped COO',
+      parts: 'parts / BOM',
+      components_line: 'components / global line',
+      notes: 'notes',
+      manufacturer: 'manufacturer',
+      filings: 'filings',
+      model_memory: 'model knowledge',
+      ownership: 'eigendom / moeder',
+    },
+    origin: 'Herkomst',
+    brandOrigin: 'Merkherkomst',
+    componentsOrigin: 'Onderdelen / wereldwijde lijn',
+    productNotes: 'Herkomstnotities',
+    manufacturer: 'Fabrikant',
+    company: 'Bedrijf',
+    hq: 'Hoofdkantoor',
+    parents: 'Moedermaatschappijen',
+    graphTitle: 'Relatiegrafiek',
+    graphHint:
+      'Pijlen tonen hoe product, onderdelen, bedrijf, fabrieken, moeders en plaatsen samenhangen. Uitvouwen of zoomen als labels krap zijn.',
+    graphControls: 'Grafiekweergave',
+    graphZoomIn: 'Inzoomen',
+    graphZoomOut: 'Uitzoomen',
+    graphExpand: 'Uitvouwen',
+    graphCollapse: 'Inklappen',
+    graphRelations: 'Relaties',
+    graphNoEdges: 'Er zijn geen relatielinks afgeleid voor dit resultaat.',
+    graphLink: 'gerelateerd',
+    graphChinaLinked: 'China-gekoppeld',
+    graphLegendCn: 'China-gekoppeld knooppunt/rand',
+    graphLegendOther: 'Overig',
+    graphEdge: {
+      brand: 'merk',
+      brand_company: 'merk',
+      'brand/company': 'merk',
+      made_in: 'gemaakt in',
+      hq: 'hoofdkantoor',
+      parent: 'moeder',
+      majority: 'meerderheidseigenaar',
+      wholly: 'volledig eigendom',
+      minority: 'minderheidsbelang',
+      ownership: 'eigendom',
+      affiliation: 'merk',
+      manufacturing: 'fabriek / OEM',
+      design: 'ontwerp',
+      company: 'bedrijf',
+      model: 'modelantwoord',
+      supply: 'levering',
+      part: 'onderdeel',
+      spare: 'reservedel',
+      ingredient: 'ingrediënt',
+      component: 'component',
+    },
+    regionsTitle: 'Regio’s',
+    altBrands: 'Merken met minder China-betrokkenheid (schatting)',
+    altProducts: 'Producten met minder China-betrokkenheid (schatting)',
+    altDisclaimer:
+      'Alleen substituten geschat als niet Direct China-gekoppeld (geen made-in-China-opvulling). Een VS-/EU-hoofdkantoor bewijst alleen geen productie buiten China. Onduidelijke herkomst is Onbekend, niet Ongerelateerd.',
+    estimated: 'geschat',
+    twNote:
+      'Taiwan wordt als een apart land behandeld en nooit als China-gerelateerd voor de niveaus.',
+    region: {
+      CN: 'Vasteland-China',
+      HK: 'Hongkong',
+      TW: 'Taiwan',
+      MO: 'Macau',
+      OTHER: 'Overig',
+      UNKNOWN: 'Onbekend',
+    },
+    overall: {
+      title: 'Totaal',
+      score: 'Score',
+    },
+    steps: {
+      start: 'Starten',
+      cache: 'Cache',
+      identify: 'Etiket lezen',
+      web: 'Webonderzoek',
+      monolith: 'Volledige analyse',
+      score: 'Totaalscore',
+    },
+  },
+  history: {
+    title: 'Geschiedenis',
+    subtitle: 'Eerdere checks op dit apparaat',
+    empty: 'Nog geen eerdere checks.',
+    withPhoto: 'Foto',
+    open: 'Openen',
+    remove: 'Verwijderen',
+    search: 'Zoeken',
+    searchPlaceholder: 'Checks zoeken',
+    sort: 'Sorteren',
+    sortNewest: 'Nieuwste',
+    sortOldest: 'Oudste',
+    sortScoreHigh: 'Hoogste score',
+    sortScoreLow: 'Laagste score',
+    sortName: 'Naam',
+    removeAll: 'Alles verwijderen',
+    removeAllConfirm: 'Alle opgeslagen checks verwijderen?',
+    noMatches: 'Geen checks komen overeen met deze zoekopdracht.',
+  },
+  settings: {
+    title: 'Instellingen',
+    subtitle: 'Voorkeuren en gegevens op dit apparaat',
+    panelDisplay: 'Taal en thema',
+    panelCheck: 'Wat te checken',
+    panelData: 'Gegevens wissen',
+    language: 'Taal',
+    theme: 'Thema',
+    themeSystem: 'Systeem',
+    themeLight: 'Licht',
+    themeDark: 'Donker',
+    geoScope: 'China-scope voor niveaus',
+    geoScopeHint:
+      'Taiwan wordt altijd als een apart land behandeld en stuurt nooit China-relatieniveaus. Alleen VRC gebruikt vasteland-China. Greater China kan optioneel Hongkong en Macau omvatten (niet Taiwan).',
+    geoScopePrc: 'Alleen VRC / vasteland (standaard)',
+    geoScopeGreater: 'CN + Hongkong + Macau (niet Taiwan)',
+    dimensions: 'Wat te checken',
+    dimensionsHint:
+      'Alternatieven met minder China-betrokkenheid staan standaard uit. Zet merk- of productalternatieven aan als je substituten met minder China-link wilt (extra AI-aanroep).',
+    dimOrigin: 'Plaats van herkomst',
+    dimManufacturer: 'Herkomst fabrikant',
+    dimCompany: 'Bedrijfsrelaties',
+    dimAltBrands: 'Merkalternatieven met minder China-betrokkenheid',
+    dimAltProducts: 'Productalternatieven met minder China-betrokkenheid',
+    howItWorks: 'Hoe het werkt',
+    about: 'Over OriginWise',
+    version: 'Versie {v}',
+    cleanData: 'Lokale gegevens wissen',
+    cleanDataHint:
+      'Gegevens blijven alleen in deze browser. Kies wat je verwijdert. Dit kan niet ongedaan worden gemaakt.',
+    dataSummary: 'Op dit apparaat',
+    dataNone: 'Geen OriginWise-gegevens opgeslagen.',
+    dataHistory: 'Eerdere checks: {n}',
+    dataSettings: 'Aangepaste instellingen',
+    dataDisclaimer: 'Disclaimer geaccepteerd',
+    cleanAll: 'Alles',
+    cleanHistory: 'Alleen eerdere checks',
+    cleanSettings: 'Alleen instellingen',
+    cleanConfirm: 'Geselecteerde gegevens wissen?',
+    cleanConfirmBtn: 'Nu wissen',
+    cleanDoneAll: 'Alle lokale OriginWise-gegevens gewist.',
+    cleanDoneHistory: 'Eerdere checks gewist.',
+    cleanDoneSettings: 'Instellingen teruggezet naar standaard.',
+  },
+  about: {
+    title: 'Over',
+    tagline: 'Een eenvoudige China-gerelateerde productcheck',
+    intro:
+      'OriginWise helpt je snel te zien of een product of merk China-gerelateerd lijkt — plaats van herkomst, fabrikant en bedrijfskoppelingen — met optionele alternatieven met minder betrokkenheid. Checks blijven op dit apparaat.',
+    body: 'OriginWise is een eenvoudige tool voor een snelle China-gerelateerde check van alledaagse producten en merken. AI kan onvolledig of fout zijn.',
+    privacy: 'Geen account. Je geschiedenis blijft op deze telefoon/browser.',
+    license: 'MIT-licentie',
+    licenseShort: 'MIT',
+    openSourceTitle: 'Open source · MIT',
+    openSourceBody:
+      'Dit project is vrije software onder de MIT-licentie. Je mag het gebruiken, kopiëren, wijzigen, samenvoegen, publiceren, verspreiden en sublicentiëren — ook voor je eigen deployment met je eigen API-sleutels.',
+    copyrightLine: 'Copyright © {year} {name}',
+    licenseAsIs:
+      'Geleverd “as is”, zonder garantie. Zie de volledige licentietekst op GitHub.',
+    linkSource: 'Broncode',
+    linkLicense: 'MIT-licentie',
+    linkIssues: 'Issues en feedback',
+    linkReleases: 'Releases',
+    linkSecurity: 'Beveiligingsbeleid',
+    privacyTitle: 'Je privacy',
+    privacyLead:
+      'We houden het simpel: geen account, en je checkgeschiedenis blijft op je telefoon of computer.',
+    privacyBullet1:
+      'Eerdere checks, instellingen en voorkeuren worden alleen in deze browser op je apparaat opgeslagen.',
+    privacyBullet2: 'Er is geen login en geen cloudkopie van je checkdagboek.',
+    privacyBullet3:
+      'Je kunt alles altijd wissen met Lokale gegevens wissen in Instellingen.',
+    privacyBullet4:
+      'Als je een check uitvoert, wordt de naam of foto alleen voor dat antwoord verzonden. We bewaren verpakkingen niet als productcatalogus.',
+    privacyBullet5:
+      'Foto’s worden op je apparaat gecomprimeerd vóór upload en niet als serverrecords opgeslagen.',
+    privacyBullet6:
+      'Met live webonderzoek aan wordt de productnaam (en de etikettekst) ook één keer naar een zoekdienst gestuurd: eerst Google Search via Gemini, en alleen als dat mislukt Brave Search of Firecrawl. De voortgangsstappen en het resultaat noemen de dienst die echt is gebruikt. We houden geen log van zoekopdrachten bij.',
+    privacyPolicyLink: 'Privacybeleid',
+    termsLink: 'Gebruiksvoorwaarden',
+    designTitle: 'Hoe het werkt',
+    designLead:
+      'Snelle multi-agent-AI-check, daarna een vaste scoretabel — geen juridische database.',
+    designLocalTitle: 'Wat op je apparaat blijft',
+    designLocalBody:
+      'Na het laden worden geschiedenis, taal, thema en checkvoorkeuren alleen in deze browser opgeslagen. Wis sitegegevens of gebruik Lokale gegevens wissen.',
+    designWhyTitle: 'Waarom we het zo bouwden',
+    designWhy1: 'Snelle mobiele checks zonder een account te maken.',
+    designWhy2: 'Geschiedenis blijft bij jou — wis het wanneer je wilt.',
+    designWhy3:
+      'AI kan ernaast zitten; we tonen kanttekeningen en behandelen Taiwan als een apart land voor de niveaus.',
+    disclaimerTitle: 'Let op',
+    disclaimerBody:
+      'OriginWise is alleen informatief — geen juridisch, douane- of sanctieadvies. AI en niveaulabels kunnen onvolledig of fout zijn. Controleer kritische beslissingen altijd zelf.',
+    createdBy: 'Onderhouden door',
+    contributionsWelcome: 'Issues en pull requests zijn welkom op GitHub.',
+  },
+  how: {
+    title: 'Hoe het werkt',
+    subtitle: 'Snelle China-gerelateerde check — houd het simpel',
+    aimTitle: 'Waar deze app voor is',
+    aimBody:
+      'Je helpen snel te zien of een product of merk China-gerelateerd lijkt — daar gemaakt, bedrijfskoppelingen, enzovoort. Geen diep onderzoekstool, geen juridische check.',
+    stepsTitle: 'In eenvoudige woorden',
+    step1Title: 'Jij stuurt iets',
+    step1Body: 'Een productnaam, een merk, of een foto van de verpakking.',
+    step2Title: 'Wij zoeken het op met AI',
+    step2Body:
+      'Kleine checks draaien: productplaats en bedrijf (samen), daarna een snelle dubbelcheck. Optioneel: merk-/productalternatieven met minder China-betrokkenheid als je die aanzet.',
+    step3Title: 'Je krijgt een eenvoudig resultaat',
+    step3Body:
+      'Een kleurbadge: Ongerelateerd, Indirect, Direct of Onbekend — plus een kort waarom.',
+    graphTitle: 'Volledige flow',
+    graphHint: 'Van jouw invoer naar de kleurbadge.',
+    flowYou: 'Jij (naam / foto)',
+    flowAi: 'AI-checks',
+    flowProduct: 'Productplaats',
+    flowCompany: 'Bedrijf',
+    flowVerify: 'Dubbelcheck',
+    flowScore: 'Eenvoudige score',
+    flowResult: 'Kleurresultaat',
+    flowAiDetail:
+      'Eerst productplaats + bedrijf, daarna een snelle dubbelcheck.',
+    flowScoreDetail: 'We combineren de antwoorden tot één eenvoudige score.',
+    badgeTitle: 'Wat de kleuren betekenen',
+    badgeNone: 'Ongerelateerd — geen duidelijke China-link gevonden',
+    badgeIndirect: 'Indirect — zwakkere of gedeeltelijke link',
+    badgeDirect: 'Direct — duidelijke link (bijv. made in China of hoofdkantoor daar)',
+    badgeUnknown: 'Onbekend — niet genoeg duidelijke info',
+    twTitle: 'Taiwan',
+    twBody:
+      'Taiwan telt hier altijd als een eigen land. Het telt niet vanzelf als “China-gerelateerd”.',
+    evidenceTitle:
+      'Wanneer een land van productie als bevestigd telt',
+    evidenceBody:
+      'Een land van productie geldt op drie manieren als bevestigd. Het sterkst: een foto van het verpakkingsetiket, of een webpagina die dezelfde streepjescode (JAN/EAN) naast de herkomstvermelding toont (streepjescode-match). Daarna de match op exact model: het AI-antwoord en minstens één webpagina met exact hetzelfde merk en model noemen hetzelfde land, of twee of meer van zulke pagina’s op verschillende websites zijn het eens; het AI-antwoord staat dan als een van de bronnen. In beide gevallen mag geen pagina met het exacte model een ander land noemen. Het AI-antwoord alleen bevestigt nooit iets en blijft een modelverwijzing; spreken pagina’s met het exacte model elkaar tegen, dan blijft het land onbevestigd en staan de kandidaten erbij. Een link die de AI aanhaalt telt pas na een controle: de pagina (gevonden door de webzoekopdracht of geladen) moet het exacte model en hetzelfde land noemen en mag niet als ander model zijn uitgesloten; anders staat hij er als ‘Door AI geciteerd, niet te controleren’ en telt niet mee. Een losse match op productnaam staat alleen als kandidaat onder ‘Niet bevestigd’, en een pagina met meerdere maten of varianten blijft onbevestigd. Is live zoeken op het web niet beschikbaar, dan steunt het resultaat alleen op modelkennis en staat dat erbij.',
+    flowWeb:
+      'Zoeken op het web',
+    flowWebDetail:
+      'Webpagina’s zoeken op productnaam of streepjescode en de herkomstvermelding controleren.',
+    privacyTitle: 'Jouw gegevens',
+    privacyBody:
+      'De geschiedenis blijft op dit apparaat en foto’s worden niet op de server opgeslagen. Met live zoeken op het web aan worden de productnaam of streepjescode naar zoekdiensten gestuurd. AI kan zich vergissen — controleer belangrijke beslissingen altijd zelf.',
+    tryBtn: 'Probeer een check',
+  },
+  tier: {
+    none: 'Ongerelateerd',
+    indirect: 'Indirect',
+    direct: 'Direct',
+    unknown: 'Onbekend',
+  },
+} satisfies MessageTree;

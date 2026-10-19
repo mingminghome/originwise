@@ -1,0 +1,87 @@
+/**
+ * Pluggable web-search providers for the OriginWise "web" research pass.
+ *
+ * Order: SEARCH_PROVIDERS (default "gemini,brave,firecrawl"). A provider runs
+ * when the previous one failed, returned no Sources, or its pages did not
+ * name a made-in. Providers with no key are skipped. Nothing here records
+ * or logs the query text.
+ */
+
+import type { DesignInfo, WebCooClaim, WebExcludedPage } from '../schema';
+import type { WebResearchEnv } from './providers/gemini/research';
+
+export type SearchProviderId = 'gemini' | 'brave' | 'firecrawl';
+
+export const SEARCH_PROVIDER_IDS: readonly SearchProviderId[] = [
+  'gemini',
+  'brave',
+  'firecrawl',
+];
+
+export type SearchEnv = WebResearchEnv & {
+  /** Brave Search API subscription token (X-Subscription-Token). */
+  BRAVE_SEARCH_API_KEY?: string;
+  /** Firecrawl API key (Bearer). */
+  FIRECRAWL_API_KEY?: string;
+  /** Comma list, e.g. "gemini,brave,firecrawl" (default). Unknown ids ignored. */
+  SEARCH_PROVIDERS?: string;
+};
+
+export type SearchInput = {
+  entity: string;
+  ocrText?: string;
+  locale: string;
+  env: SearchEnv;
+};
+
+export type SearchOutput = {
+  ok: boolean;
+  /** Same shape as the Gemini grounded brief: bullets + "Sources:" block. */
+  brief: string;
+  /** "title — url" lines (or bare URLs), every page used. */
+  sources: string[];
+  error?: string;
+  ms: number;
+  /** Paid/quota-counted search API requests made by this provider. */
+  requests: number;
+  /** Model id used (Gemini grounding model, or extraction model). */
+  model?: string;
+  /**
+   * Gated made-in claims from fetched pages (every provider; for Gemini the
+   * grounding Sources): basis 'barcode' → confirmed, 'name' → likely.
+   */
+  coo?: WebCooClaim[];
+  /** Pages about another model of that name (not counted, listed on the card). */
+  excluded?: WebExcludedPage[];
+  /** Design / brand wording on product pages (附加資訊, never made-in). */
+  design?: DesignInfo[];
+  /** Page text and dropped-claim URLs for the AI-cited check (not stored). */
+  evidence?: SearchEvidence;
+};
+
+/**
+ * What the gate saw, for the AI-cited check: a cited URL that matches a
+ * search page is checked on this text (no refetch); a URL whose made-in claim
+ * was dropped never counts.
+ */
+export type SearchEvidence = {
+  pages: FetchedPage[];
+  /** Company plant or OEM pages. Not made-in evidence for this unit. */
+  factoryPages?: FetchedPage[];
+  droppedUrls: string[];
+};
+
+export interface SearchProvider {
+  id: SearchProviderId;
+  isConfigured(env: SearchEnv): boolean;
+  search(input: SearchInput): Promise<SearchOutput>;
+}
+
+/** One fetched page handed to the extractor. */
+export type FetchedPage = {
+  url: string;
+  /** Landing URL after redirects (Gemini Sources are redirect links). */
+  finalUrl?: string;
+  title: string;
+  text: string;
+};

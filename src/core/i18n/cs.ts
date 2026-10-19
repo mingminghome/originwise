@@ -1,0 +1,694 @@
+import type { MessageTree } from './en';
+
+export const cs = {
+  appName: 'OriginWise',
+  tabs: {
+    check: 'Zkontrolovat',
+    history: 'Historie',
+    about: 'O aplikaci',
+    settings: 'Nastavení',
+    navMore: 'Menu',
+  },
+  common: {
+    present: 'Ano',
+    /** Separator after a short label (full-width in CJK). */
+    labelSep: ': ',
+    missing: 'Ne',
+    cancel: 'Zrušit',
+    confirm: 'Potvrdit',
+    delete: 'Smazat',
+    back: 'Zpět',
+    loading: 'Načítání…',
+    optional: 'Volitelné',
+  },
+  install: {
+    aria: 'Nainstalovat OriginWise',
+    title: 'Nainstalovat OriginWise',
+    body: 'Přidejte na plochu pro rychlou kontrolu jako v aplikaci.',
+    bodyIos: 'Přidat na plochu pro použití na celou obrazovku.',
+    iosStep1: 'Klepněte',
+    iosStep2: 'Sdílet a pak Přidat na plochu.',
+    action: 'Nainstalovat',
+    dismiss: 'Zavřít výzvu k instalaci',
+  },
+  support: {
+    buyMeAPint: 'Kupte mi pivo',
+    pintShort: 'Pivo',
+    thanks: 'Pokud vám OriginWise pomáhá, můžete mi koupit pivo:',
+  },
+  welcome: {
+    title: 'Vítejte v OriginWise',
+    body: 'Rychlá kontrola: souvisí tento produkt nebo značka s Čínou? Zadejte název nebo vyfoťte obal. AI se může mýlit — nejde o právní radu.',
+    accept: 'Rozumím — začít kontrolovat',
+  },
+  check: {
+    identifiedAs: 'Rozpoznáno jako: {name}',
+    chinaLink: {
+      title: 'Vazba na Čínu',
+      chinaCompany: 'Čínská společnost',
+      chinaControlled: 'Pod čínskou kontrolou',
+      hq: 'Sídlo',
+      owner: 'Ovládající vlastník',
+      brandOrigin: 'Původ značky',
+      madeIn: 'Vyrobeno v',
+      parts: 'Díly',
+      china: 'Čína',
+      unconfirmed: 'Nepotvrzeno',
+      partsChina: 'Některé díly vyrobeny v Číně',
+      hqParentNote: 'Sídlo v Číně uvedené v odpovědi patří mateřské společnosti',
+      madeInBelow: 'Země výroby se určuje pouze v kartě „Vyrobeno v“ (čárový kód, štítek obalu nebo shoda modelu).',
+      madeInChina: 'Vyrobeno v Číně',
+      factory: 'Továrna / OEM',
+      supply: 'Dodávky',
+      footnote: 'Tato karta popisuje jen to, kde společnost sídlí, kdo ji vlastní a kde se výrobek vyrábí. Nejde o hodnocení kvality či bezpečnosti výrobku ani společnosti.',
+      controlling: 'Ovládání',
+      reasonParent: 'Ovládající mateřská společnost sídlí v pevninské Číně.',
+      reasonBrandOrigin: 'Původ značky: {place}.',
+      madeInLineBarcode: 'Vyrobeno v: {place} (shoda čárového kódu, viz kartu „Vyrobeno v“ níže)',
+      madeInLineLabel: 'Vyrobeno v: {place} (štítek obalu, viz kartu „Vyrobeno v“ níže)',
+      madeInLineModel: 'Vyrobeno v: {place} (shoda přesného modelu, viz kartu „Vyrobeno v“ níže)',
+    },
+    rc: {
+      modelRef: 'Údaj modelu (nepotvrzeno)',
+      modelRefHelp: 'Nepotvrdila to žádná webová stránka ani štítek na obalu; jde jen o odhad modelu. Řiďte se údajem na obalu.',
+      moreInfo: 'Více informací',
+      candidatesTitle: 'Nalezené kandidátské země výroby (nepotvrzeno)',
+      noCandidates: 'Nebyli nalezeni žádní spolehliví kandidáti.',
+      vote: '{country} ({n}/{total})',
+      sourcesSilent: '{n} zdrojů neuvádí zemi výroby.',
+      noMadeInStated: 'Žádný z {total} zdrojů neuvádí zemi výroby.',
+      weakTitle: 'Modelová reference (nepotvrzeno)',
+      mostly: 'Převážně {country}',
+      mostlyHelp: 'Zdroje, které uvádějí zemi výroby, se shodují zde. Nejde o potvrzení na štítku.',
+      sourceCount: 'Zdroje: {n}',
+      sourceFirst: 'Zdroj 1: {label}',
+      sourceNth: 'Zdroj {n}: {label}',
+      sourceAiAnswer: 'Odpověď AI',
+      oneExactModelPage: '1 stránka s přesně tímto modelem',
+      dispute: 'Sporné: {sides}',
+      disputeSideExact: '{country} (stránky s přesně tímto modelem: {n})',
+      disputeSideMixed: '{country} (stránky: {n}, s přesně tímto modelem: {e})',
+      disputeSidePages: '{country} (stránky: {n})',
+      disputeSideLabel: '{country} (štítek na obalu)',
+      disputeSideLabelPages: '{country} (štítek na obalu; stránky: {n})',
+      disputeSideLabelExact: '{country} (štítek na obalu; stránky s přesně tímto modelem: {n})',
+      disputeSideLabelMixed: '{country} (štítek na obalu; stránky: {n}, s přesně tímto modelem: {e})',
+      disputeSep: '; ',
+      designInfo: 'Doplňující informace: návrh / vývoj podle značky: {country}. Nejde o místo výroby.',
+      brandInfo: 'Doplňující informace: původ značky podle uvedení: {country}. Nejde o místo výroby.',
+      infoSource: 'Zdroj: {label}',
+      foldUnconfirmed: 'Konečná země výroby nepotvrzena: {reason}. Ostatní země jsou jen kandidáti.',
+      citedUnverified: 'Citováno AI, nelze ověřit',
+      excludedOtherModel: 'Jiný model ({model}), nezapočteno',
+      reason: {
+        aiOnly: 'Jen odpověď AI, žádná stránka ji nepotvrzuje',
+        pagesDisagree: 'Webové stránky se neshodují',
+        sourcesDisagree: 'Zdroje se neshodují',
+        aiCitedUnverified: 'Odkaz citovaný AI nelze ověřit',
+        onePageOnly: 'Zmiňuje to jen jedna stránka',
+      },
+      sourceCountry: 'vyrobeno v: {country}',
+      labelSource: 'Zdroj: fotografie štítku obalu',
+      parent: 'Mateřská společnost',
+      tagConfirmed: 'Potvrzeno',
+      tagLikely: 'Pravděpodobné',
+      tagMentioned: 'Zmíněno',
+      tagUnconfirmed: 'Nepotvrzeno',
+      foldSources: 'Všechny zdroje',
+      foldAlts: 'Alternativní značky',
+      foldAi: 'Podrobnosti AI / vyhledávání',
+      tip: {
+        tier: 'Vazba na pevninskou Čínu: sídlo, ovládající vlastník a potvrzená země výroby.',
+        madeIn: 'Potvrzeno jen z etikety, čárového kódu, dvou stránek přesného modelu, nebo odpovědi modelu a jedné takové stránky. Ostatní země jsou hlasy.',
+        layers: 'Jeden údaj na řádek. Odznak říká, zda ho potvrzuje etiketa nebo stránka.',
+        confidence: 'Jak silně firemní údaje tuto vazbu podporují. Neznámé zůstává nejvýše na 45 %.',
+        confirmed: 'Etiketa, čárový kód nebo dvě stránky přesného modelu (nebo odpověď modelu a jedna taková stránka).',
+        likely: 'Uvedeno na stránce tohoto modelu. Jedna stránka nestačí.',
+        mentioned: 'Uvedeno, bez stránky, která to potvrzuje.',
+        unconfirmed: 'Nepotvrzeno etiketou ani odpovídajícími stránkami.',
+        vote: 'Zdroje, které uvedly tuto zemi, z přečtených stránek a odpovědi modelu.',
+      },
+      expand: 'Zobrazit',
+      collapse: 'Skrýt',
+    },
+    matchBasis: {
+      barcode: 'Shoda podle čárového kódu',
+      name: 'Shoda podle názvu produktu',
+      label: 'Podle údaje na obalu',
+      model: 'Podle přesného modelu',
+    },
+    searchVia: {
+      gemini: 'Google Search (Gemini)',
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+    },
+    webStepVia: 'Webový výzkum — dotaz odeslán do {name}',
+    searchUsage: 'Webové vyhledávání: {provider} · počet požadavků: {n}',
+    knowledgeWebVia:
+      'Zahrnuje živý webový výzkum ({provider}) plus znalosti modelu. Stále to není obchodní rejstřík ani celní databáze — etikety a oficiální dokumenty se mohou lišit od webových stránek. Informativní — ne právní, obchodní ani sankční rada.',
+    title: 'Rychlá kontrola',
+    subtitle: 'Souvisí tato položka s Čínou? Zadejte název nebo vyfoťte obal.',
+    placeholder: 'např. značka snacků, telefon, hračka…',
+    placeholderWithPhoto: 'Volitelné: o jaký produkt jde?',
+    photo: 'Fotoaparát',
+    gallery: 'Galerie',
+    removePhoto: 'Odebrat fotku',
+    photoLabelHint: 'Přečteme štítek, pokud je text čitelný',
+    noteOptional: 'Volitelná poznámka',
+    submit: 'Zkontrolovat teď',
+    submitting: 'Kontroluji…',
+    needInput: 'Zadejte název produktu nebo přidejte fotku.',
+    howLink: 'Jak to funguje',
+    newCheck: 'Nová kontrola',
+    comingSoon:
+      'API kontroly přijde v pozdějším PR. Historie a nastavení jsou připravené.',
+    photoTooLarge: 'Fotka je po kompresi stále příliš velká.',
+    photoInvalid: 'Tento obrázek se nepodařilo přečíst.',
+    dropPhoto: 'Přetáhněte fotku sem',
+    unnamedPhoto: '(fotka)',
+    partsTitle: 'Díly, náhradní díly a složky',
+    partsHint:
+      'Vyčleněno z tohoto produktu — hlavní komponenty, náhradní díly nebo složky a zda působí jako spojené s Čínou.',
+    partKind: {
+      part: 'Díl',
+      spare: 'Náhradní díl',
+      ingredient: 'Složka',
+      component: 'Komponenta',
+    },
+    progressHint: 'Analýza původu a společnosti…',
+    stepMonolith: 'Sběr signálů produktu a společnosti',
+    answeredBy: 'Hlavní odpověď přes {name}',
+    agentsUsed: '{n} agentů',
+    agentsTitle: 'Použitý pool AI',
+    agentsSummary: '{total} volání · {ok} ok · {fail} selhalo',
+    /** Strength of a company–country relation (所有權 rows). */
+    relStrength: {
+      strong: 'silná vazba',
+      moderate: 'střední vazba',
+      weak: 'slabá vazba',
+      unverified: 'vazba (nepotvrzeno)',
+    },
+    agentsHint:
+      'Každý řádek je jedno volání AI z bezplatného serveru. Selhání často znamenají kvótu, přístup k modelu nebo timeout; zkoušíme jiné nebo zálohu. Živý web potřebuje Gemini Search grounding (není totéž jako textové RPM).',
+    agentsHintVia:
+      'Každý řádek je jedno volání AI z bezplatného serveru. Selhání často znamenají kvótu, přístup k modelu nebo timeout; zkoušíme jiné nebo zálohu. Živé vyhledávání na webu proběhlo přes {provider}.',
+    agentOk: 'OK',
+    agentFail: 'Selhalo ({err})',
+    agentSkipped: 'Přeskočeno ({err})',
+    agentFailUnknown: 'chyba',
+    agentError: {
+      upstream_quota: 'kvóta / rychlostní limit',
+      upstream_credits: 'kredit AI vyčerpán',
+      upstream_error: 'chyba zdroje',
+      upstream_unavailable: 'služba nedostupná',
+      empty_response: 'prázdná odpověď',
+      model_unavailable: 'model na tomto API klíči není dostupný',
+      search_grounding_unavailable:
+        'Google Search grounding na tomto klíči není dostupný (zkuste modely výchozího poolu / zapněte fakturaci; Gemini 3 Search je často 0/0)',
+      disabled: 'vypnuto',
+      gemini_not_configured: 'Gemini není nastaveno',
+      no_entity: 'chybí název produktu',
+    },
+    agent: {
+      identify: 'Číst štítek / název',
+      product: 'Místo produktu',
+      company: 'Vazby společnosti',
+      verify: 'Dvojí kontrola',
+      alternatives: 'Alternativy s menší vazbou na CN',
+      monolith: 'Úplná kontrola (jedno volání)',
+      dual_core: 'Produkt + společnost',
+      dual_alts: 'Alternativy s menší vazbou na CN',
+      web: 'Vyhledávání na webu',
+      score: 'Celkové skóre',
+      unknownProvider: 'Neznámá AI',
+    },
+    provider: {
+      brave: 'Brave Search',
+      firecrawl: 'Firecrawl',
+      gemini: 'Gemini',
+      openai: 'OpenAI',
+      grok: 'Grok (xAI)',
+      claude: 'Claude',
+    },
+    reasons: 'Proč tato úroveň',
+    reason: {
+      made_in_cn: 'Produkt se vyrábí v pevninské Číně.',
+      made_in_cn_detail: 'Produkt se vyrábí v: {place}.',
+      origin_cn: 'Původ produktu je spojen s pevninskou Čínou.',
+      origin_cn_detail: 'Původ produktu je uveden jako {place}.',
+      manufacturer_cn: 'Výrobce je spojen s pevninskou Čínou.',
+      manufacturer_cn_detail: 'Místo/vazba výrobce: {place}.',
+      hq_cn: 'Sídlo společnosti je v pevninské Číně.',
+      hq_cn_detail: 'Sídlo společnosti je v: {place}.',
+      parent_majority_cn:
+        'Majorita / ovládající mateřská společnost je spojena s pevninskou Čínou.',
+      ownership_strong_cn:
+        'Byly nahlášeny silné vlastnické nebo kontrolní vazby na pevninskou Čínu.',
+      ownership_weak_cn:
+        'Byly nahlášeny slabší vazby (např. menšinový podíl, dodávky nebo maloobchod) na pevninskou Čínu.',
+      component_cn:
+        'Některé komponenty nebo montáž jsou spojeny s pevninskou Čínou, bez plného tvrzení „made in China“.',
+      explicit_non_cn_geo:
+        'Jasné signály místa ukazují mimo pevninskou Čínu (pro rozsah tohoto nástroje).',
+      explicit_non_cn_geo_detail:
+        'Jasné signály místa mimo pevninskou Čínu: {places}.',
+      verify_conflict:
+        'Signály produktu a společnosti se plně neshodovaly (křížová kontrola našla konflikty).',
+      conflict_no_strong:
+        'Signály si odporovaly a nebyla silná vazba na pevninskou Čínu — výsledek zůstal nejistý.',
+      insufficient:
+        'Není dost spolehlivých informací o původu nebo vlastnictví k posouzení vazeb na Čínu.',
+      ownership_not_assessed:
+        'Vlastnictví společnosti nebylo v této kontrole plně posouzeno.',
+      taiwan_as_country:
+        'Tchaj-wan je považován za samostatnou zemi a pro toto skóre se nepočítá jako „související s Čínou“.',
+      taiwan_as_country_detail:
+        'Tchaj-wan je považován za samostatnou zemi (viděno v: {places}) a pro toto skóre se nepočítá jako „související s Čínou“.',
+    },
+    caveats: 'Výhrady',
+    disclaimer:
+      'Pouze informativní — znalosti modelu a volitelný živý webový výzkum, ne právní ani sankční rada. AI se může mýlit.',
+    knowledgeModel:
+      'Pouze na základě obecných znalostí modelu (bez živého vyhledávání na webu). Původ značky, závody na komponenty a finální montáž/země původu se mohou lišit podle SKU/trhu — dávejte přednost etiketám. Není to obchodní rejstřík ani celní databáze. Informativní — ne právní, obchodní ani sankční rada.',
+    knowledgeWeb:
+      'Zahrnuje živý webový výzkum (Google Search přes Gemini grounding) plus znalosti modelu. Stále to není obchodní rejstřík ani celní databáze — etikety a oficiální dokumenty se mohou lišit od webových stránek. Informativní — ne právní, obchodní ani sankční rada.',
+    providerNotConfigured:
+      'Kontrola AI není nastavena. Přidejte klíč do .dev.vars a spusťte `npm run pages:dev` (viz README).',
+    rateLimited:
+      'Limit bezplatného serveru: 1 kontrola každých 30 sekund. Počkejte chvíli.',
+    rateLimitedDay:
+      'Limit bezplatného serveru: max. 10 kontrol za 6 hodin. Zkuste to později.',
+    rateLimitBadge: 'Limit bezplatného serveru',
+    rateLimitFreeNote:
+      'Bezplatný server · 1 kontrola / 30 s · max. 10 / 6 hodin · 1 najednou',
+    rateLimitRpmTitle: 'Rychlostní limit bezplatného serveru (30 s)',
+    rateLimitedLongTitle: '6hodinový limit bezplatného serveru',
+    rateLimitInflightTitle: 'Kontrola už probíhá',
+    rateLimitShortDetail:
+      'Limit bezplatného serveru: {n} kontrol(a) každých {w} s. Počkejte asi {s} s a zkuste znovu.',
+    rateLimitLongDetail:
+      'Limit bezplatného serveru: {n} kontrol za {h} hodin. Zkuste znovu za asi {m} minut.',
+    rateLimitMinuteDetail:
+      'Limit bezplatného serveru: {n} kontrol(a) každých {w} s. Počkejte asi {s} s a zkuste znovu.',
+    rateLimitDayDetail:
+      'Limit bezplatného serveru: {n} kontrol za {h} hodin. Zkuste to později.',
+    rateLimitInflightDetail:
+      'Bezplatný server povoluje jen 1 kontrolu najednou. Počkejte, až aktuální kontrola skončí.',
+    rateLimitAutoIn: 'Automaticky za {s} s…',
+    rateLimitAutoHint:
+      'Odešle se automaticky za {s} s, až se otevře okno bezplatného serveru.',
+    rateLimitAutoStop: 'Zastavit',
+    rateLimitAutoCancelled:
+      'Automatické odeslání zrušeno. Můžete to zkusit znovu, až budete připraveni.',
+    forbiddenOrigin: 'Požadavek z tohoto původu není povolen.',
+    badRequest: 'Neplatný požadavek.',
+    parseError: 'Odpověď se nepodařilo pochopit. Zkuste to znovu.',
+    upstreamError: 'Služba odpovědí selhala. Zkuste to později.',
+    upstreamQuota: 'Služba odpovědí je zaneprázdněná. Zkuste to později.',
+    upstreamUnavailable: 'Služba odpovědí je dočasně nedostupná.',
+    emptyResponse: 'Nebyla vrácena žádná odpověď. Zkuste to znovu.',
+    serverError: 'Něco se pokazilo. Zkuste to znovu.',
+    forceRefresh: 'Zkontrolovat znovu (přeskočit cache)',
+    forceRefreshHint:
+      'Tato odpověď byla v cache. Nová kontrola spustí čerstvý běh AI (stále se počítá do limitů bezplatného serveru).',
+    cached: 'cache',
+    degraded: 'částečný výsledek',
+    relationLabel: 'Vztah k Číně',
+    confidence: '{n}% jistota',
+    confidenceRelation: '{n}% vazba firmy',
+    productFacts: 'Produkt',
+    companyFacts: 'Společnost',
+    brand: 'Značka',
+    madeIn: 'Vyrobeno v (tato jednotka / konečná země původu)',
+    madeInUnconfirmed: 'Konečná země původu nepotvrzena — viz komponenty / globální linka',
+    originLayersTitle: 'Vrstvy původu',
+    originLayersIntro:
+      'Odděleně značka/provoz, vlastnictví, finální COO a díly — vlastnictví není made-in.',
+    layerBrandOps: 'Značka / provoz',
+    layerOwnership: 'Vlastnictví / mateřské společnosti',
+    layerOwnershipHint: 'Není finální COO / made-in',
+    layerOwnershipEmpty: 'V tomto výsledku není signál vlastnictví/mateřské společnosti',
+    layerFinalCoo: 'Finální COO',
+    layerParts: 'Kandidáti dílů',
+    partsModelOnlyBanner:
+      'Part countries are model guesses — not packaging or Search confirmed.',
+    searchQuotaUsedUp:
+      'Kvóta AI vyhledávání je vyčerpána — přesnější informace teď nejsou k dispozici. Zkuste to znovu po denním obnovení.',
+    aiCreditsUsedUp:
+      'Kredit AI služby je dočasně vyčerpán — přesnější informace teď nejsou k dispozici. Zkuste to prosím později.',
+    srv: {
+      partOmittedNoEvidence:
+        'Země dílu vynechána: žádný důkaz z vyhledávání/štítku (sídlo značky není původ dílu).',
+      partOmittedUnconfirmed:
+        'Země dílu vynechána: pro tento díl nepotvrzeno vyhledáváním/štítkem.',
+      madeInOmittedBrand:
+        'Země výroby vynechána: shodovala se jen se zemí značky/designu, bez důkazu o továrně či původu.',
+      madeInOmittedOwnership:
+        'Země výroby vynechána: Čína pochází jen z údajů o vlastnictví/mateřské firmě, ne z výrobku, štítku ani prodejce.',
+      cooUnconfirmedSeeParts:
+        'Konečná země původu nepotvrzena – kandidáty najdete v řádku komponenty/globální výroba nebo u dílů (výroba nepotvrzena).',
+      cooUnconfirmedNoLabel:
+        'Konečná země původu nepotvrzena – na výrobku/štítku není země původu; žádná se nevymýšlí.',
+      cooUnconfirmedNoBarcode:
+        'Konečná země výroby nepotvrzena; ostatní země jsou jen kandidáti.',
+      cooUnconfirmedCandidates:
+        'Konečná země původu nepotvrzena – kandidáti níže jsou signály z vyhledávání, ne vytištěné „Made in“.',
+      distributorOmitted:
+        'Místní distributor / tržní zástupce vynechán z mateřských firem (není právním vlastníkem).',
+      chinaLinkUnclear:
+        'Vazba na Čínu nejasná – neberte jako potvrzeně bez Číny.',
+      verifyConflict:
+        'Ověření našlo protichůdné signály',
+      companyNotAssessed:
+        'Údaje o firmě/vlastnictví nebyly posouzeny',
+      taiwanSeparate:
+        'Tchaj-wan je pro úrovně vazeb brán jako samostatná země',
+      webUnavailableLabel:
+        'Živé vyhledávání na webu nedostupné – země dílů pocházejí z fotky štítku, ne z vyhledávání.',
+      altsAim:
+        'Alternativní značky/výrobky míří na menší zapojení Číny (nejen podobnost). Úrovně jsou odhady; samotné sídlo nedokazuje výrobu mimo Čínu.',
+      altsNone:
+        'Nenalezeny dostatečně jisté alternativy s menším zapojením Číny.',
+      sumCooUnconfirmed:
+        'Konečná země původu nepotvrzena',
+      tierUnknown:
+        'Nedostatek důkazů pro posouzení vazeb na Čínu.',
+      tierNone:
+        'V dostupných signálech nenalezeny vazby na Čínu.',
+      tierDirect:
+        'Nalezeny signály přímé vazby na Čínu.',
+      tierIndirect:
+        'Nalezeny signály nepřímé vazby na Čínu.',
+      cooConflictChina:
+        'Konečná země původu nepotvrzena – signál {source} ({label}) odporuje „Made in China“; samotné vlastnictví/mateřská firma neurčuje zemi výroby.',
+      cooConflictMadeIn:
+        'Konečná země původu nepotvrzena – signál {source} ({label}) odporuje výrobě v {madeIn}; ponecháno jen jako kandidát.',
+      candidate:
+        '{label} ({rating}, {pct} %, {source})',
+      listSep:
+        '; ',
+      webFail_model_unavailable:
+        'Modely živého vyhledávání nebyly s tímto klíčem API dostupné – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_search_grounding_unavailable:
+        'Živé vyhledávání Google nebylo s tímto klíčem API dostupné – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_upstream_credits:
+        'Kredit služby AI vyčerpán (předplacený zůstatek je prázdný) – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_upstream_quota:
+        'Denní bezplatný limit vyhledávání Google vyčerpán – zkuste to po denním resetu – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_upstream_unavailable:
+        'Živé vyhledávání na webu vypršelo nebo byla služba přetížená – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_empty_response:
+        'Živé vyhledávání na webu vrátilo prázdnou odpověď – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_disabled:
+        'Živé vyhledávání na webu bylo pro tuto kontrolu vypnuto – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_gemini_not_configured:
+        'Gemini není nastaven pro živé vyhledávání – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_no_entity:
+        'Chybí název výrobku pro živé vyhledávání – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      webFail_default:
+        'Pro tuto kontrolu neproběhlo živé vyhledávání na webu – země výroby a dílů jsou opatrnější (jen znalosti modelu).',
+      sum: {
+        madeIn: 'Vyrobeno v: {value}',
+        candidates: 'Kandidáti: {value}',
+        brandOrigin: 'Původ značky: {value}',
+        components: 'Komponenty/globální výroba: {value}',
+        parts: 'Díly: {value}',
+        hq: 'Sídlo: {value}',
+        company: 'Firma: {value}',
+      },
+      signal: {
+        ocr: 'štítek',
+        retailer: 'prodejce',
+        manufacturer: 'výrobce',
+        ownership: 'vlastnictví',
+        unknown: 'neznámé',
+      },
+    },
+    partsSourcesLabel: 'Sources',
+    sectionShareSave: 'Uložit obrázek',
+    sectionShareShare: 'Sdílet',
+    sectionShareSaved: 'Uloženo',
+    sectionShareFailed: 'Obrázek se nepodařilo uložit',
+    sectionShareHint: 'Najetím na vrstvu uložíte nebo sdílíte obrázek',
+    originCandidates: 'Queried origin candidates',
+    candidateRating: {
+      confirmed: 'confirmed COO',
+      likely: 'likely',
+      possible: 'possible',
+      mentioned: 'mentioned',
+    },
+    candidateSource: {
+      web_name: 'webová stránka (shoda názvu)',
+      confirmed_coo: 'stamped COO',
+      parts: 'parts / BOM',
+      components_line: 'components / global line',
+      notes: 'notes',
+      manufacturer: 'manufacturer',
+      filings: 'filings',
+      model_memory: 'model knowledge',
+      ownership: 'vlastnictví / mateřská',
+    },
+    origin: 'Původ',
+    brandOrigin: 'Původ značky',
+    componentsOrigin: 'Komponenty / globální linka',
+    productNotes: 'Poznámky k původu',
+    manufacturer: 'Výrobce',
+    company: 'Společnost',
+    hq: 'Sídlo',
+    parents: 'Mateřské společnosti',
+    graphTitle: 'Graf vztahů',
+    graphHint:
+      'Šipky ukazují, jak se propojují produkt, díly, společnost, továrny, mateřské firmy a místa. Rozbalte nebo přibližte, pokud jsou štítky stísněné.',
+    graphControls: 'Ovládání grafu',
+    graphZoomIn: 'Přiblížit',
+    graphZoomOut: 'Oddálit',
+    graphExpand: 'Rozbalit',
+    graphCollapse: 'Sbalit',
+    graphRelations: 'Vztahy',
+    graphNoEdges: 'Pro tento výsledek nebyly odvozeny žádné vazby.',
+    graphLink: 'související',
+    graphChinaLinked: 'Spojené s Čínou',
+    graphLegendCn: 'Uzel/hrana spojená s Čínou',
+    graphLegendOther: 'Jiné',
+    graphEdge: {
+      brand: 'značka',
+      brand_company: 'značka',
+      'brand/company': 'značka',
+      made_in: 'vyrobeno v',
+      hq: 'sídlo',
+      parent: 'mateřská',
+      majority: 'většinový vlastník',
+      wholly: 'plně vlastněno',
+      minority: 'menšinový podíl',
+      ownership: 'vlastnictví',
+      affiliation: 'značka',
+      manufacturing: 'továrna / OEM',
+      design: 'design',
+      company: 'společnost',
+      model: 'odpověď modelu',
+      supply: 'dodávka',
+      part: 'díl',
+      spare: 'náhradní díl',
+      ingredient: 'složka',
+      component: 'komponenta',
+    },
+    regionsTitle: 'Regiony',
+    altBrands: 'Značky s menším čínským zapojením (odhad)',
+    altProducts: 'Produkty s menším čínským zapojením (odhad)',
+    altDisclaimer:
+      'Pouze náhrady odhadované jako ne přímo spojené s Čínou (žádné výplně „made in China“). Sídlo v USA/EU samo o sobě nedokazuje výrobu mimo Čínu. Nejasné místo výroby je Neznámé, ne Nesouvisející.',
+    estimated: 'odhad',
+    twNote:
+      'Tchaj-wan je považován za samostatnou zemi a nikdy ne za související s Čínou u úrovní.',
+    region: {
+      CN: 'Pevninská Čína',
+      HK: 'Hongkong',
+      TW: 'Tchaj-wan',
+      MO: 'Macao',
+      OTHER: 'Jiné',
+      UNKNOWN: 'Neznámé',
+    },
+    overall: {
+      title: 'Celkově',
+      score: 'Skóre',
+    },
+    steps: {
+      start: 'Start',
+      cache: 'Cache',
+      identify: 'Čtení štítku',
+      web: 'Webový výzkum',
+      monolith: 'Úplná analýza',
+      score: 'Celkové skóre',
+    },
+  },
+  history: {
+    title: 'Historie',
+    subtitle: 'Minulé kontroly na tomto zařízení',
+    empty: 'Zatím žádné minulé kontroly.',
+    withPhoto: 'Fotka',
+    open: 'Otevřít',
+    remove: 'Odebrat',
+    search: 'Hledat',
+    searchPlaceholder: 'Hledat kontroly',
+    sort: 'Řazení',
+    sortNewest: 'Nejnovější',
+    sortOldest: 'Nejstarší',
+    sortScoreHigh: 'Nejvyšší skóre',
+    sortScoreLow: 'Nejnižší skóre',
+    sortName: 'Název',
+    removeAll: 'Odebrat vše',
+    removeAllConfirm: 'Odebrat všechny uložené kontroly?',
+    noMatches: 'Žádná kontrola neodpovídá tomuto hledání.',
+  },
+  settings: {
+    title: 'Nastavení',
+    subtitle: 'Předvolby a data na tomto zařízení',
+    panelDisplay: 'Jazyk a motiv',
+    panelCheck: 'Co kontrolovat',
+    panelData: 'Smazat data',
+    language: 'Jazyk',
+    theme: 'Motiv',
+    themeSystem: 'Systém',
+    themeLight: 'Světlý',
+    themeDark: 'Tmavý',
+    geoScope: 'Rozsah Číny pro úrovně',
+    geoScopeHint:
+      'Tchaj-wan je vždy považován za samostatnou zemi a nikdy neřídí úrovně vztahu k Číně. Pouze ČLR používá pevninskou Čínu. Greater China může volitelně zahrnovat Hongkong a Macao (ne Tchaj-wan).',
+    geoScopePrc: 'Pouze ČLR / pevnina (výchozí)',
+    geoScopeGreater: 'CN + Hongkong + Macao (ne Tchaj-wan)',
+    dimensions: 'Co kontrolovat',
+    dimensionsHint:
+      'Alternativy s menším čínským zapojením jsou ve výchozím stavu vypnuté. Zapněte alternativy značek nebo produktů, pokud chcete náhrady s menší vazbou na Čínu (navíc jedno volání AI).',
+    dimOrigin: 'Místo původu',
+    dimManufacturer: 'Původ výrobce',
+    dimCompany: 'Vztahy společnosti',
+    dimAltBrands: 'Alternativy značek s menším čínským zapojením',
+    dimAltProducts: 'Alternativy produktů s menším čínským zapojením',
+    howItWorks: 'Jak to funguje',
+    about: 'O OriginWise',
+    version: 'Verze {v}',
+    cleanData: 'Smazat místní data',
+    cleanDataHint:
+      'Data zůstávají jen v tomto prohlížeči. Vyberte, co odebrat. Toto nelze vrátit zpět.',
+    dataSummary: 'Na tomto zařízení',
+    dataNone: 'Žádná data OriginWise nejsou uložena.',
+    dataHistory: 'Minulé kontroly: {n}',
+    dataSettings: 'Vlastní nastavení',
+    dataDisclaimer: 'Upozornění přijato',
+    cleanAll: 'Vše',
+    cleanHistory: 'Jen minulé kontroly',
+    cleanSettings: 'Jen nastavení',
+    cleanConfirm: 'Smazat vybraná data?',
+    cleanConfirmBtn: 'Smazat teď',
+    cleanDoneAll: 'Všechna místní data OriginWise smazána.',
+    cleanDoneHistory: 'Minulé kontroly smazány.',
+    cleanDoneSettings: 'Nastavení obnoveno na výchozí.',
+  },
+  about: {
+    title: 'O aplikaci',
+    tagline: 'Jednoduchá kontrola produktu ve vztahu k Číně',
+    intro:
+      'OriginWise vám pomůže rychle vidět, zda produkt nebo značka působí jako související s Čínou — místo původu, výrobce a vazby společnosti — s volitelnými alternativami s menším zapojením. Kontroly zůstávají na tomto zařízení.',
+    body: 'OriginWise je jednoduchý nástroj pro rychlou kontrolu vztahu k Číně u běžných produktů a značek. AI může být neúplná nebo chybná.',
+    privacy: 'Bez účtu. Historie zůstává na tomto telefonu/prohlížeči.',
+    license: 'Licence MIT',
+    licenseShort: 'MIT',
+    openSourceTitle: 'Open source · MIT',
+    openSourceBody:
+      'Tento projekt je svobodný software pod licencí MIT. Můžete jej používat, kopírovat, upravovat, slučovat, zveřejňovat, šířit a sublicencovat — včetně vlastního nasazení s vlastními API klíči.',
+    copyrightLine: 'Copyright © {year} {name}',
+    licenseAsIs:
+      'Poskytováno „tak, jak je“, bez záruky. Úplný text licence najdete na GitHubu.',
+    linkSource: 'Zdrojový kód',
+    linkLicense: 'Licence MIT',
+    linkIssues: 'Hlásení a zpětná vazba',
+    linkReleases: 'Vydání',
+    linkSecurity: 'Bezpečnostní zásady',
+    privacyTitle: 'Vaše soukromí',
+    privacyLead:
+      'Držíme to jednoduché: bez účtu a historie kontrol zůstává na vašem telefonu nebo počítači.',
+    privacyBullet1:
+      'Minulé kontroly, nastavení a předvolby se ukládají jen v tomto prohlížeči na vašem zařízení.',
+    privacyBullet2: 'Není přihlášení ani cloudová kopie vašeho deníku kontrol.',
+    privacyBullet3:
+      'Vše můžete kdykoli smazat pomocí Smazat místní data v Nastavení.',
+    privacyBullet4:
+      'Při kontrole se jméno nebo fotka posílá jen kvůli této odpovědi. Obaly neuchováváme jako katalog produktů.',
+    privacyBullet5:
+      'Fotky se komprimují na vašem zařízení před odesláním a neukládají se jako záznamy serveru.',
+    privacyBullet6:
+      'Při zapnutém živém webovém výzkumu se název produktu (a text etikety) jednou odešle také vyhledávací službě: nejprve Google Search přes Gemini, Brave Search nebo Firecrawl jen pokud to selže. Kroky průběhu i výsledek uvádějí skutečně použitou službu. Vyhledávací dotazy nikde neukládáme.',
+    privacyPolicyLink: 'Zásady ochrany soukromí',
+    termsLink: 'Podmínky použití',
+    designTitle: 'Jak to funguje',
+    designLead:
+      'Rychlá multiagentní kontrola AI, pak pevná hodnoticí tabulka — ne právní databáze.',
+    designLocalTitle: 'Co zůstává na vašem zařízení',
+    designLocalBody:
+      'Po načtení aplikace se historie, jazyk, motiv a předvolby kontroly ukládají jen v tomto prohlížeči. Vymažte data webu nebo použijte Smazat místní data.',
+    designWhyTitle: 'Proč jsme to tak postavili',
+    designWhy1: 'Rychlé mobilní kontroly bez vytváření účtu.',
+    designWhy2: 'Historie zůstává u vás — smažte ji kdykoli.',
+    designWhy3:
+      'AI se může mýlit; zobrazujeme výhrady a Tchaj-wan pro úrovně bereme jako samostatnou zemi.',
+    disclaimerTitle: 'Upozornění',
+    disclaimerBody:
+      'OriginWise je pouze informativní — ne právní, celní ani sankční rada. AI a štítky úrovní mohou být neúplné nebo chybné. Kritická rozhodnutí vždy ověřte sami.',
+    createdBy: 'Spravuje',
+    contributionsWelcome: 'Issue a pull requesty jsou na GitHubu vítány.',
+  },
+  how: {
+    title: 'Jak to funguje',
+    subtitle: 'Rychlá kontrola vztahu k Číně — jednoduše',
+    aimTitle: 'K čemu tato aplikace je',
+    aimBody:
+      'Pomáhá rychle vidět, zda produkt nebo značka působí jako související s Čínou — vyrobeno tam, vazby společnosti atd. Není to nástroj hlubokého výzkumu ani právní kontrola.',
+    stepsTitle: 'Jednoduše řečeno',
+    step1Title: 'Něco odešlete',
+    step1Body: 'Název produktu, značku nebo fotku obalu.',
+    step2Title: 'Hledáme to pomocí AI',
+    step2Body:
+      'Proběhnou malé kontroly: místo produktu a společnost (spolu), pak rychlá dvojí kontrola. Volitelně: alternativy značek/produktů s menším čínským zapojením, pokud je zapnete.',
+    step3Title: 'Dostanete jednoduchý výsledek',
+    step3Body:
+      'Barevný odznak: Nesouvisející, Nepřímý, Přímý nebo Neznámé — plus krátké proč.',
+    graphTitle: 'Celý tok',
+    graphHint: 'Od vašeho vstupu k barevnému odznaku.',
+    flowYou: 'Vy (název / fotka)',
+    flowAi: 'Kontroly AI',
+    flowProduct: 'Místo produktu',
+    flowCompany: 'Společnost',
+    flowVerify: 'Dvojí kontrola',
+    flowScore: 'Jednoduché skóre',
+    flowResult: 'Barevný výsledek',
+    flowAiDetail:
+      'Nejprve místo produktu + společnost, pak rychlá dvojí kontrola.',
+    flowScoreDetail: 'Odpovědi spojíme do jednoho jednoduchého skóre.',
+    badgeTitle: 'Co barvy znamenají',
+    badgeNone: 'Nesouvisející — nenašla se jasná vazba na Čínu',
+    badgeIndirect: 'Nepřímý — slabší nebo částečná vazba',
+    badgeDirect: 'Přímý — jasná vazba (např. made in China nebo sídlo tam)',
+    badgeUnknown: 'Neznámé — málo jasných informací',
+    twTitle: 'Tchaj-wan',
+    twBody:
+      'Tchaj-wan se zde vždy počítá jako vlastní země. Sám o sobě se nepočítá jako „související s Čínou“.',
+    evidenceTitle:
+      'Kdy se země výroby počítá jako potvrzená',
+    evidenceBody:
+      'Země výroby se zobrazí jako potvrzená třemi způsoby. Nejsilnější je fotka etikety obalu nebo webová stránka se stejným čárovým kódem (JAN/EAN) vedle údaje o původu (shoda čárového kódu). Dále shoda přesného modelu: odpověď AI a alespoň jedna stránka s přesnou značkou a modelem uvádějí stejnou zemi, nebo se shodnou dvě či více takových stránek z různých webů; odpověď AI je pak uvedena jako jeden ze zdrojů. V obou případech nesmí žádná stránka s přesným modelem uvádět jinou zemi. Samotná odpověď AI nikdy není potvrzením a zůstává odkazem modelu; když si stránky s přesným modelem odporují, země výroby zůstává nepotvrzená a kandidáti jsou uvedeni. Odkaz citovaný AI se počítá až po kontrole: stránka (ať ji vrátilo webové vyhledávání, nebo se načte) musí uvádět přesný model a tutéž zemi a nesmí být vyřazena jako jiný model; jinak je uveden jako „Citováno AI, nelze ověřit“ a nepočítá se. Volná shoda podle názvu produktu se uvádí jen jako kandidát pod nadpisem „Nepotvrzeno“ a stránka s více velikostmi nebo variantami zůstává nepotvrzená. Když živé vyhledávání na webu není k dispozici, výsledek vychází jen ze znalostí modelu a uvádí to.',
+    flowWeb:
+      'Vyhledávání na webu',
+    flowWebDetail:
+      'Hledání webových stránek podle názvu produktu nebo čárového kódu a kontrola údaje o původu.',
+    privacyTitle: 'Vaše data',
+    privacyBody:
+      'Historie zůstává v tomto zařízení a fotky se na serveru neukládají. Když je zapnuté živé vyhledávání na webu, název produktu nebo čárový kód se posílá vyhledávacím službám. AI se může mýlit – důležitá rozhodnutí si vždy ověřte.',
+    tryBtn: 'Zkusit kontrolu',
+  },
+  tier: {
+    none: 'Nesouvisející',
+    indirect: 'Nepřímý',
+    direct: 'Přímý',
+    unknown: 'Neznámé',
+  },
+} satisfies MessageTree;
