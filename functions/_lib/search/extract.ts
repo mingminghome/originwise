@@ -113,7 +113,26 @@ export function buildMadeInQuery(
 export function brandToken(entity: string): string {
   const words =
     nfkc(entity).match(/[A-Za-z][A-Za-z0-9]{1,}|[\u3040-\u30ff\u4e00-\u9fff]{2,}/g) ?? [];
-  return words.find((w) => /^[A-Za-z]/.test(w)) ?? words[0] ?? '';
+  // "Le Creuset" must search Creuset. A two-letter word matches unrelated sites.
+  const latin = words.find((w) => /^[A-Za-z]/.test(w) && w.length >= 3);
+  if (latin) return latin;
+  return words.find((w) => w.length >= 2) ?? '';
+}
+
+/** A user-review host or path. It is not a product-page made-in. */
+function isReviewPage(url: string): boolean {
+  let host = '';
+  let path = '';
+  try {
+    const u = new URL(url);
+    host = u.hostname.toLowerCase();
+    path = u.pathname.toLowerCase();
+  } catch {
+    return false;
+  }
+  const reviewLabel = (s: string) => s === 'review' || s === 'reviews' || s.endsWith('review') || s.endsWith('reviews');
+  if (host.split('.').some(reviewLabel)) return true;
+  return path.split('/').filter(Boolean).some(reviewLabel);
 }
 
 /**
@@ -158,6 +177,7 @@ export function keepUnitPages<T extends { url: string; finalUrl?: string; title?
 ): T[] {
   return pages.filter((p) => {
     if (!p.url || isSearchResultUrl(p.url)) return false;
+    if (isReviewPage(p.finalUrl || p.url)) return false;
     if (pageOutsideMarket(p.finalUrl || p.url, entity)) return false;
     return pageMentionsUnit(entity, `${p.title ?? ''}\n${p.text}`);
   });
@@ -182,6 +202,7 @@ export function keepFactoryPages<T extends { url: string; finalUrl?: string; tit
   for (const p of pages) {
     if (!p.url || isSearchResultUrl(p.url)) continue;
     const url = p.finalUrl || p.url;
+    if (isReviewPage(url)) continue;
     if (pageOutsideMarket(url, entity)) continue;
     const blob = nfkc(`${url}\n${p.title ?? ''}\n${p.text}`).toLowerCase();
     if (!blob.includes(brand)) continue;

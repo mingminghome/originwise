@@ -148,13 +148,14 @@ Do not write that a package, label, or physical inspection is required.
 company.headline is exactly one token: unrelated, unknown, direct, or indirect. Ignore recordedTier.
 A China controlling owner or a China headquarters is direct. A stated China factory or OEM without a China owner is indirect. A named company with no China page, no China part, and no China relation is unrelated. A China page still blocks unrelated. No company fact is unknown.
 company.lines must list headquarters, brand origin, and each owner from company.relations, each as its own line. A relation with onFetchedPage false is public company knowledge, not one of these pages: the line must say that. Keep the brand origin when the owner is in another country. Do not drop the owner because the brand started elsewhere.
-madeIn.modelAnswer is the model's own country. It is one source. Name it in madeIn.lines as the model's answer, not as a page. It does not confirm the made-in. When it names a different country from the pages, the headline stays unconfirmed.
-madeIn.headline is the English country name when madeIn.confirmed is true. When two or more pages name one country, no page names a different country, and modelAnswer is empty or that same country, the headline is "mostly {Country}" with the English country name. Otherwise the headline is the token unconfirmed.
-The page translates those headline tokens.
+madeIn.modelAnswer is the model's own country. It is one source. Name it in madeIn.lines as the model's answer, not as a page. It does not by itself confirm the made-in. When it names a different country from the pages, the headline stays unconfirmed.
+madeIn.headline is the country name in ${lang} when madeIn.confirmed is true. Otherwise the headline is the token unconfirmed. A continent or other region is not a country and is not the headline. Do not write a "mostly" headline for the finished unit.
+The page translates the headline tokens unrelated, unknown, direct, indirect, and unconfirmed.
 score is how strongly these facts connect this product to China. 0 means the facts show no China connection. 100 means a confirmed China connection: a confirmed made-in in China, or a China company or China controlling owner.
-When two or more pages name one made-in country and no page names a different country, the summary leads with that country. Do not spend the summary on "not confirmed".
-When pages name different countries, or fewer than two pages name a country, the summary says the made-in is not confirmed.
+When madeIn.confirmed is true, the summary states that country as confirmed.
+When pages name different countries, or a page only names a region, the summary says the made-in is not confirmed.
 A confirmed made-in (madeIn.confirmed true) is stated as confirmed. Do not write confirmed unless madeIn.confirmed is true.
+A user review is not a made-in source. A different item, including a spare or a cover, is not this unit. Do not put its country in the summary.
 A page that names China still counts toward the score. Company headquarters or brand origin outside China does not erase that page.
 Company headquarters, brand origin, and a design or engineering country are not where the product is made.
 A sales, retail, or distribution presence is not a China connection. It must not raise the score and it must not be written as one.
@@ -175,9 +176,12 @@ export function readOverall(obj: Record<string, unknown> | null): OverallScore |
   const score = Math.min(100, Math.max(0, Math.round(raw)));
   const madeIn = readCard(obj.madeIn);
   let company = readCard(obj.company);
-  // score is the China connection. A positive score cannot be labeled unrelated.
-  if (company && score > 0 && company.headline.trim().toLowerCase() === 'unrelated') {
-    company = { ...company, headline: 'unknown' };
+  // The company line uses the same connection as the score. 0 is unrelated.
+  // A positive score is at least indirect, including when the model said unknown.
+  if (company) {
+    const token = company.headline.trim().toLowerCase();
+    const headline = score === 0 ? 'unrelated' : token === 'direct' ? 'direct' : 'indirect';
+    if (headline !== token) company = { ...company, headline };
   }
   return {
     summary: summary.slice(0, SUMMARY_MAX),

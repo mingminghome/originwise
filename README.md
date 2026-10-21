@@ -34,7 +34,7 @@ Useful for:
 | **China link** | The score step writes 0–100 and the Link to China card from facts that survived the quote check. The page shows that score above the Made in and Link to China cards |
 | **Check steps** | Provider pool (Gemini / OpenAI / Grok / Claude). Identity, tidy, and score are separate JSON calls; SSE shows progress |
 | **Live web search** | Google Search via Gemini, then Brave and Firecrawl. The server fetches the pages. It does not name the country |
-| **Result cards** | The page prints the score JSON. A made-in is unconfirmed unless the facts mark it confirmed. Two pages that name one country, and none that name another, show as mostly that country |
+| **Result cards** | The page prints the score JSON. A made-in is confirmed only from exact-model pages. A continent is not a country. Country names are in the reader's language |
 | **Graph & alternatives** | Visual links plus optional alternative suggestions |
 | **History** | Local history + settings; wipe on device anytime |
 | **Privacy** | No account; check history stays on-device |
@@ -75,11 +75,11 @@ Taiwan is always treated as a **separate country** for relation tiers. AI result
 
 | Headline | When |
 |----------|------|
-| **Country name** | The facts already mark that made-in confirmed. The tidy step does not set that mark |
-| **Mostly {Country}** | Two or more pages name one country, and no page names a different country |
-| **Unconfirmed** | Pages disagree, or fewer than two pages name a country |
+| **Country name** | Two exact-model pages on different sites name that country, or the model's country matches one such page, and no page names another place. The server sets this mark |
+| **Mostly {Country}** | Parts lead to one country. This is not the finished unit, and it is not a confirmation |
+| **Unconfirmed** | Pages name different places, a page only names a region such as Europe, or one page does not match the model's country |
 
-One retailer page is a source. Design or brand wording is never the made-in. A factory or OEM line appears only when a page or the company record states it.
+One retailer page is a source. A user review is not a made-in source. Design or brand wording is never the made-in. A factory or OEM line appears only when a page or the company record names a real plant. Country names are written in the reader's language.
 
 ---
 

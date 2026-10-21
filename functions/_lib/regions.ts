@@ -97,3 +97,38 @@ export function normalizeRegion(raw: unknown): RegionCode {
   if (s.length >= 2) return 'OTHER';
   return 'UNKNOWN';
 }
+
+/**
+ * A continent is not a factory country. The match is the whole label, so
+ * "European Union" stays a place the page named.
+ */
+const CONTINENTS = new Set([
+  'europe',
+  'asia',
+  'africa',
+  'oceania',
+  'antarctica',
+  'north america',
+  'south america',
+  'america',
+  '歐洲',
+  '欧洲',
+  '亞洲',
+  '亚洲',
+  '非洲',
+  '大洋洲',
+  '南極洲',
+  '南极洲',
+  '北美洲',
+  '南美洲',
+  '美洲',
+]);
+
+export function isRegionNotCountry(raw?: string): boolean {
+  const s = String(raw ?? '')
+    .normalize('NFKC')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+  return CONTINENTS.has(s);
+}

@@ -63,8 +63,11 @@ function sortedDims(dims: CheckDimension[]): string {
  * v30: origin search and the research prompt no longer list shop phrases.
  *     The card reads country fields. It does not scan notes for China,
  *     design, or a denied factory.
+ * v31: two agreeing exact-model pages, or the model plus one such page,
+ *     confirm the made-in. A continent is not a country. Country names are
+ *     in the reader's language. A review page is not a made-in vote.
  */
-export const CACHE_KEY_VERSION = 'check:v30';
+export const CACHE_KEY_VERSION = 'check:v31';
 
 export async function cacheKeyHash(parts: CacheLookupKey): Promise<string> {
   const material = [

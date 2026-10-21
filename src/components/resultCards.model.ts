@@ -10,7 +10,8 @@ import {
   splitSourceLine,
 } from '../../functions/_lib/sourceLine';
 import type { CheckResult } from '../core/types';
-import { normalizeRegion } from '../../functions/_lib/regions';
+import { confirmingCountry } from '../../functions/_lib/madeInConfirm';
+import { isRegionNotCountry, normalizeRegion } from '../../functions/_lib/regions';
 import { isUselessCooNote } from '../../functions/_lib/noteText';
 import { factVerified, quoteNamesBrand } from '../core/evidence';
 import { brandHqFolded, confirmedMadeIn, pickOwner } from './ChinaLink';
@@ -514,14 +515,17 @@ function buildMadeInViewCore(
       rows.push({ label: countryText(h.country) ?? h.country, rating: 'likely', source: 'web_name' });
     }
   }
-  const webCountries: string[] = [];
-  for (const r of rows) {
-    if (r.source === 'web_name' && !webCountries.some((c) => sameCountryLabel(c, r.label))) webCountries.push(r.label);
+  // Page countries come from the fetched pages, even when the model row
+  // already used that label. Otherwise the badge stays "AI answer only".
+  const pageCountries: string[] = [];
+  for (const h of likelyHits) {
+    const label = countryText(h.country);
+    if (label && !pageCountries.some((c) => sameCountryLabel(c, label))) pageCountries.push(label);
   }
-  // Pages that disagree (exact-model ones, or name-matched ones): neutral rows.
   const exactCountries = searchCoo.filter((c) => c.exactModel).map((c) => c.country);
   const pagesDisagree =
-    exactCountries.some((c) => !sameCountryLabel(c, exactCountries[0]!)) || webCountries.length >= 2;
+    pageCountries.length >= 2 ||
+    (exactCountries.length > 0 && exactCountries.some((c) => !sameCountryLabel(c, exactCountries[0]!)));
   // Every country is a 爭議 side (ungraded) when pages disagree or the label does.
   const disagree = pagesDisagree || labelDisputed;
   rows = rows.map((r) => {
@@ -545,28 +549,27 @@ function buildMadeInViewCore(
   });
   const webPages = new Set(likelyHits.map((h) => h.url).filter(Boolean)).size;
   const aiSaid = [madeIn, ...candidates.filter((c) => c.source === 'model_memory').map((c) => c.label)].filter(Boolean);
-  const aiBacks = (label: string) => aiSaid.some((a) => sameCountryLabel(a, label));
+  const aiBacks = (label: string) => aiSaid.some((a) => a && sameCountryLabel(a, label));
   // 「網頁說法不一」 only when every side is a web page; with the label as a side 「來源說法不一」.
   const reason: UnconfirmedReason | undefined = labelDisputed
     ? 'sourcesDisagree'
     : pagesDisagree
-    ? 'pagesDisagree'
-    : (meta?.citedUnverified ?? []).length
-      ? 'aiCitedUnverified'
-      : !webCountries.length && aiSaid.length && rows.some((r) => modelOnlyPartCandidate(result, r))
-        ? 'aiOnly'
-        : webCountries.length === 1 && webPages === 1 && !aiBacks(webCountries[0]!)
-          ? 'onePageOnly'
-          : undefined;
+      ? 'pagesDisagree'
+      : (meta?.citedUnverified ?? []).length
+        ? 'aiCitedUnverified'
+        : pageCountries.length === 0 && aiSaid.length
+          ? 'aiOnly'
+          : pageCountries.length === 1 && webPages === 1 && !aiBacks(pageCountries[0]!)
+            ? 'onePageOnly'
+            : undefined;
   // 爭議: every side of the disagreement with its page counts.
   const pageDispute: DisputeSide[] =
-    disagree
-      ? rows
-          .filter((r) => r.source === 'web_name')
-          .map((r) => {
-            const hits = likelyHits.filter((h) => sameCountryLabel(h.country, r.label));
+    pageCountries.length >= 2
+      ? pageCountries
+          .map((country) => {
+            const hits = likelyHits.filter((h) => sameCountryLabel(h.country, country));
             return {
-              country: r.label,
+              country,
               pages: new Set(hits.map((h) => h.url ?? '')).size,
               exactPages: new Set(hits.filter((h) => h.exactModel).map((h) => h.url ?? '')).size,
             };
@@ -931,35 +934,37 @@ function mostlyCountry(
   return top.label;
 }
 
-/**
- * Pages that state a made-in all name one country, and at least two of them
- * do. Silence is not a second country. One page, or two countries, stays
- * unconfirmed. This is not a label confirmation.
- */
-function agreedPageCountry(votes: SourceVote[]): string | undefined {
-  const pages = votes
-    .map((v) => ({ country: v.country, n: v.sources.filter((s) => !s.ai).length }))
-    .filter((v) => v.n > 0);
-  if (pages.length !== 1 || pages[0]!.n < 2) return undefined;
-  return pages[0]!.country;
+/** Stamp 已確認 from the fetched pages when the server has not already. */
+function withPageConfirmation(result: CheckResult): CheckResult {
+  const basis = result.product?.madeInBasis;
+  if (basis === 'barcode' || basis === 'label' || basis === 'model') return result;
+  const pages = result.meta?.searchCoo ?? [];
+  const found = confirmingCountry(pages, result.product?.madeIn);
+  if (!found) return result;
+  return {
+    ...result,
+    product: {
+      ...result.product,
+      madeIn: found.country,
+      madeInBasis: 'model',
+      madeInSupport: found.support,
+    },
+    meta: {
+      ...result.meta,
+      searchCoo: pages.map((h) =>
+        h.url && h.country && !isRegionNotCountry(h.country) ? { ...h, exactModel: true } : h
+      ),
+    },
+  };
 }
 
 export function buildMadeInView(result: CheckResult): MadeInView {
-  const core = buildMadeInViewCore(result);
-  const tier = tierRows(result, core);
-  const { votes, silent, total } = buildSourceVotes(result);
-  const pageCountry = agreedPageCountry(votes);
-  const modelCountries = votes
-    .filter((v) => v.sources.some((s) => s.ai))
-    .map((v) => v.country);
-  const modelAgrees =
-    !modelCountries.length ||
-    (Boolean(pageCountry) && modelCountries.every((c) => sameCountryLabel(c, pageCountry!)));
-  const mostly =
-    mostlyCountry(result, core, tier) ??
-    (core.state === 'unconfirmed' && (core.dispute?.length ?? 0) < 2 && modelAgrees
-      ? pageCountry
-      : undefined);
+  const stamped = withPageConfirmation(result);
+  const core = buildMadeInViewCore(stamped);
+  const tier = tierRows(stamped, core);
+  const { votes, silent, total } = buildSourceVotes(stamped);
+  // 「大多產自」 is a parts headline. Agreeing pages confirm, or they stay 未確認.
+  const mostly = mostlyCountry(stamped, core, tier);
   return {
     ...core,
     ...(mostly ? { mostly } : {}),
@@ -967,9 +972,9 @@ export function buildMadeInView(result: CheckResult): MadeInView {
     votes,
     silent,
     sourceTotal: total,
-    citedRows: citedRows(result),
-    excludedRows: excludedRows(result),
-    designRows: designRows(result, core.state === 'confirmed' ? core.country : undefined),
+    citedRows: citedRows(stamped),
+    excludedRows: excludedRows(stamped),
+    designRows: designRows(stamped, core.state === 'confirmed' ? core.country : undefined),
   };
 }
 

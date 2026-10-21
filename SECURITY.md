@@ -27,7 +27,7 @@ OriginWise is a single-page app on Cloudflare Pages (history and settings stay i
 | Free-tier quota burn | Job limits, a cap of 4 shared calls for identity and tidy, a cap of 2 for the score step, cache, and the provider pool |
 | SSE long connections | Rate limit on accept; heartbeats; client stall abort → JSON fallback |
 | Hallucinated ownership | Verify agent + low confidence + caveats + knowledgeBasis disclaimer |
-| Wrong made-in from web pages | A made-in, part, relation, or design line is dropped unless its quote appears on a fetched page. The tidy step does not mark a made-in confirmed. Two pages that name one country, and none that name another, show as mostly that country. Disagreeing pages stay unconfirmed. One page is a source |
+| Wrong made-in from web pages | A made-in, part, relation, or design line is dropped unless its quote appears on a fetched page. A made-in is confirmed only when two exact-model pages on different sites name one country, or the model's country matches one such page, and no page names another place. A continent is not a country. One page is a source. A user review is not a made-in source. Disagreeing pages stay unconfirmed |
 | Untrusted fetched pages | Page text is fenced data in the tidy prompt. The quote check is the gate. At most 4 pages per check, with size caps |
 | Search key theft / quota burn | `FIRECRAWL_API_KEY` / `BRAVE_SEARCH_API_KEY` as Pages secrets only; Gemini source pages are fetched directly so they don't use Firecrawl credits |
 

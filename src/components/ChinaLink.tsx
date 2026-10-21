@@ -329,7 +329,7 @@ export function buildChinaCard(result: CheckResult): ChinaCardView {
   if (madeCn) chips.push('madeInChina');
 
   let confidence: number | undefined =
-    typeof result.confidence === 'number' ? result.confidence : undefined;
+    typeof result.confidence === 'number' && result.confidence > 0 ? result.confidence : undefined;
   if (!chip && madeCn) {
     // Made-in-only link: the number lives once, in the 製造地 card.
     confidence = undefined;

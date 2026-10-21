@@ -10,7 +10,7 @@
  * - Fold: collapsible section, closed by default.
  */
 import type { ReactNode } from 'react';
-import type { CheckResult } from '../core/types';
+import type { CheckResult, RelationTier } from '../core/types';
 import { localeOfT, type TFunction } from '../core/i18n';
 import { localizeCountry } from '../core/i18n/countries';
 import { formatTierReason } from '../core/i18n/tierReasons';
@@ -122,6 +122,12 @@ export function ChinaCard({
     if (type !== 'manufacturing' && type !== 'supply') continue;
     const country = rel.country?.trim();
     const note = rel.note?.trim();
+    if (type === 'manufacturing') {
+      const plant = note?.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '') ?? '';
+      const place = country?.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '') ?? '';
+      const maker = manufacturer?.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '') ?? '';
+      if (!plant || plant === place || (maker && plant === maker)) continue;
+    }
     rows.push({
       key: `ops-${type}-${ops}`,
       label: t(type === 'supply' ? 'check.chinaLink.supply' : 'check.chinaLink.factory'),
@@ -132,7 +138,17 @@ export function ChinaCard({
     ops += 1;
   }
   const factoryChina = rows.some((r) => r.key.startsWith('ops-') && r.china);
-  const tier = (v.tier === 'none' || v.tier === 'unknown') && factoryChina ? 'indirect' : v.tier;
+  const companyCard = result.overall?.company;
+  const spoken =
+    companyCard && typeof companyCard === 'object' ? companyCard.headline.trim().toLowerCase() : '';
+  const fromScore: RelationTier | undefined =
+    spoken === 'direct' || spoken === 'indirect' || spoken === 'unknown'
+      ? spoken
+      : spoken === 'unrelated' || spoken === 'none'
+        ? 'none'
+        : undefined;
+  let tier: RelationTier = fromScore ?? v.tier;
+  if ((tier === 'none' || tier === 'unknown') && factoryChina) tier = 'indirect';
 
   const lines: Array<{ key: string; text: string; pointer?: boolean }> = [];
   for (const r of v.reasons) {

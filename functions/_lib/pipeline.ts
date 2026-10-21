@@ -10,7 +10,8 @@
  */
 
 import { langLabel } from './locale';
-import { normalizeRegion } from './regions';
+import { confirmingCountry } from './madeInConfirm';
+import { isRegionNotCountry, normalizeRegion } from './regions';
 import { identityTokens } from './search/extract';
 import type { CheckResult, GeoScope, GraphEdge, GraphNode, WebCooClaim } from './schema';
 
@@ -99,10 +100,11 @@ country is the English name of the place the quote states.
 quote is copied from that page. url is that page's url.
 modelMadeIn is your own country for where this finished unit is made. It counts as one source. It is not a confirmation and it does not need a page quote. Fill it even when the pages name another country or none. Do not put a design or brand country in modelMadeIn.
 A product page's made-in goes in pages. A part's country goes in parts. A page that states design or brand origin goes in design, never in pages.
-pages, parts, and design need a quote copied from a product page. Omit those when you cannot quote a page.
-companyName, hq, and relations are the company, not the made-in. When a page states them, copy the quote. When you know a public headquarters, brand origin, owner, factory, or OEM and no page states it, still fill that row and leave quote empty. Use one relations row per fact: type owner, brand, hq, manufacturing, or supply. For an owner, name is the owner company. For a factory or OEM, name is the plant or the contract manufacturer. Always fill a brand row when you know where the brand started, including when that country is the same as the headquarters. A brand that started in one country and is now owned from another is two rows. Fill a manufacturing row for a factory or OEM country when a factory page states it, or when you know the real plant. The name is that plant or contract manufacturer. Do not build a name by joining the brand and the country. If you cannot name a China plant, omit the China row. Do not invent a country. One row per country. A factory page is never the made-in of this unit. Do not copy its country into pages or modelMadeIn.
+pages, parts, and design need a quote copied from a product page for this exact model. Omit those when you cannot quote a page. A user review is not a made-in source. A different item, including a spare or a cover sold on its own, is not this unit.
+companyName, hq, and relations are the company, not the made-in. When a page states them, copy the quote. When you know a public headquarters, brand origin, owner, factory, or OEM and no page states it, still fill that row and leave quote empty. Use one relations row per fact: type owner, brand, hq, manufacturing, or supply. hq is one country. When records name more than one headquarters country, leave hq empty and add one hq relation per country. For an owner, name is the owner company. For a factory or OEM, name is the plant or the contract manufacturer. Always fill a brand row when you know where the brand started, including when that country is the same as the headquarters. A brand that started in one country and is now owned from another is two rows. Fill a manufacturing row for a factory or OEM country when a factory page states it, or when you know the real plant. The name is that plant or contract manufacturer. Do not build a name by joining the brand and the country. If you cannot name a China plant, omit the China row. Do not invent a country. One row per country. A factory page is never the made-in of this unit. Do not copy its country into pages or modelMadeIn.
+A continent or other region is not a country. When a page only names a region, still put that region in country so the card can show the split, and do not treat it as where the unit is made.
 Do not invent a page quote. Do not put headquarters, an owner, or a factory into pages.
-Write note in ${lang}. Country names in country and madeIn stay English.
+Write note in ${lang}. Write every country and region name in ${lang}.
 PRODUCT: ${opts.identity.brand} ${opts.identity.name}
 FACTORY PAGES:
 ${plants || '(none)'}
@@ -173,10 +175,16 @@ export function resultFromTidy(opts: {
     status: 'likely',
     url: p.url,
     quote: p.quote,
+    ...(!isRegionNotCountry(p.country) && p.url ? { exactModel: true } : {}),
   }));
+  const confirmed = confirmingCountry(pages, opts.facts.modelMadeIn);
   const brand = opts.facts.relations.find((r) => r.type === 'brand' && r.country);
   const owners = opts.facts.relations.filter((r) => r.type === 'owner' && (r.name || r.note || r.country));
   const hqRel = opts.facts.relations.find((r) => r.type === 'hq' && r.country);
+  const plant = opts.facts.relations.find((r) => {
+    const name = (r.name || r.note || '').trim();
+    return relationType(r.type) === 'manufacturing' && plantName(name, r.country, opts.identity.brand);
+  });
   return {
     schemaVersion: 1,
     relationTier: 'unknown',
@@ -194,8 +202,17 @@ export function resultFromTidy(opts: {
     product: {
       name: opts.identity.name,
       brand: opts.identity.brand || undefined,
-      originCountry: brand?.country || (owners.length ? undefined : hqRel?.country),
-      madeIn: opts.facts.modelMadeIn,
+      originCountry: onePlace(brand?.country) || (owners.length ? undefined : onePlace(hqRel?.country)),
+      madeIn: confirmed?.country || opts.facts.modelMadeIn,
+      ...(confirmed
+        ? { madeInBasis: 'model' as const, madeInSupport: confirmed.support }
+        : {}),
+      ...(plant
+        ? {
+            manufacturer: plantName(plant.name || plant.note, plant.country, opts.identity.brand),
+            manufacturerCountry: onePlace(plant.country),
+          }
+        : {}),
       parts: opts.facts.parts.map((p) => ({ name: p.name, madeIn: p.madeIn })),
       designInfo: opts.facts.design
         ? [{ country: opts.facts.design.country, kind: 'design' as const, quote: opts.facts.design.quote }]
@@ -203,7 +220,7 @@ export function resultFromTidy(opts: {
     },
     company: {
       name: opts.facts.companyName || opts.identity.brand || undefined,
-      hqCountry: opts.facts.hq || hqRel?.country,
+      hqCountry: onePlace(opts.facts.hq) || onePlace(hqRel?.country),
       parents: owners.map((r) => ({
         name: r.name || r.note || r.country || '',
         country: r.country,
@@ -219,6 +236,28 @@ export function resultFromTidy(opts: {
     graph: buildGraph(opts.identity, opts.facts),
     meta: { jobId: opts.jobId, searchCoo: pages },
   };
+}
+
+/** One place. Two countries in one field are not one headquarters. */
+function onePlace(raw?: string): string | undefined {
+  const s = String(raw ?? '').trim();
+  if (!s || /[,;/]|\band\b|及|、/.test(s)) return undefined;
+  return s;
+}
+
+function foldName(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '');
+}
+
+/** A plant name. The country alone, or the brand joined to the country, is not one. */
+function plantName(name: string | undefined, country: string | undefined, brand: string): string | undefined {
+  const n = String(name ?? '').trim();
+  const plain = foldName(n);
+  if (plain.length < 3) return undefined;
+  if (country && plain === foldName(country)) return undefined;
+  const joined = foldName(`${brand}${country ?? ''}`);
+  if (joined.length >= 3 && plain === joined) return undefined;
+  return n;
 }
 
 /** Company roles stay as named. Any other relation is a factory row. */
