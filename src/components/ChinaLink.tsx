@@ -10,7 +10,7 @@
  * are separate places, so an HK-HQ company gets no chip.
  */
 import { hqFoldedIntoParent, parentNamedInCompany } from '../../functions/_lib/chinaChip';
-import { inScope, normalizeRegion, type GeoScope } from '../../functions/_lib/regions';
+import { inScope, isRegionNotCountry, normalizeRegion, type GeoScope } from '../../functions/_lib/regions';
 import { cleanSources } from '../../functions/_lib/sourceLine';
 import {
   STRONG_CN_CODES,
@@ -192,7 +192,7 @@ export function confirmedMadeIn(
 ): { country: string; basis: 'barcode' | 'label' | 'model' } | undefined {
   const p = result.product;
   const madeIn = clean(p?.madeIn);
-  if (!madeIn) return undefined;
+  if (!madeIn || isRegionNotCountry(madeIn)) return undefined;
   if (p?.madeInBasis === 'barcode' || p?.madeInBasis === 'label' || p?.madeInBasis === 'model') {
     return { country: madeIn, basis: p.madeInBasis };
   }

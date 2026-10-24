@@ -510,7 +510,7 @@ export const fr = {
     },
     overall: {
       title: 'Ensemble',
-      score: 'Score',
+      score: 'Score du lien avec la Chine',
     },
     steps: {
       start: 'Démarrage',

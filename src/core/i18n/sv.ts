@@ -510,7 +510,7 @@ export const sv = {
     },
     overall: {
       title: 'Samlat',
-      score: 'Poäng',
+      score: 'Poäng för koppling till Kina',
     },
     steps: {
       start: 'Startar',

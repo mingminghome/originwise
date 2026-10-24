@@ -510,7 +510,7 @@ export const de = {
     },
     overall: {
       title: 'Gesamt',
-      score: 'Punktzahl',
+      score: 'Punktzahl zum China-Bezug',
     },
     steps: {
       start: 'Start',

@@ -510,7 +510,7 @@ export const da = {
     },
     overall: {
       title: 'Samlet',
-      score: 'Score',
+      score: 'Score for forbindelse til Kina',
     },
     steps: {
       start: 'Starter',

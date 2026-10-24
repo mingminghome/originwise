@@ -4,6 +4,14 @@
  * the model wrote. The spellings below are that scope rule, not a world list.
  */
 
+import { SUPPORTED_LOCALES } from './locale';
+import {
+  COUNTRY_CODE_BY_LABEL,
+  COUNTRY_LABELS,
+  COUNTRY_SPELLINGS,
+  REGION_LABELS,
+} from './regionLabels.generated';
+
 export type RegionCode = 'CN' | 'HK' | 'TW' | 'MO' | 'OTHER' | 'UNKNOWN';
 export type GeoScope = 'prc' | 'greater_china';
 
@@ -99,36 +107,171 @@ export function normalizeRegion(raw: unknown): RegionCode {
 }
 
 /**
- * A continent is not a factory country. The match is the whole label, so
- * "European Union" stays a place the page named.
+ * A made-in has to be a country. UN M.49 regions and CLDR groupings are not.
+ * Labels are the Intl names for the UI locales, generated into
+ * regionLabels.generated.ts so a browser with a thin Intl still matches.
+ * The runtime's own Intl names are added when it has them. A territory with
+ * a time zone, or its own language, stays a country.
  */
-const CONTINENTS = new Set([
-  'europe',
-  'asia',
-  'africa',
-  'oceania',
-  'antarctica',
-  'north america',
-  'south america',
-  'america',
-  '歐洲',
-  '欧洲',
-  '亞洲',
-  '亚洲',
-  '非洲',
-  '大洋洲',
-  '南極洲',
-  '南极洲',
-  '北美洲',
-  '南美洲',
-  '美洲',
-]);
 
+function foldPlace(raw: string): string {
+  return raw.normalize('NFKC').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function englishRegions(): Intl.DisplayNames | undefined {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region', fallback: 'none' });
+  } catch {
+    return undefined;
+  }
+}
+
+function namedRegion(dn: Intl.DisplayNames, code: string): boolean {
+  try {
+    const name = dn.of(code);
+    return Boolean(name) && name !== code;
+  } catch {
+    return false;
+  }
+}
+
+/** The runtime exposes time zones on a locale. The type library does not. */
+function timeZonesOf(code: string): readonly string[] | undefined {
+  const loc = new Intl.Locale(`und-${code}`) as Intl.Locale & { timeZones?: readonly string[] };
+  return loc.timeZones;
+}
+
+/** Alpha-2 codes that are not territories: no time zone and no language of their own. */
+function groupingCode(dn: Intl.DisplayNames, code: string): boolean {
+  if (!namedRegion(dn, code)) return false;
+  let zones: readonly string[] | undefined;
+  try {
+    zones = timeZonesOf(code);
+  } catch {
+    return false;
+  }
+  if (zones === undefined || zones.length > 0) return false;
+  try {
+    return new Intl.Locale(`und-${code}`).maximize().language === 'en';
+  } catch {
+    return false;
+  }
+}
+
+let placeNames: { region: Set<string>; country: Set<string> } | undefined;
+
+function longEnough(name: string): boolean {
+  if (name.length < 2) return false;
+  if (/[\u3040-\u30ff\u4e00-\u9fff]/.test(name)) return true;
+  return name.length >= 5;
+}
+
+function hasPhrase(hay: string, names: ReadonlySet<string>): boolean {
+  for (const name of names) {
+    if (longEnough(name) && hay.includes(name)) return true;
+  }
+  return false;
+}
+
+function placeNameSets(): { region: Set<string>; country: Set<string> } {
+  if (placeNames) return placeNames;
+  const region = new Set<string>(REGION_LABELS);
+  const country = new Set<string>(COUNTRY_LABELS);
+  const dn = englishRegions();
+  if (dn) {
+    const codes: string[] = [];
+    for (let i = 1; i <= 999; i++) {
+      const code = String(i).padStart(3, '0');
+      if (namedRegion(dn, code)) codes.push(code);
+    }
+    for (let i = 0; i < 26; i++) {
+      for (let j = 0; j < 26; j++) {
+        const code = String.fromCharCode(65 + i) + String.fromCharCode(65 + j);
+        if (groupingCode(dn, code)) codes.push(code);
+        else if (namedRegion(dn, code)) country.add(code.toLowerCase());
+      }
+    }
+    for (const code of codes) {
+      if (/^[A-Z]{2}$/.test(code)) region.add(code.toLowerCase());
+    }
+    for (const locale of [...SUPPORTED_LOCALES, 'zh']) {
+      let local: Intl.DisplayNames;
+      try {
+        local = new Intl.DisplayNames([locale], { type: 'region' });
+      } catch {
+        continue;
+      }
+      for (const code of codes) {
+        const name = local.of(code);
+        if (name) region.add(foldPlace(name));
+      }
+    }
+  }
+  placeNames = { region, country };
+  return placeNames;
+}
+
+/** A region name, including one wrapped in punctuation or sitting in a longer label that names no country. */
 export function isRegionNotCountry(raw?: string): boolean {
-  const s = String(raw ?? '')
-    .normalize('NFKC')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ');
-  return CONTINENTS.has(s);
+  const s = foldPlace(String(raw ?? ''));
+  if (s.length < 2) return false;
+  const { region, country } = placeNameSets();
+  if (country.has(s)) return false;
+  if (region.has(s)) return true;
+  const bare = s.replace(/[^\p{L}\p{N}]+/gu, ' ').replace(/\s+/g, ' ').trim();
+  if (bare !== s) {
+    if (country.has(bare)) return false;
+    if (region.has(bare)) return true;
+  }
+  if (hasPhrase(s, country)) return false;
+  return hasPhrase(s, region);
+}
+
+function phraseIn(hay: string, name: string): boolean {
+  if (name.length < 2) return false;
+  if (/[\u3040-\u30ff\u4e00-\u9fff]/.test(name) || name.length >= 5) return hay.includes(name);
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:[^a-z0-9]|$)`).test(hay);
+}
+
+const spellingsByCode = new Map<string, readonly string[]>();
+
+/**
+ * Long CLDR names, plus a short or narrow form when Intl has one
+ * ("UK") that is not the alpha-2 code itself ("US", "IN").
+ */
+function spellingsFor(code: string): readonly string[] {
+  const cached = spellingsByCode.get(code);
+  if (cached) return cached;
+  const names = new Set<string>(COUNTRY_SPELLINGS[code] ?? []);
+  for (const style of ['short', 'narrow'] as const) {
+    for (const locale of [...SUPPORTED_LOCALES, 'zh']) {
+      let name: string | undefined;
+      try {
+        name = new Intl.DisplayNames([locale], { type: 'region', style }).of(code);
+      } catch {
+        continue;
+      }
+      if (!name) continue;
+      const folded = foldPlace(name);
+      if (folded.length < 2 || folded === code.toLowerCase()) continue;
+      names.add(folded);
+    }
+  }
+  const list = [...names];
+  spellingsByCode.set(code, list);
+  return list;
+}
+
+/**
+ * The quote states this country when it contains one of that country's
+ * names. A region is not stated. An unknown spelling is left to the model.
+ */
+export function quoteNamesCountry(quote: string | undefined, country: string): boolean {
+  if (isRegionNotCountry(country)) return false;
+  const code = COUNTRY_CODE_BY_LABEL[foldPlace(country)];
+  if (!code) return true;
+  const q = foldPlace(quote ?? '');
+  if (!q) return false;
+  return spellingsFor(code).some((name) => phraseIn(q, name));
 }

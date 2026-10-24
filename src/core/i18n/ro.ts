@@ -510,7 +510,7 @@ export const ro = {
     },
     overall: {
       title: 'Per total',
-      score: 'Scor',
+      score: 'Scorul legăturii cu China',
     },
     steps: {
       start: 'Pornire',

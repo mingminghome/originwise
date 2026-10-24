@@ -510,7 +510,7 @@ export const es = {
     },
     overall: {
       title: 'Conjunto',
-      score: 'Puntuación',
+      score: 'Puntuación del vínculo con China',
     },
     steps: {
       start: 'Inicio',

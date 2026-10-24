@@ -277,6 +277,7 @@ function candidateRows(result: CheckResult, candidates: Candidate[], unconfirmed
   // model-only) show 模型參考 + ⓘ; a web/label row for the same country wins.
   const isModel = (r: CandRow) => modelOnlyPartCandidate(result, r);
   const put = (row: CandRow) => {
+    if (isRegionNotCountry(row.label)) return;
     const i = rows.findIndex((r) => sameCountryLabel(r.label, row.label));
     if (i === -1) {
       rows.push(row);
@@ -325,7 +326,7 @@ function weakRows(result: CheckResult, candidates: Candidate[], shown: CandRow[]
   const out: WeakCandidate[] = [];
   for (const c of candidates) {
     const label = cleanValue(c.label);
-    if (!label || c.rating === 'confirmed') continue;
+    if (!label || c.rating === 'confirmed' || isRegionNotCountry(label)) continue;
     if (c.source !== 'confirmed_coo' && NOT_MADE_IN.has(String(c.source))) continue;
     if (c.source === 'notes') continue;
     if (shown.some((r) => sameCountryLabel(r.label, label))) continue;
@@ -461,7 +462,13 @@ function buildMadeInViewCore(
   const made = confirmedMadeIn(result);
   if (made) {
     const basis: MadeInBasis = made.basis;
-    const confirmed = candidates.find((c) => c.rating === 'confirmed');
+    const confirmed = candidates.find(
+      (c) =>
+        c.rating === 'confirmed' &&
+        sameCountryLabel(c.label, madeIn) &&
+        typeof c.confidence === 'number' &&
+        c.confidence > 0
+    );
     // Label basis: the package photo, no web rows, so no web-source chip.
     // 依型號比對: the exact-model pages, plus the AI answer as the first row
     // when it was one of the two sources ('ai_web').
@@ -493,7 +500,7 @@ function buildMadeInViewCore(
       state: 'confirmed',
       country: madeIn,
       basis,
-      confidence: confirmed?.confidence ?? result.confidence,
+      confidence: confirmed?.confidence,
       sourceCount: sourceRows.length,
       sourceRows,
       candidates: outvoted,
@@ -508,7 +515,9 @@ function buildMadeInViewCore(
   const labelSides = p?.labelDispute ?? [];
   const labelDisputed = labelSides.length >= 2;
   const likelyHits = searchCoo.filter(
-    (c) => c.status === 'likely' || (labelDisputed && c.status === 'confirmed' && c.basis === 'model')
+    (c) =>
+      !isRegionNotCountry(c.country) &&
+      (c.status === 'likely' || (labelDisputed && c.status === 'confirmed' && c.basis === 'model'))
   );
   for (const h of likelyHits) {
     if (countryText(h.country) && !rows.some((r) => sameCountryLabel(r.label, h.country))) {
@@ -840,7 +849,7 @@ function buildSourceVotes(result: CheckResult): { votes: SourceVote[]; silent: n
     return b;
   };
   const add = (country: string, key: string, row: SourceRow) => {
-    if (!countryText(country)) return;
+    if (!countryText(country) || isRegionNotCountry(country)) return;
     const b = bucketFor(country);
     if (b.keys.has(key)) return;
     b.keys.add(key);

@@ -24,14 +24,16 @@ function hostOf(url?: string): string {
 
 /**
  * Two pages on different sites name one country, or the model's own country
- * matches one page, and no page names another place. A continent blocks this.
+ * matches one page, and no page names another country. A region is not a
+ * country, so it is not a vote and not a disagreeing place.
  */
 export function confirmingCountry(
   pages: readonly ConfirmPage[],
   modelAnswer?: string
 ): { country: string; support: 'web' | 'ai_web' } | undefined {
-  const places = pages.filter((p) => p.country?.trim() && p.url?.trim());
-  if (places.some((p) => isRegionNotCountry(p.country))) return undefined;
+  const places = pages.filter(
+    (p) => p.country?.trim() && p.url?.trim() && !isRegionNotCountry(p.country)
+  );
   const countries: string[] = [];
   for (const p of places) {
     const c = p.country!.trim();

@@ -496,7 +496,7 @@ export const zhHant = {
     },
     overall: {
       title: '總結',
-      score: '分數',
+      score: '中國關聯分數',
     },
     steps: {
       start: '開始',

@@ -510,7 +510,7 @@ export const pt = {
     },
     overall: {
       title: 'Geral',
-      score: 'Pontuação',
+      score: 'Pontuação da ligação à China',
     },
     steps: {
       start: 'A iniciar',

@@ -510,7 +510,7 @@ export const hu = {
     },
     overall: {
       title: 'Összkép',
-      score: 'Pontszám',
+      score: 'Kína-kapcsolat pontszáma',
     },
     steps: {
       start: 'Indítás',

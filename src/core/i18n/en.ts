@@ -450,7 +450,7 @@ export const en: MessageTree = {
     },
     overall: {
       title: 'Overall',
-      score: 'Score',
+      score: 'China link score',
     },
     steps: {
       start: 'Starting',

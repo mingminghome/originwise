@@ -510,7 +510,7 @@ export const pl = {
     },
     overall: {
       title: 'Ogółem',
-      score: 'Wynik',
+      score: 'Wynik powiązania z Chinami',
     },
     steps: {
       start: 'Start',

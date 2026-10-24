@@ -66,8 +66,13 @@ function sortedDims(dims: CheckDimension[]): string {
  * v31: two agreeing exact-model pages, or the model plus one such page,
  *     confirm the made-in. A continent is not a country. Country names are
  *     in the reader's language. A review page is not a made-in vote.
+ * v32: a CLDR region or grouping is not a made-in vote or a confirmation.
+ *     The made-in confidence chip uses only that confirmation's own confidence.
+ * v33: region names are matched from generated Intl labels, including a
+ *     region named inside a longer label. A page country counts only when
+ *     its quote names that country.
  */
-export const CACHE_KEY_VERSION = 'check:v31';
+export const CACHE_KEY_VERSION = 'check:v33';
 
 export async function cacheKeyHash(parts: CacheLookupKey): Promise<string> {
   const material = [

@@ -510,7 +510,7 @@ export const it = {
     },
     overall: {
       title: 'Complessivo',
-      score: 'Punteggio',
+      score: 'Punteggio del legame con la Cina',
     },
     steps: {
       start: 'Avvio',

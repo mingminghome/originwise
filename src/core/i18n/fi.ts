@@ -510,7 +510,7 @@ export const fi = {
     },
     overall: {
       title: 'Kokonaiskuva',
-      score: 'Pisteet',
+      score: 'Pisteet: yhteys Kiinaan',
     },
     steps: {
       start: 'Aloitus',

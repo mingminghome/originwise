@@ -11,7 +11,7 @@
 
 import { langLabel } from './locale';
 import { confirmingCountry } from './madeInConfirm';
-import { isRegionNotCountry, normalizeRegion } from './regions';
+import { isRegionNotCountry, normalizeRegion, quoteNamesCountry } from './regions';
 import { identityTokens } from './search/extract';
 import type { CheckResult, GeoScope, GraphEdge, GraphNode, WebCooClaim } from './schema';
 
@@ -169,14 +169,21 @@ export function resultFromTidy(opts: {
   sources: string[];
   web: boolean;
 }): CheckResult {
-  const pages: WebCooClaim[] = opts.facts.pages.map((p) => ({
-    country: p.country,
-    basis: 'name',
-    status: 'likely',
-    url: p.url,
-    quote: p.quote,
-    ...(!isRegionNotCountry(p.country) && p.url ? { exactModel: true } : {}),
-  }));
+  const pages: WebCooClaim[] = opts.facts.pages.flatMap((p) => {
+    const country = p.country?.trim();
+    // A region is not a made-in. A country counts only when the quote names it.
+    if (!country || !p.url?.trim() || !quoteNamesCountry(p.quote, country)) return [];
+    return [
+      {
+        country,
+        basis: 'name' as const,
+        status: 'likely' as const,
+        url: p.url,
+        quote: p.quote,
+        exactModel: true,
+      },
+    ];
+  });
   const confirmed = confirmingCountry(pages, opts.facts.modelMadeIn);
   const brand = opts.facts.relations.find((r) => r.type === 'brand' && r.country);
   const owners = opts.facts.relations.filter((r) => r.type === 'owner' && (r.name || r.note || r.country));
@@ -203,7 +210,11 @@ export function resultFromTidy(opts: {
       name: opts.identity.name,
       brand: opts.identity.brand || undefined,
       originCountry: onePlace(brand?.country) || (owners.length ? undefined : onePlace(hqRel?.country)),
-      madeIn: confirmed?.country || opts.facts.modelMadeIn,
+      madeIn:
+        confirmed?.country ||
+        (opts.facts.modelMadeIn && !isRegionNotCountry(opts.facts.modelMadeIn)
+          ? opts.facts.modelMadeIn
+          : undefined),
       ...(confirmed
         ? { madeInBasis: 'model' as const, madeInSupport: confirmed.support }
         : {}),
@@ -304,11 +315,13 @@ function buildGraph(identity: Identity, facts: TidyFacts): { nodes: GraphNode[];
   const companyId = companyLabel ? addNode('company', companyLabel, 'company') : '';
   if (productId && companyId) link(productId, companyId, 'company');
 
-  if (facts.modelMadeIn && productId) {
+  if (facts.modelMadeIn && productId && !isRegionNotCountry(facts.modelMadeIn)) {
     link(productId, place(facts.modelMadeIn), 'model', namesChina(facts.modelMadeIn));
   }
-  for (const country of facts.pages.map((p) => p.country)) {
-    if (productId && country) link(productId, place(country), 'made_in', namesChina(country));
+  for (const page of facts.pages) {
+    if (productId && page.country && quoteNamesCountry(page.quote, page.country)) {
+      link(productId, place(page.country), 'made_in', namesChina(page.country));
+    }
   }
 
   facts.parts.forEach((part, i) => {

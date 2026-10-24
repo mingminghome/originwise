@@ -510,7 +510,7 @@ export const el = {
     },
     overall: {
       title: 'Συνολικά',
-      score: 'Βαθμός',
+      score: 'Βαθμός σχέσης με την Κίνα',
     },
     steps: {
       start: 'Έναρξη',

@@ -510,7 +510,7 @@ export const cs = {
     },
     overall: {
       title: 'Celkově',
-      score: 'Skóre',
+      score: 'Skóre vazby na Čínu',
     },
     steps: {
       start: 'Start',

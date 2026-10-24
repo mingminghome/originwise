@@ -510,7 +510,7 @@ export const nl = {
     },
     overall: {
       title: 'Totaal',
-      score: 'Score',
+      score: 'Score voor band met China',
     },
     steps: {
       start: 'Starten',
