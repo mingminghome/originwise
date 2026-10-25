@@ -867,6 +867,7 @@ function buildSourceVotes(result: CheckResult): { votes: SourceVote[]; silent: n
       label,
       url: parts.url ?? url,
       host: host && host !== label ? host : undefined,
+      country: countryText(h.country) ?? h.country,
     });
   }
 

@@ -11,7 +11,7 @@
 
 import { langLabel } from './locale';
 import { confirmingCountry } from './madeInConfirm';
-import { isRegionNotCountry, normalizeRegion, quoteNamesCountry } from './regions';
+import { isRegionNotCountry, lineNamingCountry, normalizeRegion, quoteNamesCountry } from './regions';
 import { identityTokens } from './search/extract';
 import type { CheckResult, GeoScope, GraphEdge, GraphNode, WebCooClaim } from './schema';
 
@@ -96,15 +96,15 @@ export function tidyPrompt(opts: {
 The user query is ${JSON.stringify(query)}. Judge that unit. Also record this company's factories and OEM.
 Return JSON only:
 {"pages":[{"country":"","quote":"","url":""}],"modelMadeIn":"","companyName":"","hq":"","relations":[{"type":"","name":"","country":"","note":"","quote":""}],"parts":[{"name":"","madeIn":"","quote":""}],"design":{"country":"","quote":""}}
-country is the English name of the place the quote states.
-quote is copied from that page. url is that page's url.
+country is the place the quote states, written in ${lang}.
+quote is copied verbatim from that page and includes the country word as the page writes it. Do not translate the quote. url is that page's url.
 modelMadeIn is your own country for where this finished unit is made. It counts as one source. It is not a confirmation and it does not need a page quote. Fill it even when the pages name another country or none. Do not put a design or brand country in modelMadeIn.
 A product page's made-in goes in pages. A part's country goes in parts. A page that states design or brand origin goes in design, never in pages.
 pages, parts, and design need a quote copied from a product page for this exact model. Omit those when you cannot quote a page. A user review is not a made-in source. A different item, including a spare or a cover sold on its own, is not this unit.
 companyName, hq, and relations are the company, not the made-in. When a page states them, copy the quote. When you know a public headquarters, brand origin, owner, factory, or OEM and no page states it, still fill that row and leave quote empty. Use one relations row per fact: type owner, brand, hq, manufacturing, or supply. hq is one country. When records name more than one headquarters country, leave hq empty and add one hq relation per country. For an owner, name is the owner company. For a factory or OEM, name is the plant or the contract manufacturer. Always fill a brand row when you know where the brand started, including when that country is the same as the headquarters. A brand that started in one country and is now owned from another is two rows. Fill a manufacturing row for a factory or OEM country when a factory page states it, or when you know the real plant. The name is that plant or contract manufacturer. Do not build a name by joining the brand and the country. If you cannot name a China plant, omit the China row. Do not invent a country. One row per country. A factory page is never the made-in of this unit. Do not copy its country into pages or modelMadeIn.
 A continent or other region is not a country. When a page only names a region, still put that region in country so the card can show the split, and do not treat it as where the unit is made.
 Do not invent a page quote. Do not put headquarters, an owner, or a factory into pages.
-Write note in ${lang}. Write every country and region name in ${lang}.
+Write note in ${lang}. Write country and region names in ${lang}. Leave the words inside a quote as the page wrote them.
 PRODUCT: ${opts.identity.brand} ${opts.identity.name}
 FACTORY PAGES:
 ${plants || '(none)'}
@@ -130,6 +130,48 @@ export function readTidy(obj: Record<string, unknown> | null): TidyFacts {
     }),
     design: readDesign(design),
     modelMadeIn: str(obj?.modelMadeIn),
+  };
+}
+
+function pageUrlKey(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.hostname.replace(/^www\./, '')}${u.pathname}`.replace(/\/+$/, '').toLowerCase();
+  } catch {
+    return url.replace(/[?#].*$/, '').replace(/\/+$/, '').toLowerCase();
+  }
+}
+
+/**
+ * A made-in page keeps the model's quote when that quote is on the page and
+ * names the country. Otherwise the page's own country line is the quote.
+ * A region is not a made-in. A quote that never names the country, on a page
+ * that never names it, is not a vote.
+ */
+export function groundPageQuotes(
+  facts: TidyFacts,
+  pages: readonly { url: string; text: string }[]
+): TidyFacts {
+  const byUrl = new Map<string, string>();
+  for (const p of pages) {
+    if (p.url && p.text.trim()) byUrl.set(pageUrlKey(p.url), p.text);
+  }
+  return {
+    ...facts,
+    pages: facts.pages.flatMap((p) => {
+      const country = p.country?.trim();
+      const url = p.url?.trim();
+      if (!country || !url || isRegionNotCountry(country)) return [];
+      const text = byUrl.get(pageUrlKey(url)) ?? '';
+      const quote = p.quote?.trim() ?? '';
+      const quotedPages = text ? [text] : pages.map((page) => page.text);
+      if (quote && quoteNamesCountry(quote, country) && quoteOnPages(quote, quotedPages)) {
+        return [{ ...p, country, url, quote }];
+      }
+      const line = lineNamingCountry(text, country);
+      if (!line) return [];
+      return [{ ...p, country, url, quote: line }];
+    }),
   };
 }
 

@@ -275,3 +275,38 @@ export function quoteNamesCountry(quote: string | undefined, country: string): b
   if (!q) return false;
   return spellingsFor(code).some((name) => phraseIn(q, name));
 }
+
+/** A longer country name wins, so Nigeria does not also count as Niger. */
+function countriesNamed(line: string): { code: string; name: string }[] {
+  const hay = foldPlace(line);
+  const hits: { code: string; name: string }[] = [];
+  for (const [code, names] of Object.entries(COUNTRY_SPELLINGS)) {
+    for (const name of names) {
+      if (phraseIn(hay, name)) hits.push({ code, name });
+    }
+  }
+  return hits.filter((h) => !hits.some((o) => o.name.length > h.name.length && o.name.includes(h.name)));
+}
+
+/**
+ * The shortest line that names this country and no other. A region is not
+ * one. "French ovens" is not France. A line that also names China is not
+ * a France line.
+ */
+export function lineNamingCountry(pageText: string | undefined, country: string): string | undefined {
+  if (!pageText || isRegionNotCountry(country)) return undefined;
+  const code = COUNTRY_CODE_BY_LABEL[foldPlace(country)];
+  if (!code) return undefined;
+  let best: string | undefined;
+  for (const raw of pageText.split(/\n+/)) {
+    const line = raw.replace(/[ \t]+/g, ' ').trim();
+    if (line.length < 2 || line.length > 180) continue;
+    if (!quoteNamesCountry(line, country)) continue;
+    // FX shares France's names, and UK shares the United Kingdom's. A name
+    // this country also uses is not a second country.
+    const own = new Set(spellingsFor(code));
+    if (countriesNamed(line).some((h) => h.code !== code && !own.has(h.name))) continue;
+    if (!best || line.length < best.length) best = line;
+  }
+  return best;
+}

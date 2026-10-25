@@ -56,9 +56,12 @@ export function identityTokens(entity: string): string[] {
       .toLowerCase()
       .replace(/[™®©℠]/g, ' ')
       .match(/[\u3040-\u30ff\u4e00-\u9fff]+|[a-z0-9]+/g) ?? [];
-  const tokens = words.filter((w) =>
-    /[\u3040-\u30ff\u4e00-\u9fff]/.test(w) ? [...w].length >= 2 : w.length >= 2
-  );
+  const tokens = words.filter((w) => {
+    if (/[\u3040-\u30ff\u4e00-\u9fff]/.test(w)) return [...w].length >= 2;
+    // A one-digit size ("Peach 8") still identifies the unit.
+    if (/^\d+$/.test(w)) return true;
+    return w.length >= 2;
+  });
   const cjk = tokens.filter((t) => /[\u3040-\u30ff\u4e00-\u9fff]/.test(t));
   const latin = tokens.filter((t) => !/[\u3040-\u30ff\u4e00-\u9fff]/.test(t));
   const drop = new Set<string>();
@@ -146,6 +149,15 @@ export function buildFactoryQuery(entity: string, terms: readonly string[]): str
   return [brand, line, plants, '-youtube.com'].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
 }
 
+/** A spare or a shop service sold under its own title, not this unit. */
+const OTHER_ITEM_PHRASES = ['rain cover', 'logo customization', 'logo customisation'];
+
+export function soldAsOtherItem(entity: string, titleOrUrl: string): boolean {
+  const hay = nfkc(titleOrUrl).toLowerCase().replace(/[-_]+/g, ' ');
+  const query = nfkc(entity).toLowerCase();
+  return OTHER_ITEM_PHRASES.some((p) => hay.includes(p) && !query.includes(p));
+}
+
 /**
  * A page is about this unit when it contains the size and the model words.
  * A query written with kana must contain those Japanese model words, so an
@@ -157,7 +169,12 @@ export function pageMentionsUnit(entity: string, page: string): boolean {
   const tokens = identityTokens(entity);
   if (tokens.length < 2) return true;
   const flat = nfkc(page).toLowerCase().replace(/\s+/g, '');
-  const has = (t: string) => flat.includes(t.toLowerCase());
+  const raw = nfkc(page).toLowerCase();
+  const has = (t: string) => {
+    // "8" matches Peach 8, not 18 or 80.
+    if (/^\d+$/.test(t)) return new RegExp(`(?:^|\\D)${t}(?:\\D|$)`).test(raw);
+    return flat.includes(t.toLowerCase());
+  };
   const sizes = tokens.filter((t) => /\d/.test(t));
   if (sizes.some((t) => !has(t))) return false;
   const cjk = tokens.filter((t) => /[\u3040-\u30ff\u4e00-\u9fff]/.test(t));
@@ -179,6 +196,7 @@ export function keepUnitPages<T extends { url: string; finalUrl?: string; title?
     if (!p.url || isSearchResultUrl(p.url)) return false;
     if (isReviewPage(p.finalUrl || p.url)) return false;
     if (pageOutsideMarket(p.finalUrl || p.url, entity)) return false;
+    if (soldAsOtherItem(entity, `${p.title ?? ''}\n${p.finalUrl || p.url}`)) return false;
     return pageMentionsUnit(entity, `${p.title ?? ''}\n${p.text}`);
   });
 }

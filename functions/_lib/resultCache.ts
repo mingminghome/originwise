@@ -71,8 +71,11 @@ function sortedDims(dims: CheckDimension[]): string {
  * v33: region names are matched from generated Intl labels, including a
  *     region named inside a longer label. A page country counts only when
  *     its quote names that country.
+ * v34: a page that names one country still votes when the copied quote
+ *     omitted that word. A rain cover or a logo-custom shop is not this unit.
+ *     A one-digit size has to appear on the page.
  */
-export const CACHE_KEY_VERSION = 'check:v33';
+export const CACHE_KEY_VERSION = 'check:v34';
 
 export async function cacheKeyHash(parts: CacheLookupKey): Promise<string> {
   const material = [

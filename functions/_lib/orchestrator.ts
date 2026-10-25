@@ -23,7 +23,7 @@ import {
 import type { CheckDimension, CheckResult } from './schema';
 import { WEB_KNOWLEDGE_NOTE, webKnowledgeNote } from './schema';
 import type { GeoScope } from './schema';
-import { identityPrompt, keepTidy, readIdentity, readTidy, resultFromTidy, tidyPrompt } from './pipeline';
+import { groundPageQuotes, identityPrompt, keepTidy, readIdentity, readTidy, resultFromTidy, tidyPrompt } from './pipeline';
 import { pageMentionsUnit, pageOutsideMarket } from './search/extract';
 import { buildScorePrompt, readOverall } from './score';
 import type { SearchEvidence } from './search/types';
@@ -440,7 +440,7 @@ async function runQuery(
   });
 
   const kept = keepTidy(
-    readTidy(tidy.ok ? tidy.obj : null),
+    groundPageQuotes(readTidy(tidy.ok ? tidy.obj : null), pages),
     [...pages, ...factoryPages].map((p) => p.text)
   );
   const result = resultFromTidy({
