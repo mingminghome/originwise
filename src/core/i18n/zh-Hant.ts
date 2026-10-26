@@ -102,11 +102,13 @@ export const zhHant = {
       excludedOtherModel: '型號不符（{model}），未計算',
       reason: {
         aiOnly: '只有 AI 回答，未有網頁佐證',
+        regionOnly: '來源寫明地區，並非製造國',
         pagesDisagree: '網頁說法不一',
         sourcesDisagree: '來源說法不一',
         aiCitedUnverified: 'AI 引用未能驗證',
         onePageOnly: '只有一個網頁提及',
       },
+      regionNamed: '來源寫明{region}。這是地區，不是製造國。',
       sourceCountry: '生產國 {country}',
       labelSource: '來源：包裝標示照片',
       parent: '母公司',

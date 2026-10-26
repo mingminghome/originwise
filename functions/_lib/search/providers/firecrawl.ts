@@ -7,7 +7,7 @@
  */
 
 import { searchMarket } from '../../queryMarket';
-import { MAX_RESULT_PAGES, fetchWithTimeout, mapSearchHttpError } from '../extract';
+import { MAX_RESULT_PAGES, fetchWithTimeout, mapSearchHttpError, stripHtml } from '../extract';
 import { runMadeInSearch } from '../madeInSearch';
 import type { FetchedPage, SearchProvider } from '../types';
 
@@ -22,6 +22,8 @@ type FirecrawlItem = {
   title?: string;
   description?: string;
   markdown?: string | null;
+  html?: string | null;
+  rawHtml?: string | null;
   metadata?: { title?: string | string[]; sourceURL?: string };
 };
 
@@ -46,8 +48,10 @@ async function firecrawlPages(
         ...(location ? { location } : {}),
         timeout: ms - 5000,
         scrapeOptions: {
-          formats: ['markdown'],
-          onlyMainContent: true,
+          // Full HTML, then we drop header, nav, and footer. Main-content
+          // markdown leaves out a folded product tab.
+          formats: ['rawHtml'],
+          onlyMainContent: false,
           storeInCache: false,
         },
       }),
@@ -80,7 +84,9 @@ async function firecrawlPages(
       ? it.metadata?.title[0]
       : it.metadata?.title;
     const title = String(it.title || metaTitle || '').trim();
-    const text = [title, it.description || '', it.markdown || '']
+    const raw = String(it.rawHtml || it.html || '');
+    const body = raw ? stripHtml(raw) : String(it.markdown || '');
+    const text = [title, it.description || '', body]
       .filter(Boolean)
       .join('\n')
       .slice(0, 200_000);

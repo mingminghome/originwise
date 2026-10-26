@@ -74,8 +74,15 @@ function sortedDims(dims: CheckDimension[]): string {
  * v34: a page that names one country still votes when the copied quote
  *     omitted that word. A rain cover or a logo-custom shop is not this unit.
  *     A one-digit size has to appear on the page.
+ * v35: a title that sells a custom-made unit is not this unit.
+ * v36: a page that names a region is shown as a region, not dropped and not a country vote.
+ * v37: a fetched page that names a region is shown even when the model named a country.
+ *     A job listing or a price-comparison page is not a source.
+ * v38: a place name inside a long paragraph is still read.
+ * v39: a folded product tab is still read. The site header, nav, and footer are not.
+ *     A job listing is not a factory source.
  */
-export const CACHE_KEY_VERSION = 'check:v34';
+export const CACHE_KEY_VERSION = 'check:v39';
 
 export async function cacheKeyHash(parts: CacheLookupKey): Promise<string> {
   const material = [
@@ -101,15 +108,13 @@ function cacheRequest(hash: string): Request {
 
 /**
  * Whether a cached CheckResult is safe to show as a cache hit.
- * Rejects unconfirmed Final COO when web Search failed on that run — those
- * stick as 快取 / 未確認 while skip-cache already has a real madeIn.
+ * A failed live search is not served again, even when the model named a
+ * country. That card would stay 快取 / 未確認 and never retry the pages.
+ * Search disabled is a real answer and stays cached.
  */
 export function isServableCachedResult(result: CheckResult): boolean {
-  const made = result.product?.madeIn?.trim() ?? '';
-  const madeUnknown = !made;
-  if (!madeUnknown) return true;
   const web = result.meta?.agents?.find((a) => a.id === 'web');
-  if (web && web.ok === false) return false;
+  if (web && web.ok === false && web.error !== 'disabled') return false;
   return true;
 }
 
@@ -157,7 +162,7 @@ export async function putCachedResult(
   result: CheckResult,
   ttlSec: number
 ): Promise<void> {
-  if (!parts.text.trim()) return;
+  if (!parts.text.trim() || !isServableCachedResult(result)) return;
   try {
     const hash = await cacheKeyHash(parts);
     const ttl = Math.max(60, Math.min(ttlSec, 604800));

@@ -11,7 +11,16 @@
 
 import { langLabel } from './locale';
 import { confirmingCountry } from './madeInConfirm';
-import { isRegionNotCountry, lineNamingCountry, normalizeRegion, quoteNamesCountry } from './regions';
+import {
+  isRegionNotCountry,
+  lineNamingCountry,
+  lineNamingRegion,
+  normalizeRegion,
+  quoteNamesCountry,
+  regionDisplayName,
+  regionSpellings,
+  regionStatedByPage,
+} from './regions';
 import { identityTokens } from './search/extract';
 import type { CheckResult, GeoScope, GraphEdge, GraphNode, WebCooClaim } from './schema';
 
@@ -25,6 +34,8 @@ export type PageFact = {
   country: string;
   quote: string;
   url?: string;
+  /** The page names a region, not a country. Shown, never a made-in vote. */
+  regionOnly?: boolean;
 };
 
 export type TidyFacts = {
@@ -150,20 +161,29 @@ function pageUrlKey(url: string): string {
  */
 export function groundPageQuotes(
   facts: TidyFacts,
-  pages: readonly { url: string; text: string }[]
+  pages: readonly { url: string; text: string }[],
+  locale?: string
 ): TidyFacts {
   const byUrl = new Map<string, string>();
   for (const p of pages) {
     if (p.url && p.text.trim()) byUrl.set(pageUrlKey(p.url), p.text);
   }
-  return {
-    ...facts,
-    pages: facts.pages.flatMap((p) => {
+  const listed = facts.pages.flatMap((p) => {
       const country = p.country?.trim();
       const url = p.url?.trim();
-      if (!country || !url || isRegionNotCountry(country)) return [];
+      if (!country || !url) return [];
       const text = byUrl.get(pageUrlKey(url)) ?? '';
       const quote = p.quote?.trim() ?? '';
+      if (isRegionNotCountry(country)) {
+        const namesRegion = (line: string) =>
+          regionSpellings(country).some((name) => line.toLowerCase().includes(name));
+        if (quote && text && quoteOnPages(quote, [text]) && namesRegion(quote)) {
+          return [{ ...p, country, url, quote, regionOnly: true }];
+        }
+        const line = lineNamingRegion(text, country);
+        if (!line) return [];
+        return [{ ...p, country, url, quote: line, regionOnly: true }];
+      }
       const quotedPages = text ? [text] : pages.map((page) => page.text);
       if (quote && quoteNamesCountry(quote, country) && quoteOnPages(quote, quotedPages)) {
         return [{ ...p, country, url, quote }];
@@ -171,8 +191,24 @@ export function groundPageQuotes(
       const line = lineNamingCountry(text, country);
       if (!line) return [];
       return [{ ...p, country, url, quote: line }];
-    }),
-  };
+    });
+  const seen = new Set(listed.map((p) => pageUrlKey(p.url ?? '')));
+  // A fetched page can name a region even when the model called it a country.
+  const fromPages = pages.flatMap((page) => {
+    if (!page.url || !page.text.trim() || seen.has(pageUrlKey(page.url))) return [];
+    const found = regionStatedByPage(page.text);
+    if (!found) return [];
+    seen.add(pageUrlKey(page.url));
+    return [
+      {
+        country: regionDisplayName(found.region, locale),
+        quote: found.quote,
+        url: page.url,
+        regionOnly: true,
+      },
+    ];
+  });
+  return { ...facts, pages: [...listed, ...fromPages] };
 }
 
 /** A quote counts only when those words are on a page we fetched. */
@@ -211,10 +247,25 @@ export function resultFromTidy(opts: {
   sources: string[];
   web: boolean;
 }): CheckResult {
-  const pages: WebCooClaim[] = opts.facts.pages.flatMap((p) => {
+  const pages = opts.facts.pages.flatMap((p): WebCooClaim[] => {
     const country = p.country?.trim();
-    // A region is not a made-in. A country counts only when the quote names it.
-    if (!country || !p.url?.trim() || !quoteNamesCountry(p.quote, country)) return [];
+    if (!country || !p.url?.trim()) return [];
+    // A region is shown and does not vote. A country counts only when the quote names it.
+    if (p.regionOnly || isRegionNotCountry(country)) {
+      if (!p.quote?.trim()) return [];
+      return [
+        {
+          country,
+          basis: 'name' as const,
+          status: 'likely' as const,
+          url: p.url,
+          quote: p.quote,
+          evidenceOnly: true,
+          regionOnly: true,
+        },
+      ];
+    }
+    if (!quoteNamesCountry(p.quote, country)) return [];
     return [
       {
         country,

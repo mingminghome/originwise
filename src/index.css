@@ -2328,6 +2328,17 @@ p {
   background: var(--bg-subtle);
   color: var(--text);
 }
+.rc-graph .relation-graph {
+  margin-top: 0;
+}
+.rc-graph .relation-graph-head {
+  padding-right: 8.5rem;
+}
+.rc-graph .relation-graph-head .result-section-title {
+  margin: 0 0 0.15rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
 .relation-graph {
   margin-top: 0.5rem;
 }

@@ -108,11 +108,13 @@ export const en: MessageTree = {
       excludedOtherModel: 'Different model ({model}), not counted',
       reason: {
         aiOnly: 'AI answer only, no web page backs it',
+        regionOnly: 'Pages name a region, not a country',
         pagesDisagree: 'Web pages disagree',
         sourcesDisagree: 'Sources disagree',
         aiCitedUnverified: 'AI-cited link could not be verified',
         onePageOnly: 'Only one web page mentions it',
       },
+      regionNamed: 'Sources name {region}. That is a region, not a country.',
       sourceCountry: 'made in {country}',
       labelSource: 'Source: package label photo',
       parent: 'Parent company',

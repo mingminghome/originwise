@@ -150,12 +150,26 @@ export function buildFactoryQuery(entity: string, terms: readonly string[]): str
 }
 
 /** A spare or a shop service sold under its own title, not this unit. */
-const OTHER_ITEM_PHRASES = ['rain cover', 'logo customization', 'logo customisation'];
+const OTHER_ITEM_PHRASES = [
+  'rain cover',
+  'logo customization',
+  'logo customisation',
+  '求職',
+  'vacancies',
+  'job vacancy',
+  'price comparison',
+  'compare prices',
+  'best prices',
+];
 
 export function soldAsOtherItem(entity: string, titleOrUrl: string): boolean {
   const hay = nfkc(titleOrUrl).toLowerCase().replace(/[-_]+/g, ' ');
   const query = nfkc(entity).toLowerCase();
-  return OTHER_ITEM_PHRASES.some((p) => hay.includes(p) && !query.includes(p));
+  if (OTHER_ITEM_PHRASES.some((p) => hay.includes(p) && !query.includes(p))) return true;
+  // "Custom expandable hard suitcase …" is a made-to-order listing.
+  // "customer" and "customisation" do not match this word.
+  if (/(?:^|[^a-z])custom(?:[^a-z]|$)/.test(query)) return false;
+  return /(?:^|[^a-z])custom(?:[^a-z]|$)/.test(hay);
 }
 
 /**
@@ -222,6 +236,7 @@ export function keepFactoryPages<T extends { url: string; finalUrl?: string; tit
     const url = p.finalUrl || p.url;
     if (isReviewPage(url)) continue;
     if (pageOutsideMarket(url, entity)) continue;
+    if (soldAsOtherItem(entity, `${p.title ?? ''}\n${url}`)) continue;
     const blob = nfkc(`${url}\n${p.title ?? ''}\n${p.text}`).toLowerCase();
     if (!blob.includes(brand)) continue;
     if (cues.length && !cues.some((c) => blob.includes(c))) continue;
@@ -283,11 +298,83 @@ const ENTITY_MAP: Record<string, string> = {
   '#39': "'",
 };
 
+const CHROME_TAGS = ['header', 'nav', 'footer'] as const;
+
+/** Header, nav, and footer. A folded product tab is not one of these. */
+function dropSiteChrome(html: string): string {
+  let out = html;
+  for (const tag of CHROME_TAGS) {
+    const re = new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?</${tag}>`, 'gi');
+    let prev = '';
+    while (out !== prev) {
+      prev = out;
+      out = out.replace(re, ' ');
+    }
+  }
+  return dropRoleChrome(out);
+}
+
+const VOID_TAGS = new Set([
+  'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr',
+]);
+
+/** role="navigation" on a div is the same chrome as a nav tag. */
+function dropRoleChrome(html: string): string {
+  const parts: string[] = [];
+  let i = 0;
+  let copyFrom = 0;
+  while (i < html.length) {
+    const lt = html.indexOf('<', i);
+    if (lt < 0) break;
+    const gt = html.indexOf('>', lt);
+    if (gt < 0) break;
+    const raw = html.slice(lt, gt + 1);
+    const name = /^<\s*([a-zA-Z][\w:-]*)/.exec(raw)?.[1]?.toLowerCase();
+    const role = /\brole\s*=\s*["'](banner|navigation|contentinfo)["']/i.exec(raw)?.[1];
+    const selfClose = /\/>\s*$/.test(raw) || (name ? VOID_TAGS.has(name) : false);
+    if (!name || !role || selfClose) {
+      i = gt + 1;
+      continue;
+    }
+    const end = endOfElement(html, name, gt + 1);
+    parts.push(html.slice(copyFrom, lt), ' ');
+    i = end;
+    copyFrom = end;
+  }
+  parts.push(html.slice(copyFrom));
+  return parts.join('');
+}
+
+function endOfElement(html: string, name: string, from: number): number {
+  const open = new RegExp(`<${name}\\b`, 'gi');
+  const close = new RegExp(`</${name}\\s*>`, 'gi');
+  let depth = 1;
+  let i = from;
+  while (depth > 0 && i < html.length) {
+    open.lastIndex = i;
+    close.lastIndex = i;
+    const o = open.exec(html);
+    const c = close.exec(html);
+    if (!c) return html.length;
+    if (o && o.index < c.index) {
+      depth += 1;
+      i = o.index + o[0].length;
+    } else {
+      depth -= 1;
+      i = c.index + c[0].length;
+    }
+  }
+  return i;
+}
+
 export function stripHtml(html: string): string {
-  return (html || '')
-    .slice(0, PAGE_TEXT_MAX * 3)
-    .replace(/<!--[\s\S]*?-->/g, ' ')
-    .replace(/<(script|style|noscript|svg|template|iframe)\b[\s\S]*?<\/\1>/gi, ' ')
+  const withoutChrome = dropSiteChrome(
+    (html || '')
+      .slice(0, 1_500_000)
+      .replace(/<!--[\s\S]*?-->/g, ' ')
+      .replace(/<(script|style|noscript|svg|template|iframe)\b[\s\S]*?<\/\1>/gi, ' ')
+  );
+  return withoutChrome
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/(p|div|li|tr|h[1-6]|dt|dd|th|td)>/gi, '\n')
     .replace(/<[^>]+>/g, ' ')

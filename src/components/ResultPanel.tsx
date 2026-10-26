@@ -248,6 +248,18 @@ export function ResultPanel({
       {!result.overall && hasEntity ? <MadeInCard result={result} t={t} /> : null}
       {!result.overall && hasEntity ? <LayersCard result={result} t={t} /> : null}
 
+      {result.graph?.nodes?.length ? (
+        <SectionShare
+          label={t('check.graphTitle')}
+          t={t}
+          className="rc-card rc-graph"
+        >
+          <div data-testid="relation-graph-card">
+            <RelationGraph graph={result.graph} t={t} />
+          </div>
+        </SectionShare>
+      ) : null}
+
       <div className="rc-folds">
         {originDetailCount ? (
           <Fold title={t('check.productNotes')} count={originDetailCount} t={t} testId="fold-notes">
@@ -319,12 +331,6 @@ export function ResultPanel({
             </>
           ) : null}
           <OriginMap regions={result.regions} t={t} />
-          {result.graph?.nodes?.length ? (
-            <details className="result-fold">
-              <summary>{t('check.graphTitle')}</summary>
-              <RelationGraph graph={result.graph} t={t} embedded />
-            </details>
-          ) : null}
           <p className="muted result-disclaimer">
             {result.knowledgeBasis === 'web_enriched'
               ? searchName && result.meta?.searchProvider !== 'gemini'

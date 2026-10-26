@@ -375,6 +375,29 @@ export function MadeInCard({
               <span className="rc-chip">{t('check.rc.sourceCount', { n: view.sourceCount })}</span>
             </span>
           ) : null}
+          {view.regionRows.length ? (
+            <div data-testid="madein-region">
+              {view.regionRows.map((row) => (
+                <div key={row.region}>
+                  <p className="rc-dispute">
+                    {t('check.rc.regionNamed', { region: localizeCountry(t, row.region) })}
+                  </p>
+                  {row.sources.length ? (
+                    <ol className="rc-sources">
+                      {row.sources.map((src, i) => {
+                        const { before, after } = sourcePrefix(t, i + 1);
+                        return (
+                          <li key={src.url ?? src.label} className="rc-source">
+                            <SourceLine t={t} prefix={before} suffix={after} src={src} />
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
           {!confirmed && view.reason ? (
             <span className="rc-tip" title={t('check.rc.tip.unconfirmed')}>
               <span className="rc-chip" data-testid="madein-reason">

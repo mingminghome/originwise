@@ -29,7 +29,13 @@ type Candidate = NonNullable<NonNullable<CheckResult['product']>['originCandidat
 export type MadeInBasis = 'barcode' | 'label' | 'model' | 'name';
 
 /** Why a made-in stays 未確認 (one chip; replaces the old barcode-only reason). */
-export type UnconfirmedReason = 'pagesDisagree' | 'sourcesDisagree' | 'aiCitedUnverified' | 'aiOnly' | 'onePageOnly';
+export type UnconfirmedReason =
+  | 'pagesDisagree'
+  | 'sourcesDisagree'
+  | 'aiCitedUnverified'
+  | 'aiOnly'
+  | 'onePageOnly'
+  | 'regionOnly';
 
 export type MadeInView = {
   /**
@@ -56,6 +62,11 @@ export type MadeInView = {
    * name/likely), at most MAX_SOURCE_ROWS. Label basis: none.
    */
   sourceRows: SourceRow[];
+  /**
+   * Pages that name a region, not a country. Shown beside the unconfirmed
+   * country. They do not vote and do not confirm.
+   */
+  regionRows: Array<{ region: string; sources: SourceRow[] }>;
   /**
    * Candidate countries (not confirmed). Web candidates carry their own
    * source rows; `neutral` (exact-model pages disagree) shows no grade.
@@ -271,6 +282,16 @@ export function partOriginShown(ev: PartEvidence | undefined): boolean {
  * matches HQ. A web row for the same country absorbs it (no duplicate rows).
  * Older cached answers may carry it as madeIn or a 'confirmed_coo' candidate.
  */
+/** Pages named a region and no country, so the model's country is not a vote. */
+function regionOnlyPages(result: CheckResult): boolean {
+  const hits = result.meta?.searchCoo ?? [];
+  const region = hits.some((h) => h.regionOnly && h.url?.trim());
+  const country = hits.some(
+    (h) => !h.regionOnly && !h.evidenceOnly && cleanValue(h.country) && h.url?.trim() && !isRegionNotCountry(h.country)
+  );
+  return region && !country;
+}
+
 function candidateRows(result: CheckResult, candidates: Candidate[], unconfirmedMadeIn: string): CandRow[] {
   const rows: CandRow[] = [];
   // Model-only rows (model made-in guess, or parts when parts evidence is
@@ -307,10 +328,13 @@ function candidateRows(result: CheckResult, candidates: Candidate[], unconfirmed
     put({ label: c.label, rating: c.rating, source: c.source });
   }
   if (unconfirmedMadeIn) modelLabels.push(unconfirmedMadeIn);
-  for (const label of modelLabels) {
-    // Shown even when it matches HQ. The card lists it as an AI vote
-    // (Germany 1/5), not as a confirmed made-in.
-    put({ label, rating: 'possible', source: 'model_memory' });
+  // Pages named a region and no country. The model's country is not a vote.
+  if (!regionOnlyPages(result)) {
+    for (const label of modelLabels) {
+      // Shown even when it matches HQ. The card lists it as an AI vote
+      // (Germany 1/5), not as a confirmed made-in.
+      put({ label, rating: 'possible', source: 'model_memory' });
+    }
   }
   return rows
     .sort((a, b) => (RATING_RANK[b.rating] ?? 0) - (RATING_RANK[a.rating] ?? 0))
@@ -327,6 +351,7 @@ function weakRows(result: CheckResult, candidates: Candidate[], shown: CandRow[]
   for (const c of candidates) {
     const label = cleanValue(c.label);
     if (!label || c.rating === 'confirmed' || isRegionNotCountry(label)) continue;
+    if (regionOnlyPages(result) && (c.source === 'model_memory' || c.source === 'confirmed_coo')) continue;
     if (c.source !== 'confirmed_coo' && NOT_MADE_IN.has(String(c.source))) continue;
     if (c.source === 'notes') continue;
     if (shown.some((r) => sameCountryLabel(r.label, label))) continue;
@@ -451,7 +476,7 @@ function withPathHints(rows: SourceRow[]): SourceRow[] {
 
 function buildMadeInViewCore(
   result: CheckResult
-): Omit<MadeInView, 'citedRows' | 'excludedRows' | 'designRows' | 'unconfirmedTier' | 'votes' | 'silent' | 'sourceTotal'> {
+): Omit<MadeInView, 'citedRows' | 'excludedRows' | 'designRows' | 'unconfirmedTier' | 'votes' | 'silent' | 'sourceTotal' | 'regionRows'> {
   const p = result.product;
   const meta = result.meta;
   const sources = Array.isArray(result.sources) ? cleanSources(result.sources, 8) : [];
@@ -557,6 +582,7 @@ function buildMadeInViewCore(
     };
   });
   const webPages = new Set(likelyHits.map((h) => h.url).filter(Boolean)).size;
+  const regionNamed = searchCoo.some((h) => h.regionOnly && cleanValue(h.country) && h.url?.trim());
   const aiSaid = [madeIn, ...candidates.filter((c) => c.source === 'model_memory').map((c) => c.label)].filter(Boolean);
   const aiBacks = (label: string) => aiSaid.some((a) => a && sameCountryLabel(a, label));
   // 「網頁說法不一」 only when every side is a web page; with the label as a side 「來源說法不一」.
@@ -566,8 +592,10 @@ function buildMadeInViewCore(
       ? 'pagesDisagree'
       : (meta?.citedUnverified ?? []).length
         ? 'aiCitedUnverified'
-        : pageCountries.length === 0 && aiSaid.length
-          ? 'aiOnly'
+        : pageCountries.length === 0 && regionNamed
+          ? 'regionOnly'
+          : pageCountries.length === 0 && aiSaid.length
+            ? 'aiOnly'
           : pageCountries.length === 1 && webPages === 1 && !aiBacks(pageCountries[0]!)
             ? 'onePageOnly'
             : undefined;
@@ -815,6 +843,31 @@ export function visibleSourceLines(result: CheckResult): string[] {
   });
 }
 
+function regionSourceRows(result: CheckResult): Array<{ region: string; sources: SourceRow[] }> {
+  const sources = visibleSourceLines(result);
+  const groups: Array<{ region: string; sources: SourceRow[] }> = [];
+  for (const h of result.meta?.searchCoo ?? []) {
+    if (!h.regionOnly || !cleanValue(h.country) || !h.url?.trim()) continue;
+    const region = countryText(h.country) ?? h.country;
+    const url = h.url.trim();
+    const parts = splitSourceLine(sources.find((s) => s.includes(url)) ?? url);
+    const host = sourceLabel({ title: '', url: parts.url ?? url });
+    const label = sourceLabel(parts) || host || url;
+    let group = groups.find((g) => sameCountryLabel(g.region, region));
+    if (!group) {
+      group = { region, sources: [] };
+      groups.push(group);
+    }
+    if (group.sources.some((s) => s.url === (parts.url ?? url))) continue;
+    group.sources.push({
+      label,
+      url: parts.url ?? url,
+      host: host && host !== label ? host : undefined,
+    });
+  }
+  return groups;
+}
+
 function buildSourceVotes(result: CheckResult): { votes: SourceVote[]; silent: number; total: number } {
   const blocked = new Set(
     (result.meta?.searchExcluded ?? []).map((e) => sourceUrlKey(e.url)).filter(Boolean)
@@ -874,7 +927,7 @@ function buildSourceVotes(result: CheckResult): { votes: SourceVote[]; silent: n
   const confirmedBasis = result.product?.madeInBasis;
   const confirmed =
     confirmedBasis === 'barcode' || confirmedBasis === 'label' || confirmedBasis === 'model';
-  if (!confirmed) {
+  if (!confirmed && !regionOnlyPages(result)) {
     const aiCountries: string[] = [];
     for (const c of result.product?.originCandidates ?? []) {
       if (c.source === 'model_memory' && cleanValue(c.label)) aiCountries.push(c.label);
@@ -884,6 +937,10 @@ function buildSourceVotes(result: CheckResult): { votes: SourceVote[]; silent: n
     for (const c of aiCountries) {
       add(c, 'ai', { label: '', ai: true, country: countryText(c) ?? c });
     }
+  }
+  // A page that names a region did write a place. It is not a silent source.
+  for (const h of result.meta?.searchCoo ?? []) {
+    if (h.regionOnly && h.url?.trim()) named.add(`page:${h.url.trim()}`);
   }
   // The AI answer counts only when it named a country. A silent answer is not
   // a row in 全部來源, so it must not inflate 「N 個來源」.
@@ -973,6 +1030,7 @@ export function buildMadeInView(result: CheckResult): MadeInView {
   const core = buildMadeInViewCore(stamped);
   const tier = tierRows(stamped, core);
   const { votes, silent, total } = buildSourceVotes(stamped);
+  const regionRows = regionSourceRows(stamped);
   // 「大多產自」 is a parts headline. Agreeing pages confirm, or they stay 未確認.
   const mostly = mostlyCountry(stamped, core, tier);
   return {
@@ -980,6 +1038,7 @@ export function buildMadeInView(result: CheckResult): MadeInView {
     ...(mostly ? { mostly } : {}),
     unconfirmedTier: tier,
     votes,
+    regionRows,
     silent,
     sourceTotal: total,
     citedRows: citedRows(stamped),

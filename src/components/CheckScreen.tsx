@@ -67,6 +67,8 @@ export function CheckScreen({
   >(async () => undefined);
   /** Automatic re-submits since the user last pressed submit (capped). */
   const autoAttemptsRef = useRef(0);
+  // The auto-resubmit after a rate limit must keep a skip-cache click.
+  const retrySkipCache = useRef(false);
   /** Keep last successful/attempted inputs for re-check after composer is cleared */
   const lastInputRef = useRef<{ question: string; photo: PreparedImage | null }>({
     question: '',
@@ -158,9 +160,12 @@ export function CheckScreen({
 
   const runCheck = useCallback(
     async (opts?: { forceRefresh?: boolean; auto?: boolean }) => {
-      const forceRefresh = Boolean(opts?.forceRefresh);
+      const forceRefresh = opts?.auto ? retrySkipCache.current : Boolean(opts?.forceRefresh);
       if (opts?.auto) autoAttemptsRef.current += 1;
-      else autoAttemptsRef.current = 0;
+      else {
+        autoAttemptsRef.current = 0;
+        retrySkipCache.current = forceRefresh;
+      }
       setError(null);
       setRateHit(null);
       setAutoRetryLeft(null);
@@ -261,6 +266,7 @@ export function CheckScreen({
           }
           return;
         }
+        retrySkipCache.current = false;
         setLastProvider(out.provider ?? null);
         setResultQuery(question);
         setCached(Boolean(out.cached));

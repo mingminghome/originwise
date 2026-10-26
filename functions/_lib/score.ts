@@ -44,7 +44,7 @@ export function scoreFacts(result: CheckResult): Record<string, unknown> {
       support: confirmed ? product?.madeInSupport : undefined,
       modelAnswer: confirmed ? undefined : product?.madeIn,
       pages: (result.meta?.searchCoo ?? [])
-        .filter((h) => !h.evidenceOnly && h.country)
+        .filter((h) => !h.evidenceOnly && !h.regionOnly && h.country)
         .slice(0, 12)
         .map((h) => ({
           country: h.country,
@@ -54,6 +54,10 @@ export function scoreFacts(result: CheckResult): Record<string, unknown> {
           exactModel: h.exactModel || undefined,
           url: h.url,
         })),
+      regions: (result.meta?.searchCoo ?? [])
+        .filter((h) => h.regionOnly && h.country)
+        .slice(0, 8)
+        .map((h) => ({ region: h.country, url: h.url })),
       unverifiedCitations: (result.meta?.citedUnverified ?? []).slice(0, 4).map((c) => ({
         url: c.url,
         title: c.title,
@@ -153,7 +157,7 @@ madeIn.headline is the country name in ${lang} when madeIn.confirmed is true. Ot
 The page translates the headline tokens unrelated, unknown, direct, indirect, and unconfirmed.
 score is how strongly these facts connect this product to China. 0 means the facts show no China connection. 100 means a confirmed China connection: a confirmed made-in in China, or a China company or China controlling owner.
 When madeIn.confirmed is true, the summary states that country as confirmed.
-When pages name different countries, or a page only names a region, the summary says the made-in is not confirmed.
+When pages name different countries, or a page only names a region, the summary says the made-in is not confirmed. madeIn.regions are pages that name a region. Name that region in the summary and say it is not a country. Do not say that no page mentions a place. A region does not change the score and is not a confirmed made-in.
 A confirmed made-in (madeIn.confirmed true) is stated as confirmed. Do not write confirmed unless madeIn.confirmed is true.
 A user review is not a made-in source. A different item, including a spare or a cover, is not this unit. Do not put its country in the summary.
 A page that names China still counts toward the score. Company headquarters or brand origin outside China does not erase that page.

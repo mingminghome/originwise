@@ -233,6 +233,10 @@ export type CheckResult = {
       /** Made-in on a multi-size page about this product. A source vote only. */
       voteOnly?: boolean;
       url?: string;
+      /** Words copied from that page. */
+      quote?: string;
+      /** The page names a region, not a country. Shown, never a made-in vote. */
+      regionOnly?: boolean;
     }>;
     /** Pages about another model of that name: shown as 「型號不符（…），未計算」. */
     searchExcluded?: Array<{ url: string; model: string; title?: string; country?: string }>;

@@ -440,7 +440,7 @@ async function runQuery(
   });
 
   const kept = keepTidy(
-    groundPageQuotes(readTidy(tidy.ok ? tidy.obj : null), pages),
+    groundPageQuotes(readTidy(tidy.ok ? tidy.obj : null), pages, locale),
     [...pages, ...factoryPages].map((p) => p.text)
   );
   const result = resultFromTidy({

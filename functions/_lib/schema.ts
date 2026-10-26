@@ -124,6 +124,8 @@ export type WebCooClaim = {
   url?: string;
   /** Words copied from that page. Kept only when the page contains them. */
   quote?: string;
+  /** The page names a region, not a country. Shown, never a made-in vote. */
+  regionOnly?: boolean;
 };
 
 export type OriginCandidateSource =

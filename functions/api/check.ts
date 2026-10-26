@@ -140,6 +140,9 @@ function parseImage(
   };
 }
 
+/** How long a running check keeps the one-at-a-time lock. The retry hint uses the same number. */
+const INFLIGHT_LOCK_SEC = 90;
+
 async function releaseInFlight(ip: string): Promise<void> {
   try {
     const cache = caches.default;
@@ -175,7 +178,7 @@ async function acquireInFlight(ip: string): Promise<boolean> {
       key,
       new Response('1', {
         headers: {
-          'Cache-Control': 'public, max-age=90',
+          'Cache-Control': `public, max-age=${INFLIGHT_LOCK_SEC}`,
           'Content-Type': 'text/plain',
         },
       })
@@ -321,10 +324,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           jobId,
           limit: 1,
           window: 'inflight',
-          retryAfterSec: 30,
+          retryAfterSec: INFLIGHT_LOCK_SEC,
         },
         429,
-        { 'Retry-After': '30' }
+        { 'Retry-After': String(INFLIGHT_LOCK_SEC) }
       );
     }
     holdLock = true;
