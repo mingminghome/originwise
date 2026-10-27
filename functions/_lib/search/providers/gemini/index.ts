@@ -11,7 +11,8 @@ import {
   parseSourceLine,
   productSourceLines,
 } from '../../extract';
-import type { SearchEvidence, SearchProvider } from '../../types';
+import { applyPageKinds, classifyPageKinds } from '../../pageKinds';
+import type { FetchedPage, SearchEvidence, SearchProvider } from '../../types';
 import { runWebResearch } from './research';
 
 export const geminiSearchProvider: SearchProvider = {
@@ -38,17 +39,22 @@ export const geminiSearchProvider: SearchProvider = {
         targets.map((s) => fetchSourcePage(s.url, s.title).catch(() => null))
       );
       const fetched = pages.filter((p): p is NonNullable<typeof p> => Boolean(p));
-      const kept = keepUnitPages(entity, fetched).slice(0, MAX_RESULT_PAGES);
-      evidence.pages = kept.map((p) => ({
+      const named = keepUnitPages(entity, fetched).slice(0, MAX_RESULT_PAGES);
+      const kinds = await classifyPageKinds(entity, named, env);
+      const split = applyPageKinds(named, [], kinds);
+      const kept = split.pages;
+      const plants = split.factoryPages;
+      const pack = (p: FetchedPage) => ({
         url: p.url,
         ...(p.finalUrl ? { finalUrl: p.finalUrl } : {}),
         title: p.title,
         text: p.text.slice(0, 40_000),
-      }));
-      evidence.droppedUrls = fetched
-        .filter((p) => !kept.some((k) => k.url === p.url))
-        .map((p) => p.url);
-      sources = productSourceLines(entity, ocrText, kept);
+      });
+      evidence.pages = kept.map(pack);
+      evidence.factoryPages = plants.map(pack);
+      const used = new Set([...kept, ...plants].map((p) => p.url));
+      evidence.droppedUrls = fetched.filter((p) => !used.has(p.url)).map((p) => p.url);
+      sources = productSourceLines(entity, ocrText, [...kept, ...plants]);
     }
     return {
       ok,

@@ -248,19 +248,16 @@ export function ResultPanel({
       {!result.overall && hasEntity ? <MadeInCard result={result} t={t} /> : null}
       {!result.overall && hasEntity ? <LayersCard result={result} t={t} /> : null}
 
-      {result.graph?.nodes?.length ? (
-        <SectionShare
-          label={t('check.graphTitle')}
-          t={t}
-          className="rc-card rc-graph"
-        >
-          <div data-testid="relation-graph-card">
-            <RelationGraph graph={result.graph} t={t} />
-          </div>
-        </SectionShare>
-      ) : null}
-
       <div className="rc-folds">
+        {result.graph?.nodes?.length ? (
+          <Fold title={t('check.graphTitle')} t={t} testId="fold-graph">
+            <SectionShare label={t('check.graphTitle')} t={t} className="rc-graph">
+              <div data-testid="relation-graph-card">
+                <RelationGraph graph={result.graph} t={t} embedded />
+              </div>
+            </SectionShare>
+          </Fold>
+        ) : null}
         {originDetailCount ? (
           <Fold title={t('check.productNotes')} count={originDetailCount} t={t} testId="fold-notes">
             {notes.length ? (

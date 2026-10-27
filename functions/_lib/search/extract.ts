@@ -149,29 +149,6 @@ export function buildFactoryQuery(entity: string, terms: readonly string[]): str
   return [brand, line, plants, '-youtube.com'].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
 }
 
-/** A spare or a shop service sold under its own title, not this unit. */
-const OTHER_ITEM_PHRASES = [
-  'rain cover',
-  'logo customization',
-  'logo customisation',
-  '求職',
-  'vacancies',
-  'job vacancy',
-  'price comparison',
-  'compare prices',
-  'best prices',
-];
-
-export function soldAsOtherItem(entity: string, titleOrUrl: string): boolean {
-  const hay = nfkc(titleOrUrl).toLowerCase().replace(/[-_]+/g, ' ');
-  const query = nfkc(entity).toLowerCase();
-  if (OTHER_ITEM_PHRASES.some((p) => hay.includes(p) && !query.includes(p))) return true;
-  // "Custom expandable hard suitcase …" is a made-to-order listing.
-  // "customer" and "customisation" do not match this word.
-  if (/(?:^|[^a-z])custom(?:[^a-z]|$)/.test(query)) return false;
-  return /(?:^|[^a-z])custom(?:[^a-z]|$)/.test(hay);
-}
-
 /**
  * A page is about this unit when it contains the size and the model words.
  * A query written with kana must contain those Japanese model words, so an
@@ -210,7 +187,6 @@ export function keepUnitPages<T extends { url: string; finalUrl?: string; title?
     if (!p.url || isSearchResultUrl(p.url)) return false;
     if (isReviewPage(p.finalUrl || p.url)) return false;
     if (pageOutsideMarket(p.finalUrl || p.url, entity)) return false;
-    if (soldAsOtherItem(entity, `${p.title ?? ''}\n${p.finalUrl || p.url}`)) return false;
     return pageMentionsUnit(entity, `${p.title ?? ''}\n${p.text}`);
   });
 }
@@ -236,7 +212,6 @@ export function keepFactoryPages<T extends { url: string; finalUrl?: string; tit
     const url = p.finalUrl || p.url;
     if (isReviewPage(url)) continue;
     if (pageOutsideMarket(url, entity)) continue;
-    if (soldAsOtherItem(entity, `${p.title ?? ''}\n${url}`)) continue;
     const blob = nfkc(`${url}\n${p.title ?? ''}\n${p.text}`).toLowerCase();
     if (!blob.includes(brand)) continue;
     if (cues.length && !cues.some((c) => blob.includes(c))) continue;

@@ -23,7 +23,8 @@ import {
 import type { CheckDimension, CheckResult } from './schema';
 import { WEB_KNOWLEDGE_NOTE, webKnowledgeNote } from './schema';
 import type { GeoScope } from './schema';
-import { groundPageQuotes, identityPrompt, keepTidy, readIdentity, readTidy, resultFromTidy, tidyPrompt } from './pipeline';
+import { groundPageQuotes, identityPrompt, keepTidy, readIdentity, readTidy, resultFromTidy, skippedPageUrls, tidyPrompt } from './pipeline';
+import { pageKindKey } from './search/pageKinds';
 import { pageMentionsUnit, pageOutsideMarket } from './search/extract';
 import { buildScorePrompt, readOverall } from './score';
 import type { SearchEvidence } from './search/types';
@@ -439,16 +440,24 @@ async function runQuery(
     detail: tidy.ok ? undefined : tidy.code,
   });
 
+  const skip = new Set(skippedPageUrls(tidy.ok ? tidy.obj : null).map(pageKindKey));
+  const keepPage = (p: { url: string }) => !skip.has(pageKindKey(p.url));
+  const keptPages = pages.filter(keepPage);
+  const keptPlants = factoryPages.filter(keepPage);
   const kept = keepTidy(
-    groundPageQuotes(readTidy(tidy.ok ? tidy.obj : null), pages, locale),
-    [...pages, ...factoryPages].map((p) => p.text)
+    groundPageQuotes(readTidy(tidy.ok ? tidy.obj : null), keptPages, locale),
+    [...keptPages, ...keptPlants].map((p) => p.text)
   );
+  const sources = (web.sources ?? []).filter((line) => {
+    const url = line.match(/https?:\/\/\S+/)?.[0];
+    return !url || !skip.has(pageKindKey(url));
+  });
   const result = resultFromTidy({
     jobId,
     geoScope,
     identity,
     facts: kept,
-    sources: web.sources ?? [],
+    sources,
     web: web.used,
   });
   result.meta.agents = agents;

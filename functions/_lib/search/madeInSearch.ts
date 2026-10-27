@@ -19,6 +19,7 @@ import {
   mergePages,
 } from './extract';
 import { originSearchTerms } from './originTerms';
+import { applyPageKinds, classifyPageKinds } from './pageKinds';
 import type { FetchedPage, SearchEnv, SearchOutput } from './types';
 
 export type PageBatch = { pages: FetchedPage[] } | { error: string };
@@ -81,6 +82,11 @@ export async function runMadeInSearch(opts: {
       factoryPages = keepFactoryPages(opts.entity, plants.pages, terms.factory);
     }
   }
+  if (!pages.length && !factoryPages.length) return missed('empty_response', requests, t0);
+  const kinds = await classifyPageKinds(opts.entity, [...pages, ...factoryPages], opts.env);
+  const split = applyPageKinds(pages, factoryPages, kinds);
+  pages = split.pages;
+  factoryPages = split.factoryPages;
   if (!pages.length && !factoryPages.length) return missed('empty_response', requests, t0);
   return extractBriefFromPages({
     providerId: opts.providerId,

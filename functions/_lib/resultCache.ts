@@ -81,8 +81,10 @@ function sortedDims(dims: CheckDimension[]): string {
  * v38: a place name inside a long paragraph is still read.
  * v39: a folded product tab is still read. The site header, nav, and footer are not.
  *     A job listing is not a factory source.
+ * v40: each fetched page is labeled unit, plant, or other from its title and URL.
+ *     A page labeled other is not a source.
  */
-export const CACHE_KEY_VERSION = 'check:v39';
+export const CACHE_KEY_VERSION = 'check:v40';
 
 export async function cacheKeyHash(parts: CacheLookupKey): Promise<string> {
   const material = [
