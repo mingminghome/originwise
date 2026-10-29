@@ -25,6 +25,7 @@ import {
 } from '../core/util/image';
 import type { AppState } from '../hooks/useAppState';
 import type { CheckResult } from '../core/types';
+import { AdvancedSearch } from './AdvancedSearch';
 import { ProgressSteps } from './ProgressSteps';
 import { ResultPanel } from './ResultPanel';
 
@@ -46,6 +47,7 @@ export function CheckScreen({
     setTab,
   } = state;
   const [text, setText] = useState('');
+  const [markets, setMarkets] = useState<string[]>([]);
   const [photo, setPhoto] = useState<PreparedImage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rateHit, setRateHit] = useState<RateHit | null>(null);
@@ -207,6 +209,7 @@ export function CheckScreen({
           locale: settings.locale,
           geoScope: settings.geoScope,
           dimensions: settings.defaultDimensions,
+          markets,
           forceRefresh,
           image: attached
             ? { mimeType: attached.mimeType, data: attached.data }
@@ -303,6 +306,7 @@ export function CheckScreen({
       settings.locale,
       settings.geoScope,
       settings.defaultDimensions,
+      markets,
       t,
       setActiveResult,
       pushCheckHistory,
@@ -430,6 +434,7 @@ export function CheckScreen({
     setCached(false);
     setText('');
     setPhoto(null);
+    setMarkets([]);
   }, [resetToken, setActiveResult]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -544,6 +549,13 @@ export function CheckScreen({
               </button>
             ) : null}
             <div className="check-search-tools">
+              <AdvancedSearch
+                locale={settings.locale}
+                markets={markets}
+                disabled={loading || autoRetrying}
+                onChange={setMarkets}
+                t={t}
+              />
               <button
                 type="button"
                 className="check-icon-btn"

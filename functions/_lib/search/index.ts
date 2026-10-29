@@ -193,7 +193,7 @@ export async function runSearchChain(
     if (hit) {
       const merged = held ? mergeSearchOutputs(held, out) : out;
       if (!heldProvider) heldProvider = id;
-      const pageCount = keepUnitPages(input.entity, merged.evidence?.pages ?? []).filter(
+      const pageCount = keepUnitPages(input.entity, merged.evidence?.pages ?? [], input.markets).filter(
         (p) => p.text.trim().length > 80
       ).length;
       if (pageCount < 2) {

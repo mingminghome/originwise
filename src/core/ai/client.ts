@@ -16,6 +16,8 @@ export type CheckRequest = {
   image?: CheckImagePayload;
   geoScope: GeoScope;
   dimensions: CheckDimension[];
+  /** Markets picked in advanced search. Omit for a normal check. */
+  markets?: string[];
   forceRefresh?: boolean;
   stream?: boolean;
 };
@@ -125,6 +127,7 @@ export async function runCheckApi(
         image: req.image,
         geoScope: req.geoScope,
         dimensions: req.dimensions,
+        ...(req.markets?.length ? { markets: req.markets } : {}),
         forceRefresh: req.forceRefresh,
         stream: false,
       }),
@@ -168,6 +171,7 @@ export async function runCheckApiStream(
         image: req.image,
         geoScope: req.geoScope,
         dimensions: req.dimensions,
+        ...(req.markets?.length ? { markets: req.markets } : {}),
         forceRefresh: req.forceRefresh,
         stream: true,
       }),

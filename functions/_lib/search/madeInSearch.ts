@@ -18,6 +18,7 @@ import {
   keepUnitPages,
   mergePages,
 } from './extract';
+import { soldInPhrase } from '../queryMarket';
 import { originSearchTerms } from './originTerms';
 import { applyPageKinds, classifyPageKinds } from './pageKinds';
 import type { FetchedPage, SearchEnv, SearchOutput } from './types';
@@ -33,6 +34,7 @@ export async function runMadeInSearch(opts: {
   entity: string;
   ocrText?: string;
   locale?: string;
+  markets?: readonly string[];
   env: SearchEnv;
   /**
    * One search API call. `skipUrls` are pages already kept, so the follow-up
@@ -48,38 +50,40 @@ export async function runMadeInSearch(opts: {
   const t0 = Date.now();
   const jans = findJans(opts.entity, opts.ocrText);
   const terms = await originSearchTerms(opts.entity, opts.locale ?? 'en', opts.env);
+  const sale = soldInPhrase(opts.entity, opts.markets);
+  const withSale = (query: string) => (sale ? `${query} ${sale}` : query);
   const first = await opts.fetchPages(
-    buildSearchQuery(opts.entity, jans, terms.madeIn),
+    withSale(buildSearchQuery(opts.entity, jans, terms.madeIn)),
     'first',
     new Set()
   );
   if ('error' in first) return missed(first.error, 1, t0);
   if (!first.pages.length) return missed('empty_response', 1, t0);
 
-  let pages = keepUnitPages(opts.entity, first.pages);
+  let pages = keepUnitPages(opts.entity, first.pages, opts.markets);
   let requests = 1;
   // Foreign or other-model hits do not count, so the follow-up still runs.
   if (pages.length < 2) {
     requests += 1;
     const extra = await opts.fetchPages(
-      buildMadeInQuery(opts.entity, terms.madeIn),
+      withSale(buildMadeInQuery(opts.entity, terms.madeIn)),
       'followup',
       new Set(first.pages.map((p) => p.url))
     );
     if (!('error' in extra) && extra.pages.length) {
-      pages = keepUnitPages(opts.entity, mergePages(pages, extra.pages));
+      pages = keepUnitPages(opts.entity, mergePages(pages, extra.pages), opts.markets);
     }
   }
   let factoryPages: FetchedPage[] = [];
   if (terms.factory.length) {
     requests += 1;
     const plants = await opts.fetchPages(
-      buildFactoryQuery(opts.entity, terms.factory),
+      withSale(buildFactoryQuery(opts.entity, terms.factory)),
       'followup',
       new Set(pages.map((p) => p.url))
     );
     if (!('error' in plants) && plants.pages.length) {
-      factoryPages = keepFactoryPages(opts.entity, plants.pages, terms.factory);
+      factoryPages = keepFactoryPages(opts.entity, plants.pages, terms.factory, opts.markets);
     }
   }
   if (!pages.length && !factoryPages.length) return missed('empty_response', requests, t0);

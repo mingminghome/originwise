@@ -13,6 +13,7 @@ import {
   type ProgressEvent,
 } from '../_lib/orchestrator';
 import { checkRateLimit, clientIp } from '../_lib/rateLimit';
+import { normalizeMarketCodes } from '../_lib/queryMarket';
 import { getCachedResult, putCachedResult } from '../_lib/resultCache';
 import { hashIp, originAllowed } from '../_lib/security';
 import type { CheckDimension, GeoScope } from '../_lib/schema';
@@ -26,6 +27,7 @@ type CheckBody = {
   image?: CheckImageBody;
   geoScope?: string;
   dimensions?: string[];
+  markets?: unknown;
   forceRefresh?: boolean;
   stream?: boolean;
 };
@@ -200,6 +202,7 @@ type ParsedOk = {
   image?: LlmImage;
   geoScope: GeoScope;
   dimensions: CheckDimension[];
+  markets: string[];
   forceRefresh: boolean;
   stream: boolean;
 };
@@ -225,6 +228,7 @@ async function parseBody(
   const text = sanitizeText(raw.text, MAX_TEXT);
   const geoScope = normalizeGeoScope(raw.geoScope);
   const dimensions = normalizeDimensions(raw.dimensions);
+  const markets = normalizeMarketCodes(raw.markets);
   const img = parseImage(raw.image);
   if (!img.ok) {
     return {
@@ -252,6 +256,7 @@ async function parseBody(
       image: img.image,
       geoScope,
       dimensions,
+      markets,
       forceRefresh: Boolean(raw.forceRefresh),
       stream: raw.stream === true,
     },
@@ -407,6 +412,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
             locale: body.locale,
             geoScope: body.geoScope,
             dimensions: body.dimensions,
+            markets: body.markets,
           });
           if (cached) {
             const result = {
@@ -447,6 +453,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           image: body.image,
           geoScope: body.geoScope,
           dimensions: body.dimensions,
+          markets: body.markets,
           env,
         },
         emit
@@ -481,6 +488,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
               locale: body.locale,
               geoScope: body.geoScope,
               dimensions: body.dimensions,
+              markets: body.markets,
             },
             out.result,
             ttl

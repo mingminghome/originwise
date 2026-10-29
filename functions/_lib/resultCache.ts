@@ -15,10 +15,20 @@ export type CacheLookupKey = {
   locale: string;
   geoScope: GeoScope;
   dimensions: CheckDimension[];
+  /** Set only when the user picked markets. Empty stays off the key. */
+  markets?: readonly string[];
 };
 
 function sortedDims(dims: CheckDimension[]): string {
   return [...dims].sort().join(',');
+}
+
+function sortedMarkets(codes: readonly string[] | undefined): string {
+  return [...(codes ?? [])]
+    .map((code) => code.trim().toUpperCase())
+    .filter(Boolean)
+    .sort()
+    .join(',');
 }
 
 /**
@@ -83,17 +93,25 @@ function sortedDims(dims: CheckDimension[]): string {
  *     A job listing is not a factory source.
  * v40: each fetched page is labeled unit, plant, or other from its title and URL.
  *     A page labeled other is not a source.
+ *     A picked market list is appended only when the user set one, so a
+ *     normal check still matches this key.
+ * v41: a picked market names the item sold in those markets on the search
+ *     and on the model requests. The same name in another market is a
+ *     different unit. Two made-in countries are separate summary lines.
+ *     A normal check still has no market line.
  */
-export const CACHE_KEY_VERSION = 'check:v40';
+export const CACHE_KEY_VERSION = 'check:v41';
 
 export async function cacheKeyHash(parts: CacheLookupKey): Promise<string> {
-  const material = [
+  const head = [
     CACHE_KEY_VERSION,
     normalizeQuery(parts.text),
     parts.locale,
     parts.geoScope,
     sortedDims(parts.dimensions),
   ].join('|');
+  const markets = sortedMarkets(parts.markets);
+  const material = markets ? `${head}|${markets}` : head;
   const data = new TextEncoder().encode(material);
   const digest = await crypto.subtle.digest('SHA-256', data);
   const bytes = new Uint8Array(digest);

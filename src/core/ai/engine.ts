@@ -16,6 +16,7 @@ export type EngineInput = {
   locale: Locale;
   geoScope: GeoScope;
   dimensions: CheckDimension[];
+  markets?: string[];
   image?: CheckImagePayload;
   forceRefresh?: boolean;
   onProgress?: (step: ProgressStep) => void;
@@ -54,6 +55,7 @@ export async function engineRunCheck(
       image: hasImage ? input.image : undefined,
       geoScope: input.geoScope,
       dimensions: input.dimensions,
+      markets: input.markets,
       forceRefresh: input.forceRefresh,
       stream: true,
     },

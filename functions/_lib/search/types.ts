@@ -31,6 +31,8 @@ export type SearchInput = {
   entity: string;
   ocrText?: string;
   locale: string;
+  /** Countries the user picked. Empty leaves the query's own writing as the market. */
+  markets?: readonly string[];
   env: SearchEnv;
 };
 

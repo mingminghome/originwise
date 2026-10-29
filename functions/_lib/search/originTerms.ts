@@ -9,7 +9,6 @@
 import { extractJsonObject } from '../jsonExtract';
 import { callProvider } from '../llm';
 import { langLabel } from '../locale';
-import { searchMarket } from '../queryMarket';
 import type { SearchEnv } from './types';
 
 export const FALLBACK_ORIGIN_TERMS = ['"made in"', '"country of origin"'] as const;
@@ -35,7 +34,7 @@ function fallbackTerms(): OriginTerms {
 }
 
 function keepTerm(text: string, term: string): boolean {
-  if (!searchMarket(text)) return true;
+  if (!/[\u3040-\u30ff]/.test(text)) return true;
   return /[\u3040-\u30ff\u4e00-\u9fff]/.test(term);
 }
 

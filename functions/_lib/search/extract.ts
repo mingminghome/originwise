@@ -3,6 +3,7 @@
  * This file does not name a country.
  */
 
+import { hostOutsideMarkets, normalizeMarketCodes } from '../queryMarket';
 import { isSearchResultUrl } from '../sourceLine';
 import { FALLBACK_ORIGIN_TERMS } from './originTerms';
 import type { FetchedPage, SearchEnv, SearchOutput } from './types';
@@ -181,12 +182,13 @@ export function pageMentionsUnit(entity: string, page: string): boolean {
 /** Pages that are this unit, in this market. Other shops do not count as evidence. */
 export function keepUnitPages<T extends { url: string; finalUrl?: string; title?: string; text: string }>(
   entity: string,
-  pages: readonly T[]
+  pages: readonly T[],
+  markets?: readonly string[]
 ): T[] {
   return pages.filter((p) => {
     if (!p.url || isSearchResultUrl(p.url)) return false;
     if (isReviewPage(p.finalUrl || p.url)) return false;
-    if (pageOutsideMarket(p.finalUrl || p.url, entity)) return false;
+    if (pageOutsideMarket(p.finalUrl || p.url, entity, markets)) return false;
     return pageMentionsUnit(entity, `${p.title ?? ''}\n${p.text}`);
   });
 }
@@ -198,7 +200,8 @@ export function keepUnitPages<T extends { url: string; finalUrl?: string; title?
 export function keepFactoryPages<T extends { url: string; finalUrl?: string; title?: string; text: string }>(
   entity: string,
   pages: readonly T[],
-  terms: readonly string[]
+  terms: readonly string[],
+  markets?: readonly string[]
 ): T[] {
   const brand = brandToken(entity).toLowerCase();
   if (!brand) return [];
@@ -211,7 +214,7 @@ export function keepFactoryPages<T extends { url: string; finalUrl?: string; tit
     if (!p.url || isSearchResultUrl(p.url)) continue;
     const url = p.finalUrl || p.url;
     if (isReviewPage(url)) continue;
-    if (pageOutsideMarket(url, entity)) continue;
+    if (pageOutsideMarket(url, entity, markets)) continue;
     const blob = nfkc(`${url}\n${p.title ?? ''}\n${p.text}`).toLowerCase();
     if (!blob.includes(brand)) continue;
     if (cues.length && !cues.some((c) => blob.includes(c))) continue;
@@ -223,20 +226,21 @@ export function keepFactoryPages<T extends { url: string; finalUrl?: string; tit
 }
 
 /**
- * A Japan-market query keeps .jp and global hosts (.com, .net, .org).
- * Any other country-code ending is another market's shop.
+ * A picked market keeps that country's shop ending and global hosts
+ * (.com, .net, .org). Any other country-code ending is another market's shop.
+ * With no pick, kana still means the Japan-sold unit.
  */
-export function pageOutsideMarket(url: string, entity: string): boolean {
-  if (!/[\u3040-\u30ff]/.test(entity) || !url) return false;
+export function pageOutsideMarket(url: string, entity: string, markets?: readonly string[]): boolean {
+  const picked = normalizeMarketCodes([...(markets ?? [])]);
+  const codes = picked.length ? picked : /[\u3040-\u30ff]/.test(entity) ? ['JP'] : [];
+  if (!codes.length || !url) return false;
   let host = '';
   try {
     host = new URL(url).hostname.toLowerCase();
   } catch {
     return false;
   }
-  const last = host.split('.').pop() ?? '';
-  if (last === 'jp' || last === 'com' || last === 'net' || last === 'org') return false;
-  return last.length === 2;
+  return hostOutsideMarkets(host, codes);
 }
 
 function pageKey(url: string): string {

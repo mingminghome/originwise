@@ -141,6 +141,48 @@ function timeZonesOf(code: string): readonly string[] | undefined {
   return loc.timeZones;
 }
 
+let marketCodes: readonly string[] | undefined;
+
+/** The territory this code is an old name for, or the code itself. */
+function canonicalRegion(code: string): string | undefined {
+  try {
+    return new Intl.Locale(`und-${code}`).maximize().region;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Alpha-2 territories a shop can belong to. A CLDR grouping is not a market.
+ * An old code that now names another territory (UK for GB) is not a second market.
+ */
+export function countryMarketCodes(): readonly string[] {
+  if (marketCodes) return marketCodes;
+  const dn = englishRegions();
+  const codes: string[] = [];
+  if (dn) {
+    for (let i = 0; i < 26; i++) {
+      for (let j = 0; j < 26; j++) {
+        const code = String.fromCharCode(65 + i) + String.fromCharCode(65 + j);
+        if (!namedRegion(dn, code) || groupingCode(dn, code)) continue;
+        const canon = canonicalRegion(code);
+        if (canon && canon !== code) continue;
+        codes.push(code);
+      }
+    }
+  }
+  marketCodes = codes;
+  return codes;
+}
+
+/** The shop ending belongs to this country. A short CLDR form ("uk") counts. */
+export function countryMatchesTld(code: string, tld: string): boolean {
+  const end = foldPlace(tld);
+  if (!end) return false;
+  if (end === code.toLowerCase()) return true;
+  return spellingsFor(code).includes(end);
+}
+
 /** Alpha-2 codes that are not territories: no time zone and no language of their own. */
 function groupingCode(dn: Intl.DisplayNames, code: string): boolean {
   if (!namedRegion(dn, code)) return false;

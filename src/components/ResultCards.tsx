@@ -463,7 +463,10 @@ export function MadeInCard({
 
         {!confirmed && view.votes.length ? (
           // Germany (1/5): how many of the consulted sources named each country.
-          <div className="rc-votes" data-testid="madein-votes">
+          <div
+            className={view.votes.length > 1 ? 'rc-votes rc-votes--split' : 'rc-votes'}
+            data-testid="madein-votes"
+          >
             <ul>
               {view.votes.map((v) => (
                 <li key={v.country} className={isChinaCountry(v.country) ? 'is-china' : undefined}>

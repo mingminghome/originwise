@@ -40,7 +40,7 @@ function fetchPageText(r: BraveResult): Promise<FetchedPage> {
 async function braveResults(
   key: string,
   q: string,
-  market: { country: string; lang: string } | undefined,
+  market: { country: string; lang?: string } | undefined,
   skip: ReadonlySet<string> = new Set()
 ): Promise<{ results: BraveResult[] } | { error: string }> {
   const params = new URLSearchParams({
@@ -49,10 +49,8 @@ async function braveResults(
     extra_snippets: 'true',
     safesearch: 'moderate',
   });
-  if (market) {
-    params.set('country', market.country);
-    params.set('search_lang', market.lang);
-  }
+  if (market?.country) params.set('country', market.country);
+  if (market?.lang) params.set('search_lang', market.lang);
   const res = await fetchWithTimeout(
     `${BRAVE_ENDPOINT}?${params.toString()}`,
     {
@@ -97,16 +95,17 @@ export const braveSearchProvider: SearchProvider = {
   isConfigured(env) {
     return Boolean(env.BRAVE_SEARCH_API_KEY?.trim());
   },
-  async search({ entity, ocrText, locale, env }) {
+  async search({ entity, ocrText, locale, markets, env }) {
     const key = env.BRAVE_SEARCH_API_KEY?.trim() || '';
     return runMadeInSearch({
       providerId: 'brave',
       entity,
       ocrText,
       locale,
+      markets,
       env,
       fetchPages: async (query, _phase, skip) => {
-        const got = await braveResults(key, query, searchMarket(entity), skip);
+        const got = await braveResults(key, query, searchMarket(entity, markets), skip);
         if ('error' in got) return got;
         const pages = await Promise.all(got.results.map((r) => fetchPageText(r)));
         return { pages };

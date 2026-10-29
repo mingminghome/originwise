@@ -28,7 +28,7 @@
  */
 
 import { langLabel } from '../../../locale';
-import { queryMarketLine } from '../../../queryMarket';
+import { marketLimitLine, queryMarketLine } from '../../../queryMarket';
 import { isCreditsDepleted, preferFasterChatModels, type LlmEnv } from '../../../llm';
 
 export type WebResearchEnv = LlmEnv & {
@@ -183,8 +183,10 @@ function buildResearchPrompt(opts: {
   entity: string;
   ocrText?: string;
   locale: string;
+  markets?: readonly string[];
 }): string {
   const lang = langLabel(opts.locale);
+  const limit = marketLimitLine(opts.entity, opts.markets);
   return `You are a product-origin research assistant for OriginWise.
 Use Google Search to find CURRENT public facts about the product/brand/company below.
 Respond in ${lang}.
@@ -210,9 +212,11 @@ Rules:
 - Two brands sharing a local distributor does not mean one owns the other.
 - Same spelling can be two companies: split by category and legal parent. Do not mix their factories.
 - Talk of moving some parts or assembly out of China is not the finished-unit "Made in" unless the label for THIS SKU says so.
-- The query's own writing is the market, in whatever language it is. Search that unit. Another market's factory is not this unit's finished-unit COO. A part made elsewhere is a part origin, not the finished COO.
+${limit
+    ? `- ${limit}`
+    : `- The query's own writing is the market, in whatever language it is. Search that unit. Another market's factory is not this unit's finished-unit COO. A part made elsewhere is a part origin, not the finished COO.`}
 - Search with operators. Put + on the model and size tokens. Do not quote the whole product name. Do not write +(a OR b): that returns no pages. Join the origin-field words of the query's language with OR. Skip price-comparison and video pages. A design or domestic-marketing line is not the factory. Do not ask for a package photo.
-${queryMarketLine(opts.entity)}
+${limit ? '' : queryMarketLine(opts.entity)}
 - Taiwan (TW), Hong Kong and Macau companies are never China: name them by their own country/region.
 - If sources conflict, list BOTH COO lines with source tags — do not pick China from ownership alone.
 - If little is found, say so clearly — do not invent registry data or factory countries.
@@ -624,6 +628,7 @@ export async function runWebResearch(opts: {
   entity: string;
   ocrText?: string;
   locale: string;
+  markets?: readonly string[];
   env: WebResearchEnv;
 }): Promise<WebResearchResult> {
   const t0 = Date.now();
@@ -656,6 +661,7 @@ export async function runWebResearch(opts: {
     entity,
     ocrText: opts.ocrText,
     locale: opts.locale,
+    markets: opts.markets,
   });
 
   const models = await resolveWebSearchModels(apiKey, opts.env);

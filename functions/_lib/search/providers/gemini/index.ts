@@ -20,8 +20,8 @@ export const geminiSearchProvider: SearchProvider = {
   isConfigured(env) {
     return Boolean(env.GEMINI_API_KEY?.trim());
   },
-  async search({ entity, ocrText, locale, env }) {
-    const wr = await runWebResearch({ entity, ocrText, locale, env });
+  async search({ entity, ocrText, locale, markets, env }) {
+    const wr = await runWebResearch({ entity, ocrText, locale, markets, env });
     const ok = wr.ok && Boolean(wr.brief.trim());
     let sources = ok ? wr.sources : [];
     const evidence: SearchEvidence = { pages: [], droppedUrls: [] };
@@ -39,7 +39,7 @@ export const geminiSearchProvider: SearchProvider = {
         targets.map((s) => fetchSourcePage(s.url, s.title).catch(() => null))
       );
       const fetched = pages.filter((p): p is NonNullable<typeof p> => Boolean(p));
-      const named = keepUnitPages(entity, fetched).slice(0, MAX_RESULT_PAGES);
+      const named = keepUnitPages(entity, fetched, markets).slice(0, MAX_RESULT_PAGES);
       const kinds = await classifyPageKinds(entity, named, env);
       const split = applyPageKinds(named, [], kinds);
       const kept = split.pages;

@@ -14,6 +14,21 @@ import { localizeServerText, serverTextKeyOf } from '../core/localizeServerText'
 import { resultTitle } from '../core/resultTitle';
 import { scoreTone } from '../core/scoreTone';
 
+/** One block per origin when the score step separated them. */
+function originSummaries(overall: NonNullable<CheckResult['overall']>): string[] {
+  const paras = overall.summary
+    .split(/\n\s*\n/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (paras.length >= 2) return paras;
+  const card = overall.madeIn;
+  const lines =
+    card && typeof card === 'object'
+      ? (card.lines ?? []).map((line) => line.trim()).filter(Boolean)
+      : [];
+  return lines.length >= 2 ? lines : [];
+}
+
 function agentLabel(id: string, t: TFunction): string {
   const key = `check.agent.${id}`;
   const label = t(key);
@@ -146,6 +161,7 @@ export function ResultPanel({
   // the fold. "AI cited" and "AI only" only repeat the unconfirmed headline,
   // so they stay on the made-in card.
   const madeIn = buildMadeInView(result);
+  const origins = result.overall ? originSummaries(result.overall) : [];
   const isUnconfirmedNote = (n: string) => serverTextKeyOf(n) === 'cooUnconfirmedNoBarcode';
   const foldReason =
     !result.overall &&
@@ -222,7 +238,15 @@ export function ResultPanel({
                 {t(`tier.${scoreTone(result.overall.score)}`)}
               </span>
             </div>
-            <p className="rc-score-summary">{result.overall.summary}</p>
+            {origins.length > 1 ? (
+              <ul className="rc-score-lines" data-testid="origin-summaries">
+                {origins.map((line, i) => (
+                  <li key={`${i}-${line}`}>{line}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="rc-score-summary">{result.overall.summary}</p>
+            )}
             {hasEntity ? (
               <div className="rc-subcards">
                 <MadeInCard result={result} t={t} plain />

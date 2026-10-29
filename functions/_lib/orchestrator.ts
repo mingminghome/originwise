@@ -26,7 +26,7 @@ import type { GeoScope } from './schema';
 import { groundPageQuotes, identityPrompt, keepTidy, readIdentity, readTidy, resultFromTidy, skippedPageUrls, tidyPrompt } from './pipeline';
 import { pageKindKey } from './search/pageKinds';
 import { pageMentionsUnit, pageOutsideMarket } from './search/extract';
-import { buildScorePrompt, readOverall } from './score';
+import { buildScorePrompt, readAlternatives, readOverall } from './score';
 import type { SearchEvidence } from './search/types';
 import {
   isSearchEnabled,
@@ -55,6 +55,8 @@ export type OrchestratorInput = {
   image?: LlmImage;
   geoScope: GeoScope;
   dimensions: CheckDimension[];
+  /** Countries the user picked in advanced search. Empty means a normal check. */
+  markets?: readonly string[];
   env: OrchestratorEnv;
 };
 
@@ -109,12 +111,13 @@ async function maybeWebResearch(
     locale: string;
     entity: string;
     ocrText?: string;
+    markets?: readonly string[];
     env: OrchestratorEnv;
     agents: AgentMeta[];
   },
   emit: ProgressEmit
 ): Promise<WebPass> {
-  const { jobId, locale, entity, ocrText, env, agents } = opts;
+  const { jobId, locale, entity, ocrText, markets, env, agents } = opts;
   if (!isSearchEnabled(env)) {
     emit({ type: 'progress', jobId, step: 'web', status: 'skipped' });
     agents.push({
@@ -128,7 +131,7 @@ async function maybeWebResearch(
     return { brief: '', used: false, error: 'disabled', sources: [], requests: 0 };
   }
   const wr = await runSearchChain(
-    { entity, ocrText, locale, env },
+    { entity, ocrText, locale, markets, env },
     {
       onAttempt: (id) =>
         emit({ type: 'progress', jobId, step: 'web', status: 'running', detail: id }),
@@ -292,14 +295,16 @@ async function attachOverall(
   agents: AgentMeta[],
   deadProviders: Set<AskProviderId>,
   emit: ProgressEmit,
-  jobId: string
+  jobId: string,
+  dimensions: readonly CheckDimension[],
+  markets: readonly string[] | undefined
 ): Promise<void> {
   emit({ type: 'progress', jobId, step: 'score', status: 'running' });
   let calls = 0;
   const out = await callJsonWithPool({
     role: 'score',
     agentId: 'score',
-    prompt: buildScorePrompt(result, locale),
+    prompt: buildScorePrompt(result, locale, { dimensions, markets }),
     env,
     agents,
     usedInWave: new Set(),
@@ -322,22 +327,24 @@ async function attachOverall(
     return;
   }
   result.overall = overall;
+  const alternatives = out.ok ? readAlternatives(out.obj, dimensions) : undefined;
+  if (alternatives) result.alternatives = alternatives;
   emit({ type: 'progress', jobId, step: 'score', status: 'done' });
 }
 
-function pageTexts(web: WebPass, entity: string): {
+function pageTexts(web: WebPass, entity: string, markets?: readonly string[]): {
   pages: Array<{ url: string; text: string }>;
   factoryPages: Array<{ url: string; text: string }>;
 } {
   const pages = (web.evidence?.pages ?? [])
     .filter((p) => p.text.trim())
-    .filter((p) => !pageOutsideMarket(p.finalUrl || p.url, entity))
+    .filter((p) => !pageOutsideMarket(p.finalUrl || p.url, entity, markets))
     .filter((p) => pageMentionsUnit(entity, `${p.title ?? ''}\n${p.text}`))
     .map((p) => ({ url: p.finalUrl || p.url, text: p.text }));
   const seen = new Set(pages.map((p) => p.url));
   const factoryPages = (web.evidence?.factoryPages ?? [])
     .filter((p) => p.text.trim())
-    .filter((p) => !pageOutsideMarket(p.finalUrl || p.url, entity))
+    .filter((p) => !pageOutsideMarket(p.finalUrl || p.url, entity, markets))
     .map((p) => ({ url: p.finalUrl || p.url, text: p.text }))
     .filter((p) => !seen.has(p.url))
     .slice(0, 2);
@@ -352,7 +359,7 @@ async function runQuery(
   input: OrchestratorInput,
   emit: ProgressEmit
 ): Promise<OrchestratorOk | OrchestratorErr> {
-  const { jobId, locale, text, image, geoScope, env } = input;
+  const { jobId, locale, text, image, geoScope, dimensions, markets, env } = input;
   const agents: AgentMeta[] = [];
   let calls = 0;
   const deadProviders = new Set<AskProviderId>();
@@ -379,7 +386,7 @@ async function runQuery(
   // A photo with no text has nothing to search until the label is read.
   const searchNow = text.trim();
   const webTask: Promise<WebPass> = searchNow
-    ? maybeWebResearch({ jobId, locale, entity: searchNow.slice(0, 180), env, agents }, emit)
+    ? maybeWebResearch({ jobId, locale, entity: searchNow.slice(0, 180), markets, env, agents }, emit)
     : Promise.resolve({ brief: '', used: false, sources: [] });
   const [named, webFirst] = await Promise.all([identify, webTask]);
   const identity = readIdentity(named.ok ? named.obj : null, text);
@@ -394,14 +401,14 @@ async function runQuery(
   const entity = [identity.brand, identity.name].filter(Boolean).join(' ').trim();
   let web = webFirst;
   if (!searchNow && entity) {
-    web = await maybeWebResearch({ jobId, locale, entity, env, agents }, emit);
+    web = await maybeWebResearch({ jobId, locale, entity, markets, env, agents }, emit);
   } else if (!searchNow) {
     emit({ type: 'progress', jobId, step: 'web', status: 'skipped' });
   }
 
-  const { pages, factoryPages } = pageTexts(web, text.trim() || entity);
+  const { pages, factoryPages } = pageTexts(web, text.trim() || entity, markets);
   emit({ type: 'progress', jobId, step: 'monolith', status: 'running' });
-  const tidyPromptText = tidyPrompt({ locale, identity, pages, factoryPages });
+  const tidyPromptText = tidyPrompt({ locale, identity, pages, factoryPages, markets });
   let tidy = await callJsonWithPool({
     ...pool,
     role: 'monolith',
@@ -462,7 +469,7 @@ async function runQuery(
   });
   result.meta.agents = agents;
   if (tidy.ok) {
-    await attachOverall(result, locale, env, agents, deadProviders, emit, jobId);
+    await attachOverall(result, locale, env, agents, deadProviders, emit, jobId, dimensions, markets);
   }
   if (web.provider) {
     result.meta.searchProvider = web.provider;

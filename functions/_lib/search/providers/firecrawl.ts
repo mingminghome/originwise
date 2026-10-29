@@ -101,20 +101,21 @@ export const firecrawlSearchProvider: SearchProvider = {
   isConfigured(env) {
     return Boolean(env.FIRECRAWL_API_KEY?.trim());
   },
-  async search({ entity, ocrText, locale, env }) {
+  async search({ entity, ocrText, locale, markets, env }) {
     const key = env.FIRECRAWL_API_KEY?.trim() || '';
     return runMadeInSearch({
       providerId: 'firecrawl',
       entity,
       ocrText,
       locale,
+      markets,
       env,
       fetchPages: (query, phase) =>
         firecrawlPages(
           key,
           query,
           phase === 'first' ? FIRECRAWL_MS : FIRECRAWL_FOLLOWUP_MS,
-          searchMarket(entity)?.location
+          searchMarket(entity, markets)?.location
         ),
     });
   },
